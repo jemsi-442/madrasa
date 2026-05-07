@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import { buildPaginationMeta, getPaginationParams } from "../../shared/utils/pagination";
 import type {
   CreateExpenseInput,
   CreateFeeStructureInput,
@@ -213,17 +214,32 @@ export const listFeeStructures = async (orgId: string, query: ListFeeStructuresQ
   if (query.branchId) where.branchId = BigInt(query.branchId);
   if (query.classId) where.classId = BigInt(query.classId);
   if (typeof query.isActive === "boolean") where.isActive = query.isActive;
+  if (query.search) {
+    where.name = {
+      contains: query.search,
+    };
+  }
 
-  const records = await prisma.feeStructure.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }],
-    include: {
-      branch: { select: { id: true, name: true } },
-      class: { select: { id: true, name: true, level: true } },
-    },
-  });
+  const { skip, take } = getPaginationParams(query);
 
-  return records.map(toFeeStructureResponse);
+  const [records, totalItems] = await Promise.all([
+    prisma.feeStructure.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      skip,
+      take,
+      include: {
+        branch: { select: { id: true, name: true } },
+        class: { select: { id: true, name: true, level: true } },
+      },
+    }),
+    prisma.feeStructure.count({ where }),
+  ]);
+
+  return {
+    items: records.map(toFeeStructureResponse),
+    meta: buildPaginationMeta(totalItems, query),
+  };
 };
 
 export const createInvoice = async (orgId: string, input: CreateInvoiceInput) => {
@@ -298,18 +314,59 @@ export const listInvoices = async (orgId: string, query: ListInvoicesQuery) => {
   };
 
   if (query.studentId) where.studentId = BigInt(query.studentId);
+  if (query.branchId) where.branchId = BigInt(query.branchId);
   if (query.status) where.status = query.status;
+  if (query.search) {
+    where.OR = [
+      {
+        invoiceNo: {
+          contains: query.search,
+        },
+      },
+      {
+        student: {
+          fullName: {
+            contains: query.search,
+          },
+        },
+      },
+      {
+        student: {
+          admissionNo: {
+            contains: query.search,
+          },
+        },
+      },
+      {
+        feeStructure: {
+          name: {
+            contains: query.search,
+          },
+        },
+      },
+    ];
+  }
 
-  const records = await prisma.invoice.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }],
-    include: {
-      student: { select: { id: true, fullName: true, admissionNo: true } },
-      feeStructure: { select: { id: true, name: true } },
-    },
-  });
+  const { skip, take } = getPaginationParams(query);
 
-  return records.map(toInvoiceResponse);
+  const [records, totalItems] = await Promise.all([
+    prisma.invoice.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      skip,
+      take,
+      include: {
+        student: { select: { id: true, fullName: true, admissionNo: true } },
+        feeStructure: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.invoice.count({ where }),
+  ]);
+
+  return {
+    items: records.map(toInvoiceResponse),
+    meta: buildPaginationMeta(totalItems, query),
+  };
 };
 
 export const createExpense = async (orgId: string, recordedByUserId: string, input: CreateExpenseInput) => {
@@ -346,6 +403,20 @@ export const listExpenses = async (orgId: string, query: ListExpensesQuery) => {
   };
 
   if (query.branchId) where.branchId = BigInt(query.branchId);
+  if (query.search) {
+    where.OR = [
+      {
+        title: {
+          contains: query.search,
+        },
+      },
+      {
+        description: {
+          contains: query.search,
+        },
+      },
+    ];
+  }
 
   if (query.dateFrom || query.dateTo) {
     where.expenseDate = {};
@@ -353,15 +424,24 @@ export const listExpenses = async (orgId: string, query: ListExpensesQuery) => {
     if (query.dateTo) where.expenseDate.lte = new Date(query.dateTo);
   }
 
-  const records = await prisma.expense.findMany({
-    where,
-    orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
-    include: {
-      branch: { select: { id: true, name: true } },
-      recordedBy: { select: { id: true, fullName: true, role: true } },
-    },
-  });
+  const { skip, take } = getPaginationParams(query);
 
-  return records.map(toExpenseResponse);
+  const [records, totalItems] = await Promise.all([
+    prisma.expense.findMany({
+      where,
+      orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
+      skip,
+      take,
+      include: {
+        branch: { select: { id: true, name: true } },
+        recordedBy: { select: { id: true, fullName: true, role: true } },
+      },
+    }),
+    prisma.expense.count({ where }),
+  ]);
+
+  return {
+    items: records.map(toExpenseResponse),
+    meta: buildPaginationMeta(totalItems, query),
+  };
 };
-

@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import type {
   BulkMarkAttendanceInput,
   ClassAttendanceQuery,
@@ -48,11 +49,12 @@ const toAttendanceResponse = (record: {
     : null,
 });
 
-const ensureClassBelongsToOrg = async (orgId: bigint, classId: bigint) => {
+const ensureClassBelongsToOrg = async (orgId: bigint, classId: bigint, teacherId?: bigint) => {
   const classRecord = await prisma.class.findFirst({
     where: {
       id: classId,
       orgId,
+      ...(teacherId ? { teacherId } : {}),
     },
     select: {
       id: true,
@@ -98,13 +100,12 @@ const ensureStudentBelongsToClass = async (orgId: bigint, classId: bigint, stude
 };
 
 export const bulkMarkAttendance = async (
-  orgId: string,
-  markedByUserId: string,
+  authUser: AuthenticatedUser,
   input: BulkMarkAttendanceInput,
 ) => {
-  const parsedOrgId = BigInt(orgId);
+  const parsedOrgId = BigInt(authUser.orgId);
   const parsedClassId = BigInt(input.classId);
-  const parsedMarkedById = BigInt(markedByUserId);
+  const parsedMarkedById = BigInt(authUser.userId);
   const attendanceDate = new Date(input.date);
   const seenStudentIds = new Set<string>();
 
@@ -116,7 +117,11 @@ export const bulkMarkAttendance = async (
     seenStudentIds.add(record.studentId);
   }
 
-  const classRecord = await ensureClassBelongsToOrg(parsedOrgId, parsedClassId);
+  const classRecord = await ensureClassBelongsToOrg(
+    parsedOrgId,
+    parsedClassId,
+    authUser.role === "TEACHER" ? BigInt(authUser.userId) : undefined,
+  );
 
   for (const record of input.records) {
     await ensureStudentBelongsToClass(parsedOrgId, parsedClassId, BigInt(record.studentId));
@@ -179,14 +184,18 @@ export const bulkMarkAttendance = async (
 };
 
 export const getClassAttendance = async (
-  orgId: string,
+  authUser: AuthenticatedUser,
   classId: string,
   query: ClassAttendanceQuery,
 ) => {
-  const parsedOrgId = BigInt(orgId);
+  const parsedOrgId = BigInt(authUser.orgId);
   const parsedClassId = BigInt(classId);
 
-  await ensureClassBelongsToOrg(parsedOrgId, parsedClassId);
+  await ensureClassBelongsToOrg(
+    parsedOrgId,
+    parsedClassId,
+    authUser.role === "TEACHER" ? BigInt(authUser.userId) : undefined,
+  );
 
   const where: Prisma.AttendanceRecordWhereInput = {
     orgId: parsedOrgId,
@@ -222,17 +231,18 @@ export const getClassAttendance = async (
 };
 
 export const getStudentAttendance = async (
-  orgId: string,
+  authUser: AuthenticatedUser,
   studentId: string,
   query: StudentAttendanceQuery,
 ) => {
-  const parsedOrgId = BigInt(orgId);
+  const parsedOrgId = BigInt(authUser.orgId);
   const parsedStudentId = BigInt(studentId);
 
   const student = await prisma.student.findFirst({
     where: {
       id: parsedStudentId,
       orgId: parsedOrgId,
+      ...(authUser.role === "TEACHER" ? { currentClass: { teacherId: BigInt(authUser.userId) } } : {}),
     },
     select: { id: true },
   });
@@ -281,4 +291,3 @@ export const getStudentAttendance = async (
 
   return records.map(toAttendanceResponse);
 };
-

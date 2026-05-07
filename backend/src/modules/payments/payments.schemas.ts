@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 const numericId = z.string().regex(/^\d+$/, "must be a numeric string");
+const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(10),
+});
 
 export const initiatePaymentSchema = z.object({
   invoiceId: numericId,
@@ -13,13 +17,15 @@ export const initiatePaymentSchema = z.object({
   }),
 });
 
-export const listPaymentsQuerySchema = z.object({
+export const listPaymentsQuerySchema = paginationSchema.extend({
   invoiceId: numericId.optional(),
   studentId: numericId.optional(),
+  branchId: numericId.optional(),
   status: z.enum(["PENDING", "COMPLETED", "FAILED", "VOIDED", "EXPIRED"]).optional(),
   channel: z.enum(["mpesa", "airtel_money", "tigo_pesa"]).optional(),
   dateFrom: z.string().date().optional(),
   dateTo: z.string().date().optional(),
+  search: z.string().min(1).max(100).optional(),
 });
 
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;

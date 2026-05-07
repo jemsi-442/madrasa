@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { env } from "../../config/env";
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import { buildPaginationMeta, getPaginationParams } from "../../shared/utils/pagination";
 import type { InitiatePaymentInput, ListPaymentsQuery } from "./payments.schemas";
 import {
   createSnippePayment,
@@ -699,34 +700,101 @@ export const listPayments = async (orgId: string, query: ListPaymentsQuery) => {
     }
   }
 
+  const invoiceFilter: Prisma.InvoiceWhereInput = {};
+
   if (query.studentId) {
-    where.invoice = {
-      studentId: BigInt(query.studentId),
-    };
+    invoiceFilter.studentId = BigInt(query.studentId);
   }
 
-  const records = await prisma.payment.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }],
-    include: {
-      invoice: {
-        select: {
-          id: true,
-          invoiceNo: true,
-          branchId: true,
-          student: {
-            select: {
-              id: true,
-              fullName: true,
-              admissionNo: true,
+  if (query.branchId) {
+    invoiceFilter.branchId = BigInt(query.branchId);
+  }
+
+  if (Object.keys(invoiceFilter).length > 0) {
+    where.invoice = invoiceFilter;
+  }
+
+  if (query.search) {
+    where.AND = [
+      {
+        OR: [
+          {
+            reference: {
+              contains: query.search,
+            },
+          },
+          {
+            externalReference: {
+              contains: query.search,
+            },
+          },
+          {
+            providerTxnRef: {
+              contains: query.search,
+            },
+          },
+          {
+            invoice: {
+              invoiceNo: {
+                contains: query.search,
+              },
+            },
+          },
+          {
+            invoice: {
+              student: {
+                fullName: {
+                  contains: query.search,
+                },
+              },
+            },
+          },
+          {
+            invoice: {
+              student: {
+                admissionNo: {
+                  contains: query.search,
+                },
+              },
+            },
+          },
+        ],
+      },
+    ];
+  }
+
+  const { skip, take } = getPaginationParams(query);
+
+  const [records, totalItems] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      skip,
+      take,
+      include: {
+        invoice: {
+          select: {
+            id: true,
+            invoiceNo: true,
+            branchId: true,
+            student: {
+              select: {
+                id: true,
+                fullName: true,
+                admissionNo: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.payment.count({ where }),
+  ]);
 
-  return records.map(toPaymentResponse);
+  return {
+    items: records.map(toPaymentResponse),
+    meta: buildPaginationMeta(totalItems, query),
+  };
 };
 
 export const getPaymentReceipt = async (orgId: string, paymentId: string) => {

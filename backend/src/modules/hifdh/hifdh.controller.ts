@@ -16,7 +16,7 @@ export const createHifdhProgressHandler = async (req: Request, res: Response) =>
 
 export const listHifdhProgressHandler = async (req: Request, res: Response) => {
   const query = listHifdhProgressQuerySchema.parse(req.query);
-  const records = await listHifdhProgress(req.authUser!.orgId, query);
+  const records = await listHifdhProgress(req.authUser!, query);
 
   res.status(200).json({
     success: true,
@@ -27,7 +27,7 @@ export const listHifdhProgressHandler = async (req: Request, res: Response) => {
 
 export const getHifdhProgressByIdHandler = async (req: Request, res: Response) => {
   const params = hifdhProgressParamsSchema.parse(req.params);
-  const record = await getHifdhProgressById(req.authUser!.orgId, params.id);
+  const record = await getHifdhProgressById(req.authUser!, params.id);
 
   res.status(200).json({
     success: true,

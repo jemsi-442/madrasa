@@ -28,7 +28,7 @@ export const createClassHandler = async (req: Request, res: Response) => {
 
 export const listClassesHandler = async (req: Request, res: Response) => {
   const query = listClassesQuerySchema.parse(req.query);
-  const classes = await listClasses(req.authUser!.orgId, query);
+  const classes = await listClasses(req.authUser!, query);
 
   res.status(200).json({
     success: true,
@@ -44,7 +44,7 @@ export const getClassByIdHandler = async (req: Request, res: Response) => {
     throw new HttpError(400, "Class id parameter is required");
   }
 
-  const classRecord = await getClassById(req.authUser!.orgId, classId);
+  const classRecord = await getClassById(req.authUser!, classId);
 
   res.status(200).json({
     success: true,
@@ -66,7 +66,7 @@ export const createEnrollmentHandler = async (req: Request, res: Response) => {
 
 export const listEnrollmentsHandler = async (req: Request, res: Response) => {
   const query = listEnrollmentsQuerySchema.parse(req.query);
-  const enrollments = await listEnrollments(req.authUser!.orgId, query);
+  const enrollments = await listEnrollments(req.authUser!, query);
 
   res.status(200).json({
     success: true,
@@ -74,4 +74,3 @@ export const listEnrollmentsHandler = async (req: Request, res: Response) => {
     data: enrollments,
   });
 };
-

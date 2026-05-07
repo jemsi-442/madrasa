@@ -62,6 +62,12 @@ const ensureStudentBelongsToOrg = async (orgId: bigint, studentId: bigint) => {
     select: {
       id: true,
       status: true,
+      currentClass: {
+        select: {
+          id: true,
+          teacherId: true,
+        },
+      },
     },
   });
 
@@ -107,11 +113,15 @@ export const createHifdhProgress = async (
   const parsedStudentId = BigInt(input.studentId);
   const parsedTeacherId = input.teacherId ? BigInt(input.teacherId) : BigInt(authUser.userId);
 
-  await ensureStudentBelongsToOrg(parsedOrgId, parsedStudentId);
+  const student = await ensureStudentBelongsToOrg(parsedOrgId, parsedStudentId);
   const teacher = await ensureTeacherBelongsToOrg(parsedOrgId, parsedTeacherId);
 
   if (authUser.role === "TEACHER" && teacher.id !== BigInt(authUser.userId)) {
     throw new HttpError(403, "Teachers can only record hifdh progress under their own account");
+  }
+
+  if (authUser.role === "TEACHER" && student.currentClass?.teacherId !== BigInt(authUser.userId)) {
+    throw new HttpError(403, "Teachers can only record hifdh progress for their assigned students");
   }
 
   const record = await prisma.hifdhProgress.create({
@@ -149,9 +159,9 @@ export const createHifdhProgress = async (
   return toHifdhProgressResponse(record);
 };
 
-export const listHifdhProgress = async (orgId: string, query: ListHifdhProgressQuery) => {
+export const listHifdhProgress = async (authUser: AuthenticatedUser, query: ListHifdhProgressQuery) => {
   const where: Prisma.HifdhProgressWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
   if (query.studentId) {
@@ -178,6 +188,10 @@ export const listHifdhProgress = async (orgId: string, query: ListHifdhProgressQ
     }
   }
 
+  if (authUser.role === "TEACHER") {
+    where.teacherId = BigInt(authUser.userId);
+  }
+
   const records = await prisma.hifdhProgress.findMany({
     where,
     orderBy: [{ assessedOn: "desc" }, { createdAt: "desc" }],
@@ -202,11 +216,12 @@ export const listHifdhProgress = async (orgId: string, query: ListHifdhProgressQ
   return records.map(toHifdhProgressResponse);
 };
 
-export const getHifdhProgressById = async (orgId: string, id: string) => {
+export const getHifdhProgressById = async (authUser: AuthenticatedUser, id: string) => {
   const record = await prisma.hifdhProgress.findFirst({
     where: {
       id: BigInt(id),
-      orgId: BigInt(orgId),
+      orgId: BigInt(authUser.orgId),
+      ...(authUser.role === "TEACHER" ? { teacherId: BigInt(authUser.userId) } : {}),
     },
     include: {
       student: {

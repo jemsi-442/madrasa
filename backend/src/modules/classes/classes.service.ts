@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import type {
   CreateClassInput,
   CreateEnrollmentInput,
@@ -220,9 +221,9 @@ export const createClass = async (orgId: string, input: CreateClassInput) => {
   return toClassResponse(classRecord);
 };
 
-export const listClasses = async (orgId: string, query: ListClassesQuery) => {
+export const listClasses = async (authUser: AuthenticatedUser, query: ListClassesQuery) => {
   const where: Prisma.ClassWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
   if (query.branchId) {
@@ -235,6 +236,10 @@ export const listClasses = async (orgId: string, query: ListClassesQuery) => {
 
   if (query.teacherId) {
     where.teacherId = BigInt(query.teacherId);
+  }
+
+  if (authUser.role === "TEACHER") {
+    where.teacherId = BigInt(authUser.userId);
   }
 
   const classes = await prisma.class.findMany({
@@ -276,11 +281,12 @@ export const listClasses = async (orgId: string, query: ListClassesQuery) => {
   return classes.map(toClassResponse);
 };
 
-export const getClassById = async (orgId: string, classId: string) => {
+export const getClassById = async (authUser: AuthenticatedUser, classId: string) => {
   const classRecord = await prisma.class.findFirst({
     where: {
       id: BigInt(classId),
-      orgId: BigInt(orgId),
+      orgId: BigInt(authUser.orgId),
+      ...(authUser.role === "TEACHER" ? { teacherId: BigInt(authUser.userId) } : {}),
     },
     select: {
       id: true,
@@ -414,9 +420,9 @@ export const createEnrollment = async (orgId: string, input: CreateEnrollmentInp
   return toEnrollmentResponse(enrollment);
 };
 
-export const listEnrollments = async (orgId: string, query: ListEnrollmentsQuery) => {
+export const listEnrollments = async (authUser: AuthenticatedUser, query: ListEnrollmentsQuery) => {
   const where: Prisma.EnrollmentWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
   if (query.studentId) {
@@ -433,6 +439,14 @@ export const listEnrollments = async (orgId: string, query: ListEnrollmentsQuery
 
   if (query.status) {
     where.status = query.status;
+  }
+
+  if (authUser.role === "TEACHER") {
+    where.class = {
+      is: {
+        teacherId: BigInt(authUser.userId),
+      },
+    } satisfies Prisma.ClassScalarRelationFilter;
   }
 
   const enrollments = await prisma.enrollment.findMany({
@@ -466,4 +480,3 @@ export const listEnrollments = async (orgId: string, query: ListEnrollmentsQuery
 
   return enrollments.map(toEnrollmentResponse);
 };
-

@@ -14,7 +14,7 @@ import {
 
 export const bulkMarkAttendanceHandler = async (req: Request, res: Response) => {
   const input = bulkMarkAttendanceSchema.parse(req.body);
-  const result = await bulkMarkAttendance(req.authUser!.orgId, req.authUser!.userId, input);
+  const result = await bulkMarkAttendance(req.authUser!, input);
 
   res.status(200).json({
     success: true,
@@ -31,7 +31,7 @@ export const getClassAttendanceHandler = async (req: Request, res: Response) => 
   }
 
   const query = classAttendanceQuerySchema.parse(req.query);
-  const result = await getClassAttendance(req.authUser!.orgId, classId, query);
+  const result = await getClassAttendance(req.authUser!, classId, query);
 
   res.status(200).json({
     success: true,
@@ -48,7 +48,7 @@ export const getStudentAttendanceHandler = async (req: Request, res: Response) =
   }
 
   const query = studentAttendanceQuerySchema.parse(req.query);
-  const result = await getStudentAttendance(req.authUser!.orgId, studentId, query);
+  const result = await getStudentAttendance(req.authUser!, studentId, query);
 
   res.status(200).json({
     success: true,
@@ -56,4 +56,3 @@ export const getStudentAttendanceHandler = async (req: Request, res: Response) =
     data: result,
   });
 };
-
