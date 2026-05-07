@@ -1,0 +1,27 @@
+import { Router } from "express";
+
+import { asyncHandler } from "../../shared/utils/async-handler";
+import { authenticate } from "../../shared/middleware/authenticate";
+import { requireRole } from "../../shared/middleware/require-role";
+import { requireTenantContext } from "../../shared/middleware/tenant-context";
+import {
+  createGuardianHandler,
+  createStudentHandler,
+  getStudentByIdHandler,
+  listGuardiansHandler,
+  listStudentsHandler,
+} from "./students.controller";
+
+export const studentsRouter = Router();
+export const guardiansRouter = Router();
+
+studentsRouter.use(authenticate, requireTenantContext);
+guardiansRouter.use(authenticate, requireTenantContext);
+
+studentsRouter.get("/", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(listStudentsHandler));
+studentsRouter.get("/:id", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(getStudentByIdHandler));
+studentsRouter.post("/", requireRole("ADMIN"), asyncHandler(createStudentHandler));
+
+guardiansRouter.get("/", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(listGuardiansHandler));
+guardiansRouter.post("/", requireRole("ADMIN"), asyncHandler(createGuardianHandler));
+

@@ -1,0 +1,517 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+}
+
+enum UserRole {
+  ADMIN
+  ACCOUNTANT
+  TEACHER
+  PARENT
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  GRADUATED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  WITHDRAWN
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum BillingCycle {
+  ONE_TIME
+  MONTHLY
+  TERMLY
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  VOIDED
+  EXPIRED
+}
+
+enum PaymentProvider {
+  SNIPPE
+  MANUAL
+}
+
+enum PaymentType {
+  MOBILE
+  CARD
+  DYNAMIC_QR
+  MANUAL
+}
+
+enum AnnouncementAudience {
+  ALL
+  PARENTS
+  TEACHERS
+  ACCOUNTANTS
+}
+
+enum WebhookProcessingStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
+model Organization {
+  id              BigInt              @id @default(autoincrement())
+  name            String              @db.VarChar(150)
+  code            String              @unique @db.VarChar(50)
+  status          OrganizationStatus  @default(ACTIVE)
+  plan            String?             @db.VarChar(50)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  branches        Branch[]
+  users           User[]
+  guardians       Guardian[]
+  students        Student[]
+  classes         Class[]
+  subjects        Subject[]
+  enrollments     Enrollment[]
+  attendance      AttendanceRecord[]
+  feeStructures   FeeStructure[]
+  invoices        Invoice[]
+  payments        Payment[]
+  paymentWebhooks PaymentWebhook[]
+  hifdhProgress   HifdhProgress[]
+  announcements   Announcement[]
+  auditLogs       AuditLog[]
+  refreshTokens   RefreshToken[]
+  expenses        Expense[]
+
+  @@map("organizations")
+}
+
+model Branch {
+  id            BigInt            @id @default(autoincrement())
+  orgId         BigInt            @map("org_id")
+  name          String            @db.VarChar(150)
+  location      String?           @db.VarChar(255)
+  phone         String?           @db.VarChar(30)
+  isMain        Boolean           @default(false) @map("is_main")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  organization  Organization      @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  users         User[]
+  students      Student[]
+  classes       Class[]
+  attendance    AttendanceRecord[]
+  feeStructures FeeStructure[]
+  invoices      Invoice[]
+  announcements Announcement[]
+  expenses      Expense[]
+
+  @@index([orgId], map: "idx_branches_org_id")
+  @@unique([orgId, name], map: "uniq_branches_org_name")
+  @@map("branches")
+}
+
+model User {
+  id                    BigInt             @id @default(autoincrement())
+  orgId                 BigInt             @map("org_id")
+  branchId              BigInt?            @map("branch_id")
+  fullName              String             @map("full_name") @db.VarChar(150)
+  email                 String?            @db.VarChar(150)
+  phone                 String?            @db.VarChar(30)
+  passwordHash          String             @map("password_hash") @db.VarChar(255)
+  role                  UserRole
+  status                UserStatus         @default(ACTIVE)
+  lastLoginAt           DateTime?          @map("last_login_at")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  organization          Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch                Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  guardianProfile       Guardian?
+  taughtClasses         Class[]            @relation("ClassTeacher")
+  attendanceMarked      AttendanceRecord[] @relation("AttendanceMarkedBy")
+  hifdhAssessments      HifdhProgress[]    @relation("HifdhTeacher")
+  announcementsCreated  Announcement[]
+  auditLogs             AuditLog[]
+  refreshTokens         RefreshToken[]
+  expensesRecorded      Expense[]          @relation("ExpenseRecordedBy")
+
+  @@index([orgId, role], map: "idx_users_org_role")
+  @@unique([orgId, email], map: "uniq_users_org_email")
+  @@unique([orgId, phone], map: "uniq_users_org_phone")
+  @@map("users")
+}
+
+model Guardian {
+  id             BigInt             @id @default(autoincrement())
+  orgId          BigInt             @map("org_id")
+  userId         BigInt?            @unique @map("user_id")
+  fullName       String             @map("full_name") @db.VarChar(150)
+  phone          String             @db.VarChar(30)
+  email          String?            @db.VarChar(150)
+  relationship   String?            @db.VarChar(50)
+  address        String?            @db.VarChar(255)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  organization   Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  user           User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  primaryFor     Student[]          @relation("PrimaryGuardian")
+  studentLinks   StudentGuardian[]
+
+  @@index([orgId, phone], map: "idx_guardians_org_phone")
+  @@map("guardians")
+}
+
+model Student {
+  id                BigInt             @id @default(autoincrement())
+  orgId             BigInt             @map("org_id")
+  branchId          BigInt             @map("branch_id")
+  admissionNo       String             @map("admission_no") @db.VarChar(50)
+  fullName          String             @map("full_name") @db.VarChar(150)
+  gender            String             @db.VarChar(20)
+  dob               DateTime?          @db.Date
+  status            StudentStatus      @default(ACTIVE)
+  classId           BigInt?            @map("class_id")
+  primaryGuardianId BigInt             @map("primary_guardian_id")
+  joinedOn          DateTime?          @map("joined_on") @db.Date
+  leftOn            DateTime?          @map("left_on") @db.Date
+  notes             String?            @db.Text
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  organization      Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  currentClass      Class?             @relation("CurrentClassStudents", fields: [classId], references: [id], onDelete: SetNull)
+  primaryGuardian   Guardian           @relation("PrimaryGuardian", fields: [primaryGuardianId], references: [id], onDelete: Restrict)
+  guardians         StudentGuardian[]
+  enrollments       Enrollment[]
+  attendance        AttendanceRecord[]
+  invoices          Invoice[]
+  hifdhProgress     HifdhProgress[]
+
+  @@unique([orgId, admissionNo], map: "uniq_students_org_admission_no")
+  @@index([orgId, branchId, classId], map: "idx_students_org_branch_class")
+  @@map("students")
+}
+
+model StudentGuardian {
+  id         BigInt    @id @default(autoincrement())
+  orgId      BigInt    @map("org_id")
+  studentId  BigInt    @map("student_id")
+  guardianId BigInt    @map("guardian_id")
+  isPrimary  Boolean   @default(false) @map("is_primary")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  guardian   Guardian  @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, guardianId], map: "uniq_student_guardian_pair")
+  @@index([orgId, guardianId], map: "idx_student_guardians_org_guardian")
+  @@map("student_guardians")
+}
+
+model Class {
+  id               BigInt         @id @default(autoincrement())
+  orgId            BigInt         @map("org_id")
+  branchId         BigInt         @map("branch_id")
+  name             String         @db.VarChar(100)
+  level            String         @db.VarChar(100)
+  academicYear     String         @map("academic_year") @db.VarChar(20)
+  teacherId        BigInt?        @map("teacher_id")
+  capacity         Int?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  organization     Organization   @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch           Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  teacher          User?          @relation("ClassTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  currentStudents  Student[]      @relation("CurrentClassStudents")
+  enrollments      Enrollment[]
+  attendance       AttendanceRecord[]
+  feeStructures    FeeStructure[]
+
+  @@index([orgId, branchId, academicYear], map: "idx_classes_org_branch_year")
+  @@map("classes")
+}
+
+model Subject {
+  id           BigInt       @id @default(autoincrement())
+  orgId        BigInt       @map("org_id")
+  code         String       @db.VarChar(30)
+  name         String       @db.VarChar(100)
+  isCore       Boolean      @default(true) @map("is_core")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+
+  @@unique([orgId, code], map: "uniq_subjects_org_code")
+  @@map("subjects")
+}
+
+model Enrollment {
+  id            BigInt           @id @default(autoincrement())
+  orgId         BigInt           @map("org_id")
+  studentId     BigInt           @map("student_id")
+  classId       BigInt           @map("class_id")
+  academicYear  String           @map("academic_year") @db.VarChar(20)
+  status        EnrollmentStatus @default(ACTIVE)
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  organization  Organization     @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  student       Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class         Class            @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, classId, academicYear], map: "uniq_enrollment_student_class_year")
+  @@index([orgId, classId, status], map: "idx_enrollments_org_class_status")
+  @@map("enrollments")
+}
+
+model AttendanceRecord {
+  id            BigInt           @id @default(autoincrement())
+  orgId         BigInt           @map("org_id")
+  branchId      BigInt           @map("branch_id")
+  classId       BigInt           @map("class_id")
+  studentId     BigInt           @map("student_id")
+  date          DateTime         @db.Date
+  status        AttendanceStatus
+  reason        String?          @db.VarChar(255)
+  markedById    BigInt           @map("marked_by")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  organization  Organization     @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch        Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  class         Class            @relation(fields: [classId], references: [id], onDelete: Restrict)
+  student       Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  markedBy      User             @relation("AttendanceMarkedBy", fields: [markedById], references: [id], onDelete: Restrict)
+
+  @@unique([orgId, studentId, date], map: "uniq_attendance_org_student_date")
+  @@index([orgId, classId, date], map: "idx_attendance_org_class_date")
+  @@map("attendance_records")
+}
+
+model FeeStructure {
+  id            BigInt       @id @default(autoincrement())
+  orgId         BigInt       @map("org_id")
+  branchId      BigInt?      @map("branch_id")
+  classId       BigInt?      @map("class_id")
+  name          String       @db.VarChar(150)
+  amount        Decimal      @db.Decimal(12, 2)
+  billingCycle  BillingCycle @map("billing_cycle")
+  isActive      Boolean      @default(true) @map("is_active")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch        Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  class         Class?       @relation(fields: [classId], references: [id], onDelete: SetNull)
+  invoices      Invoice[]
+
+  @@index([orgId, branchId, classId], map: "idx_fee_structures_org_branch_class")
+  @@map("fee_structures")
+}
+
+model Invoice {
+  id              BigInt        @id @default(autoincrement())
+  orgId           BigInt        @map("org_id")
+  branchId        BigInt        @map("branch_id")
+  studentId       BigInt        @map("student_id")
+  feeStructureId  BigInt?       @map("fee_structure_id")
+  invoiceNo       String        @map("invoice_no") @db.VarChar(50)
+  amountDue       Decimal       @map("amount_due") @db.Decimal(12, 2)
+  amountPaid      Decimal       @map("amount_paid") @default(0) @db.Decimal(12, 2)
+  currency        String        @default("TZS") @db.Char(3)
+  dueDate         DateTime      @map("due_date") @db.Date
+  status          InvoiceStatus @default(PENDING)
+  issuedAt        DateTime      @map("issued_at") @default(now())
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  organization    Organization  @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch          Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  feeStructure    FeeStructure? @relation(fields: [feeStructureId], references: [id], onDelete: SetNull)
+  payments        Payment[]
+
+  @@unique([orgId, invoiceNo], map: "uniq_invoices_org_invoice_no")
+  @@index([orgId, studentId, status], map: "idx_invoices_org_student_status")
+  @@map("invoices")
+}
+
+model Payment {
+  id                 BigInt          @id @default(autoincrement())
+  orgId              BigInt          @map("org_id")
+  invoiceId          BigInt          @map("invoice_id")
+  provider           PaymentProvider
+  reference          String?         @db.VarChar(100)
+  externalReference  String?         @map("external_reference") @db.VarChar(100)
+  providerTxnRef     String?         @map("provider_txn_ref") @db.VarChar(100)
+  requestId          String?         @map("request_id") @db.VarChar(100)
+  amount             Decimal         @db.Decimal(12, 2)
+  currency           String          @default("TZS") @db.Char(3)
+  status             PaymentStatus   @default(PENDING)
+  paymentType        PaymentType     @default(MOBILE) @map("payment_type")
+  channel            String?         @db.VarChar(50)
+  apiVersion         String?         @map("api_version") @db.VarChar(20)
+  expiresAt          DateTime?       @map("expires_at")
+  paidAt             DateTime?       @map("paid_at")
+  rawResponse        Json?           @map("raw_response")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  organization       Organization    @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  invoice            Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, invoiceId, status], map: "idx_payments_org_invoice_status")
+  @@unique([reference], map: "uniq_payments_reference")
+  @@unique([providerTxnRef], map: "uniq_payments_provider_txn_ref")
+  @@map("payments")
+}
+
+model PaymentWebhook {
+  id                BigInt                  @id @default(autoincrement())
+  orgId             BigInt?                 @map("org_id")
+  provider          PaymentProvider
+  eventType         String                  @map("event_type") @db.VarChar(100)
+  eventId           String?                 @map("event_id") @db.VarChar(100)
+  apiVersion        String?                 @map("api_version") @db.VarChar(20)
+  signature         String?                 @db.VarChar(255)
+  webhookTimestamp  BigInt?                 @map("webhook_timestamp")
+  payload           Json
+  rawBody           String                  @map("raw_body") @db.LongText
+  processingStatus  WebhookProcessingStatus @default(RECEIVED) @map("processing_status")
+  receivedAt        DateTime                @default(now()) @map("received_at")
+  processedAt       DateTime?               @map("processed_at")
+  errorMessage      String?                 @map("error_message") @db.Text
+  organization      Organization?           @relation(fields: [orgId], references: [id], onDelete: SetNull)
+
+  @@index([provider, processingStatus], map: "idx_payment_webhooks_provider_status")
+  @@unique([eventId], map: "uniq_payment_webhooks_event_id")
+  @@map("payment_webhooks")
+}
+
+model HifdhProgress {
+  id                BigInt       @id @default(autoincrement())
+  orgId             BigInt       @map("org_id")
+  studentId         BigInt       @map("student_id")
+  teacherId         BigInt       @map("teacher_id")
+  juzNumber         Int          @map("juz_number") @db.TinyInt
+  surahName         String       @map("surah_name") @db.VarChar(100)
+  ayahFrom          Int?         @map("ayah_from")
+  ayahTo            Int?         @map("ayah_to")
+  memorizationScore Decimal      @map("memorization_score") @db.Decimal(5, 2)
+  revisionScore     Decimal?     @map("revision_score") @db.Decimal(5, 2)
+  remarks           String?      @db.Text
+  assessedOn        DateTime     @map("assessed_on") @db.Date
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  organization      Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  student           Student      @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  teacher           User         @relation("HifdhTeacher", fields: [teacherId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, studentId, assessedOn], map: "idx_hifdh_org_student_assessed_on")
+  @@map("hifdh_progress")
+}
+
+model Announcement {
+  id             BigInt               @id @default(autoincrement())
+  orgId          BigInt               @map("org_id")
+  branchId       BigInt?              @map("branch_id")
+  title          String               @db.VarChar(150)
+  message        String               @db.Text
+  audience       AnnouncementAudience
+  publishAt      DateTime             @map("publish_at")
+  expiresAt      DateTime?            @map("expires_at")
+  createdById    BigInt               @map("created_by")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  organization   Organization         @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch         Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdBy      User                 @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([orgId, branchId, audience], map: "idx_announcements_org_branch_audience")
+  @@map("announcements")
+}
+
+model AuditLog {
+  id           BigInt       @id @default(autoincrement())
+  orgId        BigInt       @map("org_id")
+  actorUserId  BigInt?      @map("actor_user_id")
+  action       String       @db.VarChar(100)
+  entityType   String       @map("entity_type") @db.VarChar(100)
+  entityId     String       @map("entity_id") @db.VarChar(100)
+  metadata     Json?
+  ipAddress    String?      @map("ip_address") @db.VarChar(64)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  actorUser    User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, entityType, entityId], map: "idx_audit_logs_org_entity")
+  @@index([orgId, action, createdAt], map: "idx_audit_logs_org_action_created_at")
+  @@map("audit_logs")
+}
+
+model RefreshToken {
+  id            BigInt       @id @default(autoincrement())
+  orgId         BigInt       @map("org_id")
+  userId        BigInt       @map("user_id")
+  tokenHash     String       @map("token_hash") @db.VarChar(255)
+  expiresAt     DateTime     @map("expires_at")
+  revokedAt     DateTime?    @map("revoked_at")
+  replacedById  BigInt?      @map("replaced_by_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, userId, expiresAt], map: "idx_refresh_tokens_org_user_expires_at")
+  @@map("refresh_tokens")
+}
+
+model Expense {
+  id            BigInt       @id @default(autoincrement())
+  orgId         BigInt       @map("org_id")
+  branchId      BigInt?      @map("branch_id")
+  title         String       @db.VarChar(150)
+  description   String?      @db.Text
+  amount        Decimal      @db.Decimal(12, 2)
+  currency      String       @default("TZS") @db.Char(3)
+  expenseDate   DateTime     @map("expense_date") @db.Date
+  recordedById  BigInt?      @map("recorded_by_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch        Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  recordedBy    User?        @relation("ExpenseRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([orgId, branchId, expenseDate], map: "idx_expenses_org_branch_expense_date")
+  @@map("expenses")
+}
