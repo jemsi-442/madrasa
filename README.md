@@ -1,6 +1,6 @@
-# Madrasa Management System (MMS)
+# MODERN ISLAMIC FOUNDATION
 
-MMS is a multi-tenant SaaS platform for madrasas in Tanzania. It manages student registration, classes, attendance, hifdh tracking, invoicing, mobile money payments, reporting, and parent access.
+MODERN ISLAMIC FOUNDATION is the branded web platform for managing student registration, classes, attendance, hifdh tracking, invoicing, mobile money payments, reporting, and parent access.
 
 This repository follows the technical direction defined in [madrasa_management_system_technical_documentation_tanzania_2026.md](/home/jaykali/madrasa/madrasa_management_system_technical_documentation_tanzania_2026.md:1).
 

@@ -19,8 +19,11 @@ import {
   type OrganizationProfile,
   type StudentRecord,
 } from "../lib/api";
+import { InlineEmptyState, LoadingRowList, LoadingStatsGrid } from "../components/ui-states";
 import { useAuth } from "../lib/auth";
 import { formatDate } from "../lib/format";
+import { useNotifyOnMessage } from "../lib/notifications";
+import { usePwa } from "../lib/pwa";
 
 type RegistryState = {
   organization: OrganizationProfile | null;
@@ -45,7 +48,19 @@ type StudentFilters = {
   branchId: string;
   classId: string;
   status: "" | "ACTIVE" | "INACTIVE" | "SUSPENDED" | "GRADUATED";
+  sortBy: "createdAt" | "fullName" | "admissionNo" | "joinedOn";
+  sortDir: "asc" | "desc";
   page: number;
+};
+
+const defaultStudentFilters: StudentFilters = {
+  search: "",
+  branchId: "",
+  classId: "",
+  status: "",
+  sortBy: "createdAt",
+  sortDir: "desc",
+  page: 1,
 };
 
 type GuardianFormState = {
@@ -138,12 +153,15 @@ const parsePositivePage = (value: string | null, fallback = 1) => {
 
 export const StudentRegistryPage = () => {
   const { session } = useAuth();
+  const { isOnline } = usePwa();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilters: StudentFilters = {
-    search: searchParams.get("search") ?? "",
-    branchId: searchParams.get("branchId") ?? "",
-    classId: searchParams.get("classId") ?? "",
-    status: (searchParams.get("status") as StudentFilters["status"]) ?? "",
+    search: searchParams.get("search") ?? defaultStudentFilters.search,
+    branchId: searchParams.get("branchId") ?? defaultStudentFilters.branchId,
+    classId: searchParams.get("classId") ?? defaultStudentFilters.classId,
+    status: (searchParams.get("status") as StudentFilters["status"]) ?? defaultStudentFilters.status,
+    sortBy: (searchParams.get("sortBy") as StudentFilters["sortBy"]) ?? defaultStudentFilters.sortBy,
+    sortDir: (searchParams.get("sortDir") as StudentFilters["sortDir"]) ?? defaultStudentFilters.sortDir,
     page: parsePositivePage(searchParams.get("page")),
   };
   const [state, setState] = useState<RegistryState>({
@@ -202,6 +220,14 @@ export const StudentRegistryPage = () => {
       nextParams.set("status", filters.status);
     }
 
+    if (filters.sortBy !== "createdAt") {
+      nextParams.set("sortBy", filters.sortBy);
+    }
+
+    if (filters.sortDir !== "desc") {
+      nextParams.set("sortDir", filters.sortDir);
+    }
+
     if (filters.page > 1) {
       nextParams.set("page", String(filters.page));
     }
@@ -229,6 +255,8 @@ export const StudentRegistryPage = () => {
             classId: filters.classId || undefined,
             status: filters.status || undefined,
             search: filters.search.trim() || undefined,
+            sortBy: filters.sortBy,
+            sortDir: filters.sortDir,
             page: String(filters.page),
             pageSize: "8",
           }),
@@ -285,7 +313,16 @@ export const StudentRegistryPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [filters.branchId, filters.classId, filters.page, filters.search, filters.status, session]);
+  }, [
+    filters.branchId,
+    filters.classId,
+    filters.page,
+    filters.search,
+    filters.sortBy,
+    filters.sortDir,
+    filters.status,
+    session,
+  ]);
 
   const selectedStudent = useMemo(
     () => state.students.find((student) => student.id === state.selectedStudentId) ?? null,
@@ -317,6 +354,9 @@ export const StudentRegistryPage = () => {
     [state.classes, editStudentForm?.branchId],
   );
   const totalPages = state.studentsMeta?.totalPages ?? 1;
+  const activeFilterCount = [filters.search, filters.branchId, filters.classId, filters.status].filter(Boolean).length;
+
+  useNotifyOnMessage(state.error, state.success);
 
   const withSaving = async (work: () => Promise<void>) => {
     setState((previous) => ({ ...previous, saving: true, error: null, success: null }));
@@ -497,40 +537,42 @@ export const StudentRegistryPage = () => {
   return (
     <section className="page-card">
       <div className="page-heading">
-        <p className="eyebrow">Student Registry</p>
-        <h3>Students and guardians workspace</h3>
-        <p>
-          This page manages the real student intake and guardian relationship workflow for the madrasa.
-        </p>
+        <p className="eyebrow">Admissions</p>
+        <h3>Student records and guardian links</h3>
+        <p>Manage student intake, guardian relationships, and branch or class assignment records.</p>
       </div>
 
       {state.error ? <div className="banner error-banner">{state.error}</div> : null}
       {state.success ? <div className="banner success-banner">{state.success}</div> : null}
 
-      <div className="stats-grid">
-        <article className="stat-card">
-          <span className="feature-label">Students</span>
-          <strong className="stat-value">{state.students.length}</strong>
-          <p className="muted">Registered in this organization</p>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Guardians</span>
-          <strong className="stat-value">{state.guardians.length}</strong>
-          <p className="muted">Available for linking</p>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Branches</span>
-          <strong className="stat-value">{state.organization?.branches.length ?? "--"}</strong>
-          <p className="muted">{state.organization?.name ?? "Organization"}</p>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Classes</span>
-          <strong className="stat-value">{state.classes.length}</strong>
-          <p className="muted">Ready for assignment</p>
-        </article>
-      </div>
+      {state.loading ? (
+        <LoadingStatsGrid />
+      ) : (
+        <div className="stats-grid">
+          <article className="stat-card">
+            <span className="feature-label">Students</span>
+            <strong className="stat-value">{state.students.length}</strong>
+            <p className="muted">Registered in this organization</p>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Guardians</span>
+            <strong className="stat-value">{state.guardians.length}</strong>
+            <p className="muted">Available for linking</p>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Branches</span>
+            <strong className="stat-value">{state.organization?.branches.length ?? "--"}</strong>
+            <p className="muted">{state.organization?.name ?? "Organization"}</p>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Classes</span>
+            <strong className="stat-value">{state.classes.length}</strong>
+            <p className="muted">Ready for assignment</p>
+          </article>
+        </div>
+      )}
 
-      <div className="page-actions">
+      <div className="page-actions filters-grid">
         <label className="inline-field">
           <span>Search</span>
           <input
@@ -597,14 +639,65 @@ export const StudentRegistryPage = () => {
             <option value="GRADUATED">GRADUATED</option>
           </select>
         </label>
+        <label className="inline-field">
+          <span>Sort By</span>
+          <select
+            value={filters.sortBy}
+            onChange={(event) =>
+              setFilters((previous) => ({
+                ...previous,
+                sortBy: event.target.value as StudentFilters["sortBy"],
+                page: 1,
+              }))
+            }
+          >
+            <option value="createdAt">Recently Added</option>
+            <option value="fullName">Student Name</option>
+            <option value="admissionNo">Admission No</option>
+            <option value="joinedOn">Join Date</option>
+          </select>
+        </label>
+        <label className="inline-field">
+          <span>Direction</span>
+          <select
+            value={filters.sortDir}
+            onChange={(event) =>
+              setFilters((previous) => ({
+                ...previous,
+                sortDir: event.target.value as StudentFilters["sortDir"],
+                page: 1,
+              }))
+            }
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </label>
+        <div className="action-row full-span workspace-inline-tools">
+          <span className="filter-summary">
+            {state.studentsMeta?.totalItems ?? state.students.length} students
+            {activeFilterCount ? ` • ${activeFilterCount} active filters` : " • all records"}
+          </span>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setSearchInput("");
+              setFilters(defaultStudentFilters);
+            }}
+          >
+            Reset Filters
+          </button>
+        </div>
       </div>
 
-      <div className="data-grid">
+      <div className="data-grid workspace-data-grid">
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Create Guardian</span>
               <h4>Household contact</h4>
+              <p className="panel-note">Create a reusable contact profile before linking students.</p>
             </div>
           </div>
 
@@ -657,17 +750,18 @@ export const StudentRegistryPage = () => {
                 }
               />
             </label>
-            <button className="primary-button" type="submit" disabled={state.saving}>
-              {state.saving ? "Saving..." : "Create Guardian"}
+            <button className="primary-button" type="submit" disabled={state.saving || !isOnline}>
+              {!isOnline ? "Offline" : state.saving ? "Saving..." : "Create Guardian"}
             </button>
           </form>
         </article>
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Create Student</span>
               <h4>Admission intake</h4>
+              <p className="panel-note">Capture branch, class, and guardian ownership in one flow.</p>
             </div>
           </div>
 
@@ -860,46 +954,54 @@ export const StudentRegistryPage = () => {
               </>
             )}
 
-            <button className="primary-button full-span" type="submit" disabled={state.saving}>
-              {state.saving ? "Saving..." : "Create Student"}
+            <button className="primary-button full-span" type="submit" disabled={state.saving || !isOnline}>
+              {!isOnline ? "Offline" : state.saving ? "Saving..." : "Create Student"}
             </button>
           </form>
         </article>
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Student List</span>
               <h4>Current registry</h4>
+              <p className="panel-note">Browse the current page and open a student record for editing.</p>
             </div>
+            <span className="panel-meta">
+              {state.studentsMeta?.totalItems ?? state.students.length} total
+            </span>
           </div>
 
-          <div className="row-list">
-            {state.students.map((student) => (
-              <button
-                key={student.id}
-                type="button"
-                className={`row-item selectable-row${student.id === state.selectedStudentId ? " selected" : ""}`}
-                onClick={() =>
-                  setState((previous) => ({
-                    ...previous,
-                    selectedStudentId: student.id,
-                    success: null,
-                    error: null,
-                  }))
-                }
-              >
-                <div>
-                  <strong>{student.fullName}</strong>
-                  <p className="muted">
-                    {student.admissionNo} • {student.branch.name}
-                  </p>
-                </div>
-                <span className={`status-chip status-${student.status.toLowerCase()}`}>{student.status}</span>
-              </button>
-            ))}
-            {!state.loading && !state.students.length ? <p className="empty-state">No students registered yet.</p> : null}
-          </div>
+          {state.loading ? (
+            <LoadingRowList rows={5} />
+          ) : (
+            <div className="row-list">
+              {state.students.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  className={`row-item selectable-row${student.id === state.selectedStudentId ? " selected" : ""}`}
+                  onClick={() =>
+                    setState((previous) => ({
+                      ...previous,
+                      selectedStudentId: student.id,
+                      success: null,
+                      error: null,
+                    }))
+                  }
+                >
+                  <div>
+                    <strong>{student.fullName}</strong>
+                    <p className="muted">
+                      {student.admissionNo} • {student.branch.name}
+                    </p>
+                  </div>
+                  <span className={`status-chip status-${student.status.toLowerCase()}`}>{student.status}</span>
+                </button>
+              ))}
+              {!state.students.length ? <InlineEmptyState message="No students registered yet." /> : null}
+            </div>
+          )}
 
           {(state.studentsMeta?.totalPages ?? 1) > 1 ? (
             <div className="pagination-bar">
@@ -935,15 +1037,21 @@ export const StudentRegistryPage = () => {
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Student Detail</span>
               <h4>{selectedStudent?.fullName ?? "Select a student"}</h4>
+              <p className="panel-note">
+                {selectedStudent
+                  ? `${selectedStudent.admissionNo} • ${selectedStudent.branch.name}`
+                  : "Choose a student from the registry to manage records and guardians."}
+              </p>
             </div>
+            {selectedStudent ? <span className="panel-meta">{selectedStudent.status}</span> : null}
           </div>
 
           {selectedStudent && editStudentForm ? (
-            <div className="split-panel">
-              <form className="form-card compact-form" onSubmit={handleStudentUpdate}>
+            <div className="split-panel registry-detail-layout">
+              <form className="form-card compact-form registry-detail-form" onSubmit={handleStudentUpdate}>
                 <label>
                   <span>Admission No</span>
                   <input
@@ -1095,12 +1203,12 @@ export const StudentRegistryPage = () => {
                     rows={4}
                   />
                 </label>
-                <button className="primary-button full-span" type="submit" disabled={state.saving}>
-                  {state.saving ? "Saving..." : "Update Student"}
+                <button className="primary-button full-span" type="submit" disabled={state.saving || !isOnline}>
+                  {!isOnline ? "Offline" : state.saving ? "Saving..." : "Update Student"}
                 </button>
               </form>
 
-              <div className="stack-panel">
+              <div className="stack-panel registry-detail-side">
                 <div className="detail-card">
                   <span className="feature-label">Primary Guardian</span>
                   <h5>{selectedStudent.primaryGuardian.fullName}</h5>
@@ -1125,7 +1233,7 @@ export const StudentRegistryPage = () => {
                   ) : null}
                 </div>
 
-                <form className="form-card compact-form" onSubmit={handleLinkGuardian}>
+                <form className="form-card registry-link-form" onSubmit={handleLinkGuardian}>
                   <label>
                     <span>Link Existing Guardian</span>
                     <select value={linkGuardianId} onChange={(event) => setLinkGuardianId(event.target.value)}>
@@ -1145,9 +1253,9 @@ export const StudentRegistryPage = () => {
                   <button
                     className="secondary-button"
                     type="submit"
-                    disabled={state.saving || !linkGuardianId}
+                    disabled={state.saving || !linkGuardianId || !isOnline}
                   >
-                    Link Guardian
+                    {!isOnline ? "Offline" : "Link Guardian"}
                   </button>
                 </form>
 
@@ -1167,9 +1275,9 @@ export const StudentRegistryPage = () => {
                             type="button"
                             className="secondary-button"
                             onClick={() => void handleSetPrimaryGuardian(link.guardian.id)}
-                            disabled={state.saving}
+                            disabled={state.saving || !isOnline}
                           >
-                            Make Primary
+                            {!isOnline ? "Offline" : "Make Primary"}
                           </button>
                         ) : (
                           <span className="status-chip status-present">PRIMARY</span>
@@ -1179,9 +1287,9 @@ export const StudentRegistryPage = () => {
                             type="button"
                             className="danger-button"
                             onClick={() => void handleUnlinkGuardian(link.guardian.id)}
-                            disabled={state.saving}
+                            disabled={state.saving || !isOnline}
                           >
-                            Remove
+                            {!isOnline ? "Offline" : "Remove"}
                           </button>
                         ) : null}
                       </div>
@@ -1191,7 +1299,7 @@ export const StudentRegistryPage = () => {
               </div>
             </div>
           ) : (
-            <p className="empty-state">Select a student from the registry to edit details and guardians.</p>
+            <InlineEmptyState message="Select a student from the registry to edit details and manage guardians." />
           )}
         </article>
       </div>

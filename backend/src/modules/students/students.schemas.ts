@@ -78,6 +78,8 @@ export const listStudentsQuerySchema = paginationSchema.extend({
   classId: numericId.optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED", "GRADUATED"]).optional(),
   search: z.string().min(1).max(100).optional(),
+  sortBy: z.enum(["createdAt", "fullName", "admissionNo", "joinedOn"]).default("createdAt"),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export type CreateGuardianInput = z.infer<typeof createGuardianSchema>;

@@ -764,11 +764,19 @@ export const listPayments = async (orgId: string, query: ListPaymentsQuery) => {
   }
 
   const { skip, take } = getPaginationParams(query);
+  const orderBy: Prisma.PaymentOrderByWithRelationInput[] =
+    query.sortBy === "amount"
+      ? [{ amount: query.sortDir }, { createdAt: "desc" }]
+      : query.sortBy === "status"
+        ? [{ status: query.sortDir }, { createdAt: "desc" }]
+        : query.sortBy === "paidAt"
+          ? [{ paidAt: query.sortDir }, { createdAt: "desc" }]
+          : [{ createdAt: query.sortDir }];
 
   const [records, totalItems] = await Promise.all([
     prisma.payment.findMany({
       where,
-      orderBy: [{ createdAt: "desc" }],
+      orderBy,
       skip,
       take,
       include: {

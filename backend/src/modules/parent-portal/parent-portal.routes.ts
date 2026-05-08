@@ -18,7 +18,7 @@ import {
 
 export const parentPortalRouter = Router();
 
-parentPortalRouter.use(authenticate, requireTenantContext, requireRole("PARENT"));
+parentPortalRouter.use(authenticate, requireTenantContext, requireRole("PARENT", "ADMIN"));
 
 parentPortalRouter.get("/me", asyncHandler(getParentProfileHandler));
 parentPortalRouter.get("/students", asyncHandler(listParentStudentsHandler));

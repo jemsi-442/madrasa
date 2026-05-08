@@ -26,6 +26,8 @@ export const listPaymentsQuerySchema = paginationSchema.extend({
   dateFrom: z.string().date().optional(),
   dateTo: z.string().date().optional(),
   search: z.string().min(1).max(100).optional(),
+  sortBy: z.enum(["createdAt", "amount", "status", "paidAt"]).default("createdAt"),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;

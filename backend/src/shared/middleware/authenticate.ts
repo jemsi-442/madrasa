@@ -57,7 +57,14 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction) =
 
     next();
   } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      return next(new HttpError(401, "Access token expired"));
+    }
+
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(new HttpError(401, "Invalid access token"));
+    }
+
     next(error);
   }
 };
-

@@ -11,21 +11,28 @@ import {
   getTeacherDashboardReport,
   listHifdhProgress,
   listEnrollments,
+  listUsers,
   type AttendanceRecord,
   type AttendanceSummaryReport,
   type EnrollmentRecord,
   type HifdhRecord,
   type TeacherDashboardReport,
+  type UserRecord,
 } from "../lib/api";
+import { InlineEmptyState, LoadingRowList, LoadingStatsGrid, LoadingTable } from "../components/ui-states";
 import { useAuth } from "../lib/auth";
 import { formatDate } from "../lib/format";
+import { useNotifyOnMessage } from "../lib/notifications";
+import { usePwa } from "../lib/pwa";
 
 type TeacherState = {
+  teachers: UserRecord[];
   dashboard: TeacherDashboardReport | null;
   attendance: AttendanceSummaryReport | null;
   enrollments: EnrollmentRecord[];
   classAttendance: AttendanceRecord[];
   hifdhRecords: HifdhRecord[];
+  selectedTeacherId: string;
   selectedClassId: string;
   attendanceDate: string;
   selectedHifdhStudentId: string;
@@ -39,12 +46,15 @@ type TeacherState = {
 
 export const TeacherWorkspacePage = () => {
   const { session } = useAuth();
+  const { isOnline } = usePwa();
   const [state, setState] = useState<TeacherState>({
+    teachers: [],
     dashboard: null,
     attendance: null,
     enrollments: [],
     classAttendance: [],
     hifdhRecords: [],
+    selectedTeacherId: "",
     selectedClassId: "",
     attendanceDate: new Date().toISOString().slice(0, 10),
     selectedHifdhStudentId: "",
@@ -70,38 +80,43 @@ export const TeacherWorkspacePage = () => {
     assessedOn: new Date().toISOString().slice(0, 10),
   });
 
+  useNotifyOnMessage(state.error, state.success);
+
   useEffect(() => {
-    if (!session || session.user.role !== "TEACHER") {
+    if (!session || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN")) {
       return;
     }
 
     let cancelled = false;
 
-    const load = async () => {
+    const bootstrap = async () => {
       setState((previous) => ({ ...previous, loading: true, error: null }));
 
       try {
-        const [dashboard, attendance] = await Promise.all([
-          getTeacherDashboardReport(session.accessToken),
+        const [attendance, teachers] = await Promise.all([
           getAttendanceSummaryReport(session.accessToken),
+          session.user.role === "ADMIN"
+            ? listUsers(session.accessToken, { role: "TEACHER", status: "ACTIVE" })
+            : Promise.resolve([] as UserRecord[]),
         ]);
 
         if (cancelled) {
           return;
         }
 
-        const selectedClassId = dashboard.classes[0]?.id ?? "";
         setState({
-          dashboard,
+          teachers,
+          dashboard: null,
           attendance,
           enrollments: [],
           classAttendance: [],
           hifdhRecords: [],
-          selectedClassId,
+          selectedTeacherId: session.user.role === "ADMIN" ? (teachers[0]?.id ?? "") : session.user.id,
+          selectedClassId: "",
           attendanceDate: new Date().toISOString().slice(0, 10),
           selectedHifdhStudentId: "",
-          loading: false,
-          detailLoading: Boolean(selectedClassId),
+          loading: session.user.role === "ADMIN" ? Boolean(teachers[0]?.id) : true,
+          detailLoading: false,
           saving: false,
           exporting: null,
           error: null,
@@ -121,7 +136,7 @@ export const TeacherWorkspacePage = () => {
       }
     };
 
-    void load();
+    void bootstrap();
 
     return () => {
       cancelled = true;
@@ -129,7 +144,82 @@ export const TeacherWorkspacePage = () => {
   }, [session]);
 
   useEffect(() => {
-    if (!session || session.user.role !== "TEACHER" || !state.selectedClassId) {
+    if (!session || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN")) {
+      return;
+    }
+
+    if (!state.selectedTeacherId) {
+      setState((previous) => ({
+        ...previous,
+        dashboard: null,
+        enrollments: [],
+        classAttendance: [],
+        hifdhRecords: [],
+        selectedClassId: "",
+        selectedHifdhStudentId: "",
+        loading: false,
+        detailLoading: false,
+      }));
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadTeacherDashboard = async () => {
+      setState((previous) => ({
+        ...previous,
+        loading: true,
+        detailLoading: false,
+        error: null,
+        success: null,
+      }));
+
+      try {
+        const dashboard = await getTeacherDashboardReport(
+          session.accessToken,
+          session.user.role === "ADMIN" ? state.selectedTeacherId : undefined,
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const selectedClassId = dashboard.classes[0]?.id ?? "";
+        setState((previous) => ({
+          ...previous,
+          dashboard,
+          enrollments: [],
+          classAttendance: [],
+          hifdhRecords: [],
+          selectedClassId,
+          selectedHifdhStudentId: "",
+          loading: false,
+          detailLoading: Boolean(selectedClassId),
+          error: null,
+        }));
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setState((previous) => ({
+          ...previous,
+          loading: false,
+          detailLoading: false,
+          error: error instanceof Error ? error.message : "Failed to load teacher dashboard.",
+        }));
+      }
+    };
+
+    void loadTeacherDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, state.selectedTeacherId]);
+
+  useEffect(() => {
+    if (!session || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") || !state.selectedClassId) {
       return;
     }
 
@@ -206,7 +296,7 @@ export const TeacherWorkspacePage = () => {
   }, [session, state.selectedClassId, state.attendanceDate]);
 
   useEffect(() => {
-    if (!session || session.user.role !== "TEACHER" || !state.selectedHifdhStudentId) {
+    if (!session || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") || !state.selectedHifdhStudentId) {
       return;
     }
 
@@ -216,6 +306,7 @@ export const TeacherWorkspacePage = () => {
       try {
         const records = await listHifdhProgress(session.accessToken, {
           studentId: state.selectedHifdhStudentId,
+          teacherId: session.user.role === "ADMIN" ? state.selectedTeacherId : undefined,
         });
 
         if (cancelled) {
@@ -243,13 +334,13 @@ export const TeacherWorkspacePage = () => {
     return () => {
       cancelled = true;
     };
-  }, [session, state.selectedHifdhStudentId]);
+  }, [session, state.selectedTeacherId, state.selectedHifdhStudentId]);
 
   if (!session) {
     return null;
   }
 
-  if (session.user.role === "ADMIN" || session.user.role === "ACCOUNTANT") {
+  if (session.user.role === "ACCOUNTANT") {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -260,11 +351,13 @@ export const TeacherWorkspacePage = () => {
   const {
     dashboard,
     attendance,
+    teachers,
     enrollments,
     classAttendance,
     hifdhRecords,
     error,
     success,
+    selectedTeacherId,
     selectedClassId,
     attendanceDate,
     selectedHifdhStudentId,
@@ -272,7 +365,13 @@ export const TeacherWorkspacePage = () => {
     state;
 
   const selectedClass = dashboard?.classes.find((classRecord) => classRecord.id === selectedClassId) ?? null;
+  const selectedTeacher = teachers.find((teacher) => teacher.id === selectedTeacherId) ?? null;
   const markedCount = classAttendance.length;
+  const presentCount = classAttendance.filter((record) => record.status === "PRESENT").length;
+  const absentCount = classAttendance.filter((record) => record.status === "ABSENT").length;
+  const lateCount = classAttendance.filter((record) => record.status === "LATE").length;
+  const excusedCount = classAttendance.filter((record) => record.status === "EXCUSED").length;
+  const pendingAttendanceCount = Math.max(enrollments.length - markedCount, 0);
   const rosterRows = useMemo(
     () =>
       enrollments.filter((enrollment) => enrollment.student).map((enrollment) => ({
@@ -379,6 +478,7 @@ export const TeacherWorkspacePage = () => {
         revisionScore: hifdhForm.revisionScore.trim() || undefined,
         remarks: hifdhForm.remarks.trim() || undefined,
         assessedOn: hifdhForm.assessedOn,
+        teacherId: session.user.role === "ADMIN" ? selectedTeacherId : undefined,
       });
       const createdSummaryRecord = {
         id: created.id,
@@ -470,46 +570,94 @@ export const TeacherWorkspacePage = () => {
 
   return (
     <section className="page-card">
-      <div className="page-heading">
-        <p className="eyebrow">Teacher Workspace</p>
-        <h3>Attendance and hifdh workspace</h3>
-        <p>
-          This workspace is restricted to the authenticated teacher scope from the backend.
-        </p>
+      <div className="workspace-header">
+        <div className="page-heading">
+          <p className="eyebrow">Daily Operations</p>
+          <h3>Class attendance and hifdh</h3>
+          <p>Record class attendance, review teaching scope, and capture memorization progress.</p>
+        </div>
+
+        {session.user.role === "ADMIN" ? (
+          <div className="page-actions filters-grid">
+            <label className="inline-field">
+              <span>Teacher</span>
+              <select
+                value={selectedTeacherId}
+                onChange={(event) =>
+                  setState((previous) => ({
+                    ...previous,
+                    selectedTeacherId: event.target.value,
+                  }))
+                }
+              >
+                {!teachers.length ? <option value="">No teachers available</option> : null}
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
+
+        {session.user.role === "ADMIN" && selectedTeacher ? (
+          <div className="workspace-context-strip">
+            <span className="context-chip">Preview Mode</span>
+            <div className="context-summary">
+              <strong>{selectedTeacher.fullName}</strong>
+              <span>{selectedTeacher.email || selectedTeacher.phone || "Active teacher account"}</span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {error ? <div className="banner error-banner">{error}</div> : null}
       {success ? <div className="banner success-banner">{success}</div> : null}
 
-      <div className="stats-grid">
-        <article className="stat-card">
-          <span className="feature-label">Assigned Classes</span>
-          <strong className="stat-value">{dashboard?.summary.assignedClasses ?? "--"}</strong>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Assigned Students</span>
-          <strong className="stat-value">{dashboard?.summary.assignedStudents ?? "--"}</strong>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Attendance Today</span>
-          <strong className="stat-value">{dashboard?.summary.attendanceMarkedToday ?? "--"}</strong>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Hifdh This Week</span>
-          <strong className="stat-value">{dashboard?.summary.hifdhAssessmentsThisWeek ?? "--"}</strong>
-        </article>
-      </div>
+      {session.user.role === "ADMIN" && !teachers.length && !state.loading ? (
+        <InlineEmptyState message="No active teacher accounts are available for this workspace." />
+      ) : null}
+
+      {session.user.role === "ADMIN" && teachers.length > 0 && !selectedTeacherId ? (
+        <InlineEmptyState message="Choose a teacher account to load this workspace." />
+      ) : null}
+
+      {state.loading ? (
+        <LoadingStatsGrid />
+      ) : !dashboard ? null : (
+        <div className="stats-grid">
+          <article className="stat-card">
+            <span className="feature-label">Assigned Classes</span>
+            <strong className="stat-value">{dashboard?.summary.assignedClasses ?? "--"}</strong>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Assigned Students</span>
+            <strong className="stat-value">{dashboard?.summary.assignedStudents ?? "--"}</strong>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Attendance Today</span>
+            <strong className="stat-value">{dashboard?.summary.attendanceMarkedToday ?? "--"}</strong>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Hifdh This Week</span>
+            <strong className="stat-value">{dashboard?.summary.hifdhAssessmentsThisWeek ?? "--"}</strong>
+          </article>
+        </div>
+      )}
 
       <div className="data-grid">
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Attendance Entry</span>
               <h4>Mark class attendance</h4>
+              <p className="panel-note">Choose a class, review the day sheet, then save attendance in bulk.</p>
             </div>
+            {selectedClass ? <span className="panel-meta">{selectedClass.stats.currentStudents} students</span> : null}
           </div>
 
-          <div className="page-actions">
+          <div className="page-actions filters-grid">
             <label className="inline-field">
               <span>Class</span>
               <select
@@ -548,17 +696,17 @@ export const TeacherWorkspacePage = () => {
                 type="button"
                 className="secondary-button"
                 onClick={() => void handleExport("roster")}
-                disabled={!selectedClassId || state.exporting !== null}
+                disabled={!selectedClassId || state.exporting !== null || !isOnline}
               >
-                {state.exporting === "roster" ? "Preparing Roster..." : "Export Class Roster"}
+                {!isOnline ? "Offline" : state.exporting === "roster" ? "Preparing Roster..." : "Export Class Roster"}
               </button>
               <button
                 type="button"
                 className="secondary-button"
                 onClick={() => void handleExport("attendance")}
-                disabled={!selectedClassId || state.exporting !== null}
+                disabled={!selectedClassId || state.exporting !== null || !isOnline}
               >
-                {state.exporting === "attendance" ? "Preparing Attendance..." : "Export Daily Attendance"}
+                {!isOnline ? "Offline" : state.exporting === "attendance" ? "Preparing Attendance..." : "Export Daily Attendance"}
               </button>
             </div>
           </div>
@@ -573,6 +721,13 @@ export const TeacherWorkspacePage = () => {
               <p className="muted">
                 {markedCount} records already saved for {formatDate(attendanceDate)}
               </p>
+              <div className="action-row top-spacing-small">
+                <span className="panel-meta">{presentCount} present</span>
+                <span className="panel-meta">{absentCount} absent</span>
+                <span className="panel-meta">{lateCount} late</span>
+                <span className="panel-meta">{excusedCount} excused</span>
+                <span className="panel-meta">{pendingAttendanceCount} pending</span>
+              </div>
               <div className="action-row top-spacing">
                 <Link className="secondary-button button-link" to={`/classes/${selectedClass.id}`}>
                   Open Class Detail
@@ -584,10 +739,12 @@ export const TeacherWorkspacePage = () => {
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Hifdh Entry</span>
               <h4>Record memorization progress</h4>
+              <p className="panel-note">Capture assessment results for the selected student and teaching scope.</p>
             </div>
+            <span className="panel-meta">{hifdhStudents.length} students</span>
           </div>
 
           <form className="form-card compact-form" onSubmit={handleSubmitHifdh}>
@@ -727,111 +884,127 @@ export const TeacherWorkspacePage = () => {
             <button
               className="primary-button full-span"
               type="submit"
-              disabled={state.saving || !selectedHifdhStudentId}
+              disabled={state.saving || !selectedHifdhStudentId || !isOnline}
             >
-              {state.saving ? "Saving..." : "Record Hifdh"}
+              {!isOnline ? "Offline" : state.saving ? "Saving..." : "Record Hifdh"}
             </button>
           </form>
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Roster</span>
               <h4>Daily attendance sheet</h4>
+              <p className="panel-note">Update status and notes for each student before saving the daily register.</p>
             </div>
+            <span className="panel-meta">
+              {rosterRows.length} rows • {pendingAttendanceCount} pending
+            </span>
           </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Admission No</th>
-                  <th>Status</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rosterRows.map((row) => (
-                  <tr key={row.studentId}>
-                    <td>{row.fullName}</td>
-                    <td>{row.admissionNo}</td>
-                    <td>
-                      <select
-                        value={row.draft.status}
-                        onChange={(event) =>
-                          handleStatusChange(
-                            row.studentId,
-                            "status",
-                            event.target.value as "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
-                          )
-                        }
-                      >
-                        <option value="PRESENT">PRESENT</option>
-                        <option value="ABSENT">ABSENT</option>
-                        <option value="LATE">LATE</option>
-                        <option value="EXCUSED">EXCUSED</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        value={row.draft.reason}
-                        onChange={(event) =>
-                          handleStatusChange(row.studentId, "reason", event.target.value)
-                        }
-                        placeholder="Optional reason"
-                      />
-                    </td>
+          {state.detailLoading ? (
+            <LoadingTable columns={4} rows={5} />
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Admission No</th>
+                    <th>Status</th>
+                    <th>Reason</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rosterRows.map((row) => (
+                    <tr key={row.studentId}>
+                      <td>{row.fullName}</td>
+                      <td>{row.admissionNo}</td>
+                      <td>
+                        <select
+                          value={row.draft.status}
+                          onChange={(event) =>
+                            handleStatusChange(
+                              row.studentId,
+                              "status",
+                              event.target.value as "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
+                            )
+                          }
+                        >
+                          <option value="PRESENT">PRESENT</option>
+                          <option value="ABSENT">ABSENT</option>
+                          <option value="LATE">LATE</option>
+                          <option value="EXCUSED">EXCUSED</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          value={row.draft.reason}
+                          onChange={(event) =>
+                            handleStatusChange(row.studentId, "reason", event.target.value)
+                          }
+                          placeholder="Optional reason"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className="action-row top-spacing">
             <button
               type="button"
               className="primary-button"
               onClick={() => void handleSubmitAttendance()}
-              disabled={state.saving || state.detailLoading || rosterRows.length === 0}
+              disabled={state.saving || state.detailLoading || rosterRows.length === 0 || !isOnline}
             >
-              {state.saving ? "Saving..." : "Save Attendance"}
+              {!isOnline ? "Offline" : state.saving ? "Saving..." : "Save Attendance"}
             </button>
           </div>
 
           {!state.detailLoading && !rosterRows.length ? (
-            <p className="empty-state">No active enrollments found for this class.</p>
+            <InlineEmptyState message="No active enrollments found for this class." />
           ) : null}
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Attendance Trend</span>
               <h4>Recent daily totals</h4>
+              <p className="panel-note">Short recent window to spot consistency and missed attendance activity.</p>
             </div>
+            <span className="panel-meta">{attendance?.timeline.length ?? 0} days</span>
           </div>
 
-          <div className="row-list">
-            {(attendance?.timeline ?? []).slice(-7).reverse().map((entry) => (
-              <div key={entry.date} className="row-item">
-                <span>{entry.date}</span>
-                <strong>
-                  {entry.present}/{entry.totalRecords} present
-                </strong>
-              </div>
-            ))}
-            {!attendance?.timeline.length ? <p className="empty-state">No attendance trend data yet.</p> : null}
-          </div>
+          {state.loading ? (
+            <LoadingRowList rows={4} />
+          ) : (
+            <div className="row-list">
+              {(attendance?.timeline ?? []).slice(-7).reverse().map((entry) => (
+                <div key={entry.date} className="row-item">
+                  <span>{formatDate(entry.date)}</span>
+                  <strong>
+                    {entry.present}/{entry.totalRecords} present
+                  </strong>
+                </div>
+              ))}
+              {!attendance?.timeline.length ? <InlineEmptyState message="No attendance trend data yet." /> : null}
+            </div>
+          )}
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Student Hifdh History</span>
               <h4>Recent records for selected student</h4>
+              <p className="panel-note">Detailed memorization history for the current student selection.</p>
             </div>
+            <span className="panel-meta">{hifdhRecords.length} records</span>
           </div>
 
           <div className="table-wrap">
@@ -849,7 +1022,7 @@ export const TeacherWorkspacePage = () => {
               <tbody>
                 {hifdhRecords.map((record) => (
                   <tr key={record.id}>
-                    <td>{record.assessedOn}</td>
+                    <td>{formatDate(record.assessedOn)}</td>
                     <td>{record.juzNumber}</td>
                     <td>{record.surahName}</td>
                     <td>
@@ -866,16 +1039,18 @@ export const TeacherWorkspacePage = () => {
           </div>
 
           {!hifdhRecords.length ? (
-            <p className="empty-state">No hifdh records yet for the selected student.</p>
+            <InlineEmptyState message="No hifdh records exist yet for the selected student." />
           ) : null}
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Recent Hifdh</span>
               <h4>Latest assessments</h4>
+              <p className="panel-note">Most recent hifdh entries recorded across this teacher workspace.</p>
             </div>
+            <span className="panel-meta">{dashboard?.recentHifdh.length ?? 0} records</span>
           </div>
 
           <div className="table-wrap">
@@ -893,7 +1068,7 @@ export const TeacherWorkspacePage = () => {
               <tbody>
                 {(dashboard?.recentHifdh ?? []).map((record) => (
                   <tr key={record.id}>
-                    <td>{record.assessedOn}</td>
+                    <td>{formatDate(record.assessedOn)}</td>
                     <td>{record.student.fullName}</td>
                     <td>{record.juzNumber}</td>
                     <td>{record.surahName}</td>
@@ -905,7 +1080,9 @@ export const TeacherWorkspacePage = () => {
             </table>
           </div>
 
-          {!dashboard?.recentHifdh.length ? <p className="empty-state">No hifdh assessments recorded yet.</p> : null}
+          {!dashboard?.recentHifdh.length ? (
+            <InlineEmptyState message="No hifdh assessments have been recorded in this workspace yet." />
+          ) : null}
         </article>
       </div>
     </section>

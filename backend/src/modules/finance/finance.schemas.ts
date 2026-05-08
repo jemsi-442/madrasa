@@ -39,6 +39,8 @@ export const listInvoicesQuerySchema = paginationSchema.extend({
   branchId: numericId.optional(),
   status: z.enum(["PENDING", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"]).optional(),
   search: z.string().min(1).max(100).optional(),
+  sortBy: z.enum(["createdAt", "dueDate", "amountDue", "invoiceNo"]).default("createdAt"),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const createExpenseSchema = z.object({

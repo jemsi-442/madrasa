@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
+import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
 
 import { HttpError } from "../errors/http-error";
@@ -39,6 +40,20 @@ export const errorHandler = (
     return res.status(400).json({
       success: false,
       message: "Invalid JSON payload",
+    });
+  }
+
+  if (err instanceof jwt.TokenExpiredError) {
+    return res.status(401).json({
+      success: false,
+      message: "Access token expired",
+    });
+  }
+
+  if (err instanceof jwt.JsonWebTokenError) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid access token",
     });
   }
 

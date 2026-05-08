@@ -24,8 +24,11 @@ import {
   type PaymentRecord,
   type StudentRecord,
 } from "../lib/api";
+import { InlineEmptyState, LoadingRowList, LoadingStatsGrid, LoadingTable } from "../components/ui-states";
 import { useAuth } from "../lib/auth";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
+import { useNotifyOnMessage } from "../lib/notifications";
+import { usePwa } from "../lib/pwa";
 
 type FinanceState = {
   organization: OrganizationProfile | null;
@@ -72,8 +75,25 @@ type FinanceFilters = {
   branchId: string;
   invoiceStatus: string;
   paymentStatus: string;
+  invoiceSortBy: "createdAt" | "dueDate" | "amountDue" | "invoiceNo";
+  invoiceSortDir: "asc" | "desc";
+  paymentSortBy: "createdAt" | "amount" | "status" | "paidAt";
+  paymentSortDir: "asc" | "desc";
   invoicePage: number;
   paymentPage: number;
+};
+
+const defaultFinanceFilters: FinanceFilters = {
+  search: "",
+  branchId: "",
+  invoiceStatus: "",
+  paymentStatus: "",
+  invoiceSortBy: "createdAt",
+  invoiceSortDir: "desc",
+  paymentSortBy: "createdAt",
+  paymentSortDir: "desc",
+  invoicePage: 1,
+  paymentPage: 1,
 };
 
 type FeeStructureForm = {
@@ -127,14 +147,26 @@ const parsePositivePage = (value: string | null, fallback = 1) => {
   return parsed;
 };
 
+const invoiceStatusClassName = (status: InvoiceRecord["status"]) => `status-chip status-${status.toLowerCase()}`;
+const paymentStatusClassName = (status: PaymentRecord["status"]) => `status-chip status-${status.toLowerCase()}`;
+
 export const FinanceWorkspacePage = () => {
   const { session } = useAuth();
+  const { isOnline } = usePwa();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilters: FinanceFilters = {
-    search: searchParams.get("search") ?? "",
-    branchId: searchParams.get("branchId") ?? "",
-    invoiceStatus: searchParams.get("invoiceStatus") ?? "",
-    paymentStatus: searchParams.get("paymentStatus") ?? "",
+    search: searchParams.get("search") ?? defaultFinanceFilters.search,
+    branchId: searchParams.get("branchId") ?? defaultFinanceFilters.branchId,
+    invoiceStatus: searchParams.get("invoiceStatus") ?? defaultFinanceFilters.invoiceStatus,
+    paymentStatus: searchParams.get("paymentStatus") ?? defaultFinanceFilters.paymentStatus,
+    invoiceSortBy:
+      (searchParams.get("invoiceSortBy") as FinanceFilters["invoiceSortBy"]) ?? defaultFinanceFilters.invoiceSortBy,
+    invoiceSortDir:
+      (searchParams.get("invoiceSortDir") as FinanceFilters["invoiceSortDir"]) ?? defaultFinanceFilters.invoiceSortDir,
+    paymentSortBy:
+      (searchParams.get("paymentSortBy") as FinanceFilters["paymentSortBy"]) ?? defaultFinanceFilters.paymentSortBy,
+    paymentSortDir:
+      (searchParams.get("paymentSortDir") as FinanceFilters["paymentSortDir"]) ?? defaultFinanceFilters.paymentSortDir,
     invoicePage: parsePositivePage(searchParams.get("invoicePage")),
     paymentPage: parsePositivePage(searchParams.get("paymentPage")),
   };
@@ -190,6 +222,8 @@ export const FinanceWorkspacePage = () => {
     branchId: "",
   });
 
+  useNotifyOnMessage(state.error, state.success);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setFilters((previous) =>
@@ -226,6 +260,22 @@ export const FinanceWorkspacePage = () => {
 
     if (filters.paymentStatus) {
       nextParams.set("paymentStatus", filters.paymentStatus);
+    }
+
+    if (filters.invoiceSortBy !== "createdAt") {
+      nextParams.set("invoiceSortBy", filters.invoiceSortBy);
+    }
+
+    if (filters.invoiceSortDir !== "desc") {
+      nextParams.set("invoiceSortDir", filters.invoiceSortDir);
+    }
+
+    if (filters.paymentSortBy !== "createdAt") {
+      nextParams.set("paymentSortBy", filters.paymentSortBy);
+    }
+
+    if (filters.paymentSortDir !== "desc") {
+      nextParams.set("paymentSortDir", filters.paymentSortDir);
     }
 
     if (filters.invoicePage > 1) {
@@ -275,6 +325,8 @@ export const FinanceWorkspacePage = () => {
             branchId: filters.branchId || undefined,
             status: filters.invoiceStatus || undefined,
             search: filters.search.trim() || undefined,
+            sortBy: filters.invoiceSortBy,
+            sortDir: filters.invoiceSortDir,
             page: String(filters.invoicePage),
             pageSize: "8",
           }),
@@ -282,6 +334,8 @@ export const FinanceWorkspacePage = () => {
             branchId: filters.branchId || undefined,
             status: filters.paymentStatus || undefined,
             search: filters.search.trim() || undefined,
+            sortBy: filters.paymentSortBy,
+            sortDir: filters.paymentSortDir,
             page: String(filters.paymentPage),
             pageSize: "8",
           }),
@@ -363,8 +417,12 @@ export const FinanceWorkspacePage = () => {
   }, [
     filters.branchId,
     filters.invoicePage,
+    filters.invoiceSortBy,
+    filters.invoiceSortDir,
     filters.invoiceStatus,
     filters.paymentPage,
+    filters.paymentSortBy,
+    filters.paymentSortDir,
     filters.paymentStatus,
     filters.search,
     session,
@@ -403,6 +461,7 @@ export const FinanceWorkspacePage = () => {
   );
   const totalInvoicePages = state.invoicesMeta?.totalPages ?? 1;
   const totalPaymentPages = state.paymentsMeta?.totalPages ?? 1;
+  const activeFilterCount = [filters.search, filters.branchId, filters.invoiceStatus, filters.paymentStatus].filter(Boolean).length;
 
   const syncPaymentCustomerFromInvoice = (invoiceId: string) => {
     const invoice = state.invoices.find((entry) => entry.id === invoiceId);
@@ -630,40 +689,42 @@ export const FinanceWorkspacePage = () => {
   return (
     <section className="page-card">
       <div className="page-heading">
-        <p className="eyebrow">Finance Workspace</p>
-        <h3>Billing, payments, and expenses</h3>
-        <p>
-          This workspace runs on the live fee structure, invoicing, payment, and expense APIs.
-        </p>
+        <p className="eyebrow">Finance</p>
+        <h3>Fees, invoicing, and collections</h3>
+        <p>Issue charges, track payments, reconcile collections, and record operational expenses.</p>
       </div>
 
       {state.error ? <div className="banner error-banner">{state.error}</div> : null}
       {state.success ? <div className="banner success-banner">{state.success}</div> : null}
 
-      <div className="stats-grid">
-        <article className="stat-card">
-          <span className="feature-label">Invoices</span>
-          <strong className="stat-value">{invoiceSummary.total}</strong>
-          <p className="muted">Outstanding: {invoiceSummary.outstanding}</p>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Invoiced Amount</span>
-          <strong className="stat-value">{formatMoney(invoiceSummary.amountDue)}</strong>
-          <p className="muted">Collected: {formatMoney(invoiceSummary.amountPaid)}</p>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Payments</span>
-          <strong className="stat-value">{state.payments.length}</strong>
-          <p className="muted">Pending: {paymentsSummary.pending}</p>
-        </article>
-        <article className="stat-card">
-          <span className="feature-label">Expenses</span>
-          <strong className="stat-value">{state.expenses.length}</strong>
-          <p className="muted">Cash in: {formatMoney(paymentsSummary.completedAmount)}</p>
-        </article>
-      </div>
+      {state.loading ? (
+        <LoadingStatsGrid />
+      ) : (
+        <div className="stats-grid">
+          <article className="stat-card">
+            <span className="feature-label">Invoices</span>
+            <strong className="stat-value">{invoiceSummary.total}</strong>
+            <p className="muted">Outstanding: {invoiceSummary.outstanding}</p>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Invoiced Amount</span>
+            <strong className="stat-value">{formatMoney(invoiceSummary.amountDue)}</strong>
+            <p className="muted">Collected: {formatMoney(invoiceSummary.amountPaid)}</p>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Payments</span>
+            <strong className="stat-value">{state.payments.length}</strong>
+            <p className="muted">Pending: {paymentsSummary.pending}</p>
+          </article>
+          <article className="stat-card">
+            <span className="feature-label">Expenses</span>
+            <strong className="stat-value">{state.expenses.length}</strong>
+            <p className="muted">Cash in: {formatMoney(paymentsSummary.completedAmount)}</p>
+          </article>
+        </div>
+      )}
 
-      <div className="page-actions">
+      <div className="page-actions filters-grid finance-filters-grid">
         <label className="inline-field">
           <span>Search</span>
           <input
@@ -733,14 +794,101 @@ export const FinanceWorkspacePage = () => {
             <option value="EXPIRED">EXPIRED</option>
           </select>
         </label>
+        <label className="inline-field">
+          <span>Invoice Sort</span>
+          <select
+            value={filters.invoiceSortBy}
+            onChange={(event) =>
+              setFilters((previous) => ({
+                ...previous,
+                invoiceSortBy: event.target.value as FinanceFilters["invoiceSortBy"],
+                invoicePage: 1,
+              }))
+            }
+          >
+            <option value="createdAt">Recently Added</option>
+            <option value="dueDate">Due Date</option>
+            <option value="amountDue">Amount Due</option>
+            <option value="invoiceNo">Invoice No</option>
+          </select>
+        </label>
+        <label className="inline-field">
+          <span>Invoice Direction</span>
+          <select
+            value={filters.invoiceSortDir}
+            onChange={(event) =>
+              setFilters((previous) => ({
+                ...previous,
+                invoiceSortDir: event.target.value as FinanceFilters["invoiceSortDir"],
+                invoicePage: 1,
+              }))
+            }
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </label>
+        <label className="inline-field">
+          <span>Payment Sort</span>
+          <select
+            value={filters.paymentSortBy}
+            onChange={(event) =>
+              setFilters((previous) => ({
+                ...previous,
+                paymentSortBy: event.target.value as FinanceFilters["paymentSortBy"],
+                paymentPage: 1,
+              }))
+            }
+          >
+            <option value="createdAt">Recently Added</option>
+            <option value="paidAt">Paid At</option>
+            <option value="amount">Amount</option>
+            <option value="status">Status</option>
+          </select>
+        </label>
+        <label className="inline-field">
+          <span>Payment Direction</span>
+          <select
+            value={filters.paymentSortDir}
+            onChange={(event) =>
+              setFilters((previous) => ({
+                ...previous,
+                paymentSortDir: event.target.value as FinanceFilters["paymentSortDir"],
+                paymentPage: 1,
+              }))
+            }
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </label>
+        <div className="action-row full-span workspace-inline-tools">
+          <span className="filter-summary">
+            {state.invoicesMeta?.totalItems ?? state.invoices.length} invoices
+            {" • "}
+            {state.paymentsMeta?.totalItems ?? state.payments.length} payments
+            {activeFilterCount ? ` • ${activeFilterCount} active filters` : " • all records"}
+          </span>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setSearchInput("");
+              setFilters(defaultFinanceFilters);
+            }}
+          >
+            Reset Filters
+          </button>
+        </div>
       </div>
 
-      <div className="data-grid">
+      <div className="data-grid workspace-data-grid">
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Fee Structure</span>
               <h4>Create pricing template</h4>
+              <p className="panel-note">Define reusable tuition or charge templates by branch or class scope.</p>
             </div>
           </div>
 
@@ -812,17 +960,18 @@ export const FinanceWorkspacePage = () => {
                 ))}
               </select>
             </label>
-            <button className="primary-button full-span" type="submit" disabled={state.saving}>
-              {state.saving ? "Saving..." : "Create Fee Structure"}
+            <button className="primary-button full-span" type="submit" disabled={state.saving || !isOnline}>
+              {!isOnline ? "Offline" : state.saving ? "Saving..." : "Create Fee Structure"}
             </button>
           </form>
         </article>
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Invoice</span>
               <h4>Issue student invoice</h4>
+              <p className="panel-note">Create a bill from a saved fee structure or a one-off amount.</p>
             </div>
           </div>
 
@@ -901,17 +1050,18 @@ export const FinanceWorkspacePage = () => {
               </p>
             </div>
 
-            <button className="primary-button full-span" type="submit" disabled={state.saving}>
-              {state.saving ? "Saving..." : "Create Invoice"}
+            <button className="primary-button full-span" type="submit" disabled={state.saving || !isOnline}>
+              {!isOnline ? "Offline" : state.saving ? "Saving..." : "Create Invoice"}
             </button>
           </form>
         </article>
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Payment Request</span>
               <h4>Initiate Snippe collection</h4>
+              <p className="panel-note">Send a live collection request against an unpaid invoice.</p>
             </div>
           </div>
 
@@ -980,17 +1130,18 @@ export const FinanceWorkspacePage = () => {
                 onChange={(event) => setPaymentForm((previous) => ({ ...previous, email: event.target.value }))}
               />
             </label>
-            <button className="primary-button full-span" type="submit" disabled={state.saving || !paymentForm.invoiceId}>
-              {state.saving ? "Submitting..." : "Initiate Payment"}
+            <button className="primary-button full-span" type="submit" disabled={state.saving || !paymentForm.invoiceId || !isOnline}>
+              {!isOnline ? "Offline" : state.saving ? "Submitting..." : "Initiate Payment"}
             </button>
           </form>
         </article>
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Expense</span>
               <h4>Record school spending</h4>
+              <p className="panel-note">Capture operational outflows for finance reporting and cash tracking.</p>
             </div>
           </div>
 
@@ -1043,46 +1194,55 @@ export const FinanceWorkspacePage = () => {
                 onChange={(event) => setExpenseForm((previous) => ({ ...previous, description: event.target.value }))}
               />
             </label>
-            <button className="primary-button full-span" type="submit" disabled={state.saving}>
-              {state.saving ? "Saving..." : "Record Expense"}
+            <button className="primary-button full-span" type="submit" disabled={state.saving || !isOnline}>
+              {!isOnline ? "Offline" : state.saving ? "Saving..." : "Record Expense"}
             </button>
           </form>
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Invoices</span>
               <h4>Current billing records</h4>
+              <p className="panel-note">Review invoice status, fee source, and payment progress for current filters.</p>
             </div>
+            <span className="panel-meta">{state.invoicesMeta?.totalItems ?? state.invoices.length} records</span>
           </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Invoice</th>
-                  <th>Student</th>
-                  <th>Fee</th>
-                  <th>Due</th>
-                  <th>Paid</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.invoices.map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td>{invoice.invoiceNo}</td>
-                    <td>{invoice.student?.fullName ?? "--"}</td>
-                    <td>{invoice.feeStructure?.name ?? "Custom"}</td>
-                    <td>{formatMoney(invoice.amountDue, invoice.currency)}</td>
-                    <td>{formatMoney(invoice.amountPaid, invoice.currency)}</td>
-                    <td>{invoice.status}</td>
+          {state.loading ? (
+            <LoadingTable columns={6} rows={5} />
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Student</th>
+                    <th>Fee</th>
+                    <th>Due</th>
+                    <th>Paid</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {state.invoices.map((invoice) => (
+                    <tr key={invoice.id}>
+                      <td>{invoice.invoiceNo}</td>
+                      <td>{invoice.student?.fullName ?? "--"}</td>
+                      <td>{invoice.feeStructure?.name ?? "Custom"}</td>
+                      <td>{formatMoney(invoice.amountDue, invoice.currency)}</td>
+                      <td>{formatMoney(invoice.amountPaid, invoice.currency)}</td>
+                      <td>
+                        <span className={invoiceStatusClassName(invoice.status)}>{invoice.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!state.loading && !state.invoices.length ? <InlineEmptyState message="No invoices match the current filters." /> : null}
           {(state.invoicesMeta?.totalPages ?? 1) > 1 ? (
             <div className="pagination-bar">
               <button
@@ -1120,63 +1280,72 @@ export const FinanceWorkspacePage = () => {
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Payments</span>
               <h4>Collections lifecycle</h4>
+              <p className="panel-note">Track pending requests, reconciliations, and completed collections.</p>
             </div>
+            <span className="panel-meta">{state.paymentsMeta?.totalItems ?? state.payments.length} records</span>
           </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Invoice</th>
-                  <th>Student</th>
-                  <th>Amount</th>
-                  <th>Channel</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.payments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td>{payment.invoice.invoiceNo}</td>
-                    <td>{payment.invoice.student?.fullName ?? "--"}</td>
-                    <td>{formatMoney(payment.amount, payment.currency)}</td>
-                    <td>{payment.channel ?? "--"}</td>
-                    <td>{payment.status}</td>
-                    <td>{formatDateTime(payment.createdAt)}</td>
-                    <td>
-                      <div className="action-row">
-                        {payment.status !== "COMPLETED" ? (
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void handleReconcilePayment(payment.id)}
-                            disabled={state.saving}
-                          >
-                            Reconcile
-                          </button>
-                        ) : null}
-                        {payment.status === "COMPLETED" ? (
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void handleLoadReceipt(payment.id)}
-                            disabled={state.saving}
-                          >
-                            Receipt
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
+          {state.loading ? (
+            <LoadingTable columns={7} rows={5} />
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Student</th>
+                    <th>Amount</th>
+                    <th>Channel</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {state.payments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td>{payment.invoice.invoiceNo}</td>
+                      <td>{payment.invoice.student?.fullName ?? "--"}</td>
+                      <td>{formatMoney(payment.amount, payment.currency)}</td>
+                      <td>{payment.channel ?? "--"}</td>
+                      <td>
+                        <span className={paymentStatusClassName(payment.status)}>{payment.status}</span>
+                      </td>
+                      <td>{formatDateTime(payment.createdAt)}</td>
+                      <td>
+                        <div className="action-row table-actions">
+                          {payment.status !== "COMPLETED" ? (
+                            <button
+                              type="button"
+                              className="secondary-button table-action-button"
+                              onClick={() => void handleReconcilePayment(payment.id)}
+                              disabled={state.saving || !isOnline}
+                            >
+                              {!isOnline ? "Offline" : "Reconcile"}
+                            </button>
+                          ) : null}
+                          {payment.status === "COMPLETED" ? (
+                            <button
+                              type="button"
+                              className="secondary-button table-action-button"
+                              onClick={() => void handleLoadReceipt(payment.id)}
+                              disabled={state.saving || !isOnline}
+                            >
+                              {!isOnline ? "Offline" : "Receipt"}
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!state.loading && !state.payments.length ? <InlineEmptyState message="No payments match the current filters." /> : null}
           {(state.paymentsMeta?.totalPages ?? 1) > 1 ? (
             <div className="pagination-bar">
               <button
@@ -1214,32 +1383,39 @@ export const FinanceWorkspacePage = () => {
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Expenses</span>
               <h4>Recent spending</h4>
+              <p className="panel-note">Latest expense entries across the current operational scope.</p>
             </div>
           </div>
 
-          <div className="row-list">
-            {state.expenses.slice(0, 8).map((expense) => (
-              <div key={expense.id} className="row-item stacked-row">
-                <div>
-                  <strong>{expense.title}</strong>
-                  <p className="muted">
-                    {expense.branch?.name ?? "General"} • {formatDate(expense.expenseDate)}
-                  </p>
+          {state.loading ? (
+            <LoadingRowList rows={4} />
+          ) : (
+            <div className="row-list">
+              {state.expenses.slice(0, 8).map((expense) => (
+                <div key={expense.id} className="row-item stacked-row">
+                  <div>
+                    <strong>{expense.title}</strong>
+                    <p className="muted">
+                      {expense.branch?.name ?? "General"} • {formatDate(expense.expenseDate)}
+                    </p>
+                  </div>
+                  <strong>{formatMoney(expense.amount, expense.currency)}</strong>
                 </div>
-                <strong>{formatMoney(expense.amount, expense.currency)}</strong>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+          {!state.loading && !state.expenses.length ? <InlineEmptyState message="No expenses recorded yet." /> : null}
         </article>
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Receipt Preview</span>
               <h4>Completed payment receipt</h4>
+              <p className="panel-note">Load a completed payment from the table to inspect its receipt summary.</p>
             </div>
           </div>
 
@@ -1257,7 +1433,7 @@ export const FinanceWorkspacePage = () => {
               </div>
             </div>
           ) : (
-            <p className="empty-state">Load a completed payment receipt from the payments table.</p>
+            <InlineEmptyState message="Load a completed payment receipt from the payments table." />
           )}
         </article>
       </div>

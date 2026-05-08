@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { initiatePayment } from "../payments/payments.service";
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import type { InitiateParentPaymentInput, ParentStudentAttendanceQuery } from "./parent-portal.schemas";
 
 const toMoneyString = (value: Prisma.Decimal | string | number) => new Prisma.Decimal(value).toFixed(2);
@@ -164,6 +165,29 @@ const toStudentSummary = (student: {
       }
     : null,
 });
+
+export const resolveParentPortalUserId = (
+  authUser: AuthenticatedUser,
+  requestedParentUserId?: string,
+) => {
+  if (authUser.role === "ADMIN") {
+    if (!requestedParentUserId) {
+      throw new HttpError(422, "parentUserId is required when an admin requests parent portal data");
+    }
+
+    return requestedParentUserId;
+  }
+
+  if (authUser.role === "PARENT") {
+    if (requestedParentUserId && requestedParentUserId !== authUser.userId) {
+      throw new HttpError(403, "Parents can only access their own portal data");
+    }
+
+    return authUser.userId;
+  }
+
+  throw new HttpError(403, "You are not allowed to access parent portal data");
+};
 
 const loadParentGuardian = async (orgId: string, userId: string) => {
   const guardian = await prisma.guardian.findFirst({

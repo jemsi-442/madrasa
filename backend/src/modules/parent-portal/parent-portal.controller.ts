@@ -11,16 +11,20 @@ import {
   initiateParentStudentPayment,
   listParentAnnouncements,
   listParentStudents,
+  resolveParentPortalUserId,
 } from "./parent-portal.service";
 import {
   initiateParentPaymentSchema,
+  parentPortalActorQuerySchema,
   parentPaymentParamsSchema,
   parentStudentAttendanceQuerySchema,
   parentStudentParamsSchema,
 } from "./parent-portal.schemas";
 
 export const getParentProfileHandler = async (req: Request, res: Response) => {
-  const profile = await getParentPortalProfile(req.authUser!.orgId, req.authUser!.userId);
+  const query = parentPortalActorQuerySchema.parse(req.query);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
+  const profile = await getParentPortalProfile(req.authUser!.orgId, targetParentUserId);
 
   res.status(200).json({
     success: true,
@@ -30,7 +34,9 @@ export const getParentProfileHandler = async (req: Request, res: Response) => {
 };
 
 export const listParentStudentsHandler = async (req: Request, res: Response) => {
-  const students = await listParentStudents(req.authUser!.orgId, req.authUser!.userId);
+  const query = parentPortalActorQuerySchema.parse(req.query);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
+  const students = await listParentStudents(req.authUser!.orgId, targetParentUserId);
 
   res.status(200).json({
     success: true,
@@ -42,11 +48,15 @@ export const listParentStudentsHandler = async (req: Request, res: Response) => 
 export const getParentStudentAttendanceHandler = async (req: Request, res: Response) => {
   const params = parentStudentParamsSchema.parse(req.params);
   const query = parentStudentAttendanceQuerySchema.parse(req.query);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
   const attendance = await getParentStudentAttendance(
     req.authUser!.orgId,
-    req.authUser!.userId,
+    targetParentUserId,
     params.studentId,
-    query,
+    {
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+    },
   );
 
   res.status(200).json({
@@ -58,12 +68,14 @@ export const getParentStudentAttendanceHandler = async (req: Request, res: Respo
 
 export const getParentStudentFinanceHandler = async (req: Request, res: Response) => {
   const params = parentStudentParamsSchema.parse(req.params);
+  const query = parentPortalActorQuerySchema.parse(req.query);
 
   if (!params.studentId) {
     throw new HttpError(400, "Student id parameter is required");
   }
 
-  const finance = await getParentStudentFinance(req.authUser!.orgId, req.authUser!.userId, params.studentId);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
+  const finance = await getParentStudentFinance(req.authUser!.orgId, targetParentUserId, params.studentId);
 
   res.status(200).json({
     success: true,
@@ -74,7 +86,9 @@ export const getParentStudentFinanceHandler = async (req: Request, res: Response
 
 export const getParentStudentHifdhHandler = async (req: Request, res: Response) => {
   const params = parentStudentParamsSchema.parse(req.params);
-  const records = await getParentStudentHifdhProgress(req.authUser!.orgId, req.authUser!.userId, params.studentId);
+  const query = parentPortalActorQuerySchema.parse(req.query);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
+  const records = await getParentStudentHifdhProgress(req.authUser!.orgId, targetParentUserId, params.studentId);
 
   res.status(200).json({
     success: true,
@@ -85,10 +99,12 @@ export const getParentStudentHifdhHandler = async (req: Request, res: Response) 
 
 export const initiateParentStudentPaymentHandler = async (req: Request, res: Response) => {
   const params = parentStudentParamsSchema.parse(req.params);
+  const query = parentPortalActorQuerySchema.parse(req.query);
   const input = initiateParentPaymentSchema.parse(req.body);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
   const payment = await initiateParentStudentPayment(
     req.authUser!.orgId,
-    req.authUser!.userId,
+    targetParentUserId,
     params.studentId,
     input,
     req.ip,
@@ -103,9 +119,11 @@ export const initiateParentStudentPaymentHandler = async (req: Request, res: Res
 
 export const getParentStudentPaymentHandler = async (req: Request, res: Response) => {
   const params = parentPaymentParamsSchema.parse(req.params);
+  const query = parentPortalActorQuerySchema.parse(req.query);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
   const payment = await getParentStudentPaymentById(
     req.authUser!.orgId,
-    req.authUser!.userId,
+    targetParentUserId,
     params.studentId,
     params.paymentId,
   );
@@ -119,9 +137,11 @@ export const getParentStudentPaymentHandler = async (req: Request, res: Response
 
 export const getParentStudentPaymentReceiptHandler = async (req: Request, res: Response) => {
   const params = parentPaymentParamsSchema.parse(req.params);
+  const query = parentPortalActorQuerySchema.parse(req.query);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
   const receipt = await getParentStudentPaymentReceipt(
     req.authUser!.orgId,
-    req.authUser!.userId,
+    targetParentUserId,
     params.studentId,
     params.paymentId,
   );
@@ -134,7 +154,9 @@ export const getParentStudentPaymentReceiptHandler = async (req: Request, res: R
 };
 
 export const listParentAnnouncementsHandler = async (req: Request, res: Response) => {
-  const announcements = await listParentAnnouncements(req.authUser!.orgId, req.authUser!.userId);
+  const query = parentPortalActorQuerySchema.parse(req.query);
+  const targetParentUserId = resolveParentPortalUserId(req.authUser!, query.parentUserId);
+  const announcements = await listParentAnnouncements(req.authUser!.orgId, targetParentUserId);
 
   res.status(200).json({
     success: true,

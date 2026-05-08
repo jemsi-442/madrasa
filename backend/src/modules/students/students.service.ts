@@ -615,11 +615,19 @@ export const listStudents = async (orgId: string, query: ListStudentsQuery) => {
   }
 
   const { skip, take } = getPaginationParams(query);
+  const orderBy: Prisma.StudentOrderByWithRelationInput[] =
+    query.sortBy === "fullName"
+      ? [{ fullName: query.sortDir }, { createdAt: "desc" }]
+      : query.sortBy === "admissionNo"
+        ? [{ admissionNo: query.sortDir }, { createdAt: "desc" }]
+        : query.sortBy === "joinedOn"
+          ? [{ joinedOn: query.sortDir }, { createdAt: "desc" }]
+          : [{ createdAt: query.sortDir }];
 
   const [students, totalItems] = await Promise.all([
     prisma.student.findMany({
       where,
-      orderBy: [{ createdAt: "desc" }],
+      orderBy,
       skip,
       take,
       select: studentSelect,

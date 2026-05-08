@@ -26,6 +26,24 @@ export type AuthUser = {
   branchId: string | null;
 };
 
+export type UserRecord = {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  role: UserRole;
+  status: "ACTIVE" | "DISABLED";
+  orgId: string;
+  branchId: string | null;
+  createdAt: string;
+  guardianProfile: {
+    id: string;
+    fullName: string;
+    phone: string;
+    email: string | null;
+  } | null;
+};
+
 export type LoginPayload = {
   login: string;
   password: string;
@@ -36,6 +54,11 @@ export type LoginResult = {
   refreshToken: string;
   expiresIn: number;
   user: AuthUser;
+};
+
+type AuthSessionManager = {
+  getSession: () => LoginResult | null;
+  setSession: (session: LoginResult | null) => void;
 };
 
 export type DashboardReport = {
@@ -694,6 +717,34 @@ type RequestOptions = {
   token?: string;
 };
 
+type CachedReadSnapshot<T> = {
+  savedAt: string;
+  data: T;
+};
+
+let authSessionManager: AuthSessionManager | null = null;
+let refreshSessionPromise: Promise<LoginResult> | null = null;
+const READ_CACHE_PREFIX = "mif-read-cache:v1";
+const CACHEABLE_READ_PATTERNS = [
+  /^\/api\/organizations\/me$/,
+  /^\/api\/reports\//,
+  /^\/api\/classes(?:\/|$)/,
+  /^\/api\/enrollments(?:\?|$)/,
+  /^\/api\/attendance\/class\//,
+  /^\/api\/guardians(?:\?|$)/,
+  /^\/api\/students(?:\?|$)/,
+  /^\/api\/fee-structures(?:\?|$)/,
+  /^\/api\/invoices(?:\?|$)/,
+  /^\/api\/payments(?:\?|$)/,
+  /^\/api\/expenses(?:\?|$)/,
+  /^\/api\/hifdh-progress(?:\?|$)/,
+  /^\/api\/parent-portal\//,
+];
+
+export const registerAuthSessionManager = (manager: AuthSessionManager | null) => {
+  authSessionManager = manager;
+};
+
 const toQueryString = (params: Record<string, string | undefined>) => {
   const search = new URLSearchParams();
 
@@ -721,6 +772,55 @@ const buildHeaders = (token?: string, hasBody?: boolean) => {
   return headers;
 };
 
+const isCacheableReadPath = (path: string) => CACHEABLE_READ_PATTERNS.some((pattern) => pattern.test(path));
+
+const getReadCacheScope = () => {
+  const session = authSessionManager?.getSession();
+
+  if (!session?.user) {
+    return "anonymous";
+  }
+
+  return `${session.user.orgId}:${session.user.role}:${session.user.id}`;
+};
+
+const getReadCacheKey = (path: string) => `${READ_CACHE_PREFIX}:${getReadCacheScope()}:${path}`;
+
+const readCachedSnapshot = <T,>(path: string) => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(getReadCacheKey(path));
+
+    if (!storedValue) {
+      return null;
+    }
+
+    return JSON.parse(storedValue) as CachedReadSnapshot<T>;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedSnapshot = <T,>(path: string, data: T) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const snapshot: CachedReadSnapshot<T> = {
+      savedAt: new Date().toISOString(),
+      data,
+    };
+
+    window.localStorage.setItem(getReadCacheKey(path), JSON.stringify(snapshot));
+  } catch {
+    // Ignore storage quota and serialization failures; live API data remains the source of truth.
+  }
+};
+
 const parseDownloadFileName = (contentDisposition: string | null, fallbackFileName: string) => {
   if (!contentDisposition) {
     return fallbackFileName;
@@ -739,13 +839,86 @@ const parseDownloadFileName = (contentDisposition: string | null, fallbackFileNa
   return fallbackFileName;
 };
 
+const refreshSessionRequest = async (refreshToken: string) =>
+  apiRequest<LoginResult>("/api/auth/refresh", {
+    method: "POST",
+    body: { refreshToken },
+  });
+
+const tryRefreshSession = async (expiredToken?: string) => {
+  if (!authSessionManager) {
+    return null;
+  }
+
+  const currentSession = authSessionManager.getSession();
+
+  if (!currentSession?.refreshToken) {
+    return null;
+  }
+
+  if (expiredToken && currentSession.accessToken !== expiredToken) {
+    return currentSession;
+  }
+
+  if (!refreshSessionPromise) {
+    refreshSessionPromise = refreshSessionRequest(currentSession.refreshToken)
+      .then((nextSession) => {
+        authSessionManager?.setSession(nextSession);
+        return nextSession;
+      })
+      .catch((error) => {
+        authSessionManager?.setSession(null);
+        throw error;
+      })
+      .finally(() => {
+        refreshSessionPromise = null;
+      });
+  }
+
+  return refreshSessionPromise;
+};
+
 const apiRequest = async <T>(path: string, options: RequestOptions = {}) => {
   const { method = "GET", body, token } = options;
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: buildHeaders(token, body !== undefined),
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const isCacheableRead = method === "GET" && isCacheableReadPath(path);
+  const makeRequest = async (requestToken = token) =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: buildHeaders(requestToken, body !== undefined),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+  let response: Response;
+
+  try {
+    response = await makeRequest(token);
+  } catch (error) {
+    if (isCacheableRead) {
+      const cachedSnapshot = readCachedSnapshot<T>(path);
+
+      if (cachedSnapshot) {
+        return cachedSnapshot.data;
+      }
+    }
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      throw new Error("You are offline and this content is not available yet.");
+    }
+
+    throw error instanceof Error ? error : new Error("Network request failed.");
+  }
+
+  if (response.status === 401 && token) {
+    try {
+      const refreshedSession = await tryRefreshSession(token);
+
+      if (refreshedSession?.accessToken && refreshedSession.accessToken !== token) {
+        response = await makeRequest(refreshedSession.accessToken);
+      }
+    } catch {
+      throw new Error("Your session has expired. Please sign in again.");
+    }
+  }
 
   const contentType = response.headers.get("content-type") ?? "";
   const payload = contentType.includes("application/json")
@@ -760,14 +933,33 @@ const apiRequest = async <T>(path: string, options: RequestOptions = {}) => {
     throw new Error("The API returned an unexpected response.");
   }
 
+  if (isCacheableRead) {
+    writeCachedSnapshot(path, payload.data);
+  }
+
   return payload.data;
 };
 
 const downloadRequest = async (path: string, token: string, fallbackFileName: string) => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "GET",
-    headers: buildHeaders(token),
-  });
+  const makeRequest = async (requestToken: string) =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method: "GET",
+      headers: buildHeaders(requestToken),
+    });
+
+  let response = await makeRequest(token);
+
+  if (response.status === 401) {
+    try {
+      const refreshedSession = await tryRefreshSession(token);
+
+      if (refreshedSession?.accessToken && refreshedSession.accessToken !== token) {
+        response = await makeRequest(refreshedSession.accessToken);
+      }
+    } catch {
+      throw new Error("Your session has expired. Please sign in again.");
+    }
+  }
 
   if (!response.ok) {
     const contentType = response.headers.get("content-type") ?? "";
@@ -799,6 +991,8 @@ export const login = (payload: LoginPayload) =>
     body: payload,
   });
 
+export const refreshSession = (refreshToken: string) => refreshSessionRequest(refreshToken);
+
 export const logout = (refreshToken: string) =>
   apiRequest<void>("/api/auth/logout", {
     method: "POST",
@@ -828,8 +1022,8 @@ export const getMonthlyFinanceSummaryReport = (token: string, year?: number) =>
     { token },
   );
 
-export const getTeacherDashboardReport = (token: string) =>
-  apiRequest<TeacherDashboardReport>("/api/reports/teacher-dashboard", { token });
+export const getTeacherDashboardReport = (token: string, teacherId?: string) =>
+  apiRequest<TeacherDashboardReport>(`/api/reports/teacher-dashboard${toQueryString({ teacherId })}`, { token });
 
 export const exportStudentsReport = (
   token: string,
@@ -895,20 +1089,29 @@ export const exportMonthlyFinanceSummaryReport = (
     "finance-monthly-summary.csv",
   );
 
-export const getParentProfile = (token: string) =>
-  apiRequest<ParentProfile>("/api/parent-portal/me", { token });
+export const getParentProfile = (token: string, parentUserId?: string) =>
+  apiRequest<ParentProfile>(`/api/parent-portal/me${toQueryString({ parentUserId })}`, { token });
 
-export const getParentAnnouncements = (token: string) =>
-  apiRequest<ParentAnnouncement[]>("/api/parent-portal/announcements", { token });
+export const getParentAnnouncements = (token: string, parentUserId?: string) =>
+  apiRequest<ParentAnnouncement[]>(`/api/parent-portal/announcements${toQueryString({ parentUserId })}`, { token });
 
-export const getParentStudentAttendance = (token: string, studentId: string) =>
-  apiRequest<ParentAttendanceRecord[]>(`/api/parent-portal/students/${studentId}/attendance`, { token });
+export const getParentStudentAttendance = (token: string, studentId: string, parentUserId?: string) =>
+  apiRequest<ParentAttendanceRecord[]>(
+    `/api/parent-portal/students/${studentId}/attendance${toQueryString({ parentUserId })}`,
+    { token },
+  );
 
-export const getParentStudentFinance = (token: string, studentId: string) =>
-  apiRequest<ParentInvoice[]>(`/api/parent-portal/students/${studentId}/finance`, { token });
+export const getParentStudentFinance = (token: string, studentId: string, parentUserId?: string) =>
+  apiRequest<ParentInvoice[]>(
+    `/api/parent-portal/students/${studentId}/finance${toQueryString({ parentUserId })}`,
+    { token },
+  );
 
-export const getParentStudentHifdh = (token: string, studentId: string) =>
-  apiRequest<ParentHifdhRecord[]>(`/api/parent-portal/students/${studentId}/hifdh`, { token });
+export const getParentStudentHifdh = (token: string, studentId: string, parentUserId?: string) =>
+  apiRequest<ParentHifdhRecord[]>(
+    `/api/parent-portal/students/${studentId}/hifdh${toQueryString({ parentUserId })}`,
+    { token },
+  );
 
 export const initiateParentStudentPayment = (
   token: string,
@@ -918,16 +1121,17 @@ export const initiateParentStudentPayment = (
     payerPhone: string;
     channel: "mpesa" | "airtel_money" | "tigo_pesa";
   },
+  parentUserId?: string,
 ) =>
-  apiRequest<ParentStudentPayment>(`/api/parent-portal/students/${studentId}/payments`, {
+  apiRequest<ParentStudentPayment>(`/api/parent-portal/students/${studentId}/payments${toQueryString({ parentUserId })}`, {
     method: "POST",
     body: payload,
     token,
   });
 
-export const getParentStudentPayment = (token: string, studentId: string, paymentId: string) =>
+export const getParentStudentPayment = (token: string, studentId: string, paymentId: string, parentUserId?: string) =>
   apiRequest<ParentStudentPayment>(
-    `/api/parent-portal/students/${studentId}/payments/${paymentId}`,
+    `/api/parent-portal/students/${studentId}/payments/${paymentId}${toQueryString({ parentUserId })}`,
     { token },
   );
 
@@ -935,11 +1139,20 @@ export const getParentStudentPaymentReceipt = (
   token: string,
   studentId: string,
   paymentId: string,
+  parentUserId?: string,
 ) =>
   apiRequest<ParentPaymentReceipt>(
-    `/api/parent-portal/students/${studentId}/payments/${paymentId}/receipt`,
+    `/api/parent-portal/students/${studentId}/payments/${paymentId}/receipt${toQueryString({ parentUserId })}`,
     { token },
   );
+
+export const listUsers = (
+  token: string,
+  query: {
+    role?: UserRole;
+    status?: "ACTIVE" | "DISABLED";
+  } = {},
+) => apiRequest<UserRecord[]>(`/api/users${toQueryString(query)}`, { token });
 
 export const listGuardians = (token: string) =>
   apiRequest<Guardian[]>("/api/guardians", { token });
@@ -1021,6 +1234,8 @@ export const listStudents = (
     classId?: string;
     status?: string;
     search?: string;
+    sortBy?: "createdAt" | "fullName" | "admissionNo" | "joinedOn";
+    sortDir?: "asc" | "desc";
     page?: string;
     pageSize?: string;
   } = {},
@@ -1064,6 +1279,8 @@ export const listInvoices = (
     branchId?: string;
     status?: string;
     search?: string;
+    sortBy?: "createdAt" | "dueDate" | "amountDue" | "invoiceNo";
+    sortDir?: "asc" | "desc";
     page?: string;
     pageSize?: string;
   } = {},
@@ -1127,6 +1344,8 @@ export const listPayments = (
     dateFrom?: string;
     dateTo?: string;
     search?: string;
+    sortBy?: "createdAt" | "amount" | "status" | "paidAt";
+    sortDir?: "asc" | "desc";
     page?: string;
     pageSize?: string;
   } = {},

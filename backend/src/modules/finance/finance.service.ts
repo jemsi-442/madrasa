@@ -348,11 +348,19 @@ export const listInvoices = async (orgId: string, query: ListInvoicesQuery) => {
   }
 
   const { skip, take } = getPaginationParams(query);
+  const orderBy: Prisma.InvoiceOrderByWithRelationInput[] =
+    query.sortBy === "dueDate"
+      ? [{ dueDate: query.sortDir }, { createdAt: "desc" }]
+      : query.sortBy === "amountDue"
+        ? [{ amountDue: query.sortDir }, { createdAt: "desc" }]
+        : query.sortBy === "invoiceNo"
+          ? [{ invoiceNo: query.sortDir }, { createdAt: "desc" }]
+          : [{ createdAt: query.sortDir }];
 
   const [records, totalItems] = await Promise.all([
     prisma.invoice.findMany({
       where,
-      orderBy: [{ createdAt: "desc" }],
+      orderBy,
       skip,
       take,
       include: {

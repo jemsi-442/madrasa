@@ -10,6 +10,7 @@ import {
   getParentStudentFinance,
   getParentStudentHifdh,
   initiateParentStudentPayment,
+  listUsers,
   type ParentAnnouncement,
   type ParentAttendanceRecord,
   type ParentHifdhRecord,
@@ -17,16 +18,22 @@ import {
   type ParentPaymentReceipt,
   type ParentProfile,
   type ParentStudentPayment,
+  type UserRecord,
 } from "../lib/api";
+import { InlineEmptyState } from "../components/ui-states";
 import { useAuth } from "../lib/auth";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
+import { useNotifyOnMessage } from "../lib/notifications";
+import { usePwa } from "../lib/pwa";
 
 type ParentState = {
+  parentAccounts: UserRecord[];
   profile: ParentProfile | null;
   announcements: ParentAnnouncement[];
   attendance: ParentAttendanceRecord[];
   finance: ParentInvoice[];
   hifdh: ParentHifdhRecord[];
+  selectedParentUserId: string;
   selectedInvoiceId: string;
   selectedPayment: ParentStudentPayment | null;
   selectedReceipt: ParentPaymentReceipt | null;
@@ -38,14 +45,20 @@ type ParentState = {
   success: string | null;
 };
 
+const parentInvoiceStatusClassName = (status: ParentInvoice["status"]) => `status-chip status-${status.toLowerCase()}`;
+const parentPaymentStatusClassName = (status: string) => `status-chip status-${status.toLowerCase()}`;
+
 export const ParentPortalPage = () => {
   const { session } = useAuth();
+  const { isOnline } = usePwa();
   const [state, setState] = useState<ParentState>({
+    parentAccounts: [],
     profile: null,
     announcements: [],
     attendance: [],
     finance: [],
     hifdh: [],
+    selectedParentUserId: "",
     selectedInvoiceId: "",
     selectedPayment: null,
     selectedReceipt: null,
@@ -62,20 +75,107 @@ export const ParentPortalPage = () => {
     channel: "mpesa" as "mpesa" | "airtel_money" | "tigo_pesa",
   });
 
+  useNotifyOnMessage(state.error, state.success);
+
   useEffect(() => {
-    if (!session || session.user.role !== "PARENT") {
+    if (!session || (session.user.role !== "PARENT" && session.user.role !== "ADMIN")) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      setState((previous) => ({ ...previous, loading: true, error: null }));
+
+      try {
+        const parentAccounts =
+          session.user.role === "ADMIN"
+            ? await listUsers(session.accessToken, { role: "PARENT", status: "ACTIVE" })
+            : [];
+
+        if (cancelled) {
+          return;
+        }
+
+        setState((previous) => ({
+          ...previous,
+          parentAccounts,
+          profile: null,
+          announcements: [],
+          attendance: [],
+          finance: [],
+          hifdh: [],
+          selectedParentUserId: session.user.role === "ADMIN" ? (parentAccounts[0]?.id ?? "") : session.user.id,
+          selectedStudentId: "",
+          selectedInvoiceId: "",
+          selectedPayment: null,
+          selectedReceipt: null,
+          loading: session.user.role === "ADMIN" ? Boolean(parentAccounts[0]?.id) : true,
+          detailLoading: false,
+          saving: false,
+          error: null,
+          success: null,
+        }));
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setState((previous) => ({
+          ...previous,
+          loading: false,
+          detailLoading: false,
+          saving: false,
+          error: error instanceof Error ? error.message : "Failed to load parent portal.",
+        }));
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!session || (session.user.role !== "PARENT" && session.user.role !== "ADMIN")) {
+      return;
+    }
+
+    if (!state.selectedParentUserId) {
+      setState((previous) => ({
+        ...previous,
+        profile: null,
+        announcements: [],
+        attendance: [],
+        finance: [],
+        hifdh: [],
+        selectedStudentId: "",
+        selectedInvoiceId: "",
+        selectedPayment: null,
+        selectedReceipt: null,
+        loading: false,
+        detailLoading: false,
+      }));
       return;
     }
 
     let cancelled = false;
 
     const loadBase = async () => {
-      setState((previous) => ({ ...previous, loading: true, error: null }));
+      setState((previous) => ({ ...previous, loading: true, error: null, success: null }));
 
       try {
         const [profile, announcements] = await Promise.all([
-          getParentProfile(session.accessToken),
-          getParentAnnouncements(session.accessToken),
+          getParentProfile(
+            session.accessToken,
+            session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
+          ),
+          getParentAnnouncements(
+            session.accessToken,
+            session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
+          ),
         ]);
 
         if (cancelled) {
@@ -87,16 +187,21 @@ export const ParentPortalPage = () => {
           ...previous,
           profile,
           announcements,
+          attendance: [],
+          finance: [],
+          hifdh: [],
           selectedStudentId,
+          selectedInvoiceId: "",
+          selectedPayment: null,
+          selectedReceipt: null,
           loading: false,
           detailLoading: Boolean(selectedStudentId),
-          saving: false,
           error: null,
-          success: null,
         }));
         setPaymentForm((previous) => ({
           ...previous,
           payerPhone: profile.guardian.phone ?? "",
+          invoiceId: "",
         }));
       } catch (error) {
         if (cancelled) {
@@ -118,10 +223,10 @@ export const ParentPortalPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, state.selectedParentUserId]);
 
   useEffect(() => {
-    if (!session || session.user.role !== "PARENT" || !state.selectedStudentId) {
+    if (!session || (session.user.role !== "PARENT" && session.user.role !== "ADMIN") || !state.selectedStudentId) {
       return;
     }
 
@@ -137,9 +242,21 @@ export const ParentPortalPage = () => {
 
       try {
         const [attendance, finance, hifdh] = await Promise.all([
-          getParentStudentAttendance(session.accessToken, state.selectedStudentId),
-          getParentStudentFinance(session.accessToken, state.selectedStudentId),
-          getParentStudentHifdh(session.accessToken, state.selectedStudentId),
+          getParentStudentAttendance(
+            session.accessToken,
+            state.selectedStudentId,
+            session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
+          ),
+          getParentStudentFinance(
+            session.accessToken,
+            state.selectedStudentId,
+            session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
+          ),
+          getParentStudentHifdh(
+            session.accessToken,
+            state.selectedStudentId,
+            session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
+          ),
         ]);
 
         if (cancelled) {
@@ -181,13 +298,13 @@ export const ParentPortalPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [session, state.selectedStudentId]);
+  }, [session, state.selectedParentUserId, state.selectedStudentId]);
 
   if (!session) {
     return null;
   }
 
-  if (session.user.role === "ADMIN" || session.user.role === "ACCOUNTANT") {
+  if (session.user.role === "ACCOUNTANT") {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -196,9 +313,23 @@ export const ParentPortalPage = () => {
   }
 
   const selectedStudent = state.profile?.students.find((student) => student.id === state.selectedStudentId) ?? null;
+  const selectedParentAccount =
+    state.parentAccounts.find((parentAccount) => parentAccount.id === state.selectedParentUserId) ?? null;
   const selectedInvoice = useMemo(
     () => state.finance.find((invoice) => invoice.id === paymentForm.invoiceId || invoice.id === state.selectedInvoiceId) ?? null,
     [paymentForm.invoiceId, state.finance, state.selectedInvoiceId],
+  );
+  const paymentRows = useMemo(
+    () => state.finance.flatMap((invoice) => invoice.payments.map((payment) => ({ invoice, payment }))),
+    [state.finance],
+  );
+  const pendingInvoicesCount = useMemo(
+    () => state.finance.filter((invoice) => invoice.status !== "PAID" && invoice.status !== "CANCELLED").length,
+    [state.finance],
+  );
+  const completedPaymentsCount = useMemo(
+    () => paymentRows.filter(({ payment }) => payment.status === "COMPLETED").length,
+    [paymentRows],
   );
 
   const withSaving = async (work: () => Promise<void>) => {
@@ -242,6 +373,7 @@ export const ParentPortalPage = () => {
           payerPhone: paymentForm.payerPhone.trim(),
           channel: paymentForm.channel,
         },
+        session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
       );
 
       setState((previous) => ({
@@ -283,6 +415,7 @@ export const ParentPortalPage = () => {
         session.accessToken,
         state.selectedStudentId,
         paymentId,
+        session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
       );
 
       setState((previous) => ({
@@ -304,6 +437,7 @@ export const ParentPortalPage = () => {
         session.accessToken,
         state.selectedStudentId,
         paymentId,
+        session.user.role === "ADMIN" ? state.selectedParentUserId : undefined,
       );
 
       setState((previous) => ({
@@ -316,17 +450,78 @@ export const ParentPortalPage = () => {
 
   return (
     <section className="page-card">
-      <div className="page-heading">
-        <p className="eyebrow">Parent Portal</p>
-        <h3>Parent-facing workspace</h3>
-        <p>
-          This view shows live child attendance, finance, announcements, and hifdh progress.
-        </p>
+      <div className="workspace-header">
+        <div className="page-heading">
+          <p className="eyebrow">Family Access</p>
+          <h3>Child progress and billing</h3>
+          <p>Review attendance, invoices, announcements, payments, and hifdh progress for linked students.</p>
+        </div>
+
+        <div className="page-actions filters-grid">
+          {session.user.role === "ADMIN" ? (
+            <label className="inline-field">
+              <span>Parent Account</span>
+              <select
+                value={state.selectedParentUserId}
+                onChange={(event) =>
+                  setState((previous) => ({ ...previous, selectedParentUserId: event.target.value }))
+                }
+              >
+                {!state.parentAccounts.length ? <option value="">No parent accounts available</option> : null}
+                {state.parentAccounts.map((parentAccount) => (
+                  <option key={parentAccount.id} value={parentAccount.id}>
+                    {parentAccount.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          <label className="inline-field">
+            <span>Child</span>
+            <select
+              value={state.selectedStudentId}
+              onChange={(event) =>
+                setState((previous) => ({ ...previous, selectedStudentId: event.target.value }))
+              }
+            >
+              {!state.profile?.students.length ? <option value="">No linked students</option> : null}
+              {(state.profile?.students ?? []).map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.fullName} ({student.admissionNo})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {session.user.role === "ADMIN" && selectedParentAccount ? (
+          <div className="workspace-context-strip">
+            <span className="context-chip">Preview Mode</span>
+            <div className="context-summary">
+              <strong>{selectedParentAccount.fullName}</strong>
+              <span>{selectedParentAccount.email || selectedParentAccount.phone || "Active parent account"}</span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {state.error ? <div className="banner error-banner">{state.error}</div> : null}
       {state.success ? <div className="banner success-banner">{state.success}</div> : null}
 
+      {session.user.role === "ADMIN" && !state.parentAccounts.length && !state.loading ? (
+        <div className="top-spacing">
+          <InlineEmptyState message="No active parent accounts are available for this workspace." />
+        </div>
+      ) : null}
+
+      {session.user.role === "ADMIN" && state.parentAccounts.length > 0 && !state.selectedParentUserId ? (
+        <div className="top-spacing">
+          <InlineEmptyState message="Choose a parent account to load this portal." />
+        </div>
+      ) : null}
+
+      {state.profile ? (
       <div className="stats-grid">
         <article className="stat-card">
           <span className="feature-label">Guardian</span>
@@ -349,39 +544,25 @@ export const ParentPortalPage = () => {
           <p className="muted">{selectedStudent?.currentClass?.name ?? "No class assigned"}</p>
         </article>
       </div>
+      ) : null}
 
-      <div className="page-actions">
-        <label className="inline-field">
-          <span>Child</span>
-          <select
-            value={state.selectedStudentId}
-            onChange={(event) =>
-              setState((previous) => ({ ...previous, selectedStudentId: event.target.value }))
-            }
-          >
-            {(state.profile?.students ?? []).map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.fullName} ({student.admissionNo})
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
+      {state.profile ? (
       <div className="data-grid">
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Attendance</span>
               <h4>Latest attendance records</h4>
+              <p className="panel-note">Recent attendance updates for the selected child.</p>
             </div>
+            <span className="panel-meta">{state.attendance.length} records</span>
           </div>
 
           <div className="row-list">
             {state.attendance.slice(0, 6).map((record) => (
               <div key={record.id} className="row-item stacked-row">
                 <div>
-                  <strong>{record.date}</strong>
+                  <strong>{formatDate(record.date)}</strong>
                   <p className="muted">
                     {record.class.name} • marked by {record.markedBy.fullName}
                   </p>
@@ -389,16 +570,20 @@ export const ParentPortalPage = () => {
                 <span className={`status-chip status-${record.status.toLowerCase()}`}>{record.status}</span>
               </div>
             ))}
-            {!state.detailLoading && !state.attendance.length ? <p className="empty-state">No attendance records yet.</p> : null}
+            {!state.detailLoading && !state.attendance.length ? (
+              <InlineEmptyState message="No attendance records are available for this student yet." />
+            ) : null}
           </div>
         </article>
 
         <article className="data-panel">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Announcements</span>
               <h4>School communication</h4>
+              <p className="panel-note">Recent notices visible to this family account.</p>
             </div>
+            <span className="panel-meta">{state.announcements.length} updates</span>
           </div>
 
           <div className="row-list">
@@ -411,16 +596,20 @@ export const ParentPortalPage = () => {
                 <strong>{formatDateTime(announcement.publishAt)}</strong>
               </div>
             ))}
-            {!state.announcements.length ? <p className="empty-state">No announcements available.</p> : null}
+            {!state.announcements.length ? (
+              <InlineEmptyState message="No announcements are available for this family right now." />
+            ) : null}
           </div>
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Finance</span>
               <h4>Invoices and payment status</h4>
+              <p className="panel-note">Track balances, initiate collections, and review invoice-level payment activity.</p>
             </div>
+            <span className="panel-meta">{pendingInvoicesCount} invoices pending</span>
           </div>
 
           <div className="split-panel">
@@ -473,6 +662,11 @@ export const ParentPortalPage = () => {
               <div className="detail-card full-span">
                 <span className="feature-label">Selected Invoice</span>
                 <h5>{selectedInvoice?.invoiceNo ?? "No invoice selected"}</h5>
+                {selectedInvoice ? (
+                  <div className="top-spacing-small">
+                    <span className={parentInvoiceStatusClassName(selectedInvoice.status)}>{selectedInvoice.status}</span>
+                  </div>
+                ) : null}
                 <p className="muted">
                   Balance:{" "}
                   {selectedInvoice
@@ -484,16 +678,23 @@ export const ParentPortalPage = () => {
               <button
                 className="primary-button full-span"
                 type="submit"
-                disabled={state.saving || !paymentForm.invoiceId}
+                disabled={state.saving || !paymentForm.invoiceId || !isOnline}
               >
-                {state.saving ? "Submitting..." : "Initiate Payment"}
+                {!isOnline ? "Offline" : state.saving ? "Submitting..." : "Initiate Payment"}
               </button>
             </form>
 
             <div className="stack-panel">
               <div className="detail-card">
                 <span className="feature-label">Payment Status</span>
-                <h5>{state.selectedPayment?.status ?? "No payment selected"}</h5>
+                <h5>{state.selectedPayment ? state.selectedPayment.reference : "No payment selected"}</h5>
+                {state.selectedPayment ? (
+                  <div className="top-spacing-small">
+                    <span className={parentPaymentStatusClassName(state.selectedPayment.status)}>
+                      {state.selectedPayment.status}
+                    </span>
+                  </div>
+                ) : null}
                 <p className="muted">
                   {state.selectedPayment
                     ? `${formatMoney(state.selectedPayment.amount, state.selectedPayment.currency)} • ${
@@ -554,7 +755,9 @@ export const ParentPortalPage = () => {
                     <td>{formatMoney(invoice.amountDue, invoice.currency)}</td>
                     <td>{formatMoney(invoice.amountPaid, invoice.currency)}</td>
                     <td>{formatMoney(invoice.balanceRemaining, invoice.currency)}</td>
-                    <td>{invoice.status}</td>
+                    <td>
+                      <span className={parentInvoiceStatusClassName(invoice.status)}>{invoice.status}</span>
+                    </td>
                     <td>{invoice.payments.length}</td>
                   </tr>
                 ))}
@@ -562,15 +765,19 @@ export const ParentPortalPage = () => {
             </table>
           </div>
 
-          {!state.detailLoading && !state.finance.length ? <p className="empty-state">No invoices found for this student.</p> : null}
+          {!state.detailLoading && !state.finance.length ? (
+            <InlineEmptyState message="No invoices were found for this student." />
+          ) : null}
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Payments</span>
               <h4>Payment requests and receipts</h4>
+              <p className="panel-note">Review initiated requests, completion status, and receipt availability.</p>
             </div>
+            <span className="panel-meta">{completedPaymentsCount} completed</span>
           </div>
 
           <div className="table-wrap">
@@ -586,54 +793,56 @@ export const ParentPortalPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {state.finance.flatMap((invoice) =>
-                  invoice.payments.map((payment) => (
+                {paymentRows.map(({ invoice, payment }) => (
                     <tr key={payment.id}>
                       <td>{invoice.invoiceNo}</td>
                       <td>{formatMoney(payment.amount, payment.currency)}</td>
                       <td>{payment.channel ?? "--"}</td>
-                      <td>{payment.status}</td>
+                      <td>
+                        <span className={parentPaymentStatusClassName(payment.status)}>{payment.status}</span>
+                      </td>
                       <td>{formatDateTime(payment.createdAt)}</td>
                       <td>
-                        <div className="action-row">
+                        <div className="action-row table-actions">
                           <button
                             type="button"
-                            className="secondary-button"
+                            className="secondary-button table-action-button"
                             onClick={() => void handleViewPayment(payment.id)}
-                            disabled={state.saving}
+                            disabled={state.saving || !isOnline}
                           >
-                            View
+                            {!isOnline ? "Offline" : "View"}
                           </button>
                           {payment.status === "COMPLETED" ? (
                             <button
                               type="button"
-                              className="secondary-button"
+                              className="secondary-button table-action-button"
                               onClick={() => void handleViewReceipt(payment.id)}
-                              disabled={state.saving}
+                              disabled={state.saving || !isOnline}
                             >
-                              Receipt
+                              {!isOnline ? "Offline" : "Receipt"}
                             </button>
                           ) : null}
                         </div>
                       </td>
                     </tr>
-                  )),
-                )}
+                  ))}
               </tbody>
             </table>
           </div>
 
-          {!state.detailLoading && !state.finance.some((invoice) => invoice.payments.length) ? (
-            <p className="empty-state">No payment requests recorded yet.</p>
+          {!state.detailLoading && !paymentRows.length ? (
+            <InlineEmptyState message="No payment requests have been recorded for this student yet." />
           ) : null}
         </article>
 
         <article className="data-panel data-panel-wide">
           <div className="panel-header">
-            <div>
+            <div className="panel-copy">
               <span className="feature-label">Hifdh</span>
               <h4>Recent progress</h4>
+              <p className="panel-note">Latest memorization and revision assessments recorded for this student.</p>
             </div>
+            <span className="panel-meta">{state.hifdh.length} entries</span>
           </div>
 
           <div className="table-wrap">
@@ -663,9 +872,12 @@ export const ParentPortalPage = () => {
             </table>
           </div>
 
-          {!state.detailLoading && !state.hifdh.length ? <p className="empty-state">No hifdh progress recorded yet.</p> : null}
+          {!state.detailLoading && !state.hifdh.length ? (
+            <InlineEmptyState message="No hifdh progress has been recorded for this student yet." />
+          ) : null}
         </article>
       </div>
+      ) : null}
     </section>
   );
 };

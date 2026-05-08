@@ -6,6 +6,11 @@ const amountChannel = z.enum(["mpesa", "airtel_money", "tigo_pesa"]);
 export const parentStudentAttendanceQuerySchema = z.object({
   dateFrom: z.string().date().optional(),
   dateTo: z.string().date().optional(),
+  parentUserId: z.string().regex(/^\d+$/, "parentUserId must be a numeric string").optional(),
+});
+
+export const parentPortalActorQuerySchema = z.object({
+  parentUserId: z.string().regex(/^\d+$/, "parentUserId must be a numeric string").optional(),
 });
 
 export const parentStudentParamsSchema = z.object({
