@@ -1,0 +1,34 @@
+name: mif_app
+description: Modern Islamic Foundation cross platform client
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.5.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/mif-logo.png
+  fonts:
+    - family: NotoSansDisplay
+      fonts:
+        - asset: assets/fonts/NotoSansDisplay-Regular.ttf
+        - asset: assets/fonts/NotoSansDisplay-Bold.ttf
+          weight: 700
+    - family: NotoSerifDisplay
+      fonts:
+        - asset: assets/fonts/NotoSerifDisplay-Regular.ttf
+        - asset: assets/fonts/NotoSerifDisplay-Bold.ttf
+          weight: 700

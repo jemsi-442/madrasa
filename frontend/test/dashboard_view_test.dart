@@ -1,0 +1,107 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:mif_app/src/api_client.dart';
+import 'package:mif_app/src/app.dart';
+import 'package:mif_app/src/app_state.dart';
+import 'package:mif_app/src/dashboard_views.dart';
+import 'package:mif_app/src/foundation_ui.dart';
+import 'package:mif_app/src/workspace.dart';
+
+void main() {
+  test('accountant record pages do not reuse home totals', () {
+    expect(metricsFor('ACCOUNTANT', 'Invoices', {'items': []}), isEmpty);
+    expect(metricsFor('ACCOUNTANT', 'Payments', {'items': []}), isEmpty);
+  });
+
+  const adminReport = {
+    'students': {
+      'total': 37,
+      'active': 32,
+      'inactive': 3,
+      'suspended': 1,
+      'graduated': 1,
+    },
+    'attendance': {
+      'totalRecords': 25,
+      'present': 20,
+      'absent': 3,
+      'late': 1,
+      'excused': 1,
+      'attendanceRate': '80.00',
+    },
+    'hifdh': {'totalAssessments': 9},
+    'finance': {
+      'invoices': {'outstandingBalance': '125000.00'},
+    },
+  };
+
+  testWidgets('admin home uses report values and opens a real page', (
+    tester,
+  ) async {
+    var opened = -1;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: DashboardView(
+              role: 'ADMIN',
+              data: adminReport,
+              onOpenSection: (index) => opened = index,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('37'), findsOneWidget);
+    expect(find.text('80.00%'), findsOneWidget);
+    expect(find.text('Student status'), findsOneWidget);
+    await tester.ensureVisible(find.text('Classes'));
+    await tester.tap(find.text('Classes'));
+    expect(opened, 2);
+  });
+
+  testWidgets('mobile workspace has bottom navigation and more pages', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final client = MockClient((request) async {
+      final data = request.url.path == '/api/reports/dashboard'
+          ? adminReport
+          : <dynamic>[];
+      return http.Response(jsonEncode({'success': true, 'data': data}), 200);
+    });
+    final state = AppState(
+      MifApiClient(client: client, baseUrl: 'https://school.test'),
+    );
+    state.session = const AuthSession(
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      userId: '1',
+      fullName: 'Office Admin',
+      role: 'ADMIN',
+    );
+    addTearDown(state.dispose);
+
+    await tester.pumpWidget(MifApp(state: state));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(DashboardMetric), findsNWidgets(4));
+    expect(
+      tester.getSize(find.byType(DashboardMetric).first).width,
+      lessThan(190),
+    );
+    expect(find.text('More'), findsOneWidget);
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+    expect(find.text('Course access'), findsOneWidget);
+  });
+}

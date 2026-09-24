@@ -1,13 +1,13 @@
 # MODERN ISLAMIC FOUNDATION
 
-MODERN ISLAMIC FOUNDATION is the branded web platform for managing student registration, classes, attendance, hifdh tracking, invoicing, mobile money payments, reporting, and parent access.
+MODERN ISLAMIC FOUNDATION is a cross-platform school and online-learning system. The Express API remains the source of truth; a Flutter client now targets web, Android, and iOS.
 
 This repository follows the technical direction defined in [madrasa_management_system_technical_documentation_tanzania_2026.md](/home/jaykali/madrasa/madrasa_management_system_technical_documentation_tanzania_2026.md:1).
 
 ## Stack
 
 - Backend: Node.js, Express, TypeScript
-- Frontend: React, TypeScript, Vite
+- Frontend: Flutter, Dart
 - Database: MariaDB
 - ORM: Prisma
 - Cache / Queues: Redis, BullMQ
@@ -17,7 +17,7 @@ This repository follows the technical direction defined in [madrasa_management_s
 
 ```text
 backend/   Express API, Prisma schema, scripts, modules
-frontend/  React web client for admin, teacher, accountant, and parent flows
+frontend/  Flutter client for web, Android, and iOS
 scripts/   Local helper scripts
 ```
 
@@ -37,24 +37,11 @@ Implemented backend modules include:
 - Hifdh progress
 - Reporting and exports
 
-## Frontend Direction
+## Flutter Frontend
 
-The frontend is intended to be the real production web client, not a prototype embedded in the backend.
+The React client has been retired. Flutter is now the only application frontend, with web, Android, and iOS targets. The initial migration includes a public entry page, sign-in, role-specific navigation, and read-only views for selected existing API data.
 
-Current primary surfaces:
-
-- Admin dashboard
-- Accountant finance workspace
-- Teacher attendance and hifdh workspace
-- Parent portal
-
-Current frontend capabilities also include:
-
-- Student and guardian management
-- Class detail views for roster and attendance context
-- Attendance marking and hifdh entry
-- Invoice, payment, and expense workflows
-- Report summaries and CSV exports
+This is a **migration foundation, not feature parity**. Admissions forms, student editing, attendance marking, finance operations, course authoring, media lessons, and complete parent/learner workflows are not yet ported. Backend RBAC and tenant/ownership checks remain mandatory regardless of what Flutter shows.
 
 ## Local Development
 
@@ -103,28 +90,15 @@ Default seeded admin:
 - email: `admin@example.com`
 - password: `ChangeMe123!`
 
-### Frontend
-
-1. Prepare env:
-
-```bash
-cp frontend/.env.example frontend/.env
-```
-
-2. Install dependencies:
+### Flutter Frontend
 
 ```bash
 cd frontend
-npm install
+flutter pub get
+flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:4000
 ```
 
-3. Start app:
-
-```bash
-npm run dev
-```
-
-By default the frontend expects the backend API at `http://127.0.0.1:4000`.
+See [Flutter frontend guide](frontend/README.md) for Android/iOS setup, verification, and current limitations.
 
 ## Core API Areas
 
