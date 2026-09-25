@@ -18,7 +18,12 @@ class AppState extends ChangeNotifier {
       session = await api.login(login, password);
       return true;
     } on ApiException catch (exception) {
-      error = exception.message;
+      error = switch (exception.statusCode) {
+        0 => 'We could not reach the school. Please try again.',
+        401 => 'The phone number or email and password do not match.',
+        429 => 'Please wait a moment before trying again.',
+        _ => 'We could not sign you in. Please try again later.',
+      };
       return false;
     } finally {
       busy = false;

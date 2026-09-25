@@ -90,7 +90,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       );
       if (mounted) setState(() => sent = true);
     } on ApiException catch (exception) {
-      if (mounted) setState(() => error = exception.message);
+      if (mounted) {
+        setState(
+          () => error = exception.statusCode == 400
+              ? 'Please check your details and try again.'
+              : 'We could not send your details. Please try again.',
+        );
+      }
     } finally {
       if (mounted) setState(() => sending = false);
     }
