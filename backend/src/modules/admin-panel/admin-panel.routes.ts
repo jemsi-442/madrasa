@@ -1,4 +1,6 @@
 import { Router, type Request, type Response } from "express";
+import { requireActiveSchoolAccount } from "../../shared/middleware/active-school-account";
+import { manageStudent, studentManagementRecord, studentEditSchema, studentLifecycleSchema } from "./student-management";
 import { authenticate } from "../../shared/middleware/authenticate";
 import { requireRole } from "../../shared/middleware/require-role";
 import { requireTenantContext } from "../../shared/middleware/tenant-context";
@@ -9,10 +11,14 @@ import { eventSchema, teacherDirectorySchema } from "./admin-panel.schemas";
 import * as service from "./admin-panel.service";
 
 export const adminPanelRouter = Router();
-adminPanelRouter.use(authenticate, requireTenantContext, requireRole("ADMIN"));
+adminPanelRouter.use(authenticate, requireTenantContext, requireRole("ADMIN"), requireActiveSchoolAccount);
 const handle = (fn: (req: Request) => Promise<unknown>, status = 200) => asyncHandler(async (req: Request, res: Response) => {
   res.status(status).json({ success: true, data: jsonRecord(await fn(req)) });
 });
+adminPanelRouter.get("/students/:id/record", handle((req) => studentManagementRecord(req.authUser!, recordId.parse(req.params.id))));
+adminPanelRouter.post("/students/:id/edit", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "edit", studentEditSchema.parse(req.body))));
+adminPanelRouter.post("/students/:id/archive", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "archive", studentLifecycleSchema.parse(req.body))));
+adminPanelRouter.post("/students/:id/restore", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "restore", studentLifecycleSchema.parse(req.body))));
 adminPanelRouter.get("/guardians", handle((req) => service.guardianDirectory(req.authUser!, directoryQuerySchema.parse(req.query))));
 adminPanelRouter.get("/students/summary", handle((req) => service.studentDemographics(req.authUser!)));
 adminPanelRouter.get("/overview", handle((req) => service.adminOverview(req.authUser!)));

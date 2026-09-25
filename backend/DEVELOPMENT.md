@@ -196,3 +196,25 @@ school; logout revokes the server token and clears the cookie. Browser registrat
 still creates only a LEARNER. Session restoration does not restore unsaved forms.
 
 Cookie behavior: [MDN Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie).
+## Admin Student Record Management
+
+The Students page uses these ADMIN-only routes:
+- GET /api/admin/students/:id/record: current personal details, revision and latest
+  20 recorded management changes (actor, reason and before/after values).
+- POST /api/admin/students/:id/edit: revision, reason, fullName, admissionNo,
+  gender (male/female/null), dob and joinedOn (YYYY-MM-DD/null), notes (string/null).
+- POST /api/admin/students/:id/archive: revision and reason; ACTIVE school pupils
+  become INACTIVE, with leftOn set to the current Tanzania date.
+- POST /api/admin/students/:id/restore: revision and reason; INACTIVE school pupils
+  become ACTIVE and leftOn is cleared.
+
+These routes recheck the active admin, school and current branch, reject stale
+revisions with 409, and save changes plus audit history in one locked transaction.
+Archiving never deletes attendance, learning, guardian or financial history.
+Existing class links remain; check class placement when restoring a pupil.
+Online learner accounts cannot be archived/restored through these endpoints.
+Editing a learner profile does not rename or disable its separate login account.
+
+No schema migration is required. The existing registration, class-placement and
+guardian-link workflows remain separate. These endpoints do not replace every
+legacy student mutation or constitute full CRUD for classes, staff or finance.

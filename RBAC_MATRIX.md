@@ -902,3 +902,17 @@ Why this is safer:
 - These new learning records are not automatically exposed to PARENT or LEARNER.
   Assessment/report publication, private messaging and durable offline sync
   remain separate delivery stages. See `TEACHER_WORKSPACE_ARCHITECTURE.md`.
+## Admin Student Management Extension (2026-09-25)
+
+| Operation | Admin | Accountant | Teacher | Parent / Learner |
+| --- | --- | --- | --- | --- |
+| Read student management record and change history | Current school and assigned branch | No | No | No |
+| Edit personal student details with revision and reason | Current school and assigned branch | No | No | No |
+| Archive / restore a madrasa pupil | Current school and assigned branch | No | No | No |
+| Permanently delete learning / payment history | Not provided | No | No | No |
+
+These rules apply to /api/admin/students/:id/record, /edit, /archive and /restore.
+The server rechecks account/school activity and obtains the branch from the
+current account. Inactive pupils leave the active teacher roster; historical
+records and class/guardian links are retained. Online learner account access is
+managed separately, not through pupil archiving.
