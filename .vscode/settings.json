@@ -1,0 +1,4 @@
+{
+  "git.ignoredRepositories": ["backend"],
+  "git.autorefresh": true
+}
