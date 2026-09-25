@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'public_shell.dart';
 
@@ -42,7 +44,10 @@ class PublicSiteFooter extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 20),
-                        _TelegramIcon(),
+                        _WhatsAppContact(phone: '+255715735335'),
+                        _WhatsAppContact(phone: '+255683186987'),
+                        SizedBox(height: 12),
+                        _InstagramIcon(),
                       ],
                     );
                     final support = _FooterLinks(
@@ -107,8 +112,8 @@ class PublicSiteFooter extends StatelessWidget {
   );
 }
 
-class _TelegramIcon extends StatelessWidget {
-  const _TelegramIcon();
+class _InstagramIcon extends StatelessWidget {
+  const _InstagramIcon();
 
   @override
   Widget build(BuildContext context) => SizedBox.square(
@@ -120,13 +125,68 @@ class _TelegramIcon extends StatelessWidget {
         border: Border.all(color: const Color(0xFF52708B)),
       ),
       child: const IconButton(
-        key: ValueKey('footer-telegram'),
-        tooltip: 'Telegram link coming soon',
+        key: ValueKey('footer-instagram'),
+        tooltip: 'Instagram link coming soon',
         onPressed: null,
         disabledColor: Color(0xFFD3E0ED),
-        icon: Icon(Icons.telegram, size: 24),
+        icon: FaIcon(FontAwesomeIcons.instagram, size: 24),
       ),
     ),
+  );
+}
+
+class _WhatsAppContact extends StatelessWidget {
+  const _WhatsAppContact({required this.phone});
+
+  final String phone;
+
+  Future<void> _openWhatsApp(BuildContext context) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(
+        Uri.https('wa.me', phone.substring(1)),
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank',
+      );
+    } on Exception {
+      opened = false;
+    }
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not open WhatsApp. Copy $phone and contact us directly.',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      IconButton(
+        key: ValueKey('footer-whatsapp-$phone'),
+        tooltip: 'Chat on WhatsApp: $phone',
+        onPressed: () => _openWhatsApp(context),
+        style: IconButton.styleFrom(
+          foregroundColor: const Color(0xFF65DB98),
+          minimumSize: const Size(46, 46),
+        ),
+        icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 24),
+      ),
+      const SizedBox(width: 10),
+      Flexible(
+        child: SelectableText(
+          phone,
+          style: const TextStyle(
+            color: Color(0xFFE3EAF2),
+            fontSize: 15,
+            height: 1.5,
+          ),
+        ),
+      ),
+    ],
   );
 }
 
