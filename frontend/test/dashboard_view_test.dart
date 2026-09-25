@@ -165,8 +165,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(requests, contains('/api/reports/attendance/summary'));
-      expect(find.text('Daily register'), findsOneWidget);
+      expect(requests, contains('/api/classes'));
+      expect(requests, isNot(contains('/api/reports/attendance/summary')));
+      expect(
+        find.text('Choose a class to open its daily register.'),
+        findsOneWidget,
+      );
       expect(find.text('Student admissions'), findsNothing);
       expect(tester.takeException(), isNull);
     },

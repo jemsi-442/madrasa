@@ -89,7 +89,7 @@ Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes
 
 The following React-era UI work is **not** available in Flutter yet: the office inquiry inbox, automated account recovery, student and guardian editing, attendance marking, hifdh entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
 
-The first reference-design dashboard stage adds a fixed/collapsible navy sidebar, gold navigation, page search, soft-color metric cards, and data-backed charts. Admin Students and Classes now include creation forms; Attendance remains a dedicated read-only summary. Teacher class views still respect teacher-scoped API results. A separate fundraising module now backs the Donations page. Full reference parity is not yet complete; see the expansion milestones below.
+The first reference-design dashboard stage adds a fixed/collapsible navy sidebar, gold navigation, page search, soft-color metric cards, and data-backed charts. Admin Students and Classes now include creation forms; Admin Attendance now supports daily registers, audited corrections, check-in times and saved-history review. Teacher class views still respect teacher-scoped API results. A separate fundraising module now backs the Donations page. Full reference parity is not yet complete; see the expansion milestones below.
 
 Flutter verification: `flutter analyze`, `flutter test`, and `flutter build web --release`. iOS builds require macOS/Xcode and have not been run here. Device builds and full API integration still need verification.
 
@@ -100,7 +100,7 @@ The repository CI and local release gate now run Flutter analyze, tests, and web
 ## 5. Next Milestones
 
 1. Finish the supplied ADMIN reference screens first: detailed curriculum/Qur'an,
-   attendance recording, reports, communications, settings and supporting APIs.
+   reports, communications, settings and supporting APIs.
 2. Refine the remaining admin create/edit/export workflows and first-run states
    with role, tenant, ownership and financial audit checks.
 3. Redesign other role workspaces only after their reference images are supplied;
@@ -122,7 +122,7 @@ The repository CI and local release gate now run Flutter analyze, tests, and web
 - Two additive migrations preserve existing data. MariaDB check constraints and
   composite tenant foreign keys enforce the new financial/event invariants.
 - Remaining: detailed academic curriculum/class coverage, passage-level Qur'an
-  completion, admin attendance editing, report jobs/exports, communications
+  completion, report jobs/exports, communications
   provider outbox, notification/search integration and offline conflict handling.
   These are designed but not presented as finished features.
 
@@ -155,3 +155,30 @@ Verification for this admin stage:
 - All 18 migrations are applied. Native Android/iOS builds are not verified here.
 - Final release web build passed with `--no-wasm-dry-run`; the local browser
   preview was rebuilt after the final session-isolation change.
+
+## Admin Attendance Register (2026-09-25)
+
+- Added an explicit ADMIN/assigned-TEACHER register API; non-academic roles remain
+  blocked. The legacy bulk-mark API remains TEACHER-only.
+- Applied migration 19 without resetting existing data: optional local check-in
+  time, optimistic row versions and database validation checks.
+- Added atomic partial saves, correction explanations, actor/before/after audit
+  history, stale-write detection and recoverable MariaDB concurrency conflicts.
+- Saved historical rows remain in the original class after a student transfer.
+  Unmarked students are distinct from absentees. Past unrecorded memberships
+  are not reconstructed; check-in uses Africa/Dar_es_Salaam school time.
+- Flutter admin Attendance now has date/class filters, four daily status cards,
+  a searchable/paged register, seven-day line chart, saved-status ring chart,
+  selected-student bulk editing, check-in/notes and a history dialog.
+- Failed saves retain form entries; stale forms require reload and unsaved changes
+  require discard confirmation. No offline/synced claims or fabricated attendance.
+
+Verification:
+- Backend typecheck/build and all 24 tests passed.
+- Flutter analyze passed and all 56 widget/unit tests passed, including nine new
+  attendance tests at 320, 768 and 1440 widths.
+- Release web build passed; native Android/iOS builds remain unverified.
+- Chromium end-to-end check passed using an isolated temporary school: sign-in,
+  class selection, attendance correction, saved version/check-in verification in
+  the database, history and desktop/mobile editor inspection. No browser runtime
+  errors; the test session and all its fixtures were removed afterward.

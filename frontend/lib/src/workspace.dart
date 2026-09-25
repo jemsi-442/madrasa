@@ -9,6 +9,7 @@ import 'workspace_chrome.dart';
 import 'student_registry_page.dart';
 import 'classes_page.dart';
 import 'attendance_page.dart';
+import 'attendance_register_page.dart';
 import 'admin_academic_pages.dart';
 import 'admin_overview.dart';
 import 'donations_page.dart';
@@ -58,7 +59,7 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       'Attendance',
       '/api/reports/attendance/summary',
       Icons.event_available_outlined,
-      'Saved attendance records',
+      'Daily registers and attendance history',
     ),
     SectionSpec(
       'Donations',
@@ -294,6 +295,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           submit: session.role == 'ADMIN' ? widget.state.submit : null,
         );
       case 'Attendance':
+        if (session.role == 'ADMIN') {
+          return AttendanceRegisterPage(
+            load: widget.state.load,
+            submit: widget.state.submit,
+            refreshToken: refreshToken,
+          );
+        }
         return AttendancePage(
           load: widget.state.load,
           refreshToken: refreshToken,

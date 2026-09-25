@@ -39,7 +39,14 @@ The admin reference implementation now includes a six-card overview with actual
 admissions, assessment coverage, recent activity, donations and upcoming events.
 Teachers and Subjects have independent searchable directories and create forms.
 Students support admissions with new or existing guardians, and Classes support
-creation with branch/teacher assignment. Attendance is still a read-only summary.
+creation with branch/teacher assignment. Admin Attendance now has a daily class
+register, status cards, a seven-day line chart, student search/filter/pagination,
+check-in times and a versioned editor with selected-student bulk actions.
+Saved corrections require an explanation; conflicts require an explicit reload
+and dirty dialogs ask before discarding work. History lists the latest 50 saves.
+Unmarked students and days without records are not treated as absence.
+Check-in uses Tanzania school time. Historical saved rows stay with their original
+class; unrecorded former members are not reconstructed from enrollment history.
 
 Donations is backed by its own database module: add donors and campaigns, record
 pledges, receive donations (including partial pledge collections), view receipts
@@ -54,7 +61,7 @@ Forms keep donation submission keys on retry. Concurrent reads/writes share one
 token refresh, and an old form cannot retry under a newly signed-in account.
 
 Remaining reference work includes full class curriculum, passage-level Qur'an
-tracking, admin attendance entry, teacher leave/attendance, reports/downloads,
+tracking, teacher leave/attendance, reports/downloads,
 communications delivery, notifications/global record search and offline sync.
 Those controls are not shown as working features. See
 [the admin domain contract](../ADMIN_PANEL_ARCHITECTURE.md) for their data design.
