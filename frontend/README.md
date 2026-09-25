@@ -23,6 +23,14 @@ The registration page creates an independent online learner through `POST /api/a
 
 Contact (`/#/contact`), parent access (`/#/parent-access`), and sign-in help (`/#/forgot-password`) are dedicated pages that submit office inquiries. Sign-in help is an office-assisted recovery request, not an automated password-reset flow. Parent-child linkage and staff accounts remain office-controlled.
 
+## Public footer
+
+The home footer groups support and information links above a separate, divided copyright strip. Login and registration retain the minimal copyright footer.
+
+Terms (`/#/terms`) and privacy (`/#/privacy`) have dedicated public pages. No approved institutional legal text was supplied, so both clearly show publication-pending notices instead of invented policies. Approved terms and privacy copy are required before public release.
+
+The Telegram icon is intentionally disabled until the foundation supplies its official URL. Instagram is not shown until its link is supplied.
+
 ## Verify
 
 ```bash

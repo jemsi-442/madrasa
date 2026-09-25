@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'public_shell.dart';
+import 'public_site_footer.dart';
 
 class PublicHomeScreen extends StatefulWidget {
   const PublicHomeScreen({super.key, required this.onNavigate});
@@ -67,11 +68,10 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                     key: aboutKey,
                     onJoin: () => widget.onNavigate('/register'),
                   ),
-                  _SchoolsSection(
+                  PublicSiteFooter(
                     key: schoolsKey,
-                    onContact: () => widget.onNavigate('/contact'),
+                    onNavigate: widget.onNavigate,
                   ),
-                  const PublicFooter(),
                 ],
               ),
             ),
@@ -635,67 +635,5 @@ class _LearningPath extends StatelessWidget {
         ),
       ),
     ],
-  );
-}
-
-class _SchoolsSection extends StatelessWidget {
-  const _SchoolsSection({super.key, required this.onContact});
-  final VoidCallback onContact;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    color: publicInk,
-    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 42),
-    child: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1160),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final message = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'For schools. For families. For the future.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Talk to our office about admissions, school support or parent access.',
-                  style: TextStyle(
-                    color: Color(0xFFBBC9D6),
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            );
-            final action = GoldAction(
-              label: 'Get in Touch',
-              fullWidth: false,
-              icon: Icons.arrow_forward_rounded,
-              onPressed: onContact,
-            );
-            return constraints.maxWidth > 760
-                ? Row(
-                    children: [
-                      Expanded(child: message),
-                      const SizedBox(width: 36),
-                      action,
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [message, const SizedBox(height: 24), action],
-                  );
-          },
-        ),
-      ),
-    ),
   );
 }

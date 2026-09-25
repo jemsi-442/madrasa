@@ -197,28 +197,42 @@ class PublicHeaderBar extends StatelessWidget {
 }
 
 class PublicFooter extends StatelessWidget {
-  const PublicFooter({super.key});
+  const PublicFooter({super.key, this.showDivider = false});
+
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
     child: Material(
       key: const ValueKey('public-footer'),
       color: publicBrandBlue,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: Text(
-            '\u00a9 ${DateTime.now().year} $publicBrandName. All rights reserved.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFE3EAF2),
-              fontSize: 12,
-              height: 1.5,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showDivider)
+            const Divider(
+              key: ValueKey('public-footer-divider'),
+              height: 1,
+              thickness: 1,
+              color: Color(0xFF46617B),
+            ),
+          SafeArea(
+            top: false,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              child: Text(
+                '\u00a9 ${DateTime.now().year} $publicBrandName. All rights reserved.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFE3EAF2),
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     ),
   );

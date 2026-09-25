@@ -5,6 +5,7 @@ import 'app_state.dart';
 import 'foundation_ui.dart';
 import 'public_pages.dart';
 import 'office_help_page.dart';
+import 'public_information_page.dart';
 import 'registration_page.dart';
 import 'workspace.dart';
 
@@ -31,7 +32,8 @@ class _MifAppState extends State<MifApp> {
     return AnimatedBuilder(
       animation: appState,
       builder: (context, _) {
-        if (appState.session != null) {
+        final informationPage = path == '/terms' || path == '/privacy';
+        if (appState.session != null && !informationPage) {
           return WorkspaceScreen(state: appState);
         }
 
@@ -45,6 +47,12 @@ class _MifAppState extends State<MifApp> {
         }
 
         return switch (path) {
+          '/terms' || '/privacy' => PublicInformationScreen(
+            document: path == '/terms'
+                ? PublicDocument.terms
+                : PublicDocument.privacy,
+            onNavigate: navigate,
+          ),
           '/login' => LoginScreen(
             state: appState,
             onNavigate: navigate,
@@ -148,6 +156,8 @@ class _MifAppState extends State<MifApp> {
         '/': (context) => routePage(context, '/'),
         '/login': (context) => routePage(context, '/login'),
         '/register': (context) => routePage(context, '/register'),
+        '/terms': (context) => routePage(context, '/terms'),
+        '/privacy': (context) => routePage(context, '/privacy'),
         '/contact': (context) => routePage(context, '/contact'),
         '/forgot-password': (context) => routePage(context, '/forgot-password'),
         '/parent-access': (context) => routePage(context, '/parent-access'),
