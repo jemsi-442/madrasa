@@ -1,0 +1,11 @@
+# Recreated by npm install, Prisma generation and npm run build.
+/node_modules/
+/dist/
+/coverage/
+
+# Keep local credentials out of source control; retain the template.
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo

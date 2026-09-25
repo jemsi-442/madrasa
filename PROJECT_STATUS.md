@@ -283,3 +283,15 @@ Verification:
 Scope still pending: complete lifecycle controls for classes/staff and other
 admin modules; consistent audit/version protection for legacy mutation APIs.
 This is the first working admin CRUD slice, not completion of all system CRUD.
+## Git Repository Scope Correction (2026-09-25)
+
+- This checkout has independent repositories at the project root and backend/.
+  Earlier stage commits were present in the root but absent from the nested
+  backend history, which explains VS Code's remaining M/U badges.
+- Backend commit 24e394a synchronizes the previously root-committed source,
+  migrations and tests, and stops tracking dist/, node_modules/ and .env.
+  These files remain on disk and are now covered by backend/.gitignore.
+- No Git directory was deleted, no history was rewritten and nothing was pushed.
+  Future backend stages must check and commit both repositories.
+- The old backend commit already contained .env. Removing it from tracking does
+  not remove historical copies; credentials must be rotated if shared.

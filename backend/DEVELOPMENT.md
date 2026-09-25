@@ -218,3 +218,21 @@ Editing a learner profile does not rename or disable its separate login account.
 No schema migration is required. The existing registration, class-placement and
 guardian-link workflows remain separate. These endpoints do not replace every
 legacy student mutation or constitute full CRUD for classes, staff or finance.
+## Git Repositories in This Checkout
+
+This checkout currently contains two independent Git repositories: the project
+root and backend/.git. A commit at the project root does not update the backend
+repository shown separately by VS Code. Neither repository has been removed or
+had its history rewritten.
+
+After each backend step, inspect both `git status --short` (project root) and
+`git -C backend status --short`. Commit the intended backend source changes in
+the backend repository as well as the project-level changes in the root.
+Commits are local; pushing to a remote is a separate, explicitly requested step.
+
+The backend repository now ignores dist/, node_modules/, coverage/ and local
+.env files. They remain on disk; reinstall/build with npm ci, npm run
+prisma:generate and npm run build after a fresh clone. The .env.example template
+is tracked. The older backend commit included .env: ignoring it now does not
+erase historical copies. Rotate credentials if that history was ever shared;
+any history rewrite needs a separately agreed procedure.
