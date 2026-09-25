@@ -99,10 +99,15 @@ The repository CI and local release gate now run Flutter analyze, tests, and web
 
 ## 5. Next Milestones
 
-1. Port the parent portal and learner course/lesson experience with dedicated pages and tests.
-2. Port staff write workflows, including attendance, registry, finance, and course studio, with role and ownership checks.
-3. Add Flutter integration tests against a seeded backend on web and Android; verify iOS on macOS.
-4. Configure production HTTPS API, CORS, platform signing, and deployment before release.
+1. Finish the supplied ADMIN reference screens first: detailed curriculum/Qur'an,
+   attendance recording, reports, communications, settings and supporting APIs.
+2. Refine the remaining admin create/edit/export workflows and first-run states
+   with role, tenant, ownership and financial audit checks.
+3. Redesign other role workspaces only after their reference images are supplied;
+   retain their current access boundaries in the meantime.
+4. Add Flutter integration tests against a seeded backend on web and Android;
+   verify iOS on macOS.
+5. Configure production HTTPS API, CORS, platform signing and deployment before release.
 
 ## Admin reference implementation: backend expansion (2026-09-25)
 
@@ -148,3 +153,5 @@ Verification for this admin stage:
   students and classes; desktop and mobile layouts were inspected with no
   JavaScript errors. Test browser sessions were logged out afterward.
 - All 18 migrations are applied. Native Android/iOS builds are not verified here.
+- Final release web build passed with `--no-wasm-dry-run`; the local browser
+  preview was rebuilt after the final session-isolation change.
