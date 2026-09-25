@@ -61,4 +61,19 @@ void main() {
     expect(find.byType(TextFormField), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('desktop login renders its brand panel and form', (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const MifApp());
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('A familiar place\nto continue.'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
 }

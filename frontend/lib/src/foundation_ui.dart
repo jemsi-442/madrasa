@@ -10,6 +10,44 @@ const blue = Color(0xFF3A70AD);
 const lavender = Color(0xFF7168AA);
 const line = Color(0xFFE8E7E3);
 
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key, this.compact = false, this.light = false});
+
+  final bool compact;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipOval(
+          child: Image.asset(
+            'assets/mif-logo.png',
+            width: compact ? 43 : 54,
+            height: compact ? 43 : 54,
+            fit: BoxFit.cover,
+            semanticLabel: 'Modern Islamic Foundation logo',
+          ),
+        ),
+        const SizedBox(width: 11),
+        Flexible(
+          child: Text(
+            'MODERN ISLAMIC\nFOUNDATION',
+            style: TextStyle(
+              color: light ? Colors.white : ink,
+              fontSize: compact ? 11 : 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.65,
+              height: 1.17,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class PatternBackdrop extends StatelessWidget {
   const PatternBackdrop({super.key, required this.child});
 

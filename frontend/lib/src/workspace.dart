@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
-import 'app.dart';
 import 'app_state.dart';
 import 'dashboard_views.dart';
 import 'foundation_ui.dart';
