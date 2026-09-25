@@ -41,6 +41,7 @@ Future<bool> showAdminForm(
   PageLoader? load,
   String saveLabel = 'Save',
   String? note,
+  String? conflictMessage,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -52,6 +53,7 @@ Future<bool> showAdminForm(
         load: load,
         saveLabel: saveLabel,
         note: note,
+        conflictMessage: conflictMessage,
       ),
     ) ??
     false;
@@ -64,9 +66,10 @@ class _AdminForm extends StatefulWidget {
     required this.load,
     required this.saveLabel,
     this.note,
+    this.conflictMessage,
   });
   final String title, saveLabel;
-  final String? note;
+  final String? note, conflictMessage;
   final List<AdminField> fields;
   final Future<void> Function(Map<String, dynamic>) onSave;
   final PageLoader? load;
@@ -111,7 +114,8 @@ class _AdminFormState extends State<_AdminForm> {
         setState(() {
           error = switch (e) {
             ApiException(statusCode: 409) =>
-              'This entry conflicts with an existing record. Check your details before trying again.',
+              widget.conflictMessage ??
+                  'This entry conflicts with an existing record. Check your details before trying again.',
             ApiException(statusCode: 422) =>
               'Please check the details and dates, then try again.',
             ApiException(statusCode: 404) =>

@@ -251,3 +251,35 @@ Verification:
   127.0.0.1: login, two reloads retaining the selected page, logout and reload
   staying signed out. Concurrent teacher tabs also restored successfully with
   one active rotating refresh session. No browser runtime errors.
+## Admin CRUD: Student Records (2026-09-25)
+
+- Students retains its existing add/view flow and now has a per-student Actions
+  menu for personal-detail editing, change history, archiving and restoration.
+  Read-only roles do not receive these mutation controls.
+- Each edit loads the current record, prefills the form and allows optional
+  details to be cleared. A reason is required. Failed saves retain entries;
+  conflicting/stale records ask the user to close and reopen the form.
+- Archiving is reversible: madrasa pupils become Inactive, leave the active
+  teacher roster, and keep class/guardian links plus learning/payment history.
+  They can be found under the Inactive filter and restored. No hard deletion.
+- The new admin endpoints recheck active account/school and current branch.
+  A locked transaction combines revision checking, changes and actor/reason/
+  before/after audit history. Duplicate admission numbers and invalid dates are
+  rejected. The history dialog shows the latest 20 management changes.
+- Online learner login access is deliberately not changed by pupil archiving.
+  Class placement and guardian management remain separate from personal editing.
+  No schema migration was required.
+
+Verification:
+- Backend build and all 43 tests passed (serialized run; the earlier parallel
+  run hit four 5-second timeouts under concurrent browser/compiler load).
+- Flutter analyze passed and all 87 tests passed, including ten new cases for
+  edit/clear, confirmation, archive/restore, failed saves, history, role visibility
+  and layouts at 320, 768 and 1440 widths. Release web build passed.
+- Chromium exercised the actual admin edit, archive, restore and history controls.
+  The persisted name/status and all three audit events were checked in MariaDB;
+  zero browser runtime errors and all isolated fixtures removed.
+
+Scope still pending: complete lifecycle controls for classes/staff and other
+admin modules; consistent audit/version protection for legacy mutation APIs.
+This is the first working admin CRUD slice, not completion of all system CRUD.

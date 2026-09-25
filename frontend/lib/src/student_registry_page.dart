@@ -4,6 +4,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'admin_forms.dart';
 import 'academic_actions.dart';
+import 'student_record_actions.dart';
 
 class StudentRegistryPage extends StatefulWidget {
   const StudentRegistryPage({
@@ -292,13 +293,14 @@ class _StudentRegistryPageState extends State<StudentRegistryPage> {
                       const EmptyRecords('No students match these filters.')
                     else
                       RecordTable(
-                        columns: const [
+                        columns: [
                           'Student',
                           'Admission no.',
                           'Class',
                           'Guardian',
                           'Status',
                           '',
+                          if (widget.submit != null) 'Actions',
                         ],
                         rows: [
                           for (final student in students)
@@ -429,6 +431,16 @@ class _StudentRegistryPageState extends State<StudentRegistryPage> {
                                     ),
                                   ),
                                 ),
+                                if (widget.submit != null)
+                                  DataCell(
+                                    StudentRecordActions(
+                                      key: ValueKey(student['id']),
+                                      student: student,
+                                      load: widget.load,
+                                      submit: widget.submit!,
+                                      onChanged: () => reload(resetPage: true),
+                                    ),
+                                  ),
                               ],
                             ),
                         ],
