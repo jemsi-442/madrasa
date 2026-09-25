@@ -46,39 +46,37 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
     data: publicTheme(context),
     child: Scaffold(
       backgroundColor: publicCream,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _HomeHeader(
-              selected: selected,
-              onSection: openSection,
-              onNavigate: widget.onNavigate,
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _HomeHero(
-                      key: topKey,
-                      featuresKey: featuresKey,
-                      onJoin: () => widget.onNavigate('/register'),
-                      onExplore: () => openSection('About'),
-                    ),
-                    _AboutSection(
-                      key: aboutKey,
-                      onJoin: () => widget.onNavigate('/register'),
-                    ),
-                    _SchoolsSection(
-                      key: schoolsKey,
-                      onContact: () => widget.onNavigate('/contact'),
-                    ),
-                    const PublicFooter(),
-                  ],
-                ),
+      body: Column(
+        children: [
+          _HomeHeader(
+            selected: selected,
+            onSection: openSection,
+            onNavigate: widget.onNavigate,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _HomeHero(
+                    key: topKey,
+                    featuresKey: featuresKey,
+                    onJoin: () => widget.onNavigate('/register'),
+                    onExplore: () => openSection('About'),
+                  ),
+                  _AboutSection(
+                    key: aboutKey,
+                    onJoin: () => widget.onNavigate('/register'),
+                  ),
+                  _SchoolsSection(
+                    key: schoolsKey,
+                    onContact: () => widget.onNavigate('/contact'),
+                  ),
+                  const PublicFooter(),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );
@@ -106,108 +104,98 @@ class _HomeHeader extends StatelessWidget {
     builder: (context, constraints) {
       final wide = constraints.maxWidth >= 1150;
       final compact = constraints.maxWidth < 600;
-      return Container(
-        decoration: const BoxDecoration(
-          color: publicCream,
-          border: Border(bottom: BorderSide(color: Color(0xFFEFEDE8))),
-        ),
-        height: compact ? 76 : 98,
-        padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 36),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1320),
-            child: Row(
-              children: [
-                Flexible(
-                  child: InkWell(
-                    onTap: () => onSection('Home'),
-                    borderRadius: BorderRadius.circular(8),
-                    child: PublicBrand(compact: compact),
-                  ),
-                ),
-                const Spacer(),
-                if (wide) ...[
-                  for (final label in sections)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 5),
-                      child: TextButton(
-                        onPressed: () => onSection(label),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              label,
-                              style: TextStyle(
-                                color: selected == label
-                                    ? publicGold
-                                    : publicInk,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 9),
-                            Container(
-                              width: 28,
-                              height: 2,
-                              decoration: BoxDecoration(
-                                color: selected == label
-                                    ? publicGold
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 24),
-                ],
-                OutlinedButton(
-                  key: const ValueKey('header-login'),
-                  onPressed: () => onNavigate('/login'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: publicInk,
-                    side: const BorderSide(color: publicInk),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 14 : 23,
-                      vertical: 17,
-                    ),
-                    minimumSize: const Size(0, 44),
-                  ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                if (wide) ...[
-                  const SizedBox(width: 14),
-                  GoldAction(
-                    label: 'Get Started',
-                    fullWidth: false,
-                    onPressed: () => onNavigate('/register'),
-                  ),
-                ] else ...[
-                  const SizedBox(width: 4),
-                  PopupMenuButton<String>(
-                    tooltip: 'Open menu',
-                    icon: const Icon(Icons.menu_rounded, color: publicInk),
-                    onSelected: (value) => value == 'Get Started'
-                        ? onNavigate('/register')
-                        : onSection(value),
-                    itemBuilder: (_) => [...sections, 'Get Started']
-                        .map(
-                          (label) =>
-                              PopupMenuItem(value: label, child: Text(label)),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ],
+      return PublicHeaderBar(
+        child: Row(
+          children: [
+            Flexible(
+              child: InkWell(
+                onTap: () => onSection('Home'),
+                borderRadius: BorderRadius.circular(8),
+                child: PublicBrand(light: true, compact: compact),
+              ),
             ),
-          ),
+            const Spacer(),
+            if (wide) ...[
+              for (final label in sections)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: TextButton(
+                    onPressed: () => onSection(label),
+                    style: TextButton.styleFrom(foregroundColor: Colors.white),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: selected == label
+                                ? publicHeaderAccent
+                                : Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        Container(
+                          width: 28,
+                          height: 2,
+                          decoration: BoxDecoration(
+                            color: selected == label
+                                ? publicHeaderAccent
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 24),
+            ],
+            OutlinedButton(
+              key: const ValueKey('header-login'),
+              onPressed: () => onNavigate('/login'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFF93A6BA)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 14 : 23,
+                  vertical: 17,
+                ),
+                minimumSize: const Size(0, 44),
+              ),
+              child: const Text(
+                'Login',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (wide) ...[
+              const SizedBox(width: 14),
+              GoldAction(
+                label: 'Get Started',
+                fullWidth: false,
+                onPressed: () => onNavigate('/register'),
+              ),
+            ] else ...[
+              const SizedBox(width: 4),
+              PopupMenuButton<String>(
+                tooltip: 'Open menu',
+                icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                onSelected: (value) => value == 'Get Started'
+                    ? onNavigate('/register')
+                    : onSection(value),
+                itemBuilder: (_) => [...sections, 'Get Started']
+                    .map(
+                      (label) =>
+                          PopupMenuItem(value: label, child: Text(label)),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
         ),
       );
     },

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 typedef PublicNavigate = void Function(String path);
 
 const publicInk = Color(0xFF092136);
+// Dominant navy sampled from assets/mif-logo.png.
+const publicBrandBlue = Color(0xFF011F3D);
+const publicHeaderAccent = Color(0xFFE5BD67);
 const publicGold = Color(0xFFA87722);
 const publicCream = Color(0xFFFCFAF6);
 const publicMuted = Color(0xFF69778B);
@@ -130,7 +133,7 @@ class _BrandPainter extends CustomPainter {
         ..close(),
       paint,
     );
-    paint.color = light ? Colors.white : publicInk;
+    paint.color = light ? Colors.white : publicBrandBlue;
     canvas.drawPath(
       Path()
         ..moveTo(25, 29)
@@ -157,18 +160,62 @@ class _BrandPainter extends CustomPainter {
       oldDelegate.light != light;
 }
 
+class PublicHeaderBar extends StatelessWidget {
+  const PublicHeaderBar({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return Material(
+      key: const ValueKey('public-header'),
+      color: publicBrandBlue,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 16 : 36,
+            vertical: 12,
+          ),
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 1320,
+                minHeight: compact ? 52 : 64,
+              ),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class PublicFooter extends StatelessWidget {
   const PublicFooter({super.key});
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    color: publicCream,
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-    child: Text(
-      '\u00a9 ${DateTime.now().year} $publicBrandName. All rights reserved.',
-      textAlign: TextAlign.center,
-      style: const TextStyle(color: publicMuted, fontSize: 11, height: 1.5),
+  Widget build(BuildContext context) => Material(
+    key: const ValueKey('public-footer'),
+    color: publicBrandBlue,
+    child: SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        child: Text(
+          '\u00a9 ${DateTime.now().year} $publicBrandName. All rights reserved.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFE3EAF2),
+            fontSize: 12,
+            height: 1.5,
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -311,108 +358,116 @@ class AuthFrame extends StatelessWidget {
     data: publicTheme(context),
     child: Scaffold(
       backgroundColor: publicCream,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 900;
-            final content = LayoutBuilder(
-              builder: (context, contentSize) {
-                return SingleChildScrollView(
-                  key: const ValueKey('auth-scroll'),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: contentSize.maxHeight,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: wide ? 30 : 16,
-                            vertical: 18,
-                          ),
-                          child: Row(
-                            children: [
-                              if (!wide)
-                                const Expanded(
-                                  child: PublicBrand(compact: true),
-                                )
-                              else
-                                const Spacer(),
-                              TextButton.icon(
-                                onPressed: () => onNavigate('/'),
-                                icon: const Icon(
-                                  Icons.arrow_back_rounded,
-                                  size: 17,
-                                ),
-                                label: const Text('Home'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: wide ? 36 : 16,
-                            vertical: wide ? 30 : 16,
-                          ),
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: registration ? 690 : 460,
-                              ),
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(wide ? 36 : 24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: const Color(0xFFE8EBEE),
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x08092136),
-                                      blurRadius: 35,
-                                      offset: Offset(0, 12),
-                                    ),
-                                  ],
-                                ),
-                                child: child,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const PublicFooter(),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-            return Row(
+      body: Column(
+        children: [
+          PublicHeaderBar(
+            child: Row(
               children: [
-                if (wide)
-                  SizedBox(
-                    width: (constraints.maxWidth * 0.32).clamp(290.0, 430.0),
-                    child: _AuthStory(
-                      registration: registration,
-                      onHome: () => onNavigate('/'),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      onTap: () => onNavigate('/'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: PublicBrand(
+                        light: true,
+                        compact: MediaQuery.sizeOf(context).width < 600,
+                      ),
                     ),
                   ),
-                Expanded(child: content),
+                ),
+                const SizedBox(width: 16),
+                TextButton.icon(
+                  onPressed: () => onNavigate('/'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: const Text('Home'),
+                ),
               ],
-            );
-          },
-        ),
+            ),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              bottom: false,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 900;
+                  return Row(
+                    children: [
+                      if (wide)
+                        SizedBox(
+                          width: (constraints.maxWidth * 0.32).clamp(
+                            290.0,
+                            430.0,
+                          ),
+                          child: _AuthStory(registration: registration),
+                        ),
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, contentSize) =>
+                              SingleChildScrollView(
+                                key: const ValueKey('auth-scroll'),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: contentSize.maxHeight,
+                                  ),
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: wide ? 36 : 16,
+                                      vertical: wide ? 32 : 24,
+                                    ),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: registration ? 690 : 460,
+                                        ),
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: EdgeInsets.all(
+                                            wide ? 36 : 24,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFE8EBEE),
+                                            ),
+                                            boxShadow: const [
+                                              BoxShadow(
+                                                color: Color(0x08092136),
+                                                blurRadius: 35,
+                                                offset: Offset(0, 12),
+                                              ),
+                                            ],
+                                          ),
+                                          child: child,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+          const PublicFooter(),
+        ],
       ),
     ),
   );
 }
 
 class _AuthStory extends StatelessWidget {
-  const _AuthStory({required this.registration, required this.onHome});
+  const _AuthStory({required this.registration});
   final bool registration;
-  final VoidCallback onHome;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -420,7 +475,7 @@ class _AuthStory extends StatelessWidget {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFF061C2D), Color(0xFF152F45)],
+        colors: [publicBrandBlue, Color(0xFF152F45)],
       ),
     ),
     child: Stack(
@@ -439,15 +494,6 @@ class _AuthStory extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    InkWell(
-                      onTap: onHome,
-                      borderRadius: BorderRadius.circular(12),
-                      child: const Padding(
-                        padding: EdgeInsets.all(8),
-                        child: PublicBrand(light: true, stacked: true),
-                      ),
-                    ),
-                    const SizedBox(height: 38),
                     Text(
                       registration
                           ? 'Join a growing community\nbuilding brighter futures.'
