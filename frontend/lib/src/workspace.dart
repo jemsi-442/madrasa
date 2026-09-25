@@ -13,6 +13,9 @@ import 'attendance_register_page.dart';
 import 'admin_academic_pages.dart';
 import 'admin_overview.dart';
 import 'donations_page.dart';
+import 'teacher_teaching_pages.dart';
+import 'teacher_students_page.dart';
+import 'teacher_quran_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -114,22 +117,40 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
   ],
   'TEACHER' => const [
     SectionSpec(
-      'Home',
-      '/api/reports/teacher-dashboard',
+      'Dashboard',
+      '/api/teacher-workspace/overview',
       Icons.home_outlined,
-      'Your teaching day',
+      'Your classes, learners and teaching tasks in one place.',
     ),
     SectionSpec(
-      'My classes',
-      '/api/classes',
+      'My Classes',
+      '/api/teacher-workspace/classes',
+      Icons.co_present_outlined,
+      'Open a class to record attendance and follow student progress.',
+    ),
+    SectionSpec(
+      'My Students',
+      '/api/teacher-workspace/students',
+      Icons.people_outline,
+      'See individual learning records and identify where support is needed.',
+    ),
+    SectionSpec(
+      "Qur'an Tracking",
+      '/api/teacher-workspace/quran',
       Icons.menu_book_outlined,
-      'Classes assigned to you',
+      'Record exactly what each learner read, memorised or revised.',
+    ),
+    SectionSpec(
+      'Attendance',
+      '/api/attendance/register',
+      Icons.calendar_month_outlined,
+      'Record class attendance. Unmarked students stay unmarked.',
     ),
     SectionSpec(
       'My courses',
       '/api/teaching/courses',
       Icons.auto_stories_outlined,
-      'Courses assigned to you',
+      'Your assigned online courses',
     ),
     SectionSpec(
       'School updates',
@@ -210,15 +231,21 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   late Future<dynamic> currentData;
   late List<SectionSpec> sections;
 
-  bool get dedicated => [
-    'Students',
-    'Classes',
-    'My classes',
-    'Attendance',
-    'Teachers',
-    'Subjects',
-    'Donations',
-  ].contains(sections[selectedIndex].title);
+  final quranKey = GlobalKey<TeacherQuranPageState>();
+  String? teachingClassId;
+  Map<String, dynamic>? teachingStudent;
+
+  bool get dedicated =>
+      (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
+      [
+        'Students',
+        'Classes',
+        'My classes',
+        'Attendance',
+        'Teachers',
+        'Subjects',
+        'Donations',
+      ].contains(sections[selectedIndex].title);
 
   Future<dynamic> loadCurrent() => dedicated
       ? Future.value(null)
@@ -231,9 +258,29 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     currentData = sections.isEmpty ? Future.value(null) : loadCurrent();
   }
 
-  void selectSection(int index) {
+  Future<bool> leaveTeacherDraft() async =>
+      await quranKey.currentState?.confirmLeave() ?? true;
+
+  void openTeacher(
+    int index, {
+    String? classId,
+    Map<String, dynamic>? student,
+  }) async {
+    if (!await leaveTeacherDraft() || !mounted) return;
+    setState(() {
+      teachingClassId = classId;
+      teachingStudent = student;
+      selectedIndex = index;
+      currentData = loadCurrent();
+    });
+    scaffoldKey.currentState?.closeDrawer();
+  }
+
+  void selectSection(int index) async {
     if (index != selectedIndex) {
+      if (!await leaveTeacherDraft() || !mounted) return;
       setState(() {
+        teachingStudent = null;
         selectedIndex = index;
         currentData = loadCurrent();
       });
@@ -241,7 +288,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     scaffoldKey.currentState?.closeDrawer();
   }
 
-  void refresh() {
+  void requestSignOut() async {
+    if (!await leaveTeacherDraft() || !mounted) return;
+    await widget.state.signOut();
+  }
+
+  void refresh() async {
+    if (!await leaveTeacherDraft() || !mounted) return;
+    quranKey.currentState?.refreshPage();
     setState(() {
       refreshToken++;
       currentData = loadCurrent();
@@ -250,6 +304,47 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
+    if (session.role == 'TEACHER' && selectedIndex <= 4) {
+      return switch (selectedIndex) {
+        0 => TeacherOverviewPage(
+          load: widget.state.load,
+          onOpen: openTeacher,
+          refreshToken: refreshToken,
+        ),
+        1 => TeacherClassesPage(
+          load: widget.state.load,
+          onOpen: openTeacher,
+          refreshToken: refreshToken,
+        ),
+        2 => TeacherStudentsPage(
+          key: ValueKey(
+            'teacher-students-$teachingClassId-${teachingStudent?['id']}',
+          ),
+          load: widget.state.load,
+          submit: widget.state.submit,
+          onOpen: openTeacher,
+          initialClassId: teachingClassId,
+          initialStudent: teachingStudent,
+          refreshToken: refreshToken,
+        ),
+        3 => TeacherQuranPage(
+          key: quranKey,
+          load: widget.state.load,
+          submit: widget.state.submit,
+          teacherId: session.userId,
+          initialClassId: teachingClassId,
+          initialStudent: teachingStudent,
+        ),
+        _ => AttendanceRegisterPage(
+          key: ValueKey('teacher-attendance-$teachingClassId'),
+          load: widget.state.load,
+          submit: widget.state.submit,
+          refreshToken: refreshToken,
+          teacherMode: true,
+          initialClassId: teachingClassId,
+        ),
+      };
+    }
     if (session.role == 'ADMIN' && selectedIndex == 0) {
       return PageResult(
         future: currentData,
@@ -336,9 +431,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
     final narrow = MediaQuery.sizeOf(context).width < 1000;
     final section = sections[selectedIndex];
-    final firstName =
-        session.role == 'ADMIN' &&
-            session.fullName.trim() == 'System Administrator'
+    final firstName = session.role == 'TEACHER'
+        ? session.fullName.trim()
+        : session.role == 'ADMIN' &&
+              session.fullName.trim() == 'System Administrator'
         ? 'Admin'
         : session.fullName.trim().split(' ').first;
     final visibleTabs = sections.length > 4 ? 3 : sections.length;
@@ -376,7 +472,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 ),
                 PopupMenuButton<String>(
                   tooltip: 'Account menu',
-                  onSelected: (_) => widget.state.signOut(),
+                  onSelected: (_) => requestSignOut(),
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
                   ],
@@ -425,13 +521,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 if (!narrow)
                   WorkspaceTopBar(
                     fullName: session.fullName,
-                    roleLabel: _roleLabel(session.role),
+                    roleLabel: session.role == 'TEACHER'
+                        ? 'Teacher account'
+                        : _roleLabel(session.role),
                     items: items,
                     onSelect: selectSection,
                     collapsed: collapsed,
                     onToggle: () => setState(() => collapsed = !collapsed),
                     onRefresh: refresh,
-                    onSignOut: widget.state.signOut,
+                    onSignOut: requestSignOut,
                   ),
                 Expanded(
                   child: DecoratedBox(
@@ -467,6 +565,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
+                                          if (session.role == 'TEACHER') ...[
+                                            const Text(
+                                              'MY TEACHING WORKSPACE',
+                                              style: TextStyle(
+                                                color: gold,
+                                                letterSpacing: 1.6,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                          ],
                                           Text(
                                             selectedIndex == 0
                                                 ? 'Assalamu alaikum, $firstName'
@@ -492,6 +602,24 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                       ),
                                     ),
                                     if (!narrow &&
+                                        session.role == 'TEACHER' &&
+                                        selectedIndex == 0)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 20,
+                                          top: 12,
+                                        ),
+                                        child: FilledButton.icon(
+                                          onPressed: () => openTeacher(4),
+                                          icon: const Icon(
+                                            Icons.calendar_month_outlined,
+                                            size: 18,
+                                          ),
+                                          label: const Text('Take attendance'),
+                                        ),
+                                      ),
+                                    if (!narrow &&
+                                        session.role != 'TEACHER' &&
                                         MediaQuery.sizeOf(context).width >=
                                             1280)
                                       Padding(
@@ -557,7 +685,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 String _roleLabel(String role) => switch (role) {
   'ADMIN' => 'Administration',
   'ACCOUNTANT' => 'Finance',
-  'TEACHER' => 'Teaching',
+  'TEACHER' => 'Teacher workspace',
   'PARENT' => 'Family',
   'LEARNER' => 'Learning',
   _ => 'Account',

@@ -85,11 +85,11 @@ Important note:
 
 ## 3. Flutter Frontend Status
 
-Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes a responsive photo-led public home, split-panel sign-in and direct learner registration, dedicated contact/parent-access/sign-in-help pages, in-memory auth/refresh, responsive role navigation and read-only data views for accountant, teacher, parent and learner, plus the admin read/write workflows listed below. Backend roles determine access; there is no role selection on the login page.
+Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes a responsive photo-led public home, split-panel sign-in and direct learner registration, dedicated contact/parent-access/sign-in-help pages, in-memory auth/refresh, responsive role navigation and read-only data views for accountant, parent and learner, plus the admin and teacher read/write workflows listed below. Backend roles determine access; there is no role selection on the login page.
 
-The following React-era UI work is **not** available in Flutter yet: the office inquiry inbox, automated account recovery, student and guardian editing, attendance marking, hifdh entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
+The following React-era UI work is **not** available in Flutter yet: the office inquiry inbox, automated account recovery, student and guardian editing, legacy hifdh score entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
 
-The first reference-design dashboard stage adds a fixed/collapsible navy sidebar, gold navigation, page search, soft-color metric cards, and data-backed charts. Admin Students and Classes now include creation forms; Admin Attendance now supports daily registers, audited corrections, check-in times and saved-history review. Teacher class views still respect teacher-scoped API results. A separate fundraising module now backs the Donations page. Full reference parity is not yet complete; see the expansion milestones below.
+The first reference-design dashboard stage adds a fixed/collapsible navy sidebar, gold navigation, page search, soft-color metric cards, and data-backed charts. Admin Students and Classes now include creation forms; Admin Attendance now supports daily registers, audited corrections, check-in times and saved-history review. The teacher workspace now includes scoped classes/students, support follow-ups, exact Qur'an recording and daily attendance. A separate fundraising module now backs the Donations page. Full reference parity is not yet complete; see the expansion milestones below.
 
 Flutter verification: `flutter analyze`, `flutter test`, and `flutter build web --release`. iOS builds require macOS/Xcode and have not been run here. Device builds and full API integration still need verification.
 
@@ -103,8 +103,9 @@ The repository CI and local release gate now run Flutter analyze, tests, and web
    reports, communications, settings and supporting APIs.
 2. Refine the remaining admin create/edit/export workflows and first-run states
    with role, tenant, ownership and financial audit checks.
-3. Redesign other role workspaces only after their reference images are supplied;
-   retain their current access boundaries in the meantime.
+3. Continue the supplied TEACHER references with school curriculum, assessments,
+   report publication, private parent messaging and durable offline sync. See
+   TEACHER_WORKSPACE_ARCHITECTURE.md for the data and access contracts.
 4. Add Flutter integration tests against a seeded backend on web and Android;
    verify iOS on macOS.
 5. Configure production HTTPS API, CORS, platform signing and deployment before release.
@@ -182,3 +183,46 @@ Verification:
   class selection, attendance correction, saved version/check-in verification in
   the database, history and desktop/mobile editor inspection. No browser runtime
   errors; the test session and all its fixtures were removed afterward.
+
+## Teacher Reference Workspace: First Working Slice (2026-09-25)
+
+- Added separate Dashboard, My Classes, My Students, Qur'an Tracking and
+  Attendance screens using the supplied teacher layout direction. Existing
+  teacher online courses and notices remain accessible.
+- Applied additive migration 20: date-bounded weekly timetables, exact Qur'an
+  learning sessions and student support follow-ups, with tenant-composite keys.
+- Admin manages timetable entries from the Classes page. Current scheduled
+  lessons appear on the teacher dashboard and weekly class schedule; overlapping
+  class/teacher bookings are rejected transactionally.
+- Teachers see only their current assigned classes/students and account branch.
+  New workspace and attendance APIs recheck the active account and school.
+- Students have search/class/support filters and individual learning profiles.
+  Follow-ups can be added and completed without erasing their history.
+- Qur'an recording uses verified chapter/ayah bounds and juz filtering, a
+  selectable ayah grid, separate activities and teacher observations. Only
+  independently observed memorisation contributes to the unique-ayah count.
+  Retries reuse the same operation ID; corrections retain the voided original.
+- Unsaved Qur'an forms prompt before changing context, navigating, refreshing or
+  signing out. Unconfirmed saves retain their exact details for retry.
+- Teacher attendance reuses the versioned register and correction workflow.
+  Late arrivals count as present in its saved-record summary and trend;
+  unmarked students remain unmarked.
+- No invented assessment/report metrics, notification counts, lesson completion
+  percentages or offline/trusted-device badges.
+
+Remaining teacher reference pages: Subjects & Lessons, Assessments, Monthly
+Reports, Parent Communication and Offline Sync. These have design contracts in
+TEACHER_WORKSPACE_ARCHITECTURE.md, not duplicated or pretend implementations.
+Native Android/iOS builds and offline storage remain unverified/unimplemented.
+
+Verification:
+- Backend typecheck/build and all 32 tests passed, including eight teacher
+  integration tests for tenant/branch isolation, revoked access, canonical ayah
+  validation, retry safety, follow-ups and timetable conflicts.
+- Flutter analyze reported no issues and all 67 widget/unit tests passed.
+  Teacher layouts are covered at 320, 768 and 1672 widths, including failed-save
+  retry, unsaved-change protection and asynchronous access-revocation handling.
+- Release web build passed. Chromium verified teacher sign-in, class-filtered
+  navigation, student profile, exact ayah selection/save and scoped attendance.
+  The saved passage was checked in the database; desktop/mobile layouts were
+  inspected with zero browser runtime errors. All isolated fixtures were removed.

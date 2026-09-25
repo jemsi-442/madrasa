@@ -102,6 +102,8 @@ describe("teacher workspace", () => {
       })).status).toBe(404);
     }
     expect((await get("/api/teacher-workspace/students?search=Second")).body.data.items).toHaveLength(1);
+    const otherCampus = await prisma.student.findUniqueOrThrow({ where: { id: branchStudent } });
+    expect((await get(`/api/attendance/register?classId=${otherCampus.classId}&date=2026-09-01`)).status).toBe(404);
   });
   it("validates dates and canonical passages without writing bad records", async () => {
     for (const extra of [{ ayahTo: 31 }, { ayahFrom: 0 }, { ayahFrom: 12, ayahTo: 10 },
@@ -152,6 +154,7 @@ describe("teacher workspace", () => {
     await prisma.student.update({ where: { id: student }, data: { classId } });
     await prisma.user.update({ where: { id: teacher }, data: { status: "DISABLED" } });
     expect((await get("/api/teacher-workspace/classes")).status).toBe(403);
+    expect((await get(`/api/attendance/register?classId=${classId}&date=2026-09-01`)).status).toBe(403);
     await prisma.user.update({ where: { id: teacher }, data: { status: "ACTIVE" } });
   });
   it("allows only admin schedule changes and rejects overlapping teacher bookings atomically", async () => {

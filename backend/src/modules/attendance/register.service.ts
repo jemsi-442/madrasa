@@ -18,6 +18,7 @@ const authorizedClass = async (
   if (actor.role !== "ADMIN" && actor.role !== "TEACHER") throw new HttpError(403, "Not permitted");
   const record = await tx.class.findFirst({
     where: { id: BigInt(classId), orgId: BigInt(actor.orgId),
+      ...(actor.branchId ? { branchId: BigInt(actor.branchId) } : {}),
       ...(actor.role === "TEACHER" ? { teacherId: BigInt(actor.userId) } : {}) },
     select: { id: true, branchId: true, name: true, academicYear: true,
       teacher: { select: { id: true, fullName: true } } },

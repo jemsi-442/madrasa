@@ -1,3 +1,4 @@
+import 'class_timetable_dialog.dart';
 import 'package:flutter/material.dart';
 
 import 'dashboard_components.dart';
@@ -270,40 +271,61 @@ class _ClassesPageState extends State<ClassesPage> {
                             ),
                             DataCell(Text(recordText(item['academicYear']))),
                             DataCell(
-                              IconButton(
-                                tooltip: 'View ${item['name']}',
-                                icon: const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 19,
-                                ),
-                                onPressed: () => showRecordDetails(
-                                  context,
-                                  title: recordText(item['name']),
-                                  fields: {
-                                    'Level': recordText(item['level']),
-                                    'Academic year': recordText(
-                                      item['academicYear'],
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (widget.submit != null)
+                                    IconButton(
+                                      tooltip: 'Manage timetable',
+                                      icon: const Icon(
+                                        Icons.calendar_month_outlined,
+                                        size: 19,
+                                      ),
+                                      onPressed: () => showClassTimetable(
+                                        context,
+                                        item,
+                                        widget.load,
+                                        widget.submit!,
+                                      ),
                                     ),
-                                    'Campus': recordText(
-                                      recordMap(item['branch'])['name'],
+                                  IconButton(
+                                    tooltip: 'View ${item['name']}',
+                                    icon: const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 19,
                                     ),
-                                    'Teacher': recordText(
-                                      recordMap(item['teacher'])['fullName'],
+                                    onPressed: () => showRecordDetails(
+                                      context,
+                                      title: recordText(item['name']),
+                                      fields: {
+                                        'Level': recordText(item['level']),
+                                        'Academic year': recordText(
+                                          item['academicYear'],
+                                        ),
+                                        'Campus': recordText(
+                                          recordMap(item['branch'])['name'],
+                                        ),
+                                        'Teacher': recordText(
+                                          recordMap(
+                                            item['teacher'],
+                                          )['fullName'],
+                                        ),
+                                        'Teacher phone': recordText(
+                                          recordMap(item['teacher'])['phone'],
+                                        ),
+                                        'Teacher email': recordText(
+                                          recordMap(item['teacher'])['email'],
+                                        ),
+                                        'Current students':
+                                            '${recordNumber(recordMap(item['stats'])['currentStudents'])}',
+                                        'Capacity': recordText(
+                                          item['capacity'],
+                                          'Not set',
+                                        ),
+                                      },
                                     ),
-                                    'Teacher phone': recordText(
-                                      recordMap(item['teacher'])['phone'],
-                                    ),
-                                    'Teacher email': recordText(
-                                      recordMap(item['teacher'])['email'],
-                                    ),
-                                    'Current students':
-                                        '${recordNumber(recordMap(item['stats'])['currentStudents'])}',
-                                    'Capacity': recordText(
-                                      item['capacity'],
-                                      'Not set',
-                                    ),
-                                  },
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

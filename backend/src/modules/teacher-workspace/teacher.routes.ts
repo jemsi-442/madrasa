@@ -4,8 +4,7 @@ import { authenticate } from "../../shared/middleware/authenticate";
 import { requireRole } from "../../shared/middleware/require-role";
 import { requireTenantContext } from "../../shared/middleware/tenant-context";
 import { asyncHandler } from "../../shared/utils/async-handler";
-import { prisma } from "../../shared/db/prisma";
-import { HttpError } from "../../shared/errors/http-error";
+import { requireActiveSchoolAccount } from "../../shared/middleware/active-school-account";
 import { directoryQuery, recordId, sessionInput, sessionQuery, supportInput, timetableInput, voidInput } from "./teacher.schemas";
 import { addSupport, resolveSupport, saveQuran, studentQuran, teacherClasses, teacherOverview, teacherStudentProfile, teacherStudents, voidQuran } from "./teacher.service";
 import { cancelTimetable, createTimetable, getTimetable } from "./timetable.service";
@@ -15,16 +14,7 @@ export const teacherWorkspaceRouter = Router();
 export const classTimetableRouter = Router();
 for (const router of [teacherWorkspaceRouter, classTimetableRouter]) {
   router.use(authenticate, requireTenantContext, requireRole("ADMIN", "TEACHER"));
-  router.use(asyncHandler(async (req, _res, next) => {
-    const actor = req.authUser!;
-    const account = await prisma.user.findFirst({ where: {
-      id: BigInt(actor.userId), orgId: BigInt(actor.orgId), role: actor.role, status: "ACTIVE",
-      organization: { status: { in: ["ACTIVE", "TRIAL"] } },
-    }, select: { branchId: true } });
-    if (!account) throw new HttpError(403, "This account is no longer available");
-    actor.branchId = account.branchId?.toString() ?? null;
-    next();
-  }));
+  router.use(requireActiveSchoolAccount);
 }
 teacherWorkspaceRouter.use(requireRole("TEACHER"));
 teacherWorkspaceRouter.get("/overview", asyncHandler(async (req, res) => {

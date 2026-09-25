@@ -3,6 +3,7 @@ import 'admin_forms.dart';
 import 'attendance_register_editor.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'teacher_ui.dart';
 
 const attendanceKinds = [
   ('PRESENT', 'Present', forest, Icons.check_circle_outline),
@@ -31,20 +32,34 @@ class AttendanceRegisterPage extends StatefulWidget {
     required this.load,
     required this.submit,
     this.refreshToken = 0,
+    this.teacherMode = false,
+    this.initialClassId,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final int refreshToken;
+  final bool teacherMode;
+  final String? initialClassId;
   @override
   State<AttendanceRegisterPage> createState() => _AttendanceRegisterPageState();
 }
 
 class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
   DateTime date = schoolToday();
-  String classId = '', search = '', status = '';
+  late String classId = widget.initialClassId ?? '';
+  String search = '', status = '';
   int page = 1;
-  late Future<dynamic> classesFuture = widget.load('/api/classes');
+  String get classesPath =>
+      widget.teacherMode ? '/api/teacher-workspace/classes' : '/api/classes';
+  late Future<dynamic> classesFuture = widget.load(classesPath);
   Future<dynamic>? registerFuture;
+  @override
+  void initState() {
+    super.initState();
+    if (classId.isNotEmpty) {
+      registerFuture = widget.load('/api/attendance/register?$query');
+    }
+  }
 
   String get query => Uri(
     queryParameters: {'classId': classId, 'date': attendanceDay(date)},
@@ -58,7 +73,7 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
   void didUpdateWidget(covariant AttendanceRegisterPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.refreshToken != widget.refreshToken) {
-      classesFuture = widget.load('/api/classes');
+      classesFuture = widget.load(classesPath);
       if (classId.isNotEmpty) {
         registerFuture = widget.load('/api/attendance/register?$query');
       }
@@ -122,7 +137,7 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
         child: PageResult(
           future: classesFuture,
           onRetry: () => setState(() {
-            classesFuture = widget.load('/api/classes');
+            classesFuture = widget.load(classesPath);
           }),
           builder: (data) {
             final classes = recordList(data);
@@ -167,7 +182,11 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
                   ),
                 ),
                 if (classes.isEmpty)
-                  const Text('Create a class before taking attendance.'),
+                  Text(
+                    widget.teacherMode
+                        ? 'The school office has not assigned any classes yet.'
+                        : 'Create a class before taking attendance.',
+                  ),
               ],
             );
           },
@@ -200,21 +219,53 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
     final currentPage = page.clamp(1, pages == 0 ? 1 : pages);
     final visible = items.skip((currentPage - 1) * 10).take(10);
     final total = recordNumber(summary['total']);
-    final present = recordNumber(summary['present']);
+    final present =
+        recordNumber(summary['present']) +
+        (widget.teacherMode ? recordNumber(summary['late']) : 0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MetricRow(
           children: [
-            for (final (key, label, color, icon) in attendanceKinds)
-              DashboardMetric(
-                label: label,
-                value: '${recordNumber(summary[key.toLowerCase()])}',
-                icon: icon,
-                accent: color,
-                dense: true,
-                note: 'On selected date',
+            if (widget.teacherMode) ...[
+              TeacherMetric(
+                'Present',
+                '${summary['present']}',
+                'On time on the selected date',
+                Icons.people_outline,
+                forest,
               ),
+              TeacherMetric(
+                'Late',
+                '${summary['late']}',
+                'Present, arrived late',
+                Icons.schedule,
+                gold,
+              ),
+              TeacherMetric(
+                'Absent / excused',
+                '${recordNumber(summary['absent']) + recordNumber(summary['excused'])}',
+                '${summary['absent']} absent | ${summary['excused']} excused',
+                Icons.calendar_month_outlined,
+                lavender,
+              ),
+              TeacherMetric(
+                'Not yet marked',
+                '${summary['unmarked']}',
+                '$total saved records',
+                Icons.assignment_outlined,
+                blue,
+              ),
+            ] else
+              for (final (key, label, color, icon) in attendanceKinds)
+                DashboardMetric(
+                  label: label,
+                  value: '${recordNumber(summary[key.toLowerCase()])}',
+                  icon: icon,
+                  accent: color,
+                  dense: true,
+                  note: 'On selected date',
+                ),
           ],
         ),
         const SizedBox(height: 18),
@@ -404,7 +455,10 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
                       'Attendance trend',
                       subtitle: 'Present among saved records | Last 7 days',
                     ),
-                    AttendanceTrend(days: recordList(data['timeline'])),
+                    AttendanceTrend(
+                      days: recordList(data['timeline']),
+                      includeLate: widget.teacherMode,
+                    ),
                   ],
                 ),
               ),
@@ -413,9 +467,11 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const PanelHeading(
+                    PanelHeading(
                       'Attendance summary',
-                      subtitle: 'Selected class and date',
+                      subtitle: widget.teacherMode
+                          ? 'Late counts as present. Based on saved records.'
+                          : 'Selected class and date',
                     ),
                     RingChart(
                       center: total == 0
@@ -476,7 +532,12 @@ class AttendanceStatus extends StatelessWidget {
 }
 
 class AttendanceTrend extends StatelessWidget {
-  const AttendanceTrend({super.key, required this.days});
+  const AttendanceTrend({
+    super.key,
+    required this.days,
+    this.includeLate = false,
+  });
+  final bool includeLate;
   final List<Map<String, dynamic>> days;
   @override
   Widget build(BuildContext context) {
@@ -484,7 +545,10 @@ class AttendanceTrend extends StatelessWidget {
       for (final day in days)
         recordNumber(day['total']) == 0
             ? null
-            : recordNumber(day['present']) / recordNumber(day['total']) * 100,
+            : (recordNumber(day['present']) +
+                      (includeLate ? recordNumber(day['late']) : 0)) /
+                  recordNumber(day['total']) *
+                  100,
     ];
     if (values.every((v) => v == null)) {
       return const EmptyRecords('No attendance recorded in these seven days.');

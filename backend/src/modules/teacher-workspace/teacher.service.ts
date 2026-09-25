@@ -58,7 +58,14 @@ export const teacherStudents = async (actor: AuthenticatedUser, query: Directory
     prisma.student.findMany({ where, select: studentFields, orderBy: [{ fullName: "asc" }, { id: "asc" }],
       skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
   ]);
-  return jsonRecord({ items, meta: pageMeta(query.page, query.pageSize, total) });
+  const scope = studentScope(actor);
+  const summary = {
+    assignedStudents: await prisma.student.count({ where: scope }),
+    classes: await prisma.class.count({ where: classScope(actor) }),
+    followUps: await prisma.student.count({ where: { ...scope, supportNotes: { some: { resolvedAt: null } } } }),
+    withLearningRecords: await prisma.student.count({ where: { ...scope, quranSessions: { some: { voidedAt: null } } } }),
+  };
+  return jsonRecord({ items, summary, meta: pageMeta(query.page, query.pageSize, total) });
 };
 
 export const teacherOverview = async (actor: AuthenticatedUser) => {

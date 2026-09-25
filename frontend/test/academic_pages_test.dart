@@ -288,7 +288,9 @@ void main() {
       );
       expect(
         sectionsForRole(role).map((s) => s.title),
-        isNot(contains('Attendance')),
+        role == 'TEACHER'
+            ? contains('Attendance')
+            : isNot(contains('Attendance')),
       );
     }
     expect(sectionsForRole('ADMIN').first.title, 'Overview');

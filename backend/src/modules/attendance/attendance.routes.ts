@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireActiveSchoolAccount } from "../../shared/middleware/active-school-account";
 
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { authenticate } from "../../shared/middleware/authenticate";
@@ -15,7 +16,7 @@ import { getRegister, getRegisterHistory, saveRegister } from "./register.servic
 
 export const attendanceRouter = Router();
 
-attendanceRouter.use(authenticate, requireTenantContext);
+attendanceRouter.use(authenticate, requireTenantContext, requireActiveSchoolAccount);
 
 attendanceRouter.get("/register", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
   res.json({ success: true, data: await getRegister(req.authUser!, registerQuerySchema.parse(req.query)) });
