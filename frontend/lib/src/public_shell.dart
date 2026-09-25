@@ -168,24 +168,26 @@ class PublicHeaderBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 600;
-    return Material(
-      key: const ValueKey('public-header'),
-      color: publicBrandBlue,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 16 : 36,
-            vertical: 12,
-          ),
-          child: Center(
-            heightFactor: 1,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 1320,
-                minHeight: compact ? 52 : 64,
+    return RepaintBoundary(
+      child: Material(
+        key: const ValueKey('public-header'),
+        color: publicBrandBlue,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 16 : 36,
+              vertical: 12,
+            ),
+            child: Center(
+              heightFactor: 1,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 1320,
+                  minHeight: compact ? 52 : 64,
+                ),
+                child: child,
               ),
-              child: child,
             ),
           ),
         ),
@@ -198,21 +200,23 @@ class PublicFooter extends StatelessWidget {
   const PublicFooter({super.key});
 
   @override
-  Widget build(BuildContext context) => Material(
-    key: const ValueKey('public-footer'),
-    color: publicBrandBlue,
-    child: SafeArea(
-      top: false,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Text(
-          '\u00a9 ${DateTime.now().year} $publicBrandName. All rights reserved.',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFFE3EAF2),
-            fontSize: 12,
-            height: 1.5,
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: Material(
+      key: const ValueKey('public-footer'),
+      color: publicBrandBlue,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Text(
+            '\u00a9 ${DateTime.now().year} $publicBrandName. All rights reserved.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFE3EAF2),
+              fontSize: 12,
+              height: 1.5,
+            ),
           ),
         ),
       ),
