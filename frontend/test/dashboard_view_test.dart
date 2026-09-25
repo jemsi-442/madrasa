@@ -104,4 +104,65 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Course access'), findsOneWidget);
   });
+
+  testWidgets(
+    'desktop sidebar stays fixed, collapses, and searches real pages',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final requests = <String>[];
+      final state = AppState(
+        MifApiClient(
+          baseUrl: 'https://school.test',
+          client: MockClient((request) async {
+            requests.add(request.url.path);
+            final data = request.url.path == '/api/reports/dashboard'
+                ? adminReport
+                : <dynamic>[];
+            return http.Response(
+              jsonEncode({'success': true, 'data': data}),
+              200,
+            );
+          }),
+        ),
+      );
+      state.session = const AuthSession(
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        userId: '1',
+        fullName: 'Office Admin',
+        role: 'ADMIN',
+      );
+      addTearDown(state.dispose);
+      await tester.pumpWidget(MifApp(state: state));
+      await tester.pumpAndSettle();
+      final nav = find.byKey(const ValueKey('nav-0'));
+      final before = tester.getTopLeft(nav);
+      await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(nav), before);
+      await tester.tap(find.byTooltip('Collapse sidebar'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Expand sidebar'), findsOneWidget);
+      await tester.tap(find.byTooltip('Expand sidebar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Find a page...'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Attendance');
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(ListTile, 'Attendance'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(requests, contains('/api/reports/attendance/summary'));
+      expect(find.text('Daily register'), findsOneWidget);
+      expect(find.text('Student status'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

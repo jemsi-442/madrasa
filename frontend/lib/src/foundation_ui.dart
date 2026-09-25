@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const ink = Color(0xFF12263F);
+const ink = Color(0xFF011F3D);
 const gold = Color(0xFFB78A2F);
 const paper = Color(0xFFFBF9F4);
 const muted = Color(0xFF66758B);
@@ -132,13 +132,13 @@ class SurfacePanel extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: line),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0B12263F),
-            blurRadius: 28,
-            offset: Offset(0, 9),
+            color: Color(0x0612263F),
+            blurRadius: 18,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -176,7 +176,6 @@ class DashboardMetric extends StatelessWidget {
     required this.accent,
     this.note,
   });
-
   final String label;
   final String value;
   final IconData icon;
@@ -184,73 +183,80 @@ class DashboardMetric extends StatelessWidget {
   final String? note;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 220;
-        final badge = Container(
-          width: compact ? 41 : 50,
-          height: compact ? 41 : 50,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.11),
-            borderRadius: BorderRadius.circular(15),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxWidth < 245;
+      final badge = Container(
+        width: compact ? 42 : 54,
+        height: compact ? 42 : 54,
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.11),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: accent, size: compact ? 23 : 27),
+      );
+      final content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: ink,
+              fontSize: compact ? 25 : 28,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+            ),
           ),
-          child: Icon(icon, color: accent, size: compact ? 22 : 25),
-        );
-        final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          const SizedBox(height: 5),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: ink, fontSize: 13),
+          ),
+          if (note != null) ...[
+            const SizedBox(height: 8),
             Text(
-              label,
+              note!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: muted, fontSize: compact ? 12 : 13),
+              style: const TextStyle(color: muted, fontSize: 11),
             ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: ink,
-                fontSize: compact ? 21 : 26,
-                fontWeight: FontWeight.w800,
-                height: 1.15,
-              ),
-            ),
-            if (note != null && !compact) ...[
-              const SizedBox(height: 3),
-              Text(
-                note!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: muted, fontSize: 11),
-              ),
-            ],
           ],
-        );
-        return SurfacePanel(
-          padding: EdgeInsets.all(compact ? 16 : 22),
-          child: compact
-              ? SizedBox(
-                  height: 125,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [badge, const Spacer(), content],
-                  ),
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    badge,
-                    const SizedBox(width: 16),
-                    Expanded(child: content),
-                  ],
-                ),
-        );
-      },
-    );
-  }
+        ],
+      );
+      return Container(
+        padding: EdgeInsets.all(compact ? 18 : 22),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.alphaBlend(accent.withValues(alpha: 0.14), Colors.white),
+              Color.alphaBlend(accent.withValues(alpha: 0.055), Colors.white),
+            ],
+          ),
+        ),
+        child: compact
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [badge, const SizedBox(height: 16), content],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  badge,
+                  const SizedBox(width: 16),
+                  Expanded(child: content),
+                ],
+              ),
+      );
+    },
+  );
 }
 
 class DataBar extends StatelessWidget {

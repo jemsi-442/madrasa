@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'foundation_ui.dart';
+import 'admin_overview.dart';
 
 Map<String, dynamic> _map(dynamic value) =>
     value is Map<String, dynamic> ? value : const {};
@@ -25,7 +26,7 @@ class DashboardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final report = _map(data);
     return switch (role) {
-      'ADMIN' => _AdminHome(report: report, onOpen: onOpenSection),
+      'ADMIN' => AdminOverview(report: report, onOpen: onOpenSection),
       'ACCOUNTANT' => _FinanceHome(report: report, onOpen: onOpenSection),
       'TEACHER' => _TeacherHome(report: report, onOpen: onOpenSection),
       'PARENT' => _ParentHome(report: report, onOpen: onOpenSection),
@@ -143,140 +144,6 @@ class _QuickLinks extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _AdminHome extends StatelessWidget {
-  const _AdminHome({required this.report, required this.onOpen});
-
-  final Map<String, dynamic> report;
-  final ValueChanged<int> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final students = _map(report['students']);
-    final attendance = _map(report['attendance']);
-    final finance = _map(report['finance']);
-    final invoices = _map(finance['invoices']);
-    final hifdh = _map(report['hifdh']);
-    final totalStudents = _number(students['total']);
-    final totalAttendance = _number(attendance['totalRecords']);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Metrics([
-          DashboardMetric(
-            label: 'Students',
-            value: _display(students['total']),
-            icon: Icons.groups_rounded,
-            accent: blue,
-          ),
-          DashboardMetric(
-            label: 'Attendance rate',
-            value: '${_display(attendance['attendanceRate'])}%',
-            icon: Icons.event_available_rounded,
-            accent: gold,
-            note: 'Across recorded attendance',
-          ),
-          DashboardMetric(
-            label: 'Hifdh assessments',
-            value: _display(hifdh['totalAssessments']),
-            icon: Icons.auto_stories_rounded,
-            accent: forest,
-          ),
-          DashboardMetric(
-            label: 'Outstanding balance',
-            value: _display(invoices['outstandingBalance']),
-            icon: Icons.account_balance_wallet_outlined,
-            accent: lavender,
-          ),
-        ]),
-        const SizedBox(height: 18),
-        _PanelPair(
-          first: SurfacePanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _PanelTitle(
-                  'Student status',
-                  'How enrolled students are recorded.',
-                ),
-                DataBar(
-                  label: 'Active',
-                  value: _number(students['active']),
-                  maximum: totalStudents,
-                  color: forest,
-                ),
-                DataBar(
-                  label: 'Inactive',
-                  value: _number(students['inactive']),
-                  maximum: totalStudents,
-                  color: blue,
-                ),
-                DataBar(
-                  label: 'Suspended',
-                  value: _number(students['suspended']),
-                  maximum: totalStudents,
-                  color: gold,
-                ),
-                DataBar(
-                  label: 'Graduated',
-                  value: _number(students['graduated']),
-                  maximum: totalStudents,
-                  color: lavender,
-                ),
-              ],
-            ),
-          ),
-          second: SurfacePanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _PanelTitle(
-                  'Attendance records',
-                  'Breakdown of saved records.',
-                ),
-                DataBar(
-                  label: 'Present',
-                  value: _number(attendance['present']),
-                  maximum: totalAttendance,
-                  color: forest,
-                ),
-                DataBar(
-                  label: 'Absent',
-                  value: _number(attendance['absent']),
-                  maximum: totalAttendance,
-                  color: const Color(0xFFBB5B51),
-                ),
-                DataBar(
-                  label: 'Late',
-                  value: _number(attendance['late']),
-                  maximum: totalAttendance,
-                  color: gold,
-                ),
-                DataBar(
-                  label: 'Excused',
-                  value: _number(attendance['excused']),
-                  maximum: totalAttendance,
-                  color: blue,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        _QuickLinks(
-          items: const [
-            (1, 'Students', Icons.groups_outlined),
-            (2, 'Classes', Icons.menu_book_outlined),
-            (3, 'Attendance', Icons.event_available_outlined),
-            (5, 'Courses', Icons.auto_stories_outlined),
-          ],
-          onOpen: onOpen,
-        ),
-      ],
     );
   }
 }

@@ -34,7 +34,12 @@ class _MifAppState extends State<MifApp> {
       builder: (context, _) {
         final informationPage = path == '/terms' || path == '/privacy';
         if (appState.session != null && !informationPage) {
-          return WorkspaceScreen(state: appState);
+          return WorkspaceScreen(
+            key: ValueKey(
+              '${appState.session!.userId}-${appState.session!.role}',
+            ),
+            state: appState,
+          );
         }
 
         void navigate(String nextPath) {

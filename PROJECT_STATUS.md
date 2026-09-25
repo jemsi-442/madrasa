@@ -89,6 +89,8 @@ Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes
 
 The following React-era UI work is **not** available in Flutter yet: child admissions and the office inquiry inbox, automated account recovery, student and guardian editing, attendance marking, hifdh entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
 
+The first reference-design dashboard stage adds a fixed/collapsible navy sidebar, gold navigation, page search, soft-color metric cards, and data-backed charts. Admin Students, Classes, and Attendance are dedicated read-only pages with their own filters, tables, and record details; class views also respect teacher-scoped API results. Donations has no backend module yet. The remaining reference pages and create/edit workflows are not completed by this stage.
+
 Flutter verification: `flutter analyze`, `flutter test`, and `flutter build web --release`. iOS builds require macOS/Xcode and have not been run here. Device builds and full API integration still need verification.
 
 ## 4. Automation

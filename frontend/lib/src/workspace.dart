@@ -4,6 +4,11 @@ import 'api_client.dart';
 import 'app_state.dart';
 import 'dashboard_views.dart';
 import 'foundation_ui.dart';
+import 'dashboard_components.dart';
+import 'workspace_chrome.dart';
+import 'student_registry_page.dart';
+import 'classes_page.dart';
+import 'attendance_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -17,7 +22,7 @@ class SectionSpec {
 List<SectionSpec> sectionsForRole(String role) => switch (role) {
   'ADMIN' => const [
     SectionSpec(
-      'Home',
+      'Overview',
       '/api/reports/dashboard',
       Icons.home_outlined,
       'Your foundation at a glance',
@@ -178,23 +183,34 @@ class WorkspaceScreen extends StatefulWidget {
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
   int selectedIndex = 0;
+  int refreshToken = 0;
+  bool collapsed = false;
   late Future<dynamic> currentData;
   late List<SectionSpec> sections;
+
+  bool get dedicated => [
+    'Students',
+    'Classes',
+    'My classes',
+    'Attendance',
+  ].contains(sections[selectedIndex].title);
+
+  Future<dynamic> loadCurrent() => dedicated
+      ? Future.value(null)
+      : widget.state.load(sections[selectedIndex].path);
 
   @override
   void initState() {
     super.initState();
     sections = sectionsForRole(widget.state.session!.role);
-    currentData = sections.isEmpty
-        ? Future.value(null)
-        : widget.state.load(sections.first.path);
+    currentData = sections.isEmpty ? Future.value(null) : loadCurrent();
   }
 
   void selectSection(int index) {
     if (index != selectedIndex) {
       setState(() {
         selectedIndex = index;
-        currentData = widget.state.load(sections[index].path);
+        currentData = loadCurrent();
       });
     }
     scaffoldKey.currentState?.closeDrawer();
@@ -202,8 +218,44 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   void refresh() {
     setState(() {
-      currentData = widget.state.load(sections[selectedIndex].path);
+      refreshToken++;
+      currentData = loadCurrent();
     });
+  }
+
+  Widget pageContent(AuthSession session) {
+    final section = sections[selectedIndex];
+    switch (section.title) {
+      case 'Students':
+        return StudentRegistryPage(
+          load: widget.state.load,
+          refreshToken: refreshToken,
+        );
+      case 'Classes':
+      case 'My classes':
+        return ClassesPage(load: widget.state.load, refreshToken: refreshToken);
+      case 'Attendance':
+        return AttendancePage(
+          load: widget.state.load,
+          refreshToken: refreshToken,
+        );
+      default:
+        return PageResult(
+          future: currentData,
+          onRetry: refresh,
+          builder: (data) => selectedIndex == 0
+              ? DashboardView(
+                  role: session.role,
+                  data: data,
+                  onOpenSection: selectSection,
+                )
+              : SectionContent(
+                  role: session.role,
+                  title: section.title,
+                  data: data,
+                ),
+        );
+    }
   }
 
   @override
@@ -215,28 +267,32 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         body: Center(child: Text('No pages are available for this account.')),
       );
     }
-
-    final narrow = MediaQuery.sizeOf(context).width < 860;
+    final narrow = MediaQuery.sizeOf(context).width < 1000;
     final section = sections[selectedIndex];
     final firstName = session.fullName.trim().split(' ').first;
     final visibleTabs = sections.length > 4 ? 3 : sections.length;
+    final items = sections.map((s) => (s.title, s.icon)).toList();
+
+    Widget sidebar({bool rail = false}) => WorkspaceSidebar(
+      items: items,
+      selected: selectedIndex,
+      onSelect: selectSection,
+      roleLabel: _roleLabel(session.role),
+      collapsed: rail,
+    );
 
     return Scaffold(
       key: scaffoldKey,
       backgroundColor: paper,
-      drawer: narrow
-          ? Drawer(backgroundColor: ink, child: navigation(session))
-          : null,
+      drawer: narrow ? Drawer(backgroundColor: ink, child: sidebar()) : null,
       appBar: narrow
           ? AppBar(
-              toolbarHeight: 68,
+              toolbarHeight: 64,
               title: Text(
                 section.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               actions: [
@@ -245,12 +301,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   onPressed: refresh,
                   icon: const Icon(Icons.refresh_rounded),
                 ),
-                IconButton(
-                  tooltip: 'Sign out',
-                  onPressed: widget.state.signOut,
-                  icon: const Icon(Icons.logout_rounded),
+                PopupMenuButton<String>(
+                  tooltip: 'Account menu',
+                  onSelected: (_) => widget.state.signOut(),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
+                  ],
+                  icon: const Icon(Icons.account_circle_outlined),
                 ),
-                const SizedBox(width: 8),
               ],
             )
           : null,
@@ -267,11 +325,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 }
               },
               destinations: [
-                for (var index = 0; index < visibleTabs; index++)
+                for (var i = 0; i < visibleTabs; i++)
                   NavigationDestination(
-                    icon: Icon(sections[index].icon),
-                    selectedIcon: Icon(sections[index].icon, color: gold),
-                    label: sections[index].title,
+                    icon: Icon(sections[i].icon),
+                    selectedIcon: Icon(sections[i].icon, color: gold),
+                    label: sections[i].title,
                   ),
                 if (sections.length > visibleTabs)
                   const NavigationDestination(
@@ -285,282 +343,133 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         children: [
           if (!narrow)
             SizedBox(
-              width: 266,
-              child: ColoredBox(color: ink, child: navigation(session)),
+              width: collapsed ? 84 : 250,
+              child: sidebar(rail: collapsed),
             ),
           Expanded(
             child: Column(
               children: [
-                if (!narrow) desktopHeader(session, firstName),
+                if (!narrow)
+                  WorkspaceTopBar(
+                    fullName: session.fullName,
+                    roleLabel: _roleLabel(session.role),
+                    items: items,
+                    onSelect: selectSection,
+                    collapsed: collapsed,
+                    onToggle: () => setState(() => collapsed = !collapsed),
+                    onRefresh: refresh,
+                    onSignOut: widget.state.signOut,
+                  ),
                 Expanded(
-                  child: PatternBackdrop(
-                    child: RefreshIndicator(
-                      onRefresh: () async {
-                        refresh();
-                        try {
-                          await currentData;
-                        } catch (_) {}
-                      },
-                      child: ListView(
-                        padding: EdgeInsets.fromLTRB(
-                          narrow ? 19 : 36,
-                          narrow ? 26 : 36,
-                          narrow ? 19 : 36,
-                          42,
-                        ),
-                        children: [
-                          Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 1200),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SectionLabel(
-                                    selectedIndex == 0
-                                        ? 'Assalamu alaikum'
-                                        : section.purpose,
-                                  ),
-                                  const SizedBox(height: 9),
-                                  Text(
-                                    selectedIndex == 0
-                                        ? 'Welcome back, $firstName'
-                                        : section.title,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.headlineMedium,
-                                  ),
-                                  const SizedBox(height: 7),
-                                  Text(
-                                    selectedIndex == 0
-                                        ? section.purpose
-                                        : 'Your ${section.title.toLowerCase()} in one place.',
-                                    style: const TextStyle(
-                                      color: muted,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 28),
-                                  FutureBuilder<dynamic>(
-                                    future: currentData,
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState !=
-                                          ConnectionState.done) {
-                                        return const Center(
-                                          child: Padding(
-                                            padding: EdgeInsets.all(48),
-                                            child: CircularProgressIndicator(),
-                                          ),
-                                        );
-                                      }
-                                      if (snapshot.hasError) {
-                                        return SurfacePanel(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Icon(
-                                                Icons.info_outline_rounded,
-                                                color: gold,
-                                              ),
-                                              const SizedBox(height: 12),
-                                              Text(
-                                                snapshot.error is ApiException
-                                                    ? (snapshot.error!
-                                                              as ApiException)
-                                                          .message
-                                                    : 'This page is unavailable right now.',
-                                              ),
-                                              const SizedBox(height: 12),
-                                              OutlinedButton(
-                                                onPressed: refresh,
-                                                child: const Text('Try again'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }
-                                      if (selectedIndex == 0) {
-                                        return DashboardView(
-                                          role: session.role,
-                                          data: snapshot.data,
-                                          onOpenSection: selectSection,
-                                        );
-                                      }
-                                      if (section.title == 'Attendance') {
-                                        return AttendanceSummaryView(
-                                          data: snapshot.data,
-                                        );
-                                      }
-                                      return SectionContent(
-                                        role: session.role,
-                                        title: section.title,
-                                        data: snapshot.data,
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFFAF9F6), Color(0xFFF4F6F8)],
                       ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget desktopHeader(AuthSession session, String firstName) {
-    return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 34),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: line)),
-      ),
-      child: Row(
-        children: [
-          const Text(
-            'MODERN ISLAMIC FOUNDATION',
-            style: TextStyle(
-              color: ink,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            tooltip: 'Refresh page',
-            onPressed: refresh,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          const SizedBox(width: 14),
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Color(0x1FB78A2F),
-            child: Text(
-              firstName.isEmpty ? '?' : firstName[0].toUpperCase(),
-              style: const TextStyle(color: ink, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 10),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 150),
-            child: Text(
-              session.fullName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: ink, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(width: 10),
-          IconButton(
-            tooltip: 'Sign out',
-            onPressed: widget.state.signOut,
-            icon: const Icon(Icons.logout_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget navigation(AuthSession session) {
-    Widget tile(int index) {
-      final section = sections[index];
-      final selected = selectedIndex == index;
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        child: Material(
-          color: selected
-              ? Colors.white.withValues(alpha: 0.13)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(13),
-          child: ListTile(
-            leading: Icon(
-              section.icon,
-              color: selected ? const Color(0xFFE8C778) : Colors.white70,
-            ),
-            title: Text(
-              section.title,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-              ),
-            ),
-            selected: selected,
-            onTap: () => selectSection(index),
-          ),
-        ),
-      );
-    }
-
-    return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 25, 20, 20),
-            child: BrandMark(light: true, compact: true),
-          ),
-          const Divider(color: Colors.white24, height: 1),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(top: 23),
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 0, 24, 10),
-                  child: SectionLabel('Start here', color: Color(0xFFDFC68F)),
-                ),
-                tile(0),
-                if (sections.length > 1) ...[
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 27, 24, 10),
-                    child: SectionLabel('Your pages', color: Color(0xFFDFC68F)),
-                  ),
-                  for (var index = 1; index < sections.length; index++)
-                    tile(index),
-                ],
-              ],
-            ),
-          ),
-          const Divider(color: Colors.white24, height: 1),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 19,
-                  backgroundColor: gold.withValues(alpha: 0.25),
-                  child: const Icon(Icons.person_outline, color: Colors.white),
-                ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        session.fullName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    child: ListView(
+                      key: PageStorageKey(
+                        'workspace-${session.role}-$selectedIndex',
                       ),
-                      Text(
-                        _roleLabel(session.role),
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
+                      padding: EdgeInsets.fromLTRB(
+                        narrow ? 16 : 26,
+                        narrow ? 24 : 28,
+                        narrow ? 16 : 26,
+                        24,
                       ),
-                    ],
+                      children: [
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1560),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            selectedIndex == 0
+                                                ? 'Assalamu alaikum, $firstName'
+                                                : section.title,
+                                            style: TextStyle(
+                                              fontFamily: 'NotoSansDisplay',
+                                              fontSize: narrow ? 26 : 30,
+                                              fontWeight: FontWeight.w700,
+                                              height: 1.2,
+                                              color: ink,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            section.purpose,
+                                            style: const TextStyle(
+                                              color: muted,
+                                              fontSize: 14,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (!narrow &&
+                                        MediaQuery.sizeOf(context).width >=
+                                            1280)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 24,
+                                          top: 6,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.calendar_today_outlined,
+                                              color: gold,
+                                              size: 21,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              MaterialLocalizations.of(
+                                                context,
+                                              ).formatFullDate(DateTime.now()),
+                                              style: const TextStyle(
+                                                color: muted,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+                                KeyedSubtree(
+                                  key: ValueKey('page-$selectedIndex'),
+                                  child: pageContent(session),
+                                ),
+                                const SizedBox(height: 28),
+                                const Divider(color: line),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '\u00a9 ${DateTime.now().year} Modern Islamic Foundation. All rights reserved.',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: muted,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

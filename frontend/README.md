@@ -31,6 +31,14 @@ Terms (`/#/terms`) and privacy (`/#/privacy`) have dedicated public pages. No ap
 
 The Instagram icon is intentionally disabled until the foundation supplies its official URL. Both contact numbers (+255715735335 and +255683186987) remain visible and selectable beside their own WhatsApp icons; each icon opens the matching `https://wa.me/` link. No message is sent automatically.
 
+## Dashboard Design Stage
+
+The signed-in workspace uses a fixed navy sidebar, gold selection, collapsible desktop navigation, page search, and mobile drawer/bottom navigation. Sidebar links remain role-specific.
+
+The first reference-design stage covers the admin overview and dedicated Students, Classes, and Attendance pages. Student search, class/status filters and pagination use the backend; student and class details are readable. Class charts use complete class-list counts, while student page counts are explicitly labeled as page-local. Attendance filters fetch date/class-scoped summaries and show daily records, not fabricated check-in times.
+
+Overview charts use recorded student statuses, attendance and assessment scores. They do not claim enrollment trends, synchronization, donations, or growth figures that the API does not supply. These pages remain read-only; create/edit workflows and the remaining reference pages (teachers, subjects, Qur'an tracking, communications and expanded reports) are separate migration steps. Donations needs a backend module first.
+
 ## Verify
 
 ```bash
