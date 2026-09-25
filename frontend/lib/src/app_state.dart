@@ -7,6 +7,7 @@ class AppState extends ChangeNotifier {
 
   final MifApiClient api;
   AuthSession? session;
+  int _authVersion = 0;
   bool busy = false;
   String? error;
 
@@ -15,7 +16,10 @@ class AppState extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      session = await api.login(login, password);
+      final signedIn = await api.login(login, password);
+      _authVersion++;
+      _refreshing = null;
+      session = signedIn;
       return true;
     } on ApiException catch (exception) {
       error = switch (exception.statusCode) {
@@ -47,12 +51,15 @@ class AppState extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      session = await api.register(
+      final registered = await api.register(
         fullName: fullName,
         email: email,
         password: password,
         confirmPassword: confirmPassword,
       );
+      _authVersion++;
+      _refreshing = null;
+      session = registered;
       return true;
     } on ApiException catch (exception) {
       error = switch (exception.statusCode) {
@@ -69,30 +76,75 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<dynamic> load(String path) async {
-    final current = session;
-    if (current == null) throw const ApiException('Please sign in again.', 401);
+  Future<AuthSession>? _refreshing;
 
+  Future<dynamic> load(String path) => _request(path);
+
+  Future<dynamic> submit(String path, Map<String, dynamic> body) =>
+      _request(path, method: 'POST', body: body);
+
+  Future<dynamic> _request(
+    String path, {
+    String method = 'GET',
+    Map<String, dynamic>? body,
+  }) async {
+    final current = session;
+    final version = _authVersion;
+    if (current == null) throw const ApiException('Please sign in again.', 401);
     try {
-      return await api.request(path, accessToken: current.accessToken);
+      return await api.request(
+        path,
+        method: method,
+        body: body,
+        accessToken: current.accessToken,
+      );
     } on ApiException catch (exception) {
       if (exception.statusCode != 401) rethrow;
+    }
+    if (session == null ||
+        version != _authVersion ||
+        session!.userId != current.userId) {
+      throw const ApiException('Please sign in again.', 401);
+    }
+    if (session!.accessToken == current.accessToken) {
+      final pending = _refreshing ??= api.refresh(current.refreshToken);
       try {
-        session = await api.refresh(current.refreshToken);
+        final renewed = await pending;
+        if (session == null ||
+            version != _authVersion ||
+            session!.userId != current.userId ||
+            renewed.userId != current.userId) {
+          throw const ApiException('Please sign in again.', 401);
+        }
+        session = renewed;
         notifyListeners();
-        return await api.request(path, accessToken: session!.accessToken);
-      } on ApiException {
-        session = null;
-        notifyListeners();
-        throw const ApiException(
-          'Your session has expired. Please sign in again.',
-          401,
-        );
+      } on ApiException catch (exception) {
+        if (exception.statusCode == 401 &&
+            session?.accessToken == current.accessToken) {
+          session = null;
+          notifyListeners();
+        }
+        rethrow;
+      } finally {
+        if (identical(_refreshing, pending)) _refreshing = null;
       }
     }
+    if (session == null ||
+        version != _authVersion ||
+        session!.userId != current.userId) {
+      throw const ApiException('Please sign in again.', 401);
+    }
+    return api.request(
+      path,
+      method: method,
+      body: body,
+      accessToken: session!.accessToken,
+    );
   }
 
   Future<void> signOut() async {
+    _authVersion++;
+    _refreshing = null;
     final refreshToken = session?.refreshToken;
     session = null;
     error = null;

@@ -175,12 +175,14 @@ class DashboardMetric extends StatelessWidget {
     required this.icon,
     required this.accent,
     this.note,
+    this.dense = false,
   });
   final String label;
   final String value;
   final IconData icon;
   final Color accent;
   final String? note;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -229,7 +231,14 @@ class DashboardMetric extends StatelessWidget {
         ],
       );
       return Container(
-        padding: EdgeInsets.all(compact ? 18 : 22),
+        constraints: BoxConstraints(minHeight: dense ? 128 : 0),
+        padding: EdgeInsets.all(
+          dense
+              ? 16
+              : compact
+              ? 18
+              : 22,
+        ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
@@ -241,7 +250,7 @@ class DashboardMetric extends StatelessWidget {
             ],
           ),
         ),
-        child: compact
+        child: compact && !dense
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [badge, const SizedBox(height: 16), content],
@@ -250,7 +259,7 @@ class DashboardMetric extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   badge,
-                  const SizedBox(width: 16),
+                  SizedBox(width: dense ? 12 : 16),
                   Expanded(child: content),
                 ],
               ),

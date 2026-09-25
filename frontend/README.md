@@ -35,9 +35,29 @@ The Instagram icon is intentionally disabled until the foundation supplies its o
 
 The signed-in workspace uses a fixed navy sidebar, gold selection, collapsible desktop navigation, page search, and mobile drawer/bottom navigation. Sidebar links remain role-specific.
 
-The first reference-design stage covers the admin overview and dedicated Students, Classes, and Attendance pages. Student search, class/status filters and pagination use the backend; student and class details are readable. Class charts use complete class-list counts, while student page counts are explicitly labeled as page-local. Attendance filters fetch date/class-scoped summaries and show daily records, not fabricated check-in times.
+The admin reference implementation now includes a six-card overview with actual
+admissions, assessment coverage, recent activity, donations and upcoming events.
+Teachers and Subjects have independent searchable directories and create forms.
+Students support admissions with new or existing guardians, and Classes support
+creation with branch/teacher assignment. Attendance is still a read-only summary.
 
-Overview charts use recorded student statuses, attendance and assessment scores. They do not claim enrollment trends, synchronization, donations, or growth figures that the API does not supply. These pages remain read-only; create/edit workflows and the remaining reference pages (teachers, subjects, Qur'an tracking, communications and expanded reports) are separate migration steps. Donations needs a backend module first.
+Donations is backed by its own database module: add donors and campaigns, record
+pledges, receive donations (including partial pledge collections), view receipts
+and void mistaken entries with a reason. Collections exclude voided receipts and
+unpaid pledges. Lists paginate; charts use full-tenant aggregates. This release
+records received money, not a provider checkout, downloadable receipt PDF or
+automatic donor messages.
+
+Overview events can be added and cancelled. All these new workflows are admin-only.
+The gold action-button theme is scoped to ADMIN; other role layouts are preserved.
+Forms keep donation submission keys on retry. Concurrent reads/writes share one
+token refresh, and an old form cannot retry under a newly signed-in account.
+
+Remaining reference work includes full class curriculum, passage-level Qur'an
+tracking, admin attendance entry, teacher leave/attendance, reports/downloads,
+communications delivery, notifications/global record search and offline sync.
+Those controls are not shown as working features. See
+[the admin domain contract](../ADMIN_PANEL_ARCHITECTURE.md) for their data design.
 
 ## Verify
 
@@ -47,6 +67,6 @@ flutter test
 flutter build web --release --dart-define=API_BASE_URL=https://api.example.com
 ```
 
-Only the public pages and selected read-only role pages have been migrated so far. The old React workflows are not implemented in Flutter yet. Prioritize porting each workflow with API integration and tests before treating this as a production replacement. Never rely on hidden navigation as authorization; backend RBAC, tenant scope and record ownership remain the security boundary.
+Public pages, selected role read views and the admin workflows listed above have been migrated. The old React workflows are not implemented in Flutter yet. Prioritize porting each workflow with API integration and tests before treating this as a production replacement. Never rely on hidden navigation as authorization; backend RBAC, tenant scope and record ownership remain the security boundary.
 
 Platform development notes: iOS compilation requires macOS/Xcode. Android release and iOS builds should use HTTPS; do not ship cleartext production APIs. Web deployment must configure the backend CORS origin and an HTTPS API URL.

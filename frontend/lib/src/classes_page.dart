@@ -2,10 +2,18 @@ import 'package:flutter/material.dart';
 
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'admin_forms.dart';
+import 'academic_actions.dart';
 
 class ClassesPage extends StatefulWidget {
-  const ClassesPage({super.key, required this.load, this.refreshToken = 0});
+  const ClassesPage({
+    super.key,
+    required this.load,
+    this.refreshToken = 0,
+    this.submit,
+  });
   final PageLoader load;
+  final PageSubmitter? submit;
   final int refreshToken;
 
   @override
@@ -58,6 +66,24 @@ class _ClassesPageState extends State<ClassesPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.submit != null) ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Create class'),
+                onPressed: () async {
+                  final saved = await createClassForm(
+                    context,
+                    widget.load,
+                    widget.submit!,
+                  );
+                  if (saved && mounted) reload();
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           MetricRow(
             children: [
               DashboardMetric(

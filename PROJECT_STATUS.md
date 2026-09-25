@@ -85,11 +85,11 @@ Important note:
 
 ## 3. Flutter Frontend Status
 
-Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes a responsive photo-led public home, split-panel sign-in and direct learner registration, dedicated contact/parent-access/sign-in-help pages, in-memory auth/refresh, responsive role navigation and read-only data views for admin, accountant, teacher, parent and learner. Backend roles determine access; there is no role selection on the login page.
+Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes a responsive photo-led public home, split-panel sign-in and direct learner registration, dedicated contact/parent-access/sign-in-help pages, in-memory auth/refresh, responsive role navigation and read-only data views for accountant, teacher, parent and learner, plus the admin read/write workflows listed below. Backend roles determine access; there is no role selection on the login page.
 
-The following React-era UI work is **not** available in Flutter yet: child admissions and the office inquiry inbox, automated account recovery, student and guardian editing, attendance marking, hifdh entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
+The following React-era UI work is **not** available in Flutter yet: the office inquiry inbox, automated account recovery, student and guardian editing, attendance marking, hifdh entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
 
-The first reference-design dashboard stage adds a fixed/collapsible navy sidebar, gold navigation, page search, soft-color metric cards, and data-backed charts. Admin Students, Classes, and Attendance are dedicated read-only pages with their own filters, tables, and record details; class views also respect teacher-scoped API results. Donations has no backend module yet. The remaining reference pages and create/edit workflows are not completed by this stage.
+The first reference-design dashboard stage adds a fixed/collapsible navy sidebar, gold navigation, page search, soft-color metric cards, and data-backed charts. Admin Students and Classes now include creation forms; Attendance remains a dedicated read-only summary. Teacher class views still respect teacher-scoped API results. A separate fundraising module now backs the Donations page. Full reference parity is not yet complete; see the expansion milestones below.
 
 Flutter verification: `flutter analyze`, `flutter test`, and `flutter build web --release`. iOS builds require macOS/Xcode and have not been run here. Device builds and full API integration still need verification.
 
@@ -120,3 +120,31 @@ The repository CI and local release gate now run Flutter analyze, tests, and web
   completion, admin attendance editing, report jobs/exports, communications
   provider outbox, notification/search integration and offline conflict handling.
   These are designed but not presented as finished features.
+
+## Admin reference implementation: Flutter workflows (2026-09-25)
+
+- Rebuilt the overview around six real metric cards, admissions bars, assessment
+  coverage, recent activity, donation trends, quick navigation and scheduled events.
+- Added independent Teachers and Subjects pages with search, pagination, account/
+  subject creation and actual teaching/course assignments.
+- Added Donations with donor/campaign/pledge forms, received-payment entry,
+  partial pledge collections, receipt preview, void confirmation, charts and
+  separately paginated fundraising directories.
+- Added student admission (new or existing guardian) and class creation forms.
+  Student demographic cards use full-tenant counts, not only the current page.
+- Kept admin-specific navy/gold styling separate from other roles. Responsive
+  cards/tables, fixed navigation and mobile branding follow the reference direction.
+- No fake growth percentages, teacher ratings/leave, provider delivery badges or
+  offline sync states. The full set of supplied reference screens is still in progress.
+- Browser preview uses the local API and the rebuilt Flutter web app at
+  http://127.0.0.1:8080. Migrations were applied without resetting existing records.
+
+Verification for this admin stage:
+- Backend typecheck and build passed; 16 integration tests passed using
+  `npx vitest run --testTimeout=30000` (the default 5-second auth test timeout
+  was too short under local concurrent build load).
+- All 47 Flutter tests passed; Flutter analyze reported no issues.
+- Chromium checks returned HTTP 200 for overview, teachers, subjects, donations,
+  students and classes; desktop and mobile layouts were inspected with no
+  JavaScript errors. Test browser sessions were logged out afterward.
+- All 18 migrations are applied. Native Android/iOS builds are not verified here.

@@ -9,6 +9,9 @@ import 'workspace_chrome.dart';
 import 'student_registry_page.dart';
 import 'classes_page.dart';
 import 'attendance_page.dart';
+import 'admin_academic_pages.dart';
+import 'admin_overview.dart';
+import 'donations_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -23,7 +26,7 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
   'ADMIN' => const [
     SectionSpec(
       'Overview',
-      '/api/reports/dashboard',
+      '/api/admin/overview',
       Icons.home_outlined,
       'Your foundation at a glance',
     ),
@@ -40,10 +43,28 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       'Classes across the school',
     ),
     SectionSpec(
+      'Teachers',
+      '/api/admin/teachers',
+      Icons.person_outline,
+      'Teaching accounts, assignments and workload',
+    ),
+    SectionSpec(
+      'Subjects',
+      '/api/admin/subjects',
+      Icons.layers_outlined,
+      'Manage the subject catalog and learning courses',
+    ),
+    SectionSpec(
       'Attendance',
       '/api/reports/attendance/summary',
       Icons.event_available_outlined,
       'Saved attendance records',
+    ),
+    SectionSpec(
+      'Donations',
+      '/api/fundraising/overview',
+      Icons.favorite_outline,
+      'Manage donors, campaigns and contributions',
     ),
     SectionSpec(
       'Finance',
@@ -193,6 +214,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     'Classes',
     'My classes',
     'Attendance',
+    'Teachers',
+    'Subjects',
+    'Donations',
   ].contains(sections[selectedIndex].title);
 
   Future<dynamic> loadCurrent() => dedicated
@@ -225,15 +249,50 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
+    if (session.role == 'ADMIN' && selectedIndex == 0) {
+      return PageResult(
+        future: currentData,
+        onRetry: refresh,
+        builder: (data) => AdminOverview(
+          report: recordMap(data),
+          onOpen: selectSection,
+          submit: widget.state.submit,
+          onChanged: refresh,
+        ),
+      );
+    }
     switch (section.title) {
+      case 'Teachers':
+        return TeachersPage(
+          load: widget.state.load,
+          submit: widget.state.submit,
+          refreshToken: refreshToken,
+        );
+      case 'Subjects':
+        return SubjectsPage(
+          load: widget.state.load,
+          submit: widget.state.submit,
+          refreshToken: refreshToken,
+        );
+      case 'Donations':
+        return DonationsPage(
+          load: widget.state.load,
+          submit: widget.state.submit,
+          refreshToken: refreshToken,
+        );
       case 'Students':
         return StudentRegistryPage(
           load: widget.state.load,
+          submit: session.role == 'ADMIN' ? widget.state.submit : null,
           refreshToken: refreshToken,
         );
       case 'Classes':
       case 'My classes':
-        return ClassesPage(load: widget.state.load, refreshToken: refreshToken);
+        return ClassesPage(
+          load: widget.state.load,
+          refreshToken: refreshToken,
+          submit: session.role == 'ADMIN' ? widget.state.submit : null,
+        );
       case 'Attendance':
         return AttendancePage(
           load: widget.state.load,
@@ -269,7 +328,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
     final narrow = MediaQuery.sizeOf(context).width < 1000;
     final section = sections[selectedIndex];
-    final firstName = session.fullName.trim().split(' ').first;
+    final firstName =
+        session.role == 'ADMIN' &&
+            session.fullName.trim() == 'System Administrator'
+        ? 'Admin'
+        : session.fullName.trim().split(' ').first;
     final visibleTabs = sections.length > 4 ? 3 : sections.length;
     final items = sections.map((s) => (s.title, s.icon)).toList();
 
@@ -288,13 +351,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       appBar: narrow
           ? AppBar(
               toolbarHeight: 64,
-              title: Text(
-                section.title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              title: session.role == 'ADMIN'
+                  ? const BrandMark(compact: true)
+                  : Text(
+                      section.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
               actions: [
                 IconButton(
                   tooltip: 'Refresh page',

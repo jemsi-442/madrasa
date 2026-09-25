@@ -57,11 +57,17 @@ void main() {
       ),
     );
 
-    expect(find.text('37'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(DashboardMetric),
+        matching: find.text('37'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('80.00%'), findsOneWidget);
-    expect(find.text('Student status'), findsOneWidget);
-    await tester.ensureVisible(find.text('Classes'));
-    await tester.tap(find.text('Classes'));
+    expect(find.text('Student admissions'), findsOneWidget);
+    await tester.ensureVisible(find.text('Classes').last);
+    await tester.tap(find.text('Classes').last);
     expect(opened, 2);
   });
 
@@ -73,7 +79,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final client = MockClient((request) async {
-      final data = request.url.path == '/api/reports/dashboard'
+      final data = request.url.path == '/api/admin/overview'
           ? adminReport
           : <dynamic>[];
       return http.Response(jsonEncode({'success': true, 'data': data}), 200);
@@ -94,7 +100,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.byType(DashboardMetric), findsNWidgets(4));
+    expect(find.byType(DashboardMetric), findsNWidgets(6));
     expect(
       tester.getSize(find.byType(DashboardMetric).first).width,
       lessThan(190),
@@ -118,7 +124,7 @@ void main() {
           baseUrl: 'https://school.test',
           client: MockClient((request) async {
             requests.add(request.url.path);
-            final data = request.url.path == '/api/reports/dashboard'
+            final data = request.url.path == '/api/admin/overview'
                 ? adminReport
                 : <dynamic>[];
             return http.Response(
@@ -161,7 +167,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(requests, contains('/api/reports/attendance/summary'));
       expect(find.text('Daily register'), findsOneWidget);
-      expect(find.text('Student status'), findsNothing);
+      expect(find.text('Student admissions'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

@@ -83,8 +83,16 @@ class MifApiClient {
             headers: headers,
             body: body == null ? null : jsonEncode(body),
           );
-        default:
+        case 'PATCH':
+          response = await _client.patch(
+            uri,
+            headers: headers,
+            body: body == null ? null : jsonEncode(body),
+          );
+        case 'GET':
           response = await _client.get(uri, headers: headers);
+        default:
+          throw ArgumentError.value(method, 'method');
       }
     } catch (_) {
       throw const ApiException('Cannot connect to the school right now.', 0);

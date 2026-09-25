@@ -8,6 +8,7 @@ import 'office_help_page.dart';
 import 'public_information_page.dart';
 import 'registration_page.dart';
 import 'workspace.dart';
+import 'admin_theme.dart';
 
 class MifApp extends StatefulWidget {
   const MifApp({super.key, this.state});
@@ -34,12 +35,15 @@ class _MifAppState extends State<MifApp> {
       builder: (context, _) {
         final informationPage = path == '/terms' || path == '/privacy';
         if (appState.session != null && !informationPage) {
-          return WorkspaceScreen(
+          final workspace = WorkspaceScreen(
             key: ValueKey(
               '${appState.session!.userId}-${appState.session!.role}',
             ),
             state: appState,
           );
+          return appState.session!.role == 'ADMIN'
+              ? Theme(data: adminTheme(Theme.of(context)), child: workspace)
+              : workspace;
         }
 
         void navigate(String nextPath) {

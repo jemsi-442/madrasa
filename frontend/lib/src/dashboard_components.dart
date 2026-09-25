@@ -300,12 +300,18 @@ class RingChart extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                center,
-                style: const TextStyle(
-                  fontSize: 27,
-                  fontWeight: FontWeight.w700,
-                  color: ink,
+              SizedBox(
+                width: 130,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    center,
+                    style: const TextStyle(
+                      fontSize: 27,
+                      fontWeight: FontWeight.w700,
+                      color: ink,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 5),
@@ -337,11 +343,17 @@ class RingChart extends StatelessWidget {
                     style: const TextStyle(color: muted, fontSize: 13),
                   ),
                 ),
-                Text(
-                  '${item.value}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: ink,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 100),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${item.value}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: ink,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -398,9 +410,15 @@ class _RingPainter extends CustomPainter {
 }
 
 class ColumnChart extends StatelessWidget {
-  const ColumnChart({super.key, required this.items, this.maximum});
+  const ColumnChart({
+    super.key,
+    required this.items,
+    this.maximum,
+    this.height = 220,
+  });
   final List<ChartDatum> items;
   final num? maximum;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +433,7 @@ class ColumnChart extends StatelessWidget {
       builder: (context, constraints) => SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: math.max(constraints.maxWidth, items.length * 72.0),
+          width: math.max(constraints.maxWidth, items.length * 52.0),
           child: Column(
             children: [
               Align(
@@ -427,7 +445,7 @@ class ColumnChart extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               SizedBox(
-                height: 220,
+                height: height,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -443,19 +461,25 @@ class ColumnChart extends StatelessWidget {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    '${item.value}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: ink,
-                                      fontWeight: FontWeight.w700,
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      '${item.value}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: ink,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 8),
                                   Flexible(
                                     child: Container(
                                       height:
-                                          155 *
+                                          (height - 65).clamp(
+                                            0,
+                                            double.infinity,
+                                          ) *
                                           (item.value / maxValue).clamp(0, 1),
                                       constraints: const BoxConstraints(
                                         maxWidth: 56,
