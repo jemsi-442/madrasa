@@ -5,7 +5,9 @@ import { Prisma } from "@prisma/client";
 import { env } from "../../config/env";
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import { buildPaginationMeta, getPaginationParams } from "../../shared/utils/pagination";
+import { syncCourseAccessGrantForPaidInvoice } from "../learning/course-access-billing.service";
 import type { InitiatePaymentInput, ListPaymentsQuery } from "./payments.schemas";
 import {
   createSnippePayment,
@@ -42,6 +44,14 @@ type PaymentRecordWithInvoice = Prisma.PaymentGetPayload<{
         id: true;
         invoiceNo: true;
         branchId: true;
+        invoiceScope: true;
+        course: {
+          select: {
+            id: true;
+            title: true;
+            slug: true;
+          };
+        };
         student: {
           select: {
             id: true;
@@ -91,7 +101,7 @@ type PaymentReceiptRecord = Prisma.PaymentGetPayload<{
 
 type PaymentStateUpdateInput = {
   paymentId: bigint;
-  source: "webhook" | "reconcile";
+  source: "webhook" | "reconcile" | "initiation";
   sourceLabel: string;
   eventType?: string | null;
   actorUserId?: bigint | null;
@@ -103,6 +113,7 @@ type PaymentStateUpdateInput = {
   expiresAt?: string | null;
   apiVersion?: string | null;
   amountValue?: number | string | null;
+  currency?: string | null;
   metadata?: Prisma.InputJsonValue;
 };
 
@@ -113,6 +124,26 @@ const toMoneyString = (value: Prisma.Decimal | string | number) => new Prisma.De
 const toDateString = (value: Date) => value.toISOString().slice(0, 10);
 
 const buildWebhookUrl = () => new URL("/api/webhooks/snippe", env.APP_BASE_URL).toString();
+
+const resolveFinanceBranchScope = (authUser: AuthenticatedUser, requestedBranchId?: string | null) => {
+  const accountantBranchId =
+    authUser.role === "ACCOUNTANT" && authUser.branchId ? BigInt(authUser.branchId) : null;
+  const parsedRequestedBranchId = requestedBranchId ? BigInt(requestedBranchId) : null;
+
+  if (accountantBranchId && parsedRequestedBranchId && accountantBranchId !== parsedRequestedBranchId) {
+    throw new HttpError(403, "Accountants can only access payments for their own branch");
+  }
+
+  return accountantBranchId ?? parsedRequestedBranchId;
+};
+
+const ensurePaymentBranchAccess = (authUser: AuthenticatedUser, branchId: bigint) => {
+  const effectiveBranchId = resolveFinanceBranchScope(authUser, null);
+
+  if (effectiveBranchId && effectiveBranchId !== branchId) {
+    throw new HttpError(403, "Accountants can only access payments for their own branch");
+  }
+};
 
 const toPaymentResponse = (record: PaymentRecordWithInvoice) => ({
   id: record.id.toString(),
@@ -136,6 +167,14 @@ const toPaymentResponse = (record: PaymentRecordWithInvoice) => ({
     id: record.invoice.id.toString(),
     invoiceNo: record.invoice.invoiceNo,
     branchId: record.invoice.branchId.toString(),
+    invoiceScope: record.invoice.invoiceScope,
+    course: record.invoice.course
+      ? {
+          id: record.invoice.course.id.toString(),
+          title: record.invoice.course.title,
+          slug: record.invoice.course.slug,
+        }
+      : null,
     student: record.invoice.student
       ? {
           id: record.invoice.student.id.toString(),
@@ -370,6 +409,14 @@ const getPaymentWithInvoice = async (paymentId: bigint, tx: Prisma.TransactionCl
           id: true,
           invoiceNo: true,
           branchId: true,
+          invoiceScope: true,
+          course: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+            },
+          },
           student: {
             select: {
               id: true,
@@ -391,6 +438,7 @@ const applyPaymentStateUpdate = async (input: PaymentStateUpdateInput) => {
         orgId: true,
         invoiceId: true,
         amount: true,
+        currency: true,
         status: true,
         externalReference: true,
         providerTxnRef: true,
@@ -401,17 +449,56 @@ const applyPaymentStateUpdate = async (input: PaymentStateUpdateInput) => {
     });
 
     const nextStatus = mapSnippeStatus(input.status ?? undefined, input.eventType ?? undefined);
-    const amount = input.amountValue !== undefined && input.amountValue !== null
-      ? new Prisma.Decimal(input.amountValue.toString())
-      : current.amount;
+    const staleUpdate =
+      (current.status === "COMPLETED" && nextStatus !== "COMPLETED") ||
+      (current.status !== "PENDING" && nextStatus === "PENDING");
+
+    if (staleUpdate) {
+      await tx.auditLog.create({
+        data: {
+          orgId: current.orgId,
+          actorUserId: input.actorUserId ?? null,
+          action: "payment.stale_update_ignored",
+          entityType: "payment",
+          entityId: current.id.toString(),
+          ipAddress: input.ipAddress ?? null,
+          metadata: {
+            source: input.sourceLabel,
+            statusBefore: current.status,
+            statusIgnored: nextStatus,
+            eventType: input.eventType ?? null,
+          } as Prisma.InputJsonValue,
+        },
+      });
+      return;
+    }
+
+    if (input.amountValue !== undefined && input.amountValue !== null) {
+      let providerAmount: Prisma.Decimal;
+      try {
+        providerAmount = new Prisma.Decimal(input.amountValue.toString());
+      } catch {
+        throw new HttpError(409, "Provider payment amount is invalid");
+      }
+      if (!providerAmount.equals(current.amount)) {
+        throw new HttpError(409, "Provider payment amount does not match the request");
+      }
+    }
+
+    if (
+      input.currency != null &&
+      (typeof input.currency !== "string" || input.currency.toUpperCase() !== current.currency)
+    ) {
+      throw new HttpError(409, "Provider payment currency does not match the request");
+    }
+
     const paidAt = input.completedAt ? new Date(input.completedAt) : current.paidAt;
     const expiresAt = input.expiresAt ? new Date(input.expiresAt) : current.expiresAt;
 
-    await tx.payment.update({
-      where: { id: current.id },
+    const updated = await tx.payment.updateMany({
+      where: { id: current.id, status: current.status },
       data: {
         status: nextStatus,
-        amount,
         paidAt,
         expiresAt,
         apiVersion: input.apiVersion ?? current.apiVersion,
@@ -421,7 +508,15 @@ const applyPaymentStateUpdate = async (input: PaymentStateUpdateInput) => {
       },
     });
 
+    if (updated.count !== 1) {
+      throw new HttpError(409, "Payment changed during processing; please retry");
+    }
+
     await recalculateInvoiceAmounts(tx, current.invoiceId);
+    await syncCourseAccessGrantForPaidInvoice(tx, {
+      invoiceId: current.invoiceId,
+      actorUserId: input.actorUserId ?? null,
+    });
 
     await tx.auditLog.create({
       data: {
@@ -472,14 +567,9 @@ const buildProviderPayloadFromSnippe = (record: SnippePaymentRecord) => ({
   metadata: record.metadata ?? null,
 });
 
-export const initiatePayment = async (
-  orgId: string,
-  actorUserId: string,
-  input: InitiatePaymentInput,
-  ipAddress?: string,
-) => {
-  const parsedOrgId = BigInt(orgId);
-  const parsedActorUserId = BigInt(actorUserId);
+export const initiatePayment = async (authUser: AuthenticatedUser, input: InitiatePaymentInput, ipAddress?: string) => {
+  const parsedOrgId = BigInt(authUser.orgId);
+  const parsedActorUserId = BigInt(authUser.userId);
   const parsedInvoiceId = BigInt(input.invoiceId);
 
   const invoice = await prisma.invoice.findFirst({
@@ -502,6 +592,12 @@ export const initiatePayment = async (
     throw new HttpError(404, "Invoice not found for this organization");
   }
 
+  ensurePaymentBranchAccess(authUser, invoice.branchId);
+
+  if (invoice.currency !== "TZS") {
+    throw new HttpError(409, "Mobile money payments require a TZS invoice");
+  }
+
   if (invoice.status === "PAID" || invoice.status === "CANCELLED") {
     throw new HttpError(409, "This invoice cannot accept a new payment request");
   }
@@ -510,6 +606,10 @@ export const initiatePayment = async (
 
   if (outstandingAmount.lessThanOrEqualTo(0)) {
     throw new HttpError(409, "Invoice balance is already settled");
+  }
+
+  if (!outstandingAmount.isInteger()) {
+    throw new HttpError(409, "Mobile money payments require a whole TZS amount");
   }
 
   const requestId = crypto.randomUUID().slice(0, 30);
@@ -555,7 +655,7 @@ export const initiatePayment = async (
         webhook_url: buildWebhookUrl(),
         metadata: {
           invoice_id: input.invoiceId,
-          org_id: orgId,
+          org_id: authUser.orgId,
           payment_id: payment.id.toString(),
         },
       },
@@ -573,31 +673,29 @@ export const initiatePayment = async (
       where: { id: payment.id },
       data: {
         reference: providerReference,
-        externalReference: responseData.external_reference ?? null,
-        status: mapSnippeStatus(responseData.status),
-        apiVersion: responseData.api_version ?? SNIPPE_API_VERSION,
-        expiresAt: responseData.expires_at ? new Date(responseData.expires_at) : null,
         rawResponse: providerResponse as Prisma.InputJsonValue,
-      },
-      include: {
-        invoice: {
-          select: {
-            id: true,
-            invoiceNo: true,
-            branchId: true,
-            student: {
-              select: {
-                id: true,
-                fullName: true,
-                admissionNo: true,
-              },
-            },
-          },
-        },
       },
     });
 
-    const updatedPayment = await getPaymentWithInvoice(payment.id);
+    const updatedPayment = await applyPaymentStateUpdate({
+      paymentId: payment.id,
+      source: "initiation",
+      sourceLabel: "payment_initiation",
+      actorUserId: parsedActorUserId,
+      ipAddress: ipAddress ?? null,
+      rawResponse: providerResponse as Prisma.InputJsonValue,
+      status: responseData.status ?? null,
+      externalReference: responseData.external_reference ?? null,
+      completedAt: responseData.completed_at ?? null,
+      expiresAt: responseData.expires_at ?? null,
+      apiVersion: responseData.api_version ?? null,
+      amountValue: responseData.amount?.value ?? null,
+      currency: responseData.amount?.currency ?? null,
+      metadata: {
+        reference: providerReference,
+        providerStatus: responseData.status ?? null,
+      },
+    });
 
     await createAuditLog({
       orgId: parsedOrgId,
@@ -611,28 +709,39 @@ export const initiatePayment = async (
 
     return toPaymentResponse(updatedPayment);
   } catch (error) {
-    const mappedError =
+    const providerError =
       error instanceof Error && error.name === "SnippeProviderError"
-        ? mapSnippeErrorToHttpError(error as SnippeProviderError)
-        : error instanceof HttpError
-          ? error
-          : new HttpError(502, "Snippe payment initiation failed");
+        ? (error as SnippeProviderError)
+        : null;
+    const mappedError = providerError
+      ? mapSnippeErrorToHttpError(providerError)
+      : error instanceof HttpError
+        ? error
+        : new HttpError(502, "Snippe payment initiation failed");
+    const providerRejected =
+      providerError !== null &&
+      !providerError.retryable &&
+      providerError.httpStatus >= 400 &&
+      providerError.httpStatus < 500;
 
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: "FAILED",
-        rawResponse: {
-          error: mappedError.message,
-          details: mappedError.details ?? null,
-        } as Prisma.InputJsonValue,
-      },
-    });
+    // A timeout or local processing error does not prove the provider declined the request.
+    if (providerRejected) {
+      await prisma.payment.updateMany({
+        where: { id: payment.id, status: "PENDING" },
+        data: {
+          status: "FAILED",
+          rawResponse: {
+            error: mappedError.message,
+            details: mappedError.details ?? null,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    }
 
     await createAuditLog({
       orgId: parsedOrgId,
       actorUserId: parsedActorUserId,
-      action: "payment.initiation_failed",
+      action: providerRejected ? "payment.initiation_failed" : "payment.initiation_uncertain",
       entityType: "payment",
       entityId: payment.id.toString(),
       metadata: {
@@ -648,11 +757,11 @@ export const initiatePayment = async (
   }
 };
 
-export const getPaymentById = async (orgId: string, paymentId: string) => {
+export const getPaymentById = async (authUser: AuthenticatedUser, paymentId: string) => {
   const payment = await prisma.payment.findFirst({
     where: {
       id: BigInt(paymentId),
-      orgId: BigInt(orgId),
+      orgId: BigInt(authUser.orgId),
     },
     include: {
       invoice: {
@@ -660,6 +769,14 @@ export const getPaymentById = async (orgId: string, paymentId: string) => {
           id: true,
           invoiceNo: true,
           branchId: true,
+          invoiceScope: true,
+          course: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+            },
+          },
           student: {
             select: {
               id: true,
@@ -676,12 +793,14 @@ export const getPaymentById = async (orgId: string, paymentId: string) => {
     throw new HttpError(404, "Payment not found");
   }
 
+  ensurePaymentBranchAccess(authUser, payment.invoice.branchId);
+
   return toPaymentResponse(payment);
 };
 
-export const listPayments = async (orgId: string, query: ListPaymentsQuery) => {
+export const listPayments = async (authUser: AuthenticatedUser, query: ListPaymentsQuery) => {
   const where: Prisma.PaymentWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
   if (query.invoiceId) where.invoiceId = BigInt(query.invoiceId);
@@ -706,9 +825,8 @@ export const listPayments = async (orgId: string, query: ListPaymentsQuery) => {
     invoiceFilter.studentId = BigInt(query.studentId);
   }
 
-  if (query.branchId) {
-    invoiceFilter.branchId = BigInt(query.branchId);
-  }
+  const effectiveBranchId = resolveFinanceBranchScope(authUser, query.branchId);
+  if (effectiveBranchId) invoiceFilter.branchId = effectiveBranchId;
 
   if (Object.keys(invoiceFilter).length > 0) {
     where.invoice = invoiceFilter;
@@ -785,6 +903,14 @@ export const listPayments = async (orgId: string, query: ListPaymentsQuery) => {
             id: true,
             invoiceNo: true,
             branchId: true,
+            invoiceScope: true,
+            course: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+              },
+            },
             student: {
               select: {
                 id: true,
@@ -805,11 +931,11 @@ export const listPayments = async (orgId: string, query: ListPaymentsQuery) => {
   };
 };
 
-export const getPaymentReceipt = async (orgId: string, paymentId: string) => {
+export const getPaymentReceipt = async (authUser: AuthenticatedUser, paymentId: string) => {
   const payment = await prisma.payment.findFirst({
     where: {
       id: BigInt(paymentId),
-      orgId: BigInt(orgId),
+      orgId: BigInt(authUser.orgId),
     },
     include: {
       organization: {
@@ -849,6 +975,8 @@ export const getPaymentReceipt = async (orgId: string, paymentId: string) => {
     throw new HttpError(404, "Payment not found");
   }
 
+  ensurePaymentBranchAccess(authUser, payment.invoice.branch!.id);
+
   if (payment.status !== "COMPLETED") {
     throw new HttpError(409, "Receipt is only available for completed payments");
   }
@@ -857,11 +985,12 @@ export const getPaymentReceipt = async (orgId: string, paymentId: string) => {
 };
 
 export const reconcilePaymentById = async (
-  orgId: string,
+  authUserOrOrgId: AuthenticatedUser | string,
   paymentId: string,
-  actorUserId?: string | null,
   ipAddress?: string,
 ) => {
+  const authUser = typeof authUserOrOrgId === "string" ? null : authUserOrOrgId;
+  const orgId = typeof authUserOrOrgId === "string" ? authUserOrOrgId : authUserOrOrgId.orgId;
   const payment = await prisma.payment.findFirst({
     where: {
       id: BigInt(paymentId),
@@ -870,6 +999,11 @@ export const reconcilePaymentById = async (
     select: {
       id: true,
       orgId: true,
+      invoice: {
+        select: {
+          branchId: true,
+        },
+      },
       reference: true,
       status: true,
     },
@@ -877,6 +1011,10 @@ export const reconcilePaymentById = async (
 
   if (!payment) {
     throw new HttpError(404, "Payment not found");
+  }
+
+  if (authUser) {
+    ensurePaymentBranchAccess(authUser, payment.invoice.branchId);
   }
 
   if (!payment.reference) {
@@ -891,7 +1029,7 @@ export const reconcilePaymentById = async (
       paymentId: payment.id,
       source: "reconcile",
       sourceLabel: "manual_status_sync",
-      actorUserId: actorUserId ? BigInt(actorUserId) : null,
+      actorUserId: authUser ? BigInt(authUser.userId) : null,
       ipAddress: ipAddress ?? null,
       rawResponse: providerResponse as Prisma.InputJsonValue,
       status: data.status ?? null,
@@ -900,6 +1038,7 @@ export const reconcilePaymentById = async (
       expiresAt: data.expires_at ?? null,
       apiVersion: data.api_version ?? null,
       amountValue: data.amount?.value ?? null,
+      currency: data.amount?.currency ?? null,
       metadata: {
         reference: data.reference ?? payment.reference,
         providerStatus: data.status ?? null,
@@ -917,7 +1056,7 @@ export const reconcilePaymentById = async (
 
     await createAuditLog({
       orgId: payment.orgId,
-      actorUserId: actorUserId ? BigInt(actorUserId) : null,
+      actorUserId: authUser ? BigInt(authUser.userId) : null,
       action: "payment.reconcile_failed",
       entityType: "payment",
       entityId: payment.id.toString(),
@@ -1002,6 +1141,8 @@ export const handleSnippeWebhook = async (
     throw new HttpError(400, "Missing webhook signature headers");
   }
 
+  verifySnippeWebhookSignature(headers.timestamp, headers.signature, rawBody);
+
   let payload: SnippeWebhookPayload;
 
   try {
@@ -1026,8 +1167,6 @@ export const handleSnippeWebhook = async (
       duplicate: true,
     };
   }
-
-  verifySnippeWebhookSignature(headers.timestamp, headers.signature, rawBody);
 
   const webhook =
     existingWebhook ??
@@ -1086,6 +1225,7 @@ export const handleSnippeWebhook = async (
       completedAt: payload.data?.completed_at ?? null,
       apiVersion: payload.api_version ?? null,
       amountValue: payload.data?.amount?.value ?? null,
+      currency: payload.data?.amount?.currency ?? null,
       metadata: {
         eventId,
         eventType,

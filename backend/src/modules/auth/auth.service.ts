@@ -17,7 +17,7 @@ const hashRefreshToken = (refreshToken: string) =>
 type SessionUser = {
   id: bigint;
   fullName: string;
-  role: "ADMIN" | "ACCOUNTANT" | "TEACHER" | "PARENT";
+  role: "ADMIN" | "ACCOUNTANT" | "TEACHER" | "PARENT" | "LEARNER";
   orgId: bigint;
   branchId: bigint | null;
 };
@@ -56,6 +56,7 @@ const buildRefreshToken = (userId: bigint) =>
   jwt.sign(
     {
       type: "refresh",
+      jti: crypto.randomUUID(),
     },
     env.JWT_REFRESH_SECRET,
     {
@@ -275,22 +276,25 @@ export const login = async (input: LoginInput) => {
 
   const session = await buildSessionResponse(user);
 
-  await prisma.$transaction([
-    prisma.refreshToken.create({
-      data: {
-        orgId: user.orgId,
-        userId: user.id,
-        tokenHash: session.refreshTokenHash,
-        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000),
-      },
-    }),
-    prisma.user.update({
+  await prisma.refreshToken.create({
+    data: {
+      orgId: user.orgId,
+      userId: user.id,
+      tokenHash: session.refreshTokenHash,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000),
+    },
+  });
+
+  try {
+    await prisma.user.update({
       where: { id: user.id },
       data: {
         lastLoginAt: new Date(),
       },
-    }),
-  ]);
+    });
+  } catch {
+    // Login success should not fail because last-login metadata hit a write conflict.
+  }
 
   return {
     accessToken: session.accessToken,

@@ -8,9 +8,10 @@ export const createUserSchema = z
     email: z.string().email("email must be valid").optional(),
     phone: z.string().min(8, "phone must be at least 8 characters").optional(),
     password: z.string().min(8, "password must be at least 8 characters"),
-    role: z.enum(["ADMIN", "ACCOUNTANT", "TEACHER", "PARENT"]),
+    role: z.enum(["ADMIN", "ACCOUNTANT", "TEACHER", "PARENT", "LEARNER"]),
     branchId: z.string().regex(/^\d+$/, "branchId must be a numeric string").optional(),
     guardianId: numericId.optional(),
+    studentId: numericId.optional(),
   })
   .superRefine((value, ctx) => {
     if (!value.email && !value.phone) {
@@ -36,10 +37,26 @@ export const createUserSchema = z
         message: "guardianId can only be used for PARENT accounts",
       });
     }
+
+    if (value.role === "LEARNER" && !value.studentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["studentId"],
+        message: "studentId is required when role is LEARNER",
+      });
+    }
+
+    if (value.role !== "LEARNER" && value.studentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["studentId"],
+        message: "studentId can only be used for LEARNER accounts",
+      });
+    }
   });
 
 export const listUsersQuerySchema = z.object({
-  role: z.enum(["ADMIN", "ACCOUNTANT", "TEACHER", "PARENT"]).optional(),
+  role: z.enum(["ADMIN", "ACCOUNTANT", "TEACHER", "PARENT", "LEARNER"]).optional(),
   status: z.enum(["ACTIVE", "DISABLED"]).optional(),
 });
 

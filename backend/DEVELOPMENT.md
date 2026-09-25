@@ -8,7 +8,7 @@ Services provided:
 - Host MariaDB on `127.0.0.1:3306`
 - Redis on `127.0.0.1:6379`
 
-The defaults match [`.env.example`](/home/jaykali/madrasa/backend/.env.example:1).
+The defaults match [`.env.example`](./.env.example).
 
 ---
 
@@ -46,11 +46,7 @@ Fallback:
 bash scripts/dev-infra-down.sh
 ```
 
-Stop services and remove volumes:
-
-```bash
-docker compose down -v
-```
+Only on a disposable local setup, `docker compose down -v` also deletes the Redis volume.
 
 ---
 
@@ -71,7 +67,7 @@ Current defaults:
 
 ---
 
-## 4. Run Wave 1 Migration
+## 4. Apply Migrations
 
 From `backend/`:
 
@@ -79,7 +75,7 @@ From `backend/`:
 npm run prisma:migrate:deploy
 ```
 
-If you want Prisma to generate the client again:
+Regenerate the Prisma client after schema changes:
 
 ```bash
 npm run prisma:generate
@@ -101,7 +97,16 @@ Default seeded values come from `.env`:
 - admin email: `admin@example.com`
 - admin password: `ChangeMe123!`
 
-Change these values before seeding any shared environment.
+Change these values before seeding any shared environment. Never use the example passwords in production.
+
+For local integration tests only, seed accountant, teacher, parent, and learner accounts on a disposable database:
+
+```bash
+npm run seed:e2e-roles
+```
+
+Do not run the E2E role seed on a shared or production database: it updates matching test users and passwords.
+If a test email or phone belongs to another account, the seed stops; choose unused `E2E_*_EMAIL` and `E2E_*_PHONE` values instead.
 
 ---
 
@@ -119,6 +124,43 @@ Health check:
 curl http://127.0.0.1:4000/api/health
 ```
 
+Core smoke:
+
+```bash
+npm run smoke:core
+```
+
+Write smoke:
+
+```bash
+npm run smoke:write
+```
+
+Public inquiry smoke:
+
+```bash
+npm run smoke:public-inquiry
+```
+
+`smoke:write` creates timestamped QA records for guardian, student, fee structure, invoice, payment request, expense, and announcement.
+`smoke:public-inquiry` submits a public admissions inquiry, verifies it appears in the secure inbox, and marks it as contacted.
+Run write smoke and integration tests only against a disposable development database; they create records.
+
+Optional overrides:
+- `BASE_URL`
+- `SMOKE_ADMIN_LOGIN`
+- `SMOKE_ADMIN_PASSWORD`
+
+Automated API tests:
+
+```bash
+npm test
+```
+
+This integration suite verifies authentication, role and branch boundaries, learner/course access, paid-course billing, signed media links, public inquiries, webhook safety, and reporting.
+
+Optional test credential overrides include `TEST_ADMIN_LOGIN`, `TEST_ADMIN_PASSWORD`, and matching `TEST_ACCOUNTANT_*`, `TEST_TEACHER_*`, `TEST_PARENT_*`, and `TEST_LEARNER_*` variables. A local `SNIPPE_WEBHOOK_SECRET` is needed for signed webhook tests.
+
 ---
 
 ## 7. Recommended First Run Order
@@ -128,5 +170,7 @@ curl http://127.0.0.1:4000/api/health
 3. `docker compose up -d`
 4. `cd backend`
 5. `npm run prisma:migrate:deploy`
-6. `npm run seed:admin`
-7. `npm run dev`
+6. `npm run prisma:generate`
+7. `npm run seed:admin`
+8. `npm run seed:e2e-roles` (disposable local database only)
+9. `npm run dev`

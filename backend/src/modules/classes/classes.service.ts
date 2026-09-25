@@ -23,7 +23,7 @@ const toClassResponse = (classRecord: {
   branch?: { id: bigint; name: string } | null;
   teacher?: { id: bigint; fullName: string; email: string | null; phone: string | null } | null;
   _count?: { currentStudents: number; enrollments: number };
-}) => ({
+}, authUser?: Pick<AuthenticatedUser, "role">) => ({
   id: classRecord.id.toString(),
   orgId: classRecord.orgId.toString(),
   branchId: classRecord.branchId.toString(),
@@ -43,8 +43,8 @@ const toClassResponse = (classRecord: {
     ? {
         id: classRecord.teacher.id.toString(),
         fullName: classRecord.teacher.fullName,
-        email: classRecord.teacher.email,
-        phone: classRecord.teacher.phone,
+        email: authUser?.role === "ACCOUNTANT" ? null : classRecord.teacher.email,
+        phone: authUser?.role === "ACCOUNTANT" ? null : classRecord.teacher.phone,
       }
     : null,
   stats: classRecord._count
@@ -154,6 +154,7 @@ const ensureClassBelongsToOrg = async (orgId: bigint, classId: bigint) => {
       id: true,
       branchId: true,
       academicYear: true,
+      teacherId: true,
     },
   });
 
@@ -278,7 +279,7 @@ export const listClasses = async (authUser: AuthenticatedUser, query: ListClasse
     },
   });
 
-  return classes.map(toClassResponse);
+  return classes.map((classRecord) => toClassResponse(classRecord, authUser));
 };
 
 export const getClassById = async (authUser: AuthenticatedUser, classId: string) => {
@@ -325,7 +326,7 @@ export const getClassById = async (authUser: AuthenticatedUser, classId: string)
     throw new HttpError(404, "Class not found");
   }
 
-  return toClassResponse(classRecord);
+  return toClassResponse(classRecord, authUser);
 };
 
 export const createEnrollment = async (orgId: string, input: CreateEnrollmentInput) => {
@@ -430,7 +431,17 @@ export const listEnrollments = async (authUser: AuthenticatedUser, query: ListEn
   }
 
   if (query.classId) {
-    where.classId = BigInt(query.classId);
+    const parsedClassId = BigInt(query.classId);
+
+    if (authUser.role === "TEACHER") {
+      const classRecord = await ensureClassBelongsToOrg(BigInt(authUser.orgId), parsedClassId);
+
+      if (classRecord.teacherId !== BigInt(authUser.userId)) {
+        throw new HttpError(403, "Teachers can only access enrollments for their own classes");
+      }
+    }
+
+    where.classId = parsedClassId;
   }
 
   if (query.academicYear) {

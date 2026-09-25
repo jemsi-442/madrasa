@@ -21,6 +21,12 @@ const toUserResponse = (user: {
     phone: string;
     email: string | null;
   } | null;
+  learnerProfile?: {
+    id: bigint;
+    admissionNo: string;
+    fullName: string;
+    programCategory: string;
+  } | null;
 }) => ({
   id: user.id.toString(),
   fullName: user.fullName,
@@ -37,6 +43,14 @@ const toUserResponse = (user: {
         fullName: user.guardianProfile.fullName,
         phone: user.guardianProfile.phone,
         email: user.guardianProfile.email,
+      }
+    : null,
+  learnerProfile: user.learnerProfile
+    ? {
+        id: user.learnerProfile.id.toString(),
+        admissionNo: user.learnerProfile.admissionNo,
+        fullName: user.learnerProfile.fullName,
+        programCategory: user.learnerProfile.programCategory,
       }
     : null,
 });
@@ -78,10 +92,32 @@ const ensureGuardianAvailableForParentAccount = async (orgId: bigint, guardianId
   }
 };
 
+const ensureStudentAvailableForLearnerAccount = async (orgId: bigint, studentId: bigint) => {
+  const student = await prisma.student.findFirst({
+    where: {
+      id: studentId,
+      orgId,
+    },
+    select: {
+      id: true,
+      learnerUserId: true,
+    },
+  });
+
+  if (!student) {
+    throw new HttpError(404, "Student not found for this organization");
+  }
+
+  if (student.learnerUserId) {
+    throw new HttpError(409, "This student is already linked to a learner account");
+  }
+};
+
 export const createUser = async (orgId: string, input: CreateUserInput) => {
   const parsedOrgId = BigInt(orgId);
   const parsedBranchId = input.branchId ? BigInt(input.branchId) : null;
   const parsedGuardianId = input.guardianId ? BigInt(input.guardianId) : null;
+  const parsedStudentId = input.studentId ? BigInt(input.studentId) : null;
   const uniqueIdentityFilters: Prisma.UserWhereInput[] = [];
 
   if (input.email) {
@@ -98,6 +134,10 @@ export const createUser = async (orgId: string, input: CreateUserInput) => {
 
   if (parsedGuardianId) {
     await ensureGuardianAvailableForParentAccount(parsedOrgId, parsedGuardianId);
+  }
+
+  if (parsedStudentId) {
+    await ensureStudentAvailableForLearnerAccount(parsedOrgId, parsedStudentId);
   }
 
   const existingUser = await prisma.user.findFirst({
@@ -148,6 +188,15 @@ export const createUser = async (orgId: string, input: CreateUserInput) => {
       });
     }
 
+    if (parsedStudentId) {
+      await tx.student.update({
+        where: { id: parsedStudentId },
+        data: {
+          learnerUserId: createdUser.id,
+        },
+      });
+    }
+
     return tx.user.findUniqueOrThrow({
       where: { id: createdUser.id },
       select: {
@@ -166,6 +215,14 @@ export const createUser = async (orgId: string, input: CreateUserInput) => {
             fullName: true,
             phone: true,
             email: true,
+          },
+        },
+        learnerProfile: {
+          select: {
+            id: true,
+            admissionNo: true,
+            fullName: true,
+            programCategory: true,
           },
         },
       },
@@ -207,6 +264,14 @@ export const listUsers = async (orgId: string, query: ListUsersQuery) => {
           fullName: true,
           phone: true,
           email: true,
+        },
+      },
+      learnerProfile: {
+        select: {
+          id: true,
+          admissionNo: true,
+          fullName: true,
+          programCategory: true,
         },
       },
     },

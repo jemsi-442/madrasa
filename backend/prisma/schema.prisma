@@ -18,6 +18,7 @@ enum UserRole {
   ACCOUNTANT
   TEACHER
   PARENT
+  LEARNER
 }
 
 enum UserStatus {
@@ -30,6 +31,76 @@ enum StudentStatus {
   INACTIVE
   SUSPENDED
   GRADUATED
+}
+
+enum StudentProgramCategory {
+  MADRASA_CHILD
+  COURSE_STUDENT
+}
+
+enum SubjectCategory {
+  RELIGIOUS
+  LANGUAGE
+  TECHNICAL
+  BUSINESS
+  GENERAL
+  VOCATIONAL
+}
+
+enum CourseDeliveryMode {
+  SELF_PACED
+  COHORT
+  LIVE_PLUS_LIBRARY
+}
+
+enum ContentVisibility {
+  FREE
+  PAID
+  PREVIEW
+  LOCKED
+  UNLISTED
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaAssetType {
+  VIDEO
+  AUDIO
+  PDF
+  TEXT
+  ATTACHMENT
+}
+
+enum StorageProvider {
+  LOCAL
+  S3
+  R2
+  VIMEO
+  YOUTUBE
+  EXTERNAL
+}
+
+enum CourseGrantType {
+  MANUAL
+  PAYMENT
+  SCHOLARSHIP
+  PREVIEW
+}
+
+enum CourseBillingMode {
+  ONE_TIME
+  SUBSCRIPTION
+}
+
+enum CourseAccessRequestStatus {
+  NEW
+  REVIEWING
+  APPROVED
+  REJECTED
 }
 
 enum EnrollmentStatus {
@@ -49,6 +120,11 @@ enum BillingCycle {
   ONE_TIME
   MONTHLY
   TERMLY
+}
+
+enum InvoiceScope {
+  SCHOOL_FEE
+  COURSE_ACCESS
 }
 
 enum InvoiceStatus {
@@ -86,6 +162,19 @@ enum AnnouncementAudience {
   ACCOUNTANTS
 }
 
+enum PublicInquiryType {
+  GENERAL
+  ADMISSIONS
+  PARENT_SUPPORT
+  FINANCE
+}
+
+enum PublicInquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
 enum WebhookProcessingStatus {
   RECEIVED
   PROCESSED
@@ -107,6 +196,13 @@ model Organization {
   students        Student[]
   classes         Class[]
   subjects        Subject[]
+  courses         Course[]
+  courseModules   CourseModule[]
+  courseLessons   CourseLesson[]
+  mediaAssets     MediaAsset[]
+  courseAccessGrants CourseAccessGrant[]
+  courseAccessRequests CourseAccessRequest[]
+  lessonProgress  CourseLessonProgress[]
   enrollments     Enrollment[]
   attendance      AttendanceRecord[]
   feeStructures   FeeStructure[]
@@ -115,6 +211,7 @@ model Organization {
   paymentWebhooks PaymentWebhook[]
   hifdhProgress   HifdhProgress[]
   announcements   Announcement[]
+  publicInquiries PublicInquiry[]
   auditLogs       AuditLog[]
   refreshTokens   RefreshToken[]
   expenses        Expense[]
@@ -140,6 +237,7 @@ model Branch {
   invoices      Invoice[]
   announcements Announcement[]
   expenses      Expense[]
+  publicInquiries PublicInquiry[]
 
   @@index([orgId], map: "idx_branches_org_id")
   @@unique([orgId, name], map: "uniq_branches_org_name")
@@ -162,7 +260,18 @@ model User {
   organization          Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
   branch                Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
   guardianProfile       Guardian?
+  learnerProfile        Student?           @relation("LearnerStudent")
   taughtClasses         Class[]            @relation("ClassTeacher")
+  teachingCourses       Course[]           @relation("CourseInstructor")
+  subjectsCreated       Subject[]          @relation("SubjectCreator")
+  coursesCreated        Course[]           @relation("CourseCreator")
+  coursesPublished      Course[]           @relation("CoursePublisher")
+  courseAccessGranted   CourseAccessGrant[] @relation("CourseAccessGrantedBy")
+  courseAccessReceived  CourseAccessGrant[] @relation("CourseAccessLearner")
+  courseAccessRequests  CourseAccessRequest[] @relation("CourseAccessRequester")
+  courseAccessReviewed  CourseAccessRequest[] @relation("CourseAccessReviewer")
+  coursePurchaseInvoices Invoice[]          @relation("CourseInvoiceLearner")
+  lessonProgress        CourseLessonProgress[]
   attendanceMarked      AttendanceRecord[] @relation("AttendanceMarkedBy")
   hifdhAssessments      HifdhProgress[]    @relation("HifdhTeacher")
   announcementsCreated  Announcement[]
@@ -203,9 +312,11 @@ model Student {
   admissionNo       String             @map("admission_no") @db.VarChar(50)
   fullName          String             @map("full_name") @db.VarChar(150)
   gender            String             @db.VarChar(20)
+  programCategory   StudentProgramCategory @default(MADRASA_CHILD) @map("program_category")
   dob               DateTime?          @db.Date
   status            StudentStatus      @default(ACTIVE)
   classId           BigInt?            @map("class_id")
+  learnerUserId     BigInt?            @unique @map("learner_user_id")
   primaryGuardianId BigInt             @map("primary_guardian_id")
   joinedOn          DateTime?          @map("joined_on") @db.Date
   leftOn            DateTime?          @map("left_on") @db.Date
@@ -215,12 +326,16 @@ model Student {
   organization      Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
   branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
   currentClass      Class?             @relation("CurrentClassStudents", fields: [classId], references: [id], onDelete: SetNull)
+  learnerUser       User?              @relation("LearnerStudent", fields: [learnerUserId], references: [id], onDelete: SetNull)
   primaryGuardian   Guardian           @relation("PrimaryGuardian", fields: [primaryGuardianId], references: [id], onDelete: Restrict)
   guardians         StudentGuardian[]
   enrollments       Enrollment[]
   attendance        AttendanceRecord[]
   invoices          Invoice[]
   hifdhProgress     HifdhProgress[]
+  courseAccessGrants CourseAccessGrant[]
+  courseAccessRequests CourseAccessRequest[]
+  lessonProgress     CourseLessonProgress[]
 
   @@unique([orgId, admissionNo], map: "uniq_students_org_admission_no")
   @@index([orgId, branchId, classId], map: "idx_students_org_branch_class")
@@ -270,14 +385,212 @@ model Subject {
   id           BigInt       @id @default(autoincrement())
   orgId        BigInt       @map("org_id")
   code         String       @db.VarChar(30)
+  slug         String?      @db.VarChar(100)
   name         String       @db.VarChar(100)
+  summary      String?      @db.VarChar(255)
+  category     SubjectCategory @default(GENERAL)
   isCore       Boolean      @default(true) @map("is_core")
+  isActive     Boolean      @default(true) @map("is_active")
+  createdByUserId BigInt?   @map("created_by_user_id")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  createdBy    User?        @relation("SubjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  courses      Course[]
 
   @@unique([orgId, code], map: "uniq_subjects_org_code")
+  @@unique([orgId, slug], map: "uniq_subjects_org_slug")
   @@map("subjects")
+}
+
+model Course {
+  id                    BigInt             @id @default(autoincrement())
+  orgId                 BigInt             @map("org_id")
+  subjectId             BigInt             @map("subject_id")
+  slug                  String             @db.VarChar(120)
+  title                 String             @db.VarChar(150)
+  summary               String             @db.VarChar(255)
+  description           String?            @db.Text
+  programCategory       StudentProgramCategory @default(COURSE_STUDENT) @map("program_category")
+  deliveryMode          CourseDeliveryMode @default(SELF_PACED) @map("delivery_mode")
+  level                 String?            @db.VarChar(50)
+  visibility            ContentVisibility  @default(LOCKED)
+  priceAmount           Decimal?           @map("price_amount") @db.Decimal(12, 2)
+  currency              String             @default("TZS") @db.Char(3)
+  billingMode           CourseBillingMode  @default(ONE_TIME) @map("billing_mode")
+  publicationStatus     PublicationStatus  @default(DRAFT) @map("publication_status")
+  isFeatured            Boolean            @default(false) @map("is_featured")
+  isReligious           Boolean            @default(false) @map("is_religious")
+  requiresApprovalBeforePublish Boolean    @default(true) @map("requires_approval_before_publish")
+  primaryInstructorUserId BigInt?          @map("primary_instructor_user_id")
+  createdByUserId       BigInt             @map("created_by_user_id")
+  publishedByUserId     BigInt?            @map("published_by_user_id")
+  publishedAt           DateTime?          @map("published_at")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  organization          Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  subject               Subject            @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  primaryInstructor     User?              @relation("CourseInstructor", fields: [primaryInstructorUserId], references: [id], onDelete: SetNull)
+  createdBy             User               @relation("CourseCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  publishedBy           User?              @relation("CoursePublisher", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  modules               CourseModule[]
+  lessons               CourseLesson[]
+  assets                MediaAsset[]
+  accessGrants          CourseAccessGrant[]
+  accessRequests        CourseAccessRequest[]
+  purchaseInvoices      Invoice[]           @relation("CoursePurchaseInvoices")
+  lessonProgress        CourseLessonProgress[]
+
+  @@unique([orgId, slug], map: "uniq_courses_org_slug")
+  @@index([orgId, subjectId, publicationStatus], map: "idx_courses_org_subject_status")
+  @@index([orgId, primaryInstructorUserId], map: "idx_courses_org_instructor")
+  @@map("courses")
+}
+
+model CourseAccessGrant {
+  id              BigInt          @id @default(autoincrement())
+  orgId           BigInt          @map("org_id")
+  courseId        BigInt          @map("course_id")
+  studentId       BigInt          @map("student_id")
+  learnerUserId   BigInt          @map("learner_user_id")
+  grantType       CourseGrantType @default(MANUAL) @map("grant_type")
+  startsAt        DateTime?       @map("starts_at")
+  endsAt          DateTime?       @map("ends_at")
+  grantedByUserId BigInt          @map("granted_by_user_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  organization    Organization    @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  learnerUser     User            @relation("CourseAccessLearner", fields: [learnerUserId], references: [id], onDelete: Cascade)
+  grantedBy       User            @relation("CourseAccessGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([courseId, learnerUserId], map: "uniq_course_access_course_learner")
+  @@index([orgId, learnerUserId], map: "idx_course_access_org_learner")
+  @@index([orgId, studentId], map: "idx_course_access_org_student")
+  @@map("course_access_grants")
+}
+
+model CourseAccessRequest {
+  id               BigInt                    @id @default(autoincrement())
+  orgId            BigInt                    @map("org_id")
+  courseId         BigInt                    @map("course_id")
+  studentId        BigInt                    @map("student_id")
+  learnerUserId    BigInt                    @map("learner_user_id")
+  status           CourseAccessRequestStatus @default(NEW)
+  requestMessage   String?                   @map("request_message") @db.VarChar(255)
+  officeNote       String?                   @map("office_note") @db.VarChar(255)
+  reviewedByUserId BigInt?                   @map("reviewed_by_user_id")
+  reviewedAt       DateTime?                 @map("reviewed_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  organization     Organization              @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  course           Course                    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student          Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  learnerUser      User                      @relation("CourseAccessRequester", fields: [learnerUserId], references: [id], onDelete: Cascade)
+  reviewedBy       User?                     @relation("CourseAccessReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  courseInvoices   Invoice[]                 @relation("CourseAccessRequestInvoices")
+
+  @@unique([courseId, learnerUserId], map: "uniq_course_access_request_course_learner")
+  @@index([orgId, status, createdAt], map: "idx_course_access_requests_org_status_created")
+  @@index([orgId, studentId], map: "idx_course_access_requests_org_student")
+  @@map("course_access_requests")
+}
+
+model CourseModule {
+  id            BigInt        @id @default(autoincrement())
+  orgId         BigInt        @map("org_id")
+  courseId      BigInt        @map("course_id")
+  title         String        @db.VarChar(150)
+  position      Int
+  summary       String?       @db.VarChar(255)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  organization  Organization  @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons       CourseLesson[]
+
+  @@unique([courseId, position], map: "uniq_course_modules_course_position")
+  @@index([orgId, courseId], map: "idx_course_modules_org_course")
+  @@map("course_modules")
+}
+
+model CourseLesson {
+  id                BigInt             @id @default(autoincrement())
+  orgId             BigInt             @map("org_id")
+  courseId          BigInt             @map("course_id")
+  moduleId          BigInt             @map("module_id")
+  title             String             @db.VarChar(150)
+  slug              String             @db.VarChar(150)
+  summary           String?            @db.VarChar(255)
+  contentText       String?            @map("content_text") @db.LongText
+  position          Int
+  visibility        ContentVisibility  @default(LOCKED)
+  publicationStatus PublicationStatus  @default(DRAFT) @map("publication_status")
+  estimatedMinutes  Int?               @map("estimated_minutes")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  organization      Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  course            Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module            CourseModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  assets            MediaAsset[]
+  progressRecords   CourseLessonProgress[]
+
+  @@unique([courseId, slug], map: "uniq_course_lessons_course_slug")
+  @@unique([moduleId, position], map: "uniq_course_lessons_module_position")
+  @@index([orgId, courseId, moduleId], map: "idx_course_lessons_org_course_module")
+  @@map("course_lessons")
+}
+
+model MediaAsset {
+  id               BigInt             @id @default(autoincrement())
+  orgId            BigInt             @map("org_id")
+  courseId         BigInt             @map("course_id")
+  lessonId         BigInt             @map("lesson_id")
+  assetType        MediaAssetType     @map("asset_type")
+  storageProvider  StorageProvider    @default(LOCAL) @map("storage_provider")
+  title            String?            @db.VarChar(150)
+  storageKey       String             @map("storage_key") @db.VarChar(255)
+  mimeType         String?            @map("mime_type") @db.VarChar(120)
+  durationSeconds  Int?               @map("duration_seconds")
+  fileSizeBytes    BigInt?            @map("file_size_bytes")
+  visibility       ContentVisibility  @default(LOCKED)
+  downloadAllowed  Boolean            @default(false) @map("download_allowed")
+  streamingProfile String?            @map("streaming_profile") @db.VarChar(100)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  organization     Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  course           Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson           CourseLesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, courseId, lessonId], map: "idx_media_assets_org_course_lesson")
+  @@index([lessonId, assetType], map: "idx_media_assets_lesson_type")
+  @@map("media_assets")
+}
+
+model CourseLessonProgress {
+  id              BigInt       @id @default(autoincrement())
+  orgId           BigInt       @map("org_id")
+  courseId        BigInt       @map("course_id")
+  lessonId        BigInt       @map("lesson_id")
+  studentId       BigInt       @map("student_id")
+  learnerUserId   BigInt       @map("learner_user_id")
+  watchSeconds    Int          @default(0) @map("watch_seconds")
+  progressPercent Int          @default(0) @map("progress_percent")
+  completedAt     DateTime?    @map("completed_at")
+  lastOpenedAt    DateTime?    @map("last_opened_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  course          Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson          CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student         Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  learnerUser     User         @relation(fields: [learnerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, learnerUserId], map: "uniq_course_lesson_progress_lesson_learner")
+  @@index([orgId, learnerUserId, courseId], map: "idx_course_lesson_progress_org_learner_course")
+  @@index([orgId, studentId], map: "idx_course_lesson_progress_org_student")
+  @@map("course_lesson_progress")
 }
 
 model Enrollment {
@@ -346,7 +659,11 @@ model Invoice {
   orgId           BigInt        @map("org_id")
   branchId        BigInt        @map("branch_id")
   studentId       BigInt        @map("student_id")
+  learnerUserId   BigInt?       @map("learner_user_id")
+  courseId        BigInt?       @map("course_id")
+  courseAccessRequestId BigInt? @map("course_access_request_id")
   feeStructureId  BigInt?       @map("fee_structure_id")
+  invoiceScope    InvoiceScope  @default(SCHOOL_FEE) @map("invoice_scope")
   invoiceNo       String        @map("invoice_no") @db.VarChar(50)
   amountDue       Decimal       @map("amount_due") @db.Decimal(12, 2)
   amountPaid      Decimal       @map("amount_paid") @default(0) @db.Decimal(12, 2)
@@ -359,11 +676,17 @@ model Invoice {
   organization    Organization  @relation(fields: [orgId], references: [id], onDelete: Restrict)
   branch          Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
   student         Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  learnerUser     User?         @relation("CourseInvoiceLearner", fields: [learnerUserId], references: [id], onDelete: SetNull)
+  course          Course?       @relation("CoursePurchaseInvoices", fields: [courseId], references: [id], onDelete: SetNull)
+  courseAccessRequest CourseAccessRequest? @relation("CourseAccessRequestInvoices", fields: [courseAccessRequestId], references: [id], onDelete: SetNull)
   feeStructure    FeeStructure? @relation(fields: [feeStructureId], references: [id], onDelete: SetNull)
   payments        Payment[]
 
   @@unique([orgId, invoiceNo], map: "uniq_invoices_org_invoice_no")
   @@index([orgId, studentId, status], map: "idx_invoices_org_student_status")
+  @@index([orgId, learnerUserId, invoiceScope], map: "idx_invoices_org_learner_scope")
+  @@index([orgId, courseId, invoiceScope], map: "idx_invoices_org_course_scope")
+  @@index([orgId, courseAccessRequestId], map: "idx_invoices_org_course_request")
   @@map("invoices")
 }
 
@@ -459,6 +782,30 @@ model Announcement {
 
   @@index([orgId, branchId, audience], map: "idx_announcements_org_branch_audience")
   @@map("announcements")
+}
+
+model PublicInquiry {
+  id               BigInt              @id @default(autoincrement())
+  orgId            BigInt              @map("org_id")
+  branchId         BigInt?             @map("branch_id")
+  inquiryType      PublicInquiryType   @map("inquiry_type")
+  status           PublicInquiryStatus @default(NEW)
+  fullName         String              @map("full_name") @db.VarChar(150)
+  phone            String              @db.VarChar(30)
+  email            String?             @db.VarChar(150)
+  subject          String              @db.VarChar(160)
+  message          String              @db.Text
+  preferredContact String?             @map("preferred_contact") @db.VarChar(30)
+  sourcePage       String              @map("source_page") @db.VarChar(50)
+  resolvedAt       DateTime?           @map("resolved_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  organization     Organization        @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch           Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, inquiryType, status, createdAt], map: "idx_public_inquiries_org_type_status_created_at")
+  @@index([orgId, phone], map: "idx_public_inquiries_org_phone")
+  @@map("public_inquiries")
 }
 
 model AuditLog {

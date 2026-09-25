@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import { buildPaginationMeta, getPaginationParams } from "../../shared/utils/pagination";
 import type {
   CreateExpenseInput,
@@ -158,6 +159,23 @@ const ensureStudentBelongsToOrg = async (orgId: bigint, studentId: bigint) => {
   return student;
 };
 
+const resolveFinanceBranchScope = async (authUser: AuthenticatedUser, requestedBranchId?: string | null) => {
+  const orgId = BigInt(authUser.orgId);
+  const accountantBranchId =
+    authUser.role === "ACCOUNTANT" && authUser.branchId ? BigInt(authUser.branchId) : null;
+  const parsedRequestedBranchId = requestedBranchId ? BigInt(requestedBranchId) : null;
+
+  if (accountantBranchId && parsedRequestedBranchId && accountantBranchId !== parsedRequestedBranchId) {
+    throw new HttpError(403, "Accountants can only access finance records for their own branch");
+  }
+
+  if (parsedRequestedBranchId) {
+    await ensureBranchBelongsToOrg(orgId, parsedRequestedBranchId);
+  }
+
+  return accountantBranchId ?? parsedRequestedBranchId;
+};
+
 const generateInvoiceNo = () => {
   const date = new Date();
   const stamp = `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, "0")}${String(
@@ -170,20 +188,21 @@ const generateInvoiceNo = () => {
   return `INV-${stamp}-${random}`;
 };
 
-export const createFeeStructure = async (orgId: string, input: CreateFeeStructureInput) => {
-  const parsedOrgId = BigInt(orgId);
-  const parsedBranchId = input.branchId ? BigInt(input.branchId) : null;
+export const createFeeStructure = async (authUser: AuthenticatedUser, input: CreateFeeStructureInput) => {
+  const parsedOrgId = BigInt(authUser.orgId);
+  const parsedBranchId = await resolveFinanceBranchScope(authUser, input.branchId);
   const parsedClassId = input.classId ? BigInt(input.classId) : null;
-
-  if (parsedBranchId) {
-    await ensureBranchBelongsToOrg(parsedOrgId, parsedBranchId);
-  }
 
   if (parsedClassId) {
     const classRecord = await ensureClassBelongsToOrg(parsedOrgId, parsedClassId);
 
     if (parsedBranchId && classRecord.branchId !== parsedBranchId) {
-      throw new HttpError(409, "Class and branch must belong to the same branch scope");
+      throw new HttpError(
+        authUser.role === "ACCOUNTANT" ? 403 : 409,
+        authUser.role === "ACCOUNTANT"
+          ? "Accountants can only use classes from their own branch"
+          : "Class and branch must belong to the same branch scope",
+      );
     }
   }
 
@@ -206,12 +225,14 @@ export const createFeeStructure = async (orgId: string, input: CreateFeeStructur
   return toFeeStructureResponse(record);
 };
 
-export const listFeeStructures = async (orgId: string, query: ListFeeStructuresQuery) => {
+export const listFeeStructures = async (authUser: AuthenticatedUser, query: ListFeeStructuresQuery) => {
   const where: Prisma.FeeStructureWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
-  if (query.branchId) where.branchId = BigInt(query.branchId);
+  const effectiveBranchId = await resolveFinanceBranchScope(authUser, query.branchId);
+
+  if (effectiveBranchId) where.branchId = effectiveBranchId;
   if (query.classId) where.classId = BigInt(query.classId);
   if (typeof query.isActive === "boolean") where.isActive = query.isActive;
   if (query.search) {
@@ -242,10 +263,15 @@ export const listFeeStructures = async (orgId: string, query: ListFeeStructuresQ
   };
 };
 
-export const createInvoice = async (orgId: string, input: CreateInvoiceInput) => {
-  const parsedOrgId = BigInt(orgId);
+export const createInvoice = async (authUser: AuthenticatedUser, input: CreateInvoiceInput) => {
+  const parsedOrgId = BigInt(authUser.orgId);
   const parsedStudentId = BigInt(input.studentId);
   const student = await ensureStudentBelongsToOrg(parsedOrgId, parsedStudentId);
+  const effectiveBranchId = await resolveFinanceBranchScope(authUser, null);
+
+  if (effectiveBranchId && student.branchId !== effectiveBranchId) {
+    throw new HttpError(403, "Accountants can only create invoices for students in their own branch");
+  }
 
   let feeStructureId: bigint | null = null;
   let amountDue: Prisma.Decimal;
@@ -271,6 +297,10 @@ export const createInvoice = async (orgId: string, input: CreateInvoiceInput) =>
 
     if (!feeStructure.isActive) {
       throw new HttpError(409, "Fee structure is not active");
+    }
+
+    if (effectiveBranchId && feeStructure.branchId && feeStructure.branchId !== effectiveBranchId) {
+      throw new HttpError(403, "Accountants can only use fee structures from their own branch");
     }
 
     if (feeStructure.branchId && feeStructure.branchId !== student.branchId) {
@@ -308,13 +338,14 @@ export const createInvoice = async (orgId: string, input: CreateInvoiceInput) =>
   return toInvoiceResponse(record);
 };
 
-export const listInvoices = async (orgId: string, query: ListInvoicesQuery) => {
+export const listInvoices = async (authUser: AuthenticatedUser, query: ListInvoicesQuery) => {
   const where: Prisma.InvoiceWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
   if (query.studentId) where.studentId = BigInt(query.studentId);
-  if (query.branchId) where.branchId = BigInt(query.branchId);
+  const effectiveBranchId = await resolveFinanceBranchScope(authUser, query.branchId);
+  if (effectiveBranchId) where.branchId = effectiveBranchId;
   if (query.status) where.status = query.status;
   if (query.search) {
     where.OR = [
@@ -377,13 +408,9 @@ export const listInvoices = async (orgId: string, query: ListInvoicesQuery) => {
   };
 };
 
-export const createExpense = async (orgId: string, recordedByUserId: string, input: CreateExpenseInput) => {
-  const parsedOrgId = BigInt(orgId);
-  const parsedBranchId = input.branchId ? BigInt(input.branchId) : null;
-
-  if (parsedBranchId) {
-    await ensureBranchBelongsToOrg(parsedOrgId, parsedBranchId);
-  }
+export const createExpense = async (authUser: AuthenticatedUser, input: CreateExpenseInput) => {
+  const parsedOrgId = BigInt(authUser.orgId);
+  const parsedBranchId = await resolveFinanceBranchScope(authUser, input.branchId);
 
   const record = await prisma.expense.create({
     data: {
@@ -394,7 +421,7 @@ export const createExpense = async (orgId: string, recordedByUserId: string, inp
       amount: new Prisma.Decimal(input.amount),
       currency: input.currency ?? "TZS",
       expenseDate: new Date(input.expenseDate),
-      recordedById: BigInt(recordedByUserId),
+      recordedById: BigInt(authUser.userId),
     },
     include: {
       branch: { select: { id: true, name: true } },
@@ -405,12 +432,13 @@ export const createExpense = async (orgId: string, recordedByUserId: string, inp
   return toExpenseResponse(record);
 };
 
-export const listExpenses = async (orgId: string, query: ListExpensesQuery) => {
+export const listExpenses = async (authUser: AuthenticatedUser, query: ListExpensesQuery) => {
   const where: Prisma.ExpenseWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
-  if (query.branchId) where.branchId = BigInt(query.branchId);
+  const effectiveBranchId = await resolveFinanceBranchScope(authUser, query.branchId);
+  if (effectiveBranchId) where.branchId = effectiveBranchId;
   if (query.search) {
     where.OR = [
       {

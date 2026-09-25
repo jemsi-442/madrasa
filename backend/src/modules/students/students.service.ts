@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
+import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import { buildPaginationMeta, getPaginationParams } from "../../shared/utils/pagination";
 import type {
   CreateGuardianInput,
@@ -68,33 +69,35 @@ const studentSelect = Prisma.validator<Prisma.StudentSelect>()({
 type GuardianRecord = Prisma.GuardianGetPayload<{ select: typeof guardianSelect }>;
 type StudentRecord = Prisma.StudentGetPayload<{ select: typeof studentSelect }>;
 
-const toGuardianResponse = (guardian: GuardianRecord) => ({
+const toGuardianResponse = (guardian: GuardianRecord, authUser?: Pick<AuthenticatedUser, "role">) => ({
   id: guardian.id.toString(),
   fullName: guardian.fullName,
   phone: guardian.phone,
   email: guardian.email,
-  relationship: guardian.relationship,
-  address: guardian.address,
+  relationship: authUser?.role === "ACCOUNTANT" ? null : guardian.relationship,
+  address: authUser?.role === "ACCOUNTANT" ? null : guardian.address,
   createdAt: guardian.createdAt.toISOString(),
 });
 
-const toStudentResponse = (student: StudentRecord) => {
+const toStudentResponse = (student: StudentRecord, authUser?: Pick<AuthenticatedUser, "role">) => {
   if (!student.branch || !student.primaryGuardian) {
     throw new HttpError(500, "Student relations are incomplete");
   }
+
+  const isAccountantView = authUser?.role === "ACCOUNTANT";
 
   return {
     id: student.id.toString(),
     admissionNo: student.admissionNo,
     fullName: student.fullName,
     gender: student.gender,
-    dob: student.dob?.toISOString().slice(0, 10) ?? null,
+    dob: isAccountantView ? null : student.dob?.toISOString().slice(0, 10) ?? null,
     status: student.status,
     branchId: student.branchId.toString(),
     classId: student.classId?.toString() ?? null,
-    joinedOn: student.joinedOn?.toISOString().slice(0, 10) ?? null,
-    leftOn: student.leftOn?.toISOString().slice(0, 10) ?? null,
-    notes: student.notes,
+    joinedOn: isAccountantView ? null : student.joinedOn?.toISOString().slice(0, 10) ?? null,
+    leftOn: isAccountantView ? null : student.leftOn?.toISOString().slice(0, 10) ?? null,
+    notes: isAccountantView ? null : student.notes,
     createdAt: student.createdAt.toISOString(),
     branch: {
       id: student.branch.id.toString(),
@@ -107,12 +110,14 @@ const toStudentResponse = (student: StudentRecord) => {
           academicYear: student.currentClass.academicYear,
         }
       : null,
-    primaryGuardian: toGuardianResponse(student.primaryGuardian),
-    guardians: student.guardians.map((link) => ({
-      isPrimary: link.isPrimary,
-      linkedAt: link.createdAt.toISOString(),
-      guardian: toGuardianResponse(link.guardian),
-    })),
+    primaryGuardian: toGuardianResponse(student.primaryGuardian, authUser),
+    guardians: isAccountantView
+      ? []
+      : student.guardians.map((link) => ({
+          isPrimary: link.isPrimary,
+          linkedAt: link.createdAt.toISOString(),
+          guardian: toGuardianResponse(link.guardian, authUser),
+        })),
   };
 };
 
@@ -193,6 +198,25 @@ const getStudentRecord = async (db: DbClient, orgId: bigint, studentId: bigint) 
   return student;
 };
 
+const getTeacherScopedStudentRecord = async (db: DbClient, authUser: AuthenticatedUser, studentId: bigint) => {
+  const student = await db.student.findFirst({
+    where: {
+      id: studentId,
+      orgId: BigInt(authUser.orgId),
+      currentClass: {
+        teacherId: BigInt(authUser.userId),
+      },
+    },
+    select: studentSelect,
+  });
+
+  if (!student) {
+    throw new HttpError(404, "Student not found");
+  }
+
+  return student;
+};
+
 const getStudentByIdOrThrow = async (db: DbClient, studentId: bigint) =>
   db.student.findUniqueOrThrow({
     where: {
@@ -226,7 +250,7 @@ export const listGuardians = async (orgId: string) => {
     select: guardianSelect,
   });
 
-  return guardians.map(toGuardianResponse);
+  return guardians.map((guardian) => toGuardianResponse(guardian));
 };
 
 export const createStudent = async (orgId: string, input: CreateStudentInput) => {
@@ -568,9 +592,9 @@ export const unlinkGuardianFromStudent = async (orgId: string, studentId: string
   return toStudentResponse(updatedStudent);
 };
 
-export const listStudents = async (orgId: string, query: ListStudentsQuery) => {
+export const listStudents = async (authUser: AuthenticatedUser, query: ListStudentsQuery) => {
   const where: Prisma.StudentWhereInput = {
-    orgId: BigInt(orgId),
+    orgId: BigInt(authUser.orgId),
   };
 
   if (query.branchId) {
@@ -636,12 +660,17 @@ export const listStudents = async (orgId: string, query: ListStudentsQuery) => {
   ]);
 
   return {
-    items: students.map(toStudentResponse),
+    items: students.map((student) => toStudentResponse(student, authUser)),
     meta: buildPaginationMeta(totalItems, query),
   };
 };
 
-export const getStudentById = async (orgId: string, studentId: string) => {
-  const student = await getStudentRecord(prisma, BigInt(orgId), BigInt(studentId));
+export const getStudentById = async (authUser: AuthenticatedUser, studentId: string) => {
+  const parsedStudentId = BigInt(studentId);
+  const student =
+    authUser.role === "TEACHER"
+      ? await getTeacherScopedStudentRecord(prisma, authUser, parsedStudentId)
+      : await getStudentRecord(prisma, BigInt(authUser.orgId), parsedStudentId);
+
   return toStudentResponse(student);
 };

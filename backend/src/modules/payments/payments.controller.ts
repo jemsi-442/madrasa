@@ -13,7 +13,7 @@ import { initiatePaymentSchema, listPaymentsQuerySchema } from "./payments.schem
 
 export const initiatePaymentHandler = async (req: Request, res: Response) => {
   const input = initiatePaymentSchema.parse(req.body);
-  const payment = await initiatePayment(req.authUser!.orgId, req.authUser!.userId, input, req.ip);
+  const payment = await initiatePayment(req.authUser!, input, req.ip);
 
   res.status(201).json({
     success: true,
@@ -24,7 +24,7 @@ export const initiatePaymentHandler = async (req: Request, res: Response) => {
 
 export const listPaymentsHandler = async (req: Request, res: Response) => {
   const query = listPaymentsQuerySchema.parse(req.query);
-  const payments = await listPayments(req.authUser!.orgId, query);
+  const payments = await listPayments(req.authUser!, query);
 
   res.status(200).json({
     success: true,
@@ -40,7 +40,7 @@ export const getPaymentByIdHandler = async (req: Request, res: Response) => {
     throw new HttpError(400, "Payment id parameter is required");
   }
 
-  const payment = await getPaymentById(req.authUser!.orgId, paymentId);
+  const payment = await getPaymentById(req.authUser!, paymentId);
 
   res.status(200).json({
     success: true,
@@ -56,7 +56,7 @@ export const getPaymentReceiptHandler = async (req: Request, res: Response) => {
     throw new HttpError(400, "Payment id parameter is required");
   }
 
-  const receipt = await getPaymentReceipt(req.authUser!.orgId, paymentId);
+  const receipt = await getPaymentReceipt(req.authUser!, paymentId);
 
   res.status(200).json({
     success: true,
@@ -72,7 +72,7 @@ export const reconcilePaymentHandler = async (req: Request, res: Response) => {
     throw new HttpError(400, "Payment id parameter is required");
   }
 
-  const payment = await reconcilePaymentById(req.authUser!.orgId, paymentId, req.authUser!.userId, req.ip);
+  const payment = await reconcilePaymentById(req.authUser!, paymentId, req.ip);
 
   res.status(200).json({
     success: true,

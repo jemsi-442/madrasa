@@ -548,8 +548,12 @@ export const initiateParentStudentPayment = async (
   const customer = splitGuardianName(guardian.fullName);
 
   return initiatePayment(
-    orgId,
-    userId,
+    {
+      orgId,
+      userId,
+      role: "PARENT",
+      branchId: null,
+    },
     {
       invoiceId: input.invoiceId,
       payerPhone: input.payerPhone,

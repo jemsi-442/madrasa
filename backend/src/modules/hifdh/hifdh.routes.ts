@@ -16,4 +16,4 @@ hifdhRouter.use(authenticate, requireTenantContext);
 
 hifdhRouter.get("/", requireRole("ADMIN", "TEACHER"), asyncHandler(listHifdhProgressHandler));
 hifdhRouter.get("/:id", requireRole("ADMIN", "TEACHER"), asyncHandler(getHifdhProgressByIdHandler));
-hifdhRouter.post("/", requireRole("ADMIN", "TEACHER"), asyncHandler(createHifdhProgressHandler));
+hifdhRouter.post("/", requireRole("TEACHER"), asyncHandler(createHifdhProgressHandler));

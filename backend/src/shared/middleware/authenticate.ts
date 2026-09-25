@@ -7,7 +7,7 @@ import { HttpError } from "../errors/http-error";
 export type AuthenticatedUser = {
   userId: string;
   orgId: string;
-  role: "ADMIN" | "ACCOUNTANT" | "TEACHER" | "PARENT";
+  role: "ADMIN" | "ACCOUNTANT" | "TEACHER" | "PARENT" | "LEARNER";
   branchId?: string | null;
 };
 

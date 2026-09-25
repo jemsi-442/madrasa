@@ -30,9 +30,20 @@ export const listAnnouncementsQuerySchema = z.object({
     .optional(),
 });
 
+export const listPublicAnnouncementsQuerySchema = z.object({
+  branchId: numericId.optional(),
+  limit: z
+    .string()
+    .regex(/^\d+$/, "limit must be a numeric string")
+    .transform((value) => Number(value))
+    .refine((value) => value >= 1 && value <= 12, "limit must be between 1 and 12")
+    .optional(),
+});
+
 export const announcementParamsSchema = z.object({
   id: z.string().regex(/^\d+$/, "id must be a numeric string"),
 });
 
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 export type ListAnnouncementsQuery = z.infer<typeof listAnnouncementsQuerySchema>;
+export type ListPublicAnnouncementsQuery = z.infer<typeof listPublicAnnouncementsQuerySchema>;

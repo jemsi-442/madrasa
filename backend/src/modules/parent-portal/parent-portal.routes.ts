@@ -25,7 +25,7 @@ parentPortalRouter.get("/students", asyncHandler(listParentStudentsHandler));
 parentPortalRouter.get("/students/:studentId/attendance", asyncHandler(getParentStudentAttendanceHandler));
 parentPortalRouter.get("/students/:studentId/finance", asyncHandler(getParentStudentFinanceHandler));
 parentPortalRouter.get("/students/:studentId/hifdh", asyncHandler(getParentStudentHifdhHandler));
-parentPortalRouter.post("/students/:studentId/payments", asyncHandler(initiateParentStudentPaymentHandler));
+parentPortalRouter.post("/students/:studentId/payments", requireRole("PARENT"), asyncHandler(initiateParentStudentPaymentHandler));
 parentPortalRouter.get("/students/:studentId/payments/:paymentId", asyncHandler(getParentStudentPaymentHandler));
 parentPortalRouter.get(
   "/students/:studentId/payments/:paymentId/receipt",

@@ -16,6 +16,7 @@ import {
   exportStudentsReport,
   getAttendanceSummaryReport,
   getDashboardReport,
+  getFinanceHomeReport,
   getMonthlyFinanceSummaryReport,
   getTeacherDashboardReport,
 } from "./reports.service";
@@ -27,6 +28,17 @@ export const getDashboardReportHandler = async (req: Request, res: Response) => 
   res.status(200).json({
     success: true,
     message: "Dashboard report loaded successfully",
+    data: report,
+  });
+};
+
+export const getFinanceHomeReportHandler = async (req: Request, res: Response) => {
+  const query = dashboardReportQuerySchema.parse(req.query);
+  const report = await getFinanceHomeReport(req.authUser!, query);
+
+  res.status(200).json({
+    success: true,
+    message: "Finance home report loaded successfully",
     data: report,
   });
 };

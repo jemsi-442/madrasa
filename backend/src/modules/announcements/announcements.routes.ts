@@ -16,4 +16,4 @@ announcementsRouter.use(authenticate, requireTenantContext);
 
 announcementsRouter.get("/", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(listAnnouncementsHandler));
 announcementsRouter.get("/:id", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(getAnnouncementByIdHandler));
-announcementsRouter.post("/", requireRole("ADMIN", "TEACHER"), asyncHandler(createAnnouncementHandler));
+announcementsRouter.post("/", requireRole("ADMIN"), asyncHandler(createAnnouncementHandler));

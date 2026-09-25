@@ -59,6 +59,7 @@ const ensureClassBelongsToOrg = async (orgId: bigint, classId: bigint) => {
     select: {
       id: true,
       branchId: true,
+      teacherId: true,
     },
   });
 
@@ -113,6 +114,10 @@ const resolveReportScope = async (authUser: AuthenticatedUser, input: ScopeInput
 
     if (branchId && classRecord.branchId !== branchId) {
       throw new HttpError(409, "Class and branch filters must belong to the same branch scope");
+    }
+
+    if (authUser.role === "TEACHER" && classRecord.teacherId !== BigInt(authUser.userId)) {
+      throw new HttpError(403, "Teachers can only access report classes assigned to them");
     }
   }
 
@@ -479,12 +484,27 @@ export const getDashboardReport = async (authUser: AuthenticatedUser, query: Das
   };
 };
 
+export const getFinanceHomeReport = async (authUser: AuthenticatedUser, query: DashboardReportQuery) => {
+  const report = await getDashboardReport(authUser, query);
+
+  return {
+    filters: report.filters,
+    finance: report.finance,
+  };
+};
+
 export const exportStudentsReport = async (authUser: AuthenticatedUser, query: StudentsExportQuery) => {
   const scope = await resolveReportScope(authUser, {
     branchId: query.branchId,
     classId: query.classId,
   });
   const where = buildStudentWhere(scope, query);
+
+  if (authUser.role === "TEACHER") {
+    where.currentClass = {
+      teacherId: BigInt(authUser.userId),
+    };
+  }
 
   const students = await prisma.student.findMany({
     where,

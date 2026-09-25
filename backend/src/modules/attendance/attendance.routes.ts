@@ -16,17 +16,16 @@ attendanceRouter.use(authenticate, requireTenantContext);
 
 attendanceRouter.post(
   "/bulk-mark",
-  requireRole("ADMIN", "TEACHER"),
+  requireRole("TEACHER"),
   asyncHandler(bulkMarkAttendanceHandler),
 );
 attendanceRouter.get(
   "/class/:classId",
-  requireRole("ADMIN", "ACCOUNTANT", "TEACHER"),
+  requireRole("ADMIN", "TEACHER"),
   asyncHandler(getClassAttendanceHandler),
 );
 attendanceRouter.get(
   "/student/:studentId",
-  requireRole("ADMIN", "ACCOUNTANT", "TEACHER"),
+  requireRole("ADMIN", "TEACHER"),
   asyncHandler(getStudentAttendanceHandler),
 );
-

@@ -56,7 +56,7 @@ export const createStudentHandler = async (req: Request, res: Response) => {
 
 export const listStudentsHandler = async (req: Request, res: Response) => {
   const query = listStudentsQuerySchema.parse(req.query);
-  const students = await listStudents(req.authUser!.orgId, query);
+  const students = await listStudents(req.authUser!, query);
 
   res.status(200).json({
     success: true,
@@ -67,7 +67,7 @@ export const listStudentsHandler = async (req: Request, res: Response) => {
 
 export const getStudentByIdHandler = async (req: Request, res: Response) => {
   const params = studentIdParamsSchema.parse(req.params);
-  const student = await getStudentById(req.authUser!.orgId, params.id);
+  const student = await getStudentById(req.authUser!, params.id);
 
   res.status(200).json({
     success: true,

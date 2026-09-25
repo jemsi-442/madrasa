@@ -22,8 +22,8 @@ export const guardiansRouter = Router();
 studentsRouter.use(authenticate, requireTenantContext);
 guardiansRouter.use(authenticate, requireTenantContext);
 
-studentsRouter.get("/", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(listStudentsHandler));
-studentsRouter.get("/:id", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(getStudentByIdHandler));
+studentsRouter.get("/", requireRole("ADMIN", "ACCOUNTANT"), asyncHandler(listStudentsHandler));
+studentsRouter.get("/:id", requireRole("ADMIN", "TEACHER"), asyncHandler(getStudentByIdHandler));
 studentsRouter.post("/", requireRole("ADMIN"), asyncHandler(createStudentHandler));
 studentsRouter.patch("/:id", requireRole("ADMIN"), asyncHandler(updateStudentHandler));
 studentsRouter.post("/:id/guardians", requireRole("ADMIN"), asyncHandler(linkGuardianToStudentHandler));
@@ -34,5 +34,5 @@ studentsRouter.delete(
   asyncHandler(unlinkGuardianFromStudentHandler),
 );
 
-guardiansRouter.get("/", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(listGuardiansHandler));
+guardiansRouter.get("/", requireRole("ADMIN"), asyncHandler(listGuardiansHandler));
 guardiansRouter.post("/", requireRole("ADMIN"), asyncHandler(createGuardianHandler));

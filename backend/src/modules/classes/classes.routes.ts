@@ -19,13 +19,12 @@ classesRouter.use(authenticate, requireTenantContext);
 enrollmentsRouter.use(authenticate, requireTenantContext);
 
 classesRouter.get("/", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(listClassesHandler));
-classesRouter.get("/:id", requireRole("ADMIN", "ACCOUNTANT", "TEACHER"), asyncHandler(getClassByIdHandler));
+classesRouter.get("/:id", requireRole("ADMIN", "TEACHER"), asyncHandler(getClassByIdHandler));
 classesRouter.post("/", requireRole("ADMIN"), asyncHandler(createClassHandler));
 
 enrollmentsRouter.get(
   "/",
-  requireRole("ADMIN", "ACCOUNTANT", "TEACHER"),
+  requireRole("ADMIN", "TEACHER"),
   asyncHandler(listEnrollmentsHandler),
 );
 enrollmentsRouter.post("/", requireRole("ADMIN"), asyncHandler(createEnrollmentHandler));
-

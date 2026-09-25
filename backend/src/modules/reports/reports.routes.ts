@@ -11,6 +11,7 @@ import {
   exportPaymentsReportHandler,
   exportStudentsReportHandler,
   getDashboardReportHandler,
+  getFinanceHomeReportHandler,
   getMonthlyFinanceSummaryReportHandler,
   getTeacherDashboardReportHandler,
 } from "./reports.controller";
@@ -21,12 +22,17 @@ reportsRouter.use(authenticate, requireTenantContext);
 
 reportsRouter.get(
   "/dashboard",
-  requireRole("ADMIN", "ACCOUNTANT", "TEACHER"),
+  requireRole("ADMIN"),
   asyncHandler(getDashboardReportHandler),
 );
 reportsRouter.get(
+  "/finance/home",
+  requireRole("ADMIN", "ACCOUNTANT"),
+  asyncHandler(getFinanceHomeReportHandler),
+);
+reportsRouter.get(
   "/students/export",
-  requireRole("ADMIN", "ACCOUNTANT", "TEACHER"),
+  requireRole("ADMIN", "TEACHER"),
   asyncHandler(exportStudentsReportHandler),
 );
 reportsRouter.get(
@@ -36,12 +42,12 @@ reportsRouter.get(
 );
 reportsRouter.get(
   "/attendance/export",
-  requireRole("ADMIN", "ACCOUNTANT", "TEACHER"),
+  requireRole("ADMIN", "TEACHER"),
   asyncHandler(exportAttendanceReportHandler),
 );
 reportsRouter.get(
   "/attendance/summary",
-  requireRole("ADMIN", "ACCOUNTANT", "TEACHER"),
+  requireRole("ADMIN", "TEACHER"),
   asyncHandler(getAttendanceSummaryReportHandler),
 );
 reportsRouter.get(
