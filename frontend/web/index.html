@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,7 +18,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Authentic Islamic education, modern skills, and a community that supports every learner.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -31,8 +31,31 @@
 
   <title>Modern Islamic Foundation</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    body { margin: 0; background: #fcfaf6; }
+    #app-loading { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 22px; color: #092136; background: #fcfaf6; font-family: Georgia, serif; text-align: center; }
+    #app-loading svg { width: 64px; height: 64px; }
+    #app-loading p { margin: 0; font-size: 22px; line-height: 1.4; }
+    .loading-line { width: 100px; height: 3px; border-radius: 3px; background: #a87722; animation: breathe 1.4s ease-in-out infinite alternate; }
+    @keyframes breathe { from { opacity: .25; transform: scaleX(.45); } to { opacity: 1; transform: scaleX(1); } }
+    @media (prefers-reduced-motion: reduce) { .loading-line { animation: none; } }
+  </style>
 </head>
 <body>
+  <div id="app-loading" role="status" aria-label="Opening Modern Islamic Foundation">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <path fill="#c39743" d="M50 2 73 26 50 49 27 26Z"/>
+      <path fill="#092136" d="M25 29C10 43 3 58 5 83L29 91C28 73 35 63 47 53ZM75 29C90 43 97 58 95 83L71 91C72 73 65 63 53 53Z"/>
+    </svg>
+    <p>Modern Islamic<br>Foundation</p>
+    <div class="loading-line" aria-hidden="true"></div>
+  </div>
+  <noscript>Please enable JavaScript to open your learning space.</noscript>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      document.getElementById('app-loading')?.remove();
+    }, { once: true });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

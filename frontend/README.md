@@ -17,9 +17,11 @@ Use `flutter devices` to find Android/iOS targets. The Android emulator defaults
 flutter run -d <device-id> --dart-define=API_BASE_URL=https://api.example.com
 ```
 
-The public home opens without the backend. Signing in and submitting registration details require the API to be running. All roles use the same sign-in form. The backend decides the role; no role picker is shown. The Flutter app keeps access and refresh tokens in memory, not in web local storage. A restart signs the user out.
+The public home opens without the backend. Signing in and creating an online learning account require the API to be running. All roles use the same sign-in form. The backend decides the role; no role picker is shown. The Flutter app keeps access and refresh tokens in memory, not in web local storage. A restart signs the user out.
 
-The registration page sends child admission, adult course, or parent access details to `POST /api/public/inquiries`. It does not create an account or grant parent access. The foundation office confirms the next step; staff accounts remain office-issued.
+The registration page creates an independent online learner through `POST /api/auth/register` and signs them in. The server assigns `LEARNER`; public callers cannot select staff roles, organization, branch, or student ownership. It does not grant paid-course access.
+
+Contact (`/#/contact`), parent access (`/#/parent-access`), and sign-in help (`/#/forgot-password`) are dedicated pages that submit office inquiries. Sign-in help is an office-assisted recovery request, not an automated password-reset flow. Parent-child linkage and staff accounts remain office-controlled.
 
 ## Verify
 

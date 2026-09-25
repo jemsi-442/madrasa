@@ -21,6 +21,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/mif-logo.png
+    - assets/learning-hero.png
   fonts:
     - family: NotoSansDisplay
       fonts:

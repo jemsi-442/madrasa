@@ -124,6 +124,25 @@ class MifApiClient {
     return AuthSession.fromJson(data as Map<String, dynamic>);
   }
 
+  Future<AuthSession> register({
+    required String fullName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    final data = await request(
+      '/api/auth/register',
+      method: 'POST',
+      body: {
+        'fullName': fullName.trim(),
+        'email': email.trim(),
+        'password': password,
+        'confirmPassword': confirmPassword,
+      },
+    );
+    return AuthSession.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<AuthSession> refresh(String refreshToken) async {
     final data = await request(
       '/api/auth/refresh',

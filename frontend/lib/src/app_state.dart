@@ -31,6 +31,44 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  void clearError() {
+    if (error == null) return;
+    error = null;
+    notifyListeners();
+  }
+
+  Future<bool> register({
+    required String fullName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    busy = true;
+    error = null;
+    notifyListeners();
+    try {
+      session = await api.register(
+        fullName: fullName,
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      return true;
+    } on ApiException catch (exception) {
+      error = switch (exception.statusCode) {
+        0 => 'We could not connect. Please try again.',
+        409 => 'This email already has an account. Please log in instead.',
+        422 => 'Please check your details and try again.',
+        429 => 'Please wait a few minutes before trying again.',
+        _ => 'We could not create your account. Please try again later.',
+      };
+      return false;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
   Future<dynamic> load(String path) async {
     final current = session;
     if (current == null) throw const ApiException('Please sign in again.', 401);

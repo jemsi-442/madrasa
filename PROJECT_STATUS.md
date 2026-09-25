@@ -20,6 +20,7 @@ Backend stack:
 Implemented backend areas:
 
 - auth, refresh rotation, logout, logout-all
+- public online learner signup with fixed LEARNER permissions, an independent student profile, atomic session creation, and registration rate limiting
 - organizations and users
 - students and guardians
 - classes and enrollments
@@ -48,6 +49,7 @@ Automated backend integration coverage currently includes:
 - expired-token handling
 - protected reports access
 - role-boundary checks for admin, accountant, teacher, and parent access
+- learner self-service signup, password confirmation, duplicate email and rate-limit checks
 - learner self-service access checks
 - LMS authoring role boundaries for subject and course management
 - paid lesson/media access, branch-scoped inquiries, and payment confirmation checks
@@ -83,9 +85,9 @@ Important note:
 
 ## 3. Flutter Frontend Status
 
-Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes a public entry, sign-in, in-memory auth/refresh, responsive role navigation and read-only data views for admin, accountant, teacher, parent and learner. Backend roles determine access; there is no role selection on the login page.
+Current stack: Flutter / Dart for web, Android and iOS. The Flutter app includes a responsive photo-led public home, split-panel sign-in and direct learner registration, dedicated contact/parent-access/sign-in-help pages, in-memory auth/refresh, responsive role navigation and read-only data views for admin, accountant, teacher, parent and learner. Backend roles determine access; there is no role selection on the login page.
 
-The following React-era UI work is **not** available in Flutter yet: admissions and inquiries, account recovery, student and guardian editing, attendance marking, hifdh entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
+The following React-era UI work is **not** available in Flutter yet: child admissions and the office inquiry inbox, automated account recovery, student and guardian editing, attendance marking, hifdh entry, invoice/payment/expense actions, detailed parent-child views, course studio, learner lesson media, and complete learner payment flows. Corresponding backend endpoints may exist; this list concerns the client.
 
 Flutter verification: `flutter analyze`, `flutter test`, and `flutter build web --release`. iOS builds require macOS/Xcode and have not been run here. Device builds and full API integration still need verification.
 

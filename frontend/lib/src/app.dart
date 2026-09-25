@@ -4,6 +4,7 @@ import 'api_client.dart';
 import 'app_state.dart';
 import 'foundation_ui.dart';
 import 'public_pages.dart';
+import 'office_help_page.dart';
 import 'registration_page.dart';
 import 'workspace.dart';
 
@@ -35,6 +36,7 @@ class _MifAppState extends State<MifApp> {
         }
 
         void navigate(String nextPath) {
+          appState.clearError();
           if (nextPath == '/') {
             Navigator.of(context).popUntil((route) => route.isFirst);
           } else if (ModalRoute.of(context)?.settings.name != nextPath) {
@@ -50,8 +52,17 @@ class _MifAppState extends State<MifApp> {
                 Navigator.of(context).popUntil((route) => route.isFirst),
           ),
           '/register' => RegistrationScreen(
+            state: appState,
+            onNavigate: navigate,
+            onRegistered: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+          ),
+          '/contact' ||
+          '/forgot-password' ||
+          '/parent-access' => OfficeHelpScreen(
             api: appState.api,
             onNavigate: navigate,
+            path: path,
           ),
           _ => PublicHomeScreen(onNavigate: navigate),
         };
@@ -137,6 +148,9 @@ class _MifAppState extends State<MifApp> {
         '/': (context) => routePage(context, '/'),
         '/login': (context) => routePage(context, '/login'),
         '/register': (context) => routePage(context, '/register'),
+        '/contact': (context) => routePage(context, '/contact'),
+        '/forgot-password': (context) => routePage(context, '/forgot-password'),
+        '/parent-access': (context) => routePage(context, '/parent-access'),
       },
     );
   }
