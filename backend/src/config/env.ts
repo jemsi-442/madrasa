@@ -8,6 +8,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   TZ: z.string().min(1).default("Africa/Dar_es_Salaam"),
   APP_BASE_URL: z.string().url().default("http://127.0.0.1:4000"),
+  WEB_APP_ORIGINS: z.string().default(""),
   PUBLIC_SITE_ORG_CODE: z.string().min(1).default("demo-madrasa"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),

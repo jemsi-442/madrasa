@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { browserLogin, browserLogout, browserRefresh, protectBrowserSession } from "./browser-session";
 
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { authenticate } from "../../shared/middleware/authenticate";
@@ -7,6 +8,12 @@ import { loginHandler, logoutAllHandler, logoutHandler, meHandler, refreshHandle
 import { limitRegistration, registerLearnerHandler } from "./registration";
 
 export const authRouter = Router();
+
+authRouter.use("/browser", protectBrowserSession);
+authRouter.post("/browser/login", asyncHandler(browserLogin));
+authRouter.post("/browser/refresh", asyncHandler(browserRefresh));
+authRouter.post("/browser/logout", asyncHandler(browserLogout));
+authRouter.post("/browser/register", asyncHandler(limitRegistration), asyncHandler(registerLearnerHandler));
 
 authRouter.post("/login", asyncHandler(loginHandler));
 authRouter.post("/register", asyncHandler(limitRegistration), asyncHandler(registerLearnerHandler));

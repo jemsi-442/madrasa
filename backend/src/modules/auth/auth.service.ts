@@ -100,6 +100,7 @@ const loadActiveUser = async (userId: bigint) => {
     where: {
       id: userId,
       status: "ACTIVE",
+      organization: { status: { in: ["ACTIVE", "TRIAL"] } },
     },
     select: {
       id: true,
@@ -251,6 +252,7 @@ export const login = async (input: LoginInput) => {
     where: {
       OR: [{ email: input.login }, { phone: input.login }],
       status: "ACTIVE",
+      organization: { status: { in: ["ACTIVE", "TRIAL"] } },
     },
     select: {
       id: true,

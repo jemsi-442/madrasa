@@ -9,6 +9,7 @@ import { env } from "../../config/env";
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
 import { buildSessionResponse } from "./auth.service";
+import { sendBrowserSession } from "./browser-session";
 
 const registrationPassword = z.string().min(8).max(72).refine(
   (value) => Buffer.byteLength(value, "utf8") <= 72,
@@ -130,5 +131,9 @@ export const registerLearnerHandler = async (req: Request, res: Response) => {
     };
   });
 
-  res.status(201).json({ success: true, message: "Account created", data: session });
+  if (req.path === "/browser/register") {
+    sendBrowserSession(res, session, 201);
+  } else {
+    res.status(201).json({ success: true, message: "Account created", data: session });
+  }
 };

@@ -174,3 +174,25 @@ Optional test credential overrides include `TEST_ADMIN_LOGIN`, `TEST_ADMIN_PASSW
 7. `npm run seed:admin`
 8. `npm run seed:e2e-roles` (disposable local database only)
 9. `npm run dev`
+## Browser Sessions
+
+Flutter web uses `/api/auth/browser/login|register|refresh|logout`.
+The refresh credential is a host-only HttpOnly, SameSite=Lax session cookie,
+restricted to `/api/auth/browser`; production also requires Secure/HTTPS.
+Access tokens remain in memory. Native token-based auth endpoints are unchanged.
+
+Set `WEB_APP_ORIGINS` to the exact frontend origins (comma-separated, no wildcard
+or trailing slash), for example `https://school.example,https://app.school.example`.
+The `APP_BASE_URL` origin is also allowed. Development additionally allows HTTP
+or HTTPS loopback origins. Cookie endpoints require an allowed Origin plus
+`X-MIF-Browser: 1`; responses are not cacheable.
+
+Deploy frontend and API on the same site (prefer a same-origin API proxy) so
+SameSite cookies work. Locally use the same host on both ports: Flutter normalizes
+localhost/127.0.0.1 API configuration to the host used in the browser.
+
+No database migration is required. Refresh rechecks the active account and
+school; logout revokes the server token and clears the cookie. Browser registration
+still creates only a LEARNER. Session restoration does not restore unsaved forms.
+
+Cookie behavior: [MDN Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie).
