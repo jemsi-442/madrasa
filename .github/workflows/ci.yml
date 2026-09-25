@@ -1,0 +1,184 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: mms
+          MYSQL_USER: mms_user
+          MYSQL_PASSWORD: mms_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mariadb-admin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+
+      - name: Install MariaDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-client
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Write backend env
+        working-directory: backend
+        run: |
+          cat > .env <<'EOF'
+          NODE_ENV=test
+          APP_NAME=mms-backend
+          PORT=4000
+          TZ=Africa/Dar_es_Salaam
+          APP_BASE_URL=http://127.0.0.1:4000
+          DATABASE_URL=mysql://mms_user:mms_password@127.0.0.1:3306/mms?connection_limit=10
+          REDIS_URL=redis://127.0.0.1:6379
+          JWT_SECRET=ci-jwt-secret
+          JWT_REFRESH_SECRET=ci-jwt-refresh-secret
+          SNIPPE_BASE_URL=https://api.snippe.sh
+          SNIPPE_API_KEY=
+          SNIPPE_WEBHOOK_SECRET=ci-snippe-secret
+          SNIPPE_MOCK_MODE=true
+          SEED_ORG_NAME=Demo Madrasa
+          SEED_ORG_CODE=demo-madrasa
+          SEED_BRANCH_NAME=Main Campus
+          SEED_ADMIN_FULL_NAME=System Administrator
+          SEED_ADMIN_EMAIL=admin@example.com
+          SEED_ADMIN_PHONE=255700000000
+          SEED_ADMIN_PASSWORD=ChangeMe123!
+          EOF
+
+      - name: Wait for MariaDB
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Prisma generate
+        working-directory: backend
+        run: npm run prisma:generate
+
+      - name: Prisma migrate deploy
+        working-directory: backend
+        run: npm run prisma:migrate:deploy
+
+      - name: Seed admin
+        working-directory: backend
+        run: npm run seed:admin
+
+      - name: Seed e2e role accounts
+        working-directory: backend
+        run: npm run seed:e2e-roles
+
+      - name: Backend typecheck
+        working-directory: backend
+        run: npm run typecheck
+
+      - name: Backend build
+        working-directory: backend
+        run: npm run build
+
+      - name: Backend tests
+        working-directory: backend
+        run: npm test
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          npm run start > /tmp/mms-backend.log 2>&1 &
+          echo $! > /tmp/mms-backend.pid
+
+      - name: Wait for backend health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/mms-backend.log || true
+          exit 1
+
+      - name: Backend smoke core
+        working-directory: backend
+        run: npm run smoke:core
+
+      - name: Backend smoke write
+        working-directory: backend
+        run: npm run smoke:write
+
+      - name: Backend smoke public inquiry
+        working-directory: backend
+        run: npm run smoke:public-inquiry
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/mms-backend.pid ]; then
+            kill "$(cat /tmp/mms-backend.pid)" || true
+          fi
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Flutter analyze
+        working-directory: frontend
+        run: flutter analyze
+
+      - name: Flutter tests
+        working-directory: frontend
+        run: flutter test
+
+      - name: Flutter web build
+        working-directory: frontend
+        run: flutter build web --release --dart-define=API_BASE_URL=https://example.invalid
