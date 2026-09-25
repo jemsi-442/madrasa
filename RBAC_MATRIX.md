@@ -887,3 +887,18 @@ Why this is safer:
 - Attendance check-in is optional school-local HH:mm (Africa/Dar_es_Salaam).
   Future attendance, duplicate student rows and check-in on absent/excused records
   are rejected. Unmarked students are not silently classified as absent.
+
+## Teacher Reference Workspace (2026-09-25)
+
+- `/api/teacher-workspace/*` is TEACHER-only and checks the current active account,
+  tenant, branch and assigned class on the server, not only navigation visibility.
+- Teachers read their current classes/students; write exact Qur'an sessions and
+  support notes; resolve follow-ups for their currently assigned students.
+- Only the original teacher can void their Qur'an session, with a recorded reason,
+  while they still have access to the student. Tenant-composite foreign keys,
+  transactional audit events and retry identifiers protect writes.
+- `/api/class-timetable/:classId/timetable` permits ADMIN writes and assigned
+  TEACHER reads. Teachers cannot change timetable entries or enrol students.
+- These new learning records are not automatically exposed to PARENT or LEARNER.
+  Assessment/report publication, private messaging and durable offline sync
+  remain separate delivery stages. See `TEACHER_WORKSPACE_ARCHITECTURE.md`.

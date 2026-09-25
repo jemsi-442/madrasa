@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { teacherWorkspaceRouter, classTimetableRouter } from "../modules/teacher-workspace/teacher.routes";
 import { adminPanelRouter } from "../modules/admin-panel/admin-panel.routes";
 import { fundraisingRouter } from "../modules/fundraising/fundraising.routes";
 
@@ -40,6 +41,8 @@ apiRouter.use("/parent-portal", parentPortalRouter);
 apiRouter.use("/public-inquiries", publicInquiriesRouter);
 apiRouter.use("/students", studentsRouter);
 apiRouter.use("/guardians", guardiansRouter);
+apiRouter.use("/teacher-workspace", teacherWorkspaceRouter);
+apiRouter.use("/class-timetable", classTimetableRouter);
 apiRouter.use("/classes", classesRouter);
 apiRouter.use("/enrollments", enrollmentsRouter);
 apiRouter.use("/fee-structures", feeStructuresRouter);
