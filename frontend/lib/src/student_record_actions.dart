@@ -49,7 +49,7 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
       final title = editing
           ? 'Edit student'
           : archiving
-          ? 'Archive student'
+          ? 'Remove student'
           : 'Restore student';
       String? date(String key) {
         final value = record[key]?.toString();
@@ -65,7 +65,7 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
         note: editing
             ? 'Update ${recordText(record['fullName'])}\'s personal details. Class placement and guardian links are managed separately.'
             : archiving
-            ? '${recordText(record['fullName'])} will become inactive and leave active teaching lists. Learning and payment history will be kept. Find the student under Inactive to restore them.'
+            ? '${recordText(record['fullName'])} will be removed from active student and teaching lists, not permanently deleted. Learning and payment history will be kept. Find the student under Inactive to restore them.'
             : '${recordText(record['fullName'])} will become active again with their existing class and history. Check their class placement after restoring.',
         fields: [
           if (editing) ...[
@@ -131,7 +131,7 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
               editing
                   ? 'Student details updated.'
                   : archiving
-                  ? 'Student archived. History has been kept.'
+                  ? 'Student removed from the active list. History has been kept.'
                   : 'Student restored.',
             ),
           ),
@@ -174,7 +174,16 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
       const PopupMenuItem(value: 'history', child: Text('Change history')),
       if (widget.student['programCategory'] == 'MADRASA_CHILD') ...[
         if (widget.student['status'] == 'ACTIVE')
-          const PopupMenuItem(value: 'archive', child: Text('Archive student')),
+          const PopupMenuItem(
+            value: 'archive',
+            child: Row(
+              children: [
+                Icon(Icons.person_remove_outlined, size: 18),
+                SizedBox(width: 10),
+                Text('Remove student'),
+              ],
+            ),
+          ),
         if (widget.student['status'] == 'INACTIVE')
           const PopupMenuItem(value: 'restore', child: Text('Restore student')),
       ],

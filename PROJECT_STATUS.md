@@ -295,3 +295,21 @@ This is the first working admin CRUD slice, not completion of all system CRUD.
   Future backend stages must check and commit both repositories.
 - The old backend commit already contained .env. Removing it from tracking does
   not remove historical copies; credentials must be rotated if shared.
+## Visible Student Removal (2026-09-25)
+
+- Admin > Students > Actions now names the reversible action "Remove student",
+  with a removal icon, a required reason and an explicit confirmation that this
+  removes the pupil from active lists without permanently deleting history.
+- Admin student lists default to Active, so a successfully removed pupil leaves
+  the current list. Inactive/All filters still expose the retained record and
+  Restore student remains available. Read-only lists keep their prior default.
+- Permanent deletion has not been enabled; its policy is awaiting the user's
+  choice. This change does not claim to implement hard deletion.
+- Flutter analyze and 21 targeted management/academic-page tests passed,
+  including a directory-level test for successful removal and active filtering.
+  Release web build passed and the browser preview was rebuilt.
+- Backend build passed; the nested backend worktree stayed clean afterward,
+  confirming generated files no longer produce M/U entries there.
+- Chromium verified the visible Remove menu item, confirmation, successful save,
+  disappearance from the active list, retained inactive record and one audit
+  event. Zero browser runtime errors; all temporary fixtures were removed.

@@ -24,7 +24,7 @@ class StudentRegistryPage extends StatefulWidget {
 class _StudentRegistryPageState extends State<StudentRegistryPage> {
   final search = TextEditingController();
   String query = '';
-  String status = '';
+  late String status = widget.submit == null ? '' : 'ACTIVE';
   String classId = '';
   String sort = 'createdAt';
   int page = 1;

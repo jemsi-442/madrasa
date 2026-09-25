@@ -116,12 +116,12 @@ void main() {
           return {};
         },
       );
-      await choose(tester, 'Archive student');
+      await choose(tester, 'Remove student');
       expect(
         find.textContaining('Learning and payment history will be kept'),
         findsOneWidget,
       );
-      await tester.tap(find.widgetWithText(FilledButton, 'Archive student'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove student'));
       await tester.pumpAndSettle();
       expect(saves, 0);
       await tester.tap(find.text('Cancel'));
@@ -135,7 +135,7 @@ void main() {
   ) async {
     final requests = <String>[];
     for (final status in ['ACTIVE', 'INACTIVE']) {
-      final label = status == 'ACTIVE' ? 'Archive student' : 'Restore student';
+      final label = status == 'ACTIVE' ? 'Remove student' : 'Restore student';
       await tester.pumpWidget(const SizedBox());
       await showActions(
         tester,
@@ -207,7 +207,7 @@ void main() {
         record: {...student(), 'programCategory': 'COURSE_STUDENT'},
       );
       expect(find.text('Edit student'), findsOneWidget);
-      expect(find.text('Archive student'), findsNothing);
+      expect(find.text('Remove student'), findsNothing);
       expect(find.text('Restore student'), findsNothing);
     },
   );
@@ -220,6 +220,65 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets(
+    'admin directory defaults to active students and removal reloads that filter',
+    (tester) async {
+      tester.view.physicalSize = const Size(1600, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var active = true;
+      final requests = <Uri>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView(
+              children: [
+                StudentRegistryPage(
+                  load: (path) async {
+                    final uri = Uri.parse(path);
+                    if (uri.path == '/api/classes') return [];
+                    if (uri.path.endsWith('/summary')) return {};
+                    if (uri.path.endsWith('/record')) return student();
+                    requests.add(uri);
+                    return {
+                      'items': active ? [student()] : [],
+                      'meta': {'totalItems': active ? 1 : 0, 'totalPages': 1},
+                    };
+                  },
+                  submit: (path, body) async {
+                    expect(path, '/api/admin/students/1/archive');
+                    expect(body['reason'], 'Family requested removal');
+                    active = false;
+                    return {};
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['status'], 'ACTIVE');
+      final menu = find.byTooltip('Manage Ali Hassan');
+      await tester.ensureVisible(menu);
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await choose(tester, 'Remove student');
+      expect(find.textContaining('not permanently deleted'), findsOneWidget);
+      await tester.enterText(
+        field('Reason for this change'),
+        'Family requested removal',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove student'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['status'], 'ACTIVE');
+      expect(find.byTooltip('Manage Ali Hassan'), findsNothing);
+      expect(find.text('No students match these filters.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('read-only student directory has no admin mutation controls', (
     tester,
