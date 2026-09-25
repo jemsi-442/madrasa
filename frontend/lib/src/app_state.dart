@@ -1,27 +1,83 @@
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'browser_state.dart';
 
 class AppState extends ChangeNotifier {
-  AppState(this.api);
+  AppState(this.api, {this.browserState = const BrowserState()});
 
   final MifApiClient api;
+  final BrowserState browserState;
+  bool restoring = false;
+  bool _disposed = false;
+  String? restorationError;
+  String get _signOutKey => 'mif.signed-out:${api.baseUrl}';
+  bool get _browserSignedOut =>
+      api.browserAuth && browserState.read(_signOutKey, shared: true) == '1';
+  String? get _sectionKey => session == null
+      ? null
+      : 'mif.page:${api.baseUrl}:${session!.userId}:${session!.role}';
+
+  String? get rememberedSection =>
+      _sectionKey == null ? null : browserState.read(_sectionKey!);
+
+  void rememberSection(String path) {
+    if (_sectionKey != null) browserState.write(_sectionKey!, path);
+  }
+
+  Future<void> restoreSession() async {
+    if (!api.browserAuth || session != null || restoring) return;
+    final version = _authVersion;
+    restoring = true;
+    restorationError = null;
+    notifyListeners();
+    try {
+      if (browserState.read(_signOutKey, shared: true) == '1') {
+        // A failed network logout must not sign this browser back in on reload.
+        return;
+      }
+      final restored = await api.refresh('');
+      if (!_disposed && version == _authVersion) session = restored;
+    } catch (exception) {
+      if (!_disposed &&
+          version == _authVersion &&
+          !(exception is ApiException && exception.statusCode == 401)) {
+        restorationError =
+            'We could not reconnect to your account. Please try again.';
+      }
+    } finally {
+      if (!_disposed && version == _authVersion) {
+        restoring = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _acceptedSession(AuthSession value) {
+    session = value;
+    restorationError = null;
+    browserState.write(_signOutKey, null, shared: true);
+  }
+
   AuthSession? session;
   int _authVersion = 0;
   bool busy = false;
   String? error;
 
   Future<bool> signIn(String login, String password) async {
+    final version = ++_authVersion;
+    restoring = false;
     busy = true;
     error = null;
     notifyListeners();
     try {
       final signedIn = await api.login(login, password);
-      _authVersion++;
+      if (_disposed || version != _authVersion) return false;
       _refreshing = null;
-      session = signedIn;
+      _acceptedSession(signedIn);
       return true;
     } on ApiException catch (exception) {
+      if (_disposed || version != _authVersion) return false;
       error = switch (exception.statusCode) {
         0 => 'We could not reach the school. Please try again.',
         401 => 'The phone number or email and password do not match.',
@@ -30,8 +86,10 @@ class AppState extends ChangeNotifier {
       };
       return false;
     } finally {
-      busy = false;
-      notifyListeners();
+      if (!_disposed && version == _authVersion) {
+        busy = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -47,6 +105,8 @@ class AppState extends ChangeNotifier {
     required String password,
     required String confirmPassword,
   }) async {
+    final version = ++_authVersion;
+    restoring = false;
     busy = true;
     error = null;
     notifyListeners();
@@ -57,11 +117,12 @@ class AppState extends ChangeNotifier {
         password: password,
         confirmPassword: confirmPassword,
       );
-      _authVersion++;
+      if (_disposed || version != _authVersion) return false;
       _refreshing = null;
-      session = registered;
+      _acceptedSession(registered);
       return true;
     } on ApiException catch (exception) {
+      if (_disposed || version != _authVersion) return false;
       error = switch (exception.statusCode) {
         0 => 'We could not connect. Please try again.',
         409 => 'This email already has an account. Please log in instead.',
@@ -71,8 +132,10 @@ class AppState extends ChangeNotifier {
       };
       return false;
     } finally {
-      busy = false;
-      notifyListeners();
+      if (!_disposed && version == _authVersion) {
+        busy = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -88,6 +151,13 @@ class AppState extends ChangeNotifier {
     String method = 'GET',
     Map<String, dynamic>? body,
   }) async {
+    if (_browserSignedOut) {
+      _authVersion++;
+      _refreshing = null;
+      session = null;
+      if (!_disposed) notifyListeners();
+      throw const ApiException('Please sign in again.', 401);
+    }
     final current = session;
     final version = _authVersion;
     if (current == null) throw const ApiException('Please sign in again.', 401);
@@ -101,7 +171,8 @@ class AppState extends ChangeNotifier {
     } on ApiException catch (exception) {
       if (exception.statusCode != 401) rethrow;
     }
-    if (session == null ||
+    if (_browserSignedOut ||
+        session == null ||
         version != _authVersion ||
         session!.userId != current.userId) {
       throw const ApiException('Please sign in again.', 401);
@@ -110,7 +181,8 @@ class AppState extends ChangeNotifier {
       final pending = _refreshing ??= api.refresh(current.refreshToken);
       try {
         final renewed = await pending;
-        if (session == null ||
+        if (_browserSignedOut ||
+            session == null ||
             version != _authVersion ||
             session!.userId != current.userId ||
             renewed.userId != current.userId) {
@@ -129,7 +201,8 @@ class AppState extends ChangeNotifier {
         if (identical(_refreshing, pending)) _refreshing = null;
       }
     }
-    if (session == null ||
+    if (_browserSignedOut ||
+        session == null ||
         version != _authVersion ||
         session!.userId != current.userId) {
       throw const ApiException('Please sign in again.', 401);
@@ -145,13 +218,18 @@ class AppState extends ChangeNotifier {
   Future<void> signOut() async {
     _authVersion++;
     _refreshing = null;
+    restoring = false;
+    busy = false;
+    restorationError = null;
+    browserState.write(_signOutKey, '1', shared: true);
+    if (_sectionKey != null) browserState.write(_sectionKey!, null);
     final refreshToken = session?.refreshToken;
     session = null;
     error = null;
     notifyListeners();
-    if (refreshToken == null) return;
+    if (refreshToken == null && !api.browserAuth) return;
     try {
-      await api.logout(refreshToken);
+      await api.logout(refreshToken ?? '');
     } catch (_) {
       // Local sign-out completes when the server cannot be reached.
     }
@@ -159,6 +237,8 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _authVersion++;
     api.dispose();
     super.dispose();
   }

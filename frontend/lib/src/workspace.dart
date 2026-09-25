@@ -255,6 +255,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   void initState() {
     super.initState();
     sections = sectionsForRole(widget.state.session!.role);
+    final remembered = sections.indexWhere(
+      (s) => s.path == widget.state.rememberedSection,
+    );
+    selectedIndex = remembered < 0 ? 0 : remembered;
     currentData = sections.isEmpty ? Future.value(null) : loadCurrent();
   }
 
@@ -271,6 +275,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       teachingClassId = classId;
       teachingStudent = student;
       selectedIndex = index;
+      widget.state.rememberSection(sections[index].path);
       currentData = loadCurrent();
     });
     scaffoldKey.currentState?.closeDrawer();
@@ -282,6 +287,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       setState(() {
         teachingStudent = null;
         selectedIndex = index;
+        widget.state.rememberSection(sections[index].path);
         currentData = loadCurrent();
       });
     }

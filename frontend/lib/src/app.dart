@@ -24,6 +24,12 @@ class _MifAppState extends State<MifApp> {
   bool get ownsState => widget.state == null;
 
   @override
+  void initState() {
+    super.initState();
+    appState.restoreSession();
+  }
+
+  @override
   void dispose() {
     if (ownsState) appState.dispose();
     super.dispose();
@@ -33,6 +39,39 @@ class _MifAppState extends State<MifApp> {
     return AnimatedBuilder(
       animation: appState,
       builder: (context, _) {
+        if (appState.restoring || appState.restorationError != null) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (appState.restoring) ...[
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 20),
+                      const Text('Reconnecting to your account...'),
+                    ] else ...[
+                      Text(
+                        appState.restorationError!,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: appState.restoreSession,
+                        child: const Text('Try again'),
+                      ),
+                      TextButton(
+                        onPressed: appState.signOut,
+                        child: const Text('Sign out'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
         final informationPage = path == '/terms' || path == '/privacy';
         if (appState.session != null && !informationPage) {
           final workspace = WorkspaceScreen(

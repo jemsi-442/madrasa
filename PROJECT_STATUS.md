@@ -226,3 +226,28 @@ Verification:
   navigation, student profile, exact ayah selection/save and scoped attendance.
   The saved passage was checked in the database; desktop/mobile layouts were
   inspected with zero browser runtime errors. All isolated fixtures were removed.
+## Browser Refresh Session Recovery (2026-09-25)
+
+- Browser sign-in now uses a scoped HttpOnly refresh cookie, exact-origin
+  credentialed CORS and an origin/header check on browser authentication routes.
+  Access tokens remain in memory; passwords and refresh tokens are not placed
+  in localStorage/sessionStorage. Native token authentication is unchanged.
+- Startup waits for server-validated session recovery before rendering a public
+  or signed-in page. A temporary connection failure offers retry, not a silent
+  redirect home. Disabled users and suspended schools cannot restore sessions.
+- The selected workspace page is remembered per account/role/tab and checked
+  against the current role's navigation. Filters and unsaved forms are not saved.
+- Browser Web Locks serialize cookie rotation across supported tabs. A shared
+  sign-out marker prevents offline logout from restoring the session on reload;
+  server logout revokes the refresh token and clears the cookie when reachable.
+- Development normalizes localhost/127.0.0.1 API hosts to the browser hostname.
+  Production requires same-site HTTPS and configured WEB_APP_ORIGINS (see
+  backend/DEVELOPMENT.md). No database migration was required.
+
+Verification:
+- Browser-session backend tests passed; the pre-CRUD backend suite passed all
+  38 tests. Flutter analyze passed and all 77 widget/unit tests passed.
+- Release web build passed. Chromium verified teacher on localhost and admin on
+  127.0.0.1: login, two reloads retaining the selected page, logout and reload
+  staying signed out. Concurrent teacher tabs also restored successfully with
+  one active rotating refresh session. No browser runtime errors.
