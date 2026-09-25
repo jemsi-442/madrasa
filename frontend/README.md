@@ -29,7 +29,7 @@ The home footer groups support and information links above a separate, divided c
 
 Terms (`/#/terms`) and privacy (`/#/privacy`) have dedicated public pages. No approved institutional legal text was supplied, so both clearly show publication-pending notices instead of invented policies. Approved terms and privacy copy are required before public release.
 
-The Telegram icon is intentionally disabled until the foundation supplies its official URL. Instagram is not shown until its link is supplied.
+The Instagram icon is intentionally disabled until the foundation supplies its official URL. Both contact numbers (+255715735335 and +255683186987) remain visible and selectable beside their own WhatsApp icons; each icon opens the matching `https://wa.me/` link. No message is sent automatically.
 
 ## Verify
 
