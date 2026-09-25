@@ -10,9 +10,22 @@ import {
   getStudentAttendanceHandler,
 } from "./attendance.controller";
 
+import { registerQuerySchema, registerSaveSchema } from "./register.schemas";
+import { getRegister, getRegisterHistory, saveRegister } from "./register.service";
+
 export const attendanceRouter = Router();
 
 attendanceRouter.use(authenticate, requireTenantContext);
+
+attendanceRouter.get("/register", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await getRegister(req.authUser!, registerQuerySchema.parse(req.query)) });
+}));
+attendanceRouter.get("/register/history", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await getRegisterHistory(req.authUser!, registerQuerySchema.parse(req.query)) });
+}));
+attendanceRouter.post("/register", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await saveRegister(req.authUser!, registerSaveSchema.parse(req.body)) });
+}));
 
 attendanceRouter.post(
   "/bulk-mark",

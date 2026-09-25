@@ -13,7 +13,7 @@ export const bulkAttendanceRecordSchema = z.object({
 export const bulkMarkAttendanceSchema = z.object({
   classId: numericId,
   date: z.string().date(),
-  records: z.array(bulkAttendanceRecordSchema).min(1, "records must contain at least one item"),
+  records: z.array(bulkAttendanceRecordSchema).min(1, "records must contain at least one item").max(1000),
 });
 
 export const classAttendanceQuerySchema = z.object({
@@ -28,4 +28,3 @@ export const studentAttendanceQuerySchema = z.object({
 export type BulkMarkAttendanceInput = z.infer<typeof bulkMarkAttendanceSchema>;
 export type ClassAttendanceQuery = z.infer<typeof classAttendanceQuerySchema>;
 export type StudentAttendanceQuery = z.infer<typeof studentAttendanceQuerySchema>;
-

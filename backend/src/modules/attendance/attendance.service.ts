@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
@@ -9,6 +9,8 @@ import type {
   StudentAttendanceQuery,
 } from "./attendance.schemas";
 
+import { attendanceConflict, schoolDate } from "./register.service";
+
 const toAttendanceResponse = (record: {
   id: bigint;
   orgId: bigint;
@@ -18,6 +20,8 @@ const toAttendanceResponse = (record: {
   date: Date;
   status: string;
   reason: string | null;
+  checkInTime: string | null;
+  version: number;
   markedById: bigint;
   createdAt: Date;
   student?: { id: bigint; fullName: string; admissionNo: string } | null;
@@ -31,6 +35,8 @@ const toAttendanceResponse = (record: {
   date: record.date.toISOString().slice(0, 10),
   status: record.status,
   reason: record.reason,
+  checkInTime: record.checkInTime,
+  version: record.version,
   markedById: record.markedById.toString(),
   createdAt: record.createdAt.toISOString(),
   student: record.student
@@ -103,6 +109,8 @@ export const bulkMarkAttendance = async (
   authUser: AuthenticatedUser,
   input: BulkMarkAttendanceInput,
 ) => {
+  if (authUser.role !== "TEACHER") throw new HttpError(403, "Only assigned teachers can use this endpoint");
+  if (input.date > schoolDate()) throw new HttpError(422, "Attendance cannot be recorded for a future date");
   const parsedOrgId = BigInt(authUser.orgId);
   const parsedClassId = BigInt(input.classId);
   const parsedMarkedById = BigInt(authUser.userId);
@@ -128,56 +136,55 @@ export const bulkMarkAttendance = async (
   }
 
   const results = await prisma.$transaction(async (tx) => {
-    const saved: Array<Awaited<ReturnType<typeof tx.attendanceRecord.upsert>>> = [];
-
-    for (const record of input.records) {
-      const upserted = await tx.attendanceRecord.upsert({
-        where: {
-          orgId_studentId_date: {
-            orgId: parsedOrgId,
-            studentId: BigInt(record.studentId),
-            date: attendanceDate,
-          },
-        },
-        update: {
-          classId: parsedClassId,
-          branchId: classRecord.branchId,
-          status: record.status,
-          reason: record.reason ?? null,
-          markedById: parsedMarkedById,
-        },
-        create: {
-          orgId: parsedOrgId,
-          branchId: classRecord.branchId,
-          classId: parsedClassId,
-          studentId: BigInt(record.studentId),
-          date: attendanceDate,
-          status: record.status,
-          reason: record.reason ?? null,
-          markedById: parsedMarkedById,
-        },
+    const saved = [];
+    const changes: Prisma.InputJsonValue[] = [];
+    for (const record of [...input.records].sort((a, b) => BigInt(a.studentId) < BigInt(b.studentId) ? -1 : 1)) {
+      const studentId = BigInt(record.studentId);
+      const before = await tx.attendanceRecord.findUnique({
+        where: { orgId_studentId_date: { orgId: parsedOrgId, studentId, date: attendanceDate } },
+      });
+      if (before && before.classId !== parsedClassId)
+        throw new HttpError(409, "Attendance already exists in another class");
+      const values = {
+        status: record.status, reason: record.reason ?? null, markedById: parsedMarkedById,
+        checkInTime: ["PRESENT", "LATE"].includes(record.status) ? before?.checkInTime ?? null : null,
+      };
+      if (before) {
+        const updated = await tx.attendanceRecord.updateMany({
+          where: { id: before.id, orgId: parsedOrgId, version: before.version },
+          data: { ...values, version: { increment: 1 } },
+        });
+        if (updated.count !== 1) throw new HttpError(409, "Attendance changed. Reload the register.");
+      } else {
+        await tx.attendanceRecord.create({ data: {
+          orgId: parsedOrgId, branchId: classRecord.branchId, classId: parsedClassId,
+          studentId, date: attendanceDate, ...values,
+        } });
+      }
+      const result = await tx.attendanceRecord.findUniqueOrThrow({
+        where: { orgId_studentId_date: { orgId: parsedOrgId, studentId, date: attendanceDate } },
         include: {
-          student: {
-            select: {
-              id: true,
-              fullName: true,
-              admissionNo: true,
-            },
-          },
-          markedBy: {
-            select: {
-              id: true,
-              fullName: true,
-              role: true,
-            },
-          },
+          student: { select: { id: true, fullName: true, admissionNo: true } },
+          markedBy: { select: { id: true, fullName: true, role: true } },
         },
       });
-
-      saved.push(upserted);
+      changes.push({
+        studentId: record.studentId,
+        before: before ? { status: before.status, reason: before.reason, checkInTime: before.checkInTime, version: before.version } : null,
+        after: { status: result.status, reason: result.reason, checkInTime: result.checkInTime, version: result.version },
+      });
+      saved.push(result);
     }
-
+    await tx.auditLog.create({ data: {
+      orgId: parsedOrgId, actorUserId: parsedMarkedById, action: "attendance.bulk.saved",
+      entityType: "ClassAttendance", entityId: input.classId,
+      metadata: { date: input.date, changes },
+    } });
     return saved;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted }).catch((error: unknown) => {
+    if (attendanceConflict(error))
+      throw new HttpError(409, "Attendance changed. Reload the register.");
+    throw error;
   });
 
   return results.map(toAttendanceResponse);

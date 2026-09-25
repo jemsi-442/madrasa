@@ -869,3 +869,21 @@ Why this is safer:
   duplicate receipts. See ADMIN_PANEL_ARCHITECTURE.md for remaining domains.
 - This extension does not change attendance marking, teacher class ownership,
   parent linked-child access, or learner self-service permissions.
+
+## Admin Attendance Register Extension (2026-09-25)
+
+- `GET /api/attendance/register`, `GET /api/attendance/register/history` and
+  `POST /api/attendance/register` allow ADMIN in their organization and TEACHER
+  only for assigned classes. ACCOUNTANT, PARENT and LEARNER are denied.
+- Admin can record attendance without impersonating a teacher. Corrections through
+  the register require a reason; student rows carry a version to prevent stale
+  overwrites. Each actual change and its before/after values are audited atomically.
+- Historical saved rows remain in their original class after student transfers.
+  Only ADMIN can correct those rows once the student leaves the active class.
+  A second class cannot take over a student's attendance for the same day.
+- The existing `POST /api/attendance/bulk-mark` stays TEACHER-only for backwards
+  compatibility. It now increments row versions and audits changes, so it cannot
+  silently bypass an open admin register's stale-write detection.
+- Attendance check-in is optional school-local HH:mm (Africa/Dar_es_Salaam).
+  Future attendance, duplicate student rows and check-in on absent/excused records
+  are rejected. Unmarked students are not silently classified as absent.

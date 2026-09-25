@@ -630,6 +630,8 @@ model AttendanceRecord {
   date          DateTime         @db.Date
   status        AttendanceStatus
   reason        String?          @db.VarChar(255)
+  checkInTime   String?          @map("check_in_time") @db.VarChar(5)
+  version       Int              @default(1)
   markedById    BigInt           @map("marked_by")
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")

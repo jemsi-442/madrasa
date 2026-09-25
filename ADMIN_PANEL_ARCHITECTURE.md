@@ -65,3 +65,22 @@ Each implementation stage must include migration validation (when applicable),
 RBAC/tenant tests, mutation/empty/error coverage, Flutter analysis/widget tests,
 desktop/mobile inspection, updated progress documentation and its own commit.
 Do not add clickable controls for workflows that are not implemented.
+
+## Delivered Attendance Register
+
+- Additive `AttendanceRecord.checkInTime` and `version` fields preserve old records.
+  Database checks enforce positive revisions and valid present/late check-in times.
+- Register reads join current active class members with saved historical rows.
+  They are not a reconstruction of all past enrollment changes: an old, unrecorded
+  student who has since left a class is not automatically added to its past roster.
+- Date/class register, seven-day trend, saved-status summary, bulk selection,
+  optional check-in/notes, explicit correction reason and latest 50-save history.
+  No-record days are chart gaps. Status percentages use saved records, not guessed
+  scheduled school days; unmarked counts are shown separately.
+- Saves update only submitted changed rows and commit audit records in the same
+  transaction. Optimistic versions and MariaDB conflict handling return a
+  recoverable conflict rather than silently replacing another staff member's work.
+- The legacy teacher bulk endpoint remains compatible and teacher-only. New admin
+  writes use the versioned endpoint; legacy teacher writes also invalidate versions.
+- This is online-only. Offline queues, attendance notifications and term calendar
+  denominators remain separate follow-on work, not badges implying they exist.
