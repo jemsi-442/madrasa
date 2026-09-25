@@ -853,3 +853,19 @@ Why this is safer:
 - dini and tech courses stay under one governance model
 - teachers do not accidentally publish wrong pricing or wrong visibility
 - the office keeps quality and product consistency
+
+## Admin reference panel extension (2026-09-25)
+
+- `GET /api/admin/overview`, `/teachers`, `/subjects`, `/guardians` and
+  `/students/summary`: ADMIN only, tenant-scoped read models. No role or password
+  fields are accepted from these directory queries.
+- `POST /api/admin/events` and `/events/:id/cancel`: ADMIN only, audited.
+- `/api/fundraising/*`: ADMIN only for this release. Donors, campaigns, pledges,
+  manually received donations, receipts and voids are independent of fee invoices.
+  ACCOUNTANT does not inherit these permissions until a separate delegated
+  fundraising capability is explicitly approved.
+- Financial relations use composite tenant foreign keys. Posting and void audit
+  records share the financial transaction; repeated submission keys cannot create
+  duplicate receipts. See ADMIN_PANEL_ARCHITECTURE.md for remaining domains.
+- This extension does not change attendance marking, teacher class ownership,
+  parent linked-child access, or learner self-service permissions.

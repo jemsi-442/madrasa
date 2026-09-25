@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { adminPanelRouter } from "../modules/admin-panel/admin-panel.routes";
+import { fundraisingRouter } from "../modules/fundraising/fundraising.routes";
 
 import { announcementsRouter } from "../modules/announcements/announcements.routes";
 import { attendanceRouter } from "../modules/attendance/attendance.routes";
@@ -21,6 +23,8 @@ import { publicRouter } from "./public.route";
 export const apiRouter = Router();
 
 apiRouter.use("/health", healthRouter);
+apiRouter.use("/admin", adminPanelRouter);
+apiRouter.use("/fundraising", fundraisingRouter);
 apiRouter.use("/public", publicRouter);
 apiRouter.use("/announcements", announcementsRouter);
 apiRouter.use("/attendance", attendanceRouter);

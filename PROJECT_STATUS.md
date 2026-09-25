@@ -103,3 +103,20 @@ The repository CI and local release gate now run Flutter analyze, tests, and web
 2. Port staff write workflows, including attendance, registry, finance, and course studio, with role and ownership checks.
 3. Add Flutter integration tests against a seeded backend on web and Android; verify iOS on macOS.
 4. Configure production HTTPS API, CORS, platform signing, and deployment before release.
+
+## Admin reference implementation: backend expansion (2026-09-25)
+
+- Design contract: ADMIN_PANEL_ARCHITECTURE.md maps every supplied admin screen to
+  its domain, missing entities and delivery requirements. Other role layouts are
+  not included in this reference redesign.
+- Added tenant-scoped admin overview, six-month admissions, teacher assignments,
+  subject directory, student demographics, guardian lookup and scheduled events.
+- Added normalized donors, campaigns, pledges and donation ledger with decimal TZS
+  amounts, idempotent posting, auditable voids, receipt data and paginated lists.
+  Pledges do not count as income. Aggregate totals exclude voided entries.
+- Two additive migrations preserve existing data. MariaDB check constraints and
+  composite tenant foreign keys enforce the new financial/event invariants.
+- Remaining: detailed academic curriculum/class coverage, passage-level Qur'an
+  completion, admin attendance editing, report jobs/exports, communications
+  provider outbox, notification/search integration and offline conflict handling.
+  These are designed but not presented as finished features.
