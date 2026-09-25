@@ -566,8 +566,8 @@ export const exportStudentsReport = async (authUser: AuthenticatedUser, query: S
       student.currentClass?.name ?? "",
       student.currentClass?.academicYear ?? "",
       toDateOnly(student.joinedOn),
-      student.primaryGuardian.fullName,
-      student.primaryGuardian.phone,
+      student.primaryGuardian?.fullName ?? "",
+      student.primaryGuardian?.phone ?? "",
       student.guardians.length,
     ]),
   ];

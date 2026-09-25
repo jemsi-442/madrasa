@@ -80,7 +80,7 @@ const toGuardianResponse = (guardian: GuardianRecord, authUser?: Pick<Authentica
 });
 
 const toStudentResponse = (student: StudentRecord, authUser?: Pick<AuthenticatedUser, "role">) => {
-  if (!student.branch || !student.primaryGuardian) {
+  if (!student.branch) {
     throw new HttpError(500, "Student relations are incomplete");
   }
 
@@ -110,7 +110,9 @@ const toStudentResponse = (student: StudentRecord, authUser?: Pick<Authenticated
           academicYear: student.currentClass.academicYear,
         }
       : null,
-    primaryGuardian: toGuardianResponse(student.primaryGuardian, authUser),
+    primaryGuardian: student.primaryGuardian
+      ? toGuardianResponse(student.primaryGuardian, authUser)
+      : null,
     guardians: isAccountantView
       ? []
       : student.guardians.map((link) => ({

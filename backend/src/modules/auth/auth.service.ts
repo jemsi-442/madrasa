@@ -65,7 +65,7 @@ const buildRefreshToken = (userId: bigint) =>
     },
   );
 
-const buildSessionResponse = async (user: SessionUser) => {
+export const buildSessionResponse = async (user: SessionUser) => {
   const accessToken = buildAccessToken(user);
   const refreshToken = buildRefreshToken(user.id);
   const refreshTokenHash = hashRefreshToken(refreshToken);

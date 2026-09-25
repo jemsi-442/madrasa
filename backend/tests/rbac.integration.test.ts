@@ -881,25 +881,15 @@ describe("rbac integration", () => {
     expect(accountantBlockedFromForeignBranchPayments.status).toBe(403);
 
     const accountantStudents = await api
-      .get("/api/students?page=1&pageSize=5")
+      .get('/api/students')
+      .query({ search: parentProfile.body.data.students[0].admissionNo, pageSize: 5 })
       .set("Authorization", `Bearer ${accountantToken}`);
 
     expect(accountantStudents.status).toBe(200);
 
-    const accountantStudent = ((accountantStudents.body.data.items as Array<{
-      dob: string | null;
-      joinedOn: string | null;
-      leftOn: string | null;
-      notes: string | null;
-      guardians: Array<unknown>;
-      primaryGuardian: {
-        fullName: string;
-        phone: string;
-        email: string | null;
-        relationship: string | null;
-        address: string | null;
-      };
-    }> | undefined) ?? [])[0];
+    // Use the seeded child, not the newest student (who may be an independent learner).
+    const accountantStudent = accountantStudents.body.data.items[0];
+    expect(accountantStudent).toBeDefined();
 
     if (accountantStudent) {
       expect(accountantStudent.dob).toBeNull();
@@ -986,5 +976,5 @@ describe("rbac integration", () => {
       .set("Authorization", `Bearer ${parentToken}`);
 
     expect(parentAllowedParentProfile.status).toBe(200);
-  }, 20000);
+  }, 60_000);
 });

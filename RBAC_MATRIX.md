@@ -477,18 +477,14 @@ Recommended rule:
 
 Status:
 
-- done:
-  - learner signs in with office-issued phone or email
-  - no public self-registration by default
-- next:
-  - learner-specific reset/help wording if this role becomes public-facing
-
-Recommended login direction:
-
-- learner signs in with office-issued phone or email
-- no public self-registration by default
-- office creates or activates learner access
-- password setup or reset follows the same controlled access pattern used elsewhere
+- Online learners can self-register using name, email, password and confirmation.
+- `POST /api/auth/register` always creates an active `LEARNER` with one owned `COURSE_STUDENT` profile in the configured public organization and its main/first branch.
+- Public registration rejects role, organization, branch and student identifiers. It never grants staff permissions, parent linkage, enrollment or paid-course access.
+- Independent learner profiles may omit guardian and gender; school admissions still require their existing fields.
+- Existing office-issued learner accounts continue using the shared login.
+- Parent-child access and staff accounts remain office-controlled.
+- Registration attempts are limited by Redis (20 per IP per 15 minutes, fail closed if unavailable).
+- Sign-in help submits an office inquiry. Automated reset links and email verification are not implemented; registration does not prove ownership of an email address.
 
 Current seed/dev direction:
 

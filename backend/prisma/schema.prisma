@@ -311,13 +311,13 @@ model Student {
   branchId          BigInt             @map("branch_id")
   admissionNo       String             @map("admission_no") @db.VarChar(50)
   fullName          String             @map("full_name") @db.VarChar(150)
-  gender            String             @db.VarChar(20)
+  gender            String?            @db.VarChar(20)
   programCategory   StudentProgramCategory @default(MADRASA_CHILD) @map("program_category")
   dob               DateTime?          @db.Date
   status            StudentStatus      @default(ACTIVE)
   classId           BigInt?            @map("class_id")
   learnerUserId     BigInt?            @unique @map("learner_user_id")
-  primaryGuardianId BigInt             @map("primary_guardian_id")
+  primaryGuardianId BigInt?            @map("primary_guardian_id")
   joinedOn          DateTime?          @map("joined_on") @db.Date
   leftOn            DateTime?          @map("left_on") @db.Date
   notes             String?            @db.Text
@@ -327,7 +327,7 @@ model Student {
   branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
   currentClass      Class?             @relation("CurrentClassStudents", fields: [classId], references: [id], onDelete: SetNull)
   learnerUser       User?              @relation("LearnerStudent", fields: [learnerUserId], references: [id], onDelete: SetNull)
-  primaryGuardian   Guardian           @relation("PrimaryGuardian", fields: [primaryGuardianId], references: [id], onDelete: Restrict)
+  primaryGuardian   Guardian?          @relation("PrimaryGuardian", fields: [primaryGuardianId], references: [id], onDelete: Restrict)
   guardians         StudentGuardian[]
   enrollments       Enrollment[]
   attendance        AttendanceRecord[]

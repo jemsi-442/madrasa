@@ -141,7 +141,7 @@ const toStudentSummary = (student: {
   id: bigint;
   fullName: string;
   admissionNo: string;
-  gender: string;
+  gender: string | null;
   status: string;
   joinedOn: Date | null;
   branch: { id: bigint; name: string };
