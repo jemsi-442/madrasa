@@ -403,3 +403,42 @@ persisted notification/language/theme settings, account export/deactivation,
 and reviewed parent support/absence/correction requests. These are not represented
 as working features or filled with the screenshots' example data. Existing admin
 and teacher follow-up scope remains separate.
+
+
+## 2026-09-27 - Private family Messages
+
+- Added parent Messages and teacher Parent Communication with a shared responsive
+  inbox, private conversation, student context, contact search, pagination and
+  manual refresh. Existing navigation preferences and page indices are preserved.
+- New relational conversation/message tables scope every record to its tenant,
+  linked guardian, student and current assigned class teacher. Every request
+  rechecks current access; reassignment, unlinking or account suspension revokes
+  access. Other guardians have separate conversations. Admin roles cannot read
+  these private conversations through this API.
+- Message sends use immutable client IDs for safe retries after lost responses.
+  Draft text clears only after server confirmation; navigation asks before
+  discarding an unsent or uncertain draft. Read receipts advance only through a
+  validated message ID and do not mark later unseen messages read.
+- Backend stage committed in root 03d4c25 and nested backend 536c2f4. Additive
+  migration 202609272300_add_family_messages applied to the local development DB.
+  No existing school records were removed or rewritten.
+
+Verification:
+- Backend build and all 63 backend tests passed, including seven new messaging
+  tests for tenant/guardian isolation, revocation, pagination, read watermarks,
+  concurrent idempotent sends, validation and composite foreign keys.
+- All 122 Flutter tests passed, including 12 messaging tests for responsive
+  layouts, draft retention, safe retries, permission errors and double-send
+  prevention. Flutter analyze reports no issues; release web build passed.
+- Chromium verified cookie login for parent and teacher, opening a real private
+  thread, parent send, teacher read/reply and exactly one persisted record per
+  send. No JavaScript runtime errors were observed. Flutter inbox selection
+  required screenshot-based pointer coordinates in the automation; composer
+  and Send interactions used accessibility locators.
+- Desktop and 390px mobile screenshots inspected. All isolated browser fixtures,
+  including the interrupted initial automation fixture, were removed.
+
+Messages are text-only in-app communication, not SMS/WhatsApp, attachments,
+realtime push or offline storage. Parents must refresh for new messages. Academic
+grades/published reports/PDFs, events/booking, resources and persisted preferences
+remain future stages; the screenshot example data is not fabricated as live data.

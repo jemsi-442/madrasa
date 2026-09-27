@@ -17,6 +17,7 @@ import 'teacher_teaching_pages.dart';
 import 'teacher_students_page.dart';
 import 'teacher_quran_page.dart';
 import 'parent_portal_page.dart';
+import 'family_messages_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -159,6 +160,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       Icons.campaign_outlined,
       'Notices for teaching staff',
     ),
+    SectionSpec(
+      'Parent Communication',
+      '/api/family-messages/conversations',
+      Icons.chat_bubble_outline,
+      'Private conversations with verified parents of your assigned students.',
+    ),
   ],
   'PARENT' => const [
     SectionSpec(
@@ -202,6 +209,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/family/support',
       Icons.support_agent_outlined,
       'Find answers and contact the school office.',
+    ),
+    SectionSpec(
+      'Messages',
+      '/api/family-messages/conversations',
+      Icons.chat_bubble_outline,
+      "Stay connected with your child's assigned teacher.",
     ),
   ],
   'LEARNER' => const [
@@ -256,12 +269,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   late Future<dynamic> currentData;
   late List<SectionSpec> sections;
 
+  final messagesKey = GlobalKey<FamilyMessagesPageState>();
   final quranKey = GlobalKey<TeacherQuranPageState>();
   String? teachingClassId;
   String? familyChildId;
   Map<String, dynamic>? teachingStudent;
 
   bool get dedicated =>
+      sections[selectedIndex].path == '/api/family-messages/conversations' ||
       widget.state.session?.role == 'PARENT' ||
       (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
       [
@@ -289,8 +304,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     currentData = sections.isEmpty ? Future.value(null) : loadCurrent();
   }
 
-  Future<bool> leaveTeacherDraft() async =>
-      await quranKey.currentState?.confirmLeave() ?? true;
+  Future<bool> leaveTeacherDraft() async {
+    if (!(await quranKey.currentState?.confirmLeave() ?? true)) return false;
+    return await messagesKey.currentState?.confirmLeave() ?? true;
+  }
 
   void openTeacher(
     int index, {
@@ -337,6 +354,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
+    if (section.path == '/api/family-messages/conversations') {
+      return FamilyMessagesPage(
+        key: messagesKey,
+        load: widget.state.load,
+        submit: widget.state.submit,
+        userId: session.userId,
+        teacherMode: session.role == 'TEACHER',
+        refreshToken: refreshToken,
+      );
+    }
     if (session.role == 'PARENT') {
       return ParentPortalPage(
         load: widget.state.load,

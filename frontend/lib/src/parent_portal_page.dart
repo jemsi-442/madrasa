@@ -909,7 +909,7 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
           ),
           (
             'Where are academic reports and messages?',
-            'Published academic reports and private teacher messaging are not yet available in this portal. Contact the school directly.',
+            "Use Messages to contact your child's current class teacher. Published academic reports are not yet available; contact the school for an official report.",
           ),
         ])
           ExpansionTile(
