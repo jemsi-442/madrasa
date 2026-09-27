@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { classManagementRecord, manageClass, classEditSchema, classRemoveSchema } from "./class-management";
 import { requireActiveSchoolAccount } from "../../shared/middleware/active-school-account";
 import { manageStudent, studentManagementRecord, studentEditSchema, studentLifecycleSchema } from "./student-management";
 import { authenticate } from "../../shared/middleware/authenticate";
@@ -15,6 +16,9 @@ adminPanelRouter.use(authenticate, requireTenantContext, requireRole("ADMIN"), r
 const handle = (fn: (req: Request) => Promise<unknown>, status = 200) => asyncHandler(async (req: Request, res: Response) => {
   res.status(status).json({ success: true, data: jsonRecord(await fn(req)) });
 });
+adminPanelRouter.get("/classes/:id/record", handle((req) => classManagementRecord(req.authUser!, recordId.parse(req.params.id))));
+adminPanelRouter.post("/classes/:id/edit", handle((req) => manageClass(req.authUser!, recordId.parse(req.params.id), "edit", classEditSchema.parse(req.body))));
+adminPanelRouter.post("/classes/:id/remove", handle((req) => manageClass(req.authUser!, recordId.parse(req.params.id), "remove", classRemoveSchema.parse(req.body))));
 adminPanelRouter.get("/students/:id/record", handle((req) => studentManagementRecord(req.authUser!, recordId.parse(req.params.id))));
 adminPanelRouter.post("/students/:id/edit", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "edit", studentEditSchema.parse(req.body))));
 adminPanelRouter.post("/students/:id/archive", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "archive", studentLifecycleSchema.parse(req.body))));
