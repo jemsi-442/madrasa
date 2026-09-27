@@ -354,3 +354,52 @@ Verification:
 
 Remaining scope: CRUD/lifecycle controls for staff and other admin modules;
 student permanent-deletion policy is separate and has not been changed.
+
+
+## 2026-09-27 - Parent portal: scoped family workspace
+
+- Added a dedicated parent workspace using the supplied navy/gold, white-card
+  references while retaining the established MIF brand. Live pages: Dashboard,
+  My Children/profile/current timetable, monthly Attendance, Qur'an Progress,
+  School updates, invoice/payment history and Support.
+- Child selection is shared across parent navigation. Child-specific requests
+  show loading rather than stale records when switching children. Parent views
+  cannot access the admin attendance/register routes or mutate student records.
+- Parent API checks active account, tenant, role and current guardian-child
+  links on every request. Cross-campus linked siblings are supported; unrelated
+  and foreign-tenant children return 404. Responses disable caching. Student
+  internal notes, raw teacher notes and private teacher contact details are not
+  exposed by the new workspace.
+- Attendance shows real marked dates, never fabricated school days or absences.
+  Late counts as attended and excused is excluded from the rate denominator.
+  Qur'an progress deduplicates overlapping independent memorisation ayahs,
+  excludes voided sessions, and distinguishes reading/revision from memorisation.
+- Add-child/profile corrections direct parents to verified school office contacts.
+  This does not create a ticket or grant a guardian link automatically. Payments
+  are read-only invoice/history views, not a newly implemented checkout.
+- Backend stage commits: nested backend 8ba93e9; root 77811d4. No migration was
+  required for this stage; existing relational data and indexes were reused.
+- See PARENT_PORTAL_ARCHITECTURE.md for explicit next-stage models and contracts.
+
+Verification:
+- Backend TypeScript build and all 56 backend tests passed (one worker, 20-second
+  timeout), including five new parent security/data-semantics integration tests.
+- All 110 Flutter tests passed after updating the older navigation expectation:
+  parents now have their own read-only Attendance page, not an admin register.
+  Ten new parent tests cover 320/768/1440 layouts, child switching/loading,
+  profile/timetable, office verification guidance, Qur'an pagination, calendar
+  semantics, empty data and retry. Flutter analyze passed.
+- Release web build passed. Chromium exercised real cookie login and authenticated
+  reloads for dashboard and all six other parent sections, plus mobile attendance.
+  Scoped API requests returned 200 and no JavaScript runtime errors were observed.
+  This smoke test restores navigation preferences; button workflows are covered
+  by widget tests, not claimed as a complete browser interaction suite.
+- Desktop and mobile screenshots were inspected. Browser fixtures were isolated
+  and removed. No real messages, report publication or payment writes were made.
+
+Remaining parent scope: assessment/academic grades and published report/PDF
+workflow, private teacher messaging, published parent events/booking, resources,
+persisted notification/language/theme settings, account export/deactivation,
+and reviewed parent support/absence/correction requests. These are not represented
+as working features or filled with the screenshots' example data. Existing admin
+and teacher follow-up scope remains separate.

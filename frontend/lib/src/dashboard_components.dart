@@ -276,10 +276,12 @@ class RingChart extends StatelessWidget {
     required this.items,
     required this.center,
     required this.caption,
+    this.percentageDigits = 0,
   });
   final List<ChartDatum> items;
   final String center;
   final String caption;
+  final int percentageDigits;
 
   @override
   Widget build(BuildContext context) {
@@ -358,7 +360,9 @@ class RingChart extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  total == 0 ? '-' : '${(item.value / total * 100).round()}%',
+                  total == 0
+                      ? '-'
+                      : '${(item.value / total * 100).toStringAsFixed(percentageDigits)}%',
                   style: const TextStyle(color: muted, fontSize: 12),
                 ),
               ],

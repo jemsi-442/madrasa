@@ -16,6 +16,7 @@ import 'donations_page.dart';
 import 'teacher_teaching_pages.dart';
 import 'teacher_students_page.dart';
 import 'teacher_quran_page.dart';
+import 'parent_portal_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -161,22 +162,46 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
   ],
   'PARENT' => const [
     SectionSpec(
-      'Home',
+      'Dashboard',
       '/api/parent-portal/me',
       Icons.home_outlined,
-      'Your family at a glance',
+      "An overview of your children's learning and school updates.",
     ),
     SectionSpec(
-      'My children',
+      'My Children',
       '/api/parent-portal/students',
-      Icons.school_outlined,
-      'Students linked to your account',
+      Icons.people_outline,
+      "View your children's profiles, classes and learning records.",
+    ),
+    SectionSpec(
+      'Attendance',
+      '/family/attendance',
+      Icons.calendar_month_outlined,
+      "View your child's attendance records and school notes.",
+    ),
+    SectionSpec(
+      "Qur'an Progress",
+      '/family/quran',
+      Icons.menu_book_outlined,
+      "Follow reading, memorisation and revision, one ayah at a time.",
     ),
     SectionSpec(
       'School updates',
       '/api/parent-portal/announcements',
       Icons.campaign_outlined,
-      'News for your family',
+      'Published notices from your school.',
+    ),
+    SectionSpec(
+      'Payments',
+      '/family/payments',
+      Icons.payments_outlined,
+      "Your child's invoices and confirmed payment records.",
+    ),
+    SectionSpec(
+      'Support',
+      '/family/support',
+      Icons.support_agent_outlined,
+      'Find answers and contact the school office.',
     ),
   ],
   'LEARNER' => const [
@@ -233,9 +258,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   final quranKey = GlobalKey<TeacherQuranPageState>();
   String? teachingClassId;
+  String? familyChildId;
   Map<String, dynamic>? teachingStudent;
 
   bool get dedicated =>
+      widget.state.session?.role == 'PARENT' ||
       (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
       [
         'Students',
@@ -310,6 +337,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
+    if (session.role == 'PARENT') {
+      return ParentPortalPage(
+        load: widget.state.load,
+        page: selectedIndex,
+        childId: familyChildId,
+        refreshToken: refreshToken,
+        onChildSelected: (id) => setState(() => familyChildId = id),
+        onOpen: (index, {childId}) {
+          if (childId != null) familyChildId = childId;
+          selectSection(index);
+        },
+      );
+    }
     if (session.role == 'TEACHER' && selectedIndex <= 4) {
       return switch (selectedIndex) {
         0 => TeacherOverviewPage(
@@ -585,7 +625,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                           ],
                                           Text(
                                             selectedIndex == 0
-                                                ? 'Assalamu alaikum, $firstName'
+                                                ? session.role == 'PARENT'
+                                                      ? 'Welcome back, $firstName!'
+                                                      : 'Assalamu alaikum, $firstName'
                                                 : section.title,
                                             style: TextStyle(
                                               fontFamily: 'NotoSansDisplay',
@@ -626,6 +668,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                       ),
                                     if (!narrow &&
                                         session.role != 'TEACHER' &&
+                                        session.role != 'PARENT' &&
                                         MediaQuery.sizeOf(context).width >=
                                             1280)
                                       Padding(
@@ -692,7 +735,7 @@ String _roleLabel(String role) => switch (role) {
   'ADMIN' => 'Administration',
   'ACCOUNTANT' => 'Finance',
   'TEACHER' => 'Teacher workspace',
-  'PARENT' => 'Family',
+  'PARENT' => 'Parent',
   'LEARNER' => 'Learning',
   _ => 'Account',
 };

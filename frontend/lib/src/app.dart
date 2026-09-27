@@ -80,7 +80,7 @@ class _MifAppState extends State<MifApp> {
             ),
             state: appState,
           );
-          return ['ADMIN', 'TEACHER'].contains(appState.session!.role)
+          return ['ADMIN', 'TEACHER', 'PARENT'].contains(appState.session!.role)
               ? Theme(data: adminTheme(Theme.of(context)), child: workspace)
               : workspace;
         }

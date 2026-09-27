@@ -288,11 +288,23 @@ void main() {
       );
       expect(
         sectionsForRole(role).map((s) => s.title),
-        role == 'TEACHER'
+        role == 'TEACHER' || role == 'PARENT'
             ? contains('Attendance')
             : isNot(contains('Attendance')),
       );
     }
+    expect(
+      sectionsForRole('PARENT').firstWhere((s) => s.title == 'Attendance').path,
+      '/family/attendance',
+    );
+    expect(
+      sectionsForRole('PARENT').any(
+        (s) =>
+            s.path.startsWith('/api/reports/') ||
+            s.path.startsWith('/api/attendance/'),
+      ),
+      isFalse,
+    );
     expect(sectionsForRole('ADMIN').first.title, 'Overview');
   });
 }
