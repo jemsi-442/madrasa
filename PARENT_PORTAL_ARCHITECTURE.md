@@ -54,13 +54,45 @@ measured query needs; the existing org/student/date indexes cover their scope.
 - Endpoints live at /api/family-messages for PARENT/TEACHER only. ADMIN does not
   acquire private-message access merely because it is an administrator.
 
+## Stage 3: Reviewed Assessment Results
+
+- Assessment captures an active class roster (1-500 learners), approved school
+  subject, immutable title/date/maximum and creator. New learners are not silently
+  added to an existing assessment; class reassignment changes staff access, not
+  historical roster membership.
+- Teachers record whole-number scores from zero to the assessment maximum
+  (1-1000). Blank is unassessed, not zero. Parent-facing feedback is explicit;
+  internal student/support notes are never included.
+- DRAFT -> SUBMITTED is teacher-only and requires a score for the entire roster.
+  ADMIN can return a submitted assessment to draft with a reason, or publish it.
+  Only administrators can retract a publication, with an audited reason.
+- Every write checks a numeric revision. School writer transactions serialize
+  changes; stale saves/publication attempts return 409. Creation uses a stable
+  client UUID so retrying a lost response does not create another roster.
+- Each publication creates an immutable AssessmentRelease snapshot. Retraction
+  stamps the old release and restores draft state; republication creates a new
+  release, never overwrites the old snapshot.
+- Parent Academic Progress returns only the linked child's portion of current
+  published snapshots. Guardian/account/tenant scope is rechecked, responses use
+  no-store, and no peers' names, marks or feedback are serialized.
+- The displayed average is the equally weighted mean of normalized published
+  assessment percentages for the selected calendar year. Missing assessments
+  are excluded. This is explicitly not a term grade, weighted curriculum result,
+  class rank, or official report card.
+- Class removal guards include assessments; restrictive tenant-composite foreign
+  keys also protect history. Subject selection uses the existing approved catalog;
+  class-subject assignments/rubric configuration remain a future domain extension.
+- Staff endpoints are /api/assessments; parent reads use
+  /api/assessments/children/:id/academic?year=YYYY. No official PDF or report
+  publication is claimed by these assessment endpoints.
+
 ## Remaining Domain Work
 
 The screenshot features below are separate backend-backed stages, not fake
 statistics, pretend inboxes or buttons claiming a save without persistence:
 
-1. Published academic reports: Assessment, AssessmentResult, ReportingPeriod,
-   StudentReport and immutable published ReportSnapshot. Teacher drafts remain
+1. Official academic reports: ReportingPeriod, StudentReport and immutable
+   published ReportSnapshot, composed from reviewed assessments above. Teacher drafts remain
    private. Admin publication/retraction is audited. Parent report and PDF routes
    recheck guardian access; averages and ranks require a defined grading policy.
 2. Communication extensions: reviewed administrative support conversations,

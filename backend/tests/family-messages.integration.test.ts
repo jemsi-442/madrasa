@@ -13,7 +13,7 @@ describe("private family messaging", () => {
   const token = (id: bigint, role = id === teacher || id === teacher2 ? "TEACHER" : "PARENT", org = orgId) =>
     jwt.sign({ sub: String(id), orgId: String(org), role, type: "access" }, env.JWT_SECRET, { expiresIn: "10m" });
   const get = (path: string, id = parent, role?: string, org = orgId) => api.get(`/api/family-messages/${path}`).set("Authorization", `Bearer ${token(id, role, org)}`);
-  const post = (path: string, body: unknown, id = parent, role?: string) => api.post(`/api/family-messages/${path}`).set("Authorization", `Bearer ${token(id, role)}`).send(body);
+  const post = (path: string, body: object, id = parent, role?: string) => api.post(`/api/family-messages/${path}`).set("Authorization", `Bearer ${token(id, role)}`).send(body);
   const open = (id = parent, child = student, contact = teacher) => post("conversations", { studentId: String(child), contactId: String(contact) }, id);
   const send = (body: string, id = parent, conversation = thread, clientId = randomUUID()) =>
     post(`conversations/${conversation}/messages`, { body, clientId }, id);

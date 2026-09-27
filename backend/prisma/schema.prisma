@@ -250,6 +250,8 @@ model Branch {
 }
 
 model User {
+  assessmentsCreated Assessment[]
+  assessmentReleases AssessmentRelease[]
   familyParentConversations FamilyConversation[] @relation("FamilyParent")
   familyTeacherConversations FamilyConversation[] @relation("FamilyTeacher")
   familyMessages FamilyMessage[]
@@ -323,6 +325,7 @@ model Guardian {
 }
 
 model Student {
+  assessmentResults AssessmentResult[]
   familyConversations FamilyConversation[]
   quranSessions QuranSession[]
   supportNotes StudentSupportNote[]
@@ -380,6 +383,7 @@ model StudentGuardian {
 }
 
 model Class {
+  assessments Assessment[]
   timetable ClassTimetableSlot[]
   quranSessions QuranSession[]
   supportNotes StudentSupportNote[]
@@ -407,6 +411,8 @@ model Class {
 }
 
 model Subject {
+  assessments Assessment[]
+  @@unique([orgId, id], map: "uniq_subjects_org_id")
   id           BigInt       @id @default(autoincrement())
   orgId        BigInt       @map("org_id")
   code         String       @db.VarChar(30)
@@ -1124,4 +1130,66 @@ model FamilyMessage {
   @@unique([orgId, senderId, clientId], map: "uniq_family_message_request")
   @@index([orgId, conversationId, id], map: "idx_family_message_history")
   @@map("family_messages")
+}
+
+
+enum AssessmentStatus {
+  DRAFT
+  SUBMITTED
+  PUBLISHED
+}
+model Assessment {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @map("org_id")
+  classId BigInt @map("class_id")
+  subjectId BigInt @map("subject_id")
+  createdById BigInt @map("created_by_id")
+  clientId String @map("client_id") @db.Char(36)
+  title String @db.VarChar(150)
+  assessedOn DateTime @map("assessed_on") @db.Date
+  maxScore Int @map("max_score")
+  status AssessmentStatus @default(DRAFT)
+  revision Int @default(1)
+  reviewNote String? @map("review_note") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  class Class @relation(fields: [orgId, classId], references: [orgId, id], onDelete: Restrict)
+  subject Subject @relation(fields: [orgId, subjectId], references: [orgId, id], onDelete: Restrict)
+  createdBy User @relation(fields: [orgId, createdById], references: [orgId, id], onDelete: Restrict)
+  results AssessmentResult[]
+  releases AssessmentRelease[]
+  @@unique([orgId, id])
+  @@unique([orgId, createdById, clientId])
+  @@index([orgId, classId, assessedOn])
+  @@index([orgId, status, assessedOn])
+  @@map("assessments")
+}
+model AssessmentResult {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @map("org_id")
+  assessmentId BigInt @map("assessment_id")
+  studentId BigInt @map("student_id")
+  score Int?
+  feedback String @default("") @db.VarChar(500)
+  assessment Assessment @relation(fields: [orgId, assessmentId], references: [orgId, id], onDelete: Restrict)
+  student Student @relation(fields: [orgId, studentId], references: [orgId, id], onDelete: Restrict)
+  @@unique([assessmentId, studentId])
+  @@index([orgId, studentId])
+  @@map("assessment_results")
+}
+model AssessmentRelease {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @map("org_id")
+  assessmentId BigInt @map("assessment_id")
+  revision Int
+  publishedById BigInt @map("published_by_id")
+  snapshot Json
+  createdAt DateTime @default(now()) @map("created_at")
+  retractedAt DateTime? @map("retracted_at")
+  retractionReason String? @map("retraction_reason") @db.VarChar(500)
+  assessment Assessment @relation(fields: [orgId, assessmentId], references: [orgId, id], onDelete: Restrict)
+  publishedBy User @relation(fields: [orgId, publishedById], references: [orgId, id], onDelete: Restrict)
+  @@unique([assessmentId, revision])
+  @@index([orgId, assessmentId])
+  @@map("assessment_releases")
 }
