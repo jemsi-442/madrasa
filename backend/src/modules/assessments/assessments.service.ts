@@ -164,6 +164,12 @@ export async function parentAcademics(actor: AuthenticatedUser, id: string, year
       user: { orgId, role: "PARENT", status: "ACTIVE", organization: { status: { in: ["ACTIVE", "TRIAL"] } } } } } },
   }, select: { id: true, fullName: true, admissionNo: true } });
   if (!student) throw new HttpError(404, "Child not found");
+  return readPublishedAcademics(orgId, student, year);
+}
+
+// Called only after the parent or learner student scope has been authorized.
+export async function readPublishedAcademics(orgId: bigint, student: { id: bigint; fullName: string; admissionNo: string }, year: number) {
+  const id = String(student.id);
   const releases = await prisma.assessmentRelease.findMany({ where: { orgId, retractedAt: null,
     assessment: { orgId, status: "PUBLISHED", assessedOn: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
       results: { some: { orgId, studentId: student.id } } } },

@@ -21,11 +21,14 @@ import {
   updateLearnerLessonProgressHandler,
 } from "./learner.controller";
 
+import { learnerWorkspaceRouter } from "./learner-workspace";
+
 export const learnerRouter = Router();
 
 learnerRouter.get("/assets/:assetId/deliver", asyncHandler(deliverLearnerAssetHandler));
 learnerRouter.use(authenticate, requireTenantContext, requireRole("LEARNER"));
 
+learnerRouter.use("/workspace", learnerWorkspaceRouter);
 learnerRouter.get("/me", asyncHandler(getLearnerProfileHandler));
 learnerRouter.get("/courses", asyncHandler(listLearnerCoursesHandler));
 learnerRouter.get("/courses/:courseId", asyncHandler(getLearnerCourseDetailHandler));

@@ -222,8 +222,13 @@ async function child(actor: Actor, id: string) {
 }
 export async function parentList(actor: Actor, id: string, page: number) {
   const student = await child(actor, id);
-  const where: Prisma.ReportReleaseWhereInput = { ...activeRelease, orgId: BigInt(actor.orgId),
-    report: { orgId: BigInt(actor.orgId), studentId: student.id, status: "PUBLISHED" } };
+  return readPublishedReports(BigInt(actor.orgId), student, page);
+}
+
+// Internal read models; public routes must authorize the student before calling.
+export async function readPublishedReports(orgId: bigint, student: { id: bigint; fullName: string }, page: number) {
+  const where: Prisma.ReportReleaseWhereInput = { ...activeRelease, orgId,
+    report: { orgId, studentId: student.id, status: "PUBLISHED" } };
   const releases = await prisma.reportRelease.findMany({ where, orderBy: { id: "desc" }, take: 20, skip: (page - 1) * 20,
     select: { id: true, createdAt: true, snapshot: true } });
   return { student, items: releases.map(r => ({ ...r, publishedOn: schoolDate(r.createdAt) })),
@@ -231,8 +236,11 @@ export async function parentList(actor: Actor, id: string, page: number) {
 }
 export async function parentRelease(actor: Actor, studentId: string, id: string) {
   await child(actor, studentId);
-  const row = await prisma.reportRelease.findFirst({ where: { ...activeRelease, id: BigInt(id), orgId: BigInt(actor.orgId),
-    report: { orgId: BigInt(actor.orgId), studentId: BigInt(studentId), status: "PUBLISHED" } }, select: { id: true, createdAt: true, snapshot: true } });
+  return readPublishedReport(BigInt(actor.orgId), BigInt(studentId), id);
+}
+export async function readPublishedReport(orgId: bigint, studentId: bigint, id: string) {
+  const row = await prisma.reportRelease.findFirst({ where: { ...activeRelease, id: BigInt(id), orgId,
+    report: { orgId, studentId, status: "PUBLISHED" } }, select: { id: true, createdAt: true, snapshot: true } });
   if (!row) throw new HttpError(404, "Published report not found");
   return row;
 }

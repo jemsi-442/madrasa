@@ -9,6 +9,7 @@ import { asyncHandler } from "../../shared/utils/async-handler";
 import { jsonRecord } from "../../shared/utils/json-record";
 import { schoolDate } from "../attendance/register.service";
 import { listParentAnnouncements } from "./parent-portal.service";
+import { attendanceSummary, memorised, readQuran } from "../learner/learner-records";
 import catalog from "../teacher-workspace/quran-catalog.json";
 
 const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).refine(v => Number(v.slice(0, 4)) >= 2000 && Number(v.slice(0, 4)) <= 2100);
@@ -48,22 +49,6 @@ async function child(actor: AuthenticatedUser, id: string) {
 function period(month = schoolDate().slice(0, 7)) {
   const [year, number] = month.split("-").map(Number);
   return { month, from: new Date(Date.UTC(year!, number! - 1, 1)), until: new Date(Date.UTC(year!, number!, 1)) };
-}
-function attendanceSummary(records: { status: string }[]) {
-  const counts = { PRESENT: 0, LATE: 0, ABSENT: 0, EXCUSED: 0 };
-  for (const row of records) counts[row.status as keyof typeof counts]++;
-  const denominator = counts.PRESENT + counts.LATE + counts.ABSENT;
-  return { ...counts, markedDays: records.length, rate: denominator ? Math.round((counts.PRESENT + counts.LATE) * 100 / denominator) : null };
-}
-function memorised(records: { surahId: number; ayahFrom: number; ayahTo: number; activity: string; observation: string }[]) {
-  const keys = new Set<string>();
-  for (const row of records) {
-    if (row.activity !== "MEMORIZATION" || row.observation !== "INDEPENDENT") continue;
-    const chapter = catalog.chapters.find(c => c.id === row.surahId);
-    if (!chapter) continue;
-    for (let ayah = Math.max(1, row.ayahFrom); ayah <= Math.min(chapter.ayahCount, row.ayahTo); ayah++) keys.add(`${row.surahId}:${ayah}`);
-  }
-  return keys;
 }
 
 async function overview(actor: AuthenticatedUser, month?: string) {
@@ -105,23 +90,8 @@ async function attendance(actor: AuthenticatedUser, id: string, month?: string) 
 }
 
 async function quran(actor: AuthenticatedUser, id: string, page: number) {
-  const { student } = await child(actor, id), where = { orgId: BigInt(actor.orgId), studentId: student.id, voidedAt: null };
-  const ranges = await prisma.quranSession.findMany({ where: { ...where, activity: "MEMORIZATION", observation: "INDEPENDENT" },
-    select: { surahId: true, ayahFrom: true, ayahTo: true, activity: true, observation: true } });
-  const keys = memorised(ranges);
-  const total = await prisma.quranSession.count({ where });
-  const sessions = await prisma.quranSession.findMany({ where, orderBy: [{ learnedOn: "desc" }, { id: "desc" }],
-    skip: (page - 1) * 20, take: 20, select: sessionFields });
-  const latest = await prisma.quranSession.findFirst({ where, orderBy: [{ learnedOn: "desc" }, { id: "desc" }], select: sessionFields });
-  const chapters = catalog.chapters.map(c => ({ ...c, memorisedAyahs: Array.from({ length: c.ayahCount }, (_, index) => index + 1).filter(ayah => keys.has(`${c.id}:${ayah}`)).length }));
-  const juzs = catalog.juzs.map(j => {
-    let complete = 0, total = 0;
-    for (const range of j.ranges) for (let ayah = range.from; ayah <= range.to; ayah++) { total++; if (keys.has(`${range.surahId}:${ayah}`)) complete++; }
-    return { number: j.number, memorisedAyahs: complete, totalAyahs: total };
-  });
-  return { student, memorisedAyahs: keys.size, totalAyahs, percent: Math.round(keys.size * 1000 / totalAyahs) / 10,
-    chapters, juzs, latestSession: latest, sessions,
-    meta: { page, totalPages: Math.ceil(total / 20), totalItems: total, pageSize: 20 } };
+  const { student } = await child(actor, id);
+  return { student, ...await readQuran(BigInt(actor.orgId), student.id, page) };
 }
 
 export const familyWorkspaceRouter = Router();

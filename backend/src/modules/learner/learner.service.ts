@@ -152,7 +152,7 @@ const getAssetAccessState = (
   return "LOCKED";
 };
 
-const loadLearnerStudent = async (authUser: AuthenticatedUser) => {
+export const loadLearnerStudent = async (authUser: AuthenticatedUser) => {
   if (authUser.role !== "LEARNER") {
     throw new HttpError(403, "You are not allowed to access learner data");
   }
@@ -162,7 +162,7 @@ const loadLearnerStudent = async (authUser: AuthenticatedUser) => {
       orgId: BigInt(authUser.orgId),
       learnerUserId: BigInt(authUser.userId),
       status: "ACTIVE",
-      learnerUser: { is: { status: "ACTIVE", role: "LEARNER" } },
+      learnerUser: { is: { orgId: BigInt(authUser.orgId), status: "ACTIVE", role: "LEARNER", organization: { status: { in: ["ACTIVE", "TRIAL"] } } } },
     },
     select: {
       id: true,
