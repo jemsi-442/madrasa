@@ -347,6 +347,10 @@ Verification:
   protected records, directory refresh, read-only access and 320/768/1440 layouts.
 - Release Flutter web build passed. Local preview runs on localhost:8080 and
   the development API on localhost:4000 while those processes remain running.
+- Chromium automation did not complete the end-to-end class flow: Flutter's
+  accessibility tree disappeared during navigation/menu interaction. Browser
+  end-to-end verification is not claimed; API/widget coverage above passed.
+  All isolated browser fixtures were cleaned up.
 
 Remaining scope: CRUD/lifecycle controls for staff and other admin modules;
 student permanent-deletion policy is separate and has not been changed.
