@@ -29,6 +29,31 @@ Names, scores, dates, photographs and contact information in mockups are not dat
 No new tables are needed for these read workflows. Add indexes only against
 measured query needs; the existing org/student/date indexes cover their scope.
 
+## Stage 2: Private Family Messages
+
+- FamilyConversation is unique per tenant, child, verified parent and class
+  teacher. Different guardians never share a conversation. The eligible-contact
+  directory uses the same active-class assignment policy as the teacher portal.
+- FamilyMessage uses tenant-composite foreign keys, immutable text and a unique
+  sender/client UUID. Retrying an uncertain send with the same payload returns
+  the original message; changing the payload with that UUID returns 409.
+- Every directory, inbox, history, send and read acknowledgement rebuilds access
+  from live guardian links, active student/accounts, current class teacher and
+  teacher branch scope. Reassignment/revocation removes access, not stored history.
+  Re-linking the same verified pair restores their retained thread. A newly
+  assigned teacher cannot read a previous teacher's conversation.
+- Sends lock the organisation, student, class and membership rows before
+  authorisation, sharing the school writer's locking order. Audit entries contain
+  IDs only, never private message bodies. Reads use no-store responses.
+- History is cursor-paginated. Each participant has a monotonic read-through
+  message ID; acknowledgements validate that ID belongs to this conversation.
+  New messages arriving after the acknowledged ID remain unread.
+- The UI requires explicit contact selection, confirms unsent draft disposal and
+  retains the exact pending payload for retries. It is in-app text only, with
+  manual refresh; no offline persistence, attachments, SMS or WhatsApp delivery.
+- Endpoints live at /api/family-messages for PARENT/TEACHER only. ADMIN does not
+  acquire private-message access merely because it is an administrator.
+
 ## Remaining Domain Work
 
 The screenshot features below are separate backend-backed stages, not fake
@@ -38,10 +63,9 @@ statistics, pretend inboxes or buttons claiming a save without persistence:
    StudentReport and immutable published ReportSnapshot. Teacher drafts remain
    private. Admin publication/retraction is audited. Parent report and PDF routes
    recheck guardian access; averages and ranks require a defined grading policy.
-2. Private communication: Conversation scoped to tenant, child, verified parent
-   and current authorised staff; Message with sender, idempotency key and read
-   state. Recheck membership before every read/send; handle staff reassignment.
-   Do not infer message permission from merely knowing a user/student ID.
+2. Communication extensions: reviewed administrative support conversations,
+   authorised attachments, realtime delivery and retention/export policy. The
+   initial private parent/class-teacher text conversation is implemented above.
 3. Parent requests: verified account and optional linked child, typed request,
    review state, admin/staff ownership, replies and audit history. Attendance
    explanations are requests, never permission to change the school register.

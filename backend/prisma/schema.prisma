@@ -250,6 +250,9 @@ model Branch {
 }
 
 model User {
+  familyParentConversations FamilyConversation[] @relation("FamilyParent")
+  familyTeacherConversations FamilyConversation[] @relation("FamilyTeacher")
+  familyMessages FamilyMessage[]
   timetableCreated ClassTimetableSlot[]
   quranSessions QuranSession[]
   supportCreated StudentSupportNote[] @relation("SupportCreator")
@@ -320,6 +323,7 @@ model Guardian {
 }
 
 model Student {
+  familyConversations FamilyConversation[]
   quranSessions QuranSession[]
   supportNotes StudentSupportNote[]
   @@unique([orgId, id], map: "uniq_students_org_id")
@@ -1084,4 +1088,40 @@ model StudentSupportNote {
   @@unique([orgId, createdById, clientId], map: "uniq_support_request")
   @@index([orgId, studentId, resolvedAt], map: "idx_support_student")
   @@map("student_support_notes")
+}
+
+model FamilyConversation {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @map("org_id")
+  studentId BigInt @map("student_id")
+  parentId BigInt @map("parent_id")
+  teacherId BigInt @map("teacher_id")
+  parentReadThrough BigInt @default(0) @map("parent_read_through")
+  teacherReadThrough BigInt @default(0) @map("teacher_read_through")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+  student Student @relation(fields: [orgId, studentId], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict)
+  parent User @relation("FamilyParent", fields: [orgId, parentId], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict)
+  teacher User @relation("FamilyTeacher", fields: [orgId, teacherId], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict)
+  messages FamilyMessage[]
+  @@unique([orgId, id], map: "uniq_family_conversation_org_id")
+  @@unique([orgId, studentId, parentId, teacherId], map: "uniq_family_conversation_members")
+  @@index([orgId, parentId, updatedAt], map: "idx_family_parent_inbox")
+  @@index([orgId, teacherId, updatedAt], map: "idx_family_teacher_inbox")
+  @@map("family_conversations")
+}
+
+model FamilyMessage {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @map("org_id")
+  conversationId BigInt @map("conversation_id")
+  senderId BigInt @map("sender_id")
+  clientId String @map("client_id") @db.Char(36)
+  body String @db.VarChar(2000)
+  createdAt DateTime @default(now()) @map("created_at")
+  conversation FamilyConversation @relation(fields: [orgId, conversationId], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict)
+  sender User @relation(fields: [orgId, senderId], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict)
+  @@unique([orgId, senderId, clientId], map: "uniq_family_message_request")
+  @@index([orgId, conversationId, id], map: "idx_family_message_history")
+  @@map("family_messages")
 }
