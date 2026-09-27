@@ -188,9 +188,9 @@ void main() {
   test(
     'role navigation exposes assessment workflow only to appropriate roles',
     () {
-      expect(sectionsForRole('TEACHER').last.title, 'Assessments');
-      expect(sectionsForRole('ADMIN').last.title, 'Assessment Review');
-      expect(sectionsForRole('PARENT').last.title, 'Academic Progress');
+      expect(sectionsForRole('TEACHER')[8].title, 'Assessments');
+      expect(sectionsForRole('ADMIN')[10].title, 'Assessment Review');
+      expect(sectionsForRole('PARENT')[8].title, 'Academic Progress');
       expect(
         sectionsForRole('ACCOUNTANT').any((s) => s.path == '/api/assessments'),
         false,

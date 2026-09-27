@@ -4,6 +4,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'teacher_ui.dart';
 import 'parent_academics.dart';
+import 'parent_reports.dart';
 
 typedef FamilyNavigate = void Function(int page, {String? childId});
 
@@ -169,6 +170,12 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
         attendance('${selected!['id']}')
       else if (widget.page == 3)
         quran('${selected!['id']}')
+      else if (widget.page == 9)
+        ParentReports(
+          load: widget.load,
+          childId: '${selected!['id']}',
+          refreshToken: widget.refreshToken,
+        )
       else if (widget.page == 8)
         ParentAcademics(
           load: widget.load,
@@ -294,9 +301,16 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
         ),
         second: panel(
           'Academic reports',
-          const TeacherNotice(
-            'Published assessment scores are available under Academic Progress. Official report cards and downloadable PDFs are not available yet; contact the school for an official report.',
-          ),
+          stack([
+            const TeacherNotice(
+              'View school-published learning reports and download the reviewed PDF. Drafts remain private until the administrator publishes them.',
+            ),
+            OutlinedButton.icon(
+              onPressed: () => widget.onOpen(9, childId: '${child['id']}'),
+              icon: const Icon(Icons.description_outlined),
+              label: const Text('View reports'),
+            ),
+          ]),
         ),
       ),
     ]);
@@ -920,7 +934,7 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
           ),
           (
             'Where are academic reports and messages?',
-            "Use Messages to contact your child's current class teacher. Published academic reports are not yet available; contact the school for an official report.",
+            "Use Messages to contact your child's current class teacher. Use Reports to view and download school-published learning reports.",
           ),
         ])
           ExpansionTile(

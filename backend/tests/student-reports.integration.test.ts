@@ -108,6 +108,8 @@ describe("reviewed student reports and protected PDFs", () => {
     const released = await family();
     expect(released.status).toBe(200); expect(released.headers["cache-control"]).toBe("no-store");
     expect(released.body.data.items).toHaveLength(1);
+    const issued = released.body.data.items[0];
+    expect(issued.publishedOn).toBe(new Date(new Date(issued.createdAt).getTime() + 3 * 3600000).toISOString().slice(0, 10));
     expect(JSON.stringify(released.body)).not.toMatch(/SECRET PEER|PRIVATE|INTERNAL/);
   });
   it("downloads authenticated PDF snapshots and never exposes another child's report", async () => {

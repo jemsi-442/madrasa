@@ -224,8 +224,9 @@ export async function parentList(actor: Actor, id: string, page: number) {
   const student = await child(actor, id);
   const where: Prisma.ReportReleaseWhereInput = { ...activeRelease, orgId: BigInt(actor.orgId),
     report: { orgId: BigInt(actor.orgId), studentId: student.id, status: "PUBLISHED" } };
-  return { student, items: await prisma.reportRelease.findMany({ where, orderBy: { id: "desc" }, take: 20, skip: (page - 1) * 20,
-    select: { id: true, createdAt: true, snapshot: true } }),
+  const releases = await prisma.reportRelease.findMany({ where, orderBy: { id: "desc" }, take: 20, skip: (page - 1) * 20,
+    select: { id: true, createdAt: true, snapshot: true } });
+  return { student, items: releases.map(r => ({ ...r, publishedOn: schoolDate(r.createdAt) })),
     meta: { page, pageSize: 20, totalItems: await prisma.reportRelease.count({ where }) } };
 }
 export async function parentRelease(actor: Actor, studentId: string, id: string) {

@@ -19,6 +19,7 @@ import 'teacher_quran_page.dart';
 import 'parent_portal_page.dart';
 import 'family_messages_page.dart';
 import 'assessments_page.dart';
+import 'student_reports_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -96,6 +97,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/assessments',
       Icons.fact_check_outlined,
       'Review and publish teacher-recorded results.',
+    ),
+    SectionSpec(
+      'Reports',
+      '/api/student-reports',
+      Icons.description_outlined,
+      'Set reporting periods, review and publish student learning reports.',
     ),
   ],
   'ACCOUNTANT' => const [
@@ -179,6 +186,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       Icons.fact_check_outlined,
       'Record scores and feedback, then submit for review.',
     ),
+    SectionSpec(
+      'Reports',
+      '/api/student-reports',
+      Icons.description_outlined,
+      'Review each learner\'s progress and prepare reports for administrator review.',
+    ),
   ],
   'PARENT' => const [
     SectionSpec(
@@ -234,6 +247,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/family/academic',
       Icons.bar_chart_outlined,
       "Your child's published subject scores and teacher feedback.",
+    ),
+    SectionSpec(
+      "Reports",
+      "/family/reports",
+      Icons.description_outlined,
+      "View and download your child's published learning reports.",
     ),
   ],
   'LEARNER' => const [
@@ -295,6 +314,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   Map<String, dynamic>? teachingStudent;
 
   bool get dedicated =>
+      sections[selectedIndex].path == '/api/student-reports' ||
       sections[selectedIndex].path == '/api/assessments' ||
       sections[selectedIndex].path == '/api/family-messages/conversations' ||
       widget.state.session?.role == 'PARENT' ||
@@ -374,6 +394,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
+    if (section.path == '/api/student-reports') {
+      return StudentReportsPage(
+        load: widget.state.load,
+        submit: widget.state.submit,
+        admin: session.role == 'ADMIN',
+        refreshToken: refreshToken,
+      );
+    }
     if (section.path == '/api/assessments') {
       return AssessmentsPage(
         load: widget.state.load,

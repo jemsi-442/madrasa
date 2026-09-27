@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { schoolDate } from "../attendance/register.service";
 import type { LearningReport } from "./student-reports.service";
 
 export function reportPdf(snapshot: LearningReport, reference: string, publishedAt?: Date): Promise<Buffer> {
@@ -23,7 +24,7 @@ export function reportPdf(snapshot: LearningReport, reference: string, published
     doc.font("heading").fontSize(20).fillColor("#142a40").text(snapshot.school);
     doc.fontSize(15).fillColor("#a7852e").text("Student Learning Report").moveDown();
     line(`${publishedAt ? "Published" : "DRAFT - Not published"} | Reference ${reference}`);
-    if (publishedAt) line(`Issued: ${publishedAt.toISOString().slice(0, 10)}`);
+    if (publishedAt) line(`Issued: ${schoolDate(publishedAt)}`);
     line(`${snapshot.period.name} | ${snapshot.period.startsOn} to ${snapshot.period.endsOn}`);
     heading(snapshot.student.fullName);
     line(`${snapshot.student.admissionNo} | ${snapshot.className}`);

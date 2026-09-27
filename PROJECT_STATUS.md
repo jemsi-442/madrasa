@@ -485,3 +485,54 @@ assessment metadata correction/cancellation workflows. This stage implements
 reviewed assessment results, not the complete Reports screenshot or full CRUD
 for every admin module. Events/resources and remaining portal features retain
 their previously documented scope.
+
+
+## 2026-09-28 - Reviewed learning reports and protected PDFs
+
+- ADMIN can create named monthly/term/year reporting periods, review teacher
+  submissions, return them with a reason, publish and retract reports.
+- Assigned TEACHER can prepare one report per learner/period, save parent-facing
+  feedback, refresh source data and submit a private draft for review.
+- Reports combine this child's published assessments, recorded attendance and
+  independent Quran memorisation in the selected class/period. Missing records
+  are not invented, and no weighted grade or class rank is claimed.
+- Submitted reports require fresh source data before publication. Every release
+  is an immutable snapshot. Retracted assessment sources withhold dependent
+  reports from parent lists/downloads until corrected and republished.
+- PARENT Reports includes child selection, report cards, history, preview and
+  authenticated PDF downloads on web. Existing navigation indices/session
+  restoration remain intact. Native clients can preview but not download files
+  in this stage.
+- PDFKit embeds bundled DejaVu fonts (license included). Ship backend/assets/fonts
+  in production. Publication dates in PDF and parent screens use the school's
+  Tanzania date, not a UTC date that can differ near midnight.
+- Added ReportingPeriod, StudentReport, ReportRelease and ReportAssessmentSource
+  with restrictive tenant-composite foreign keys and class-removal guards.
+  Additive migration 202609280100_add_student_reports was applied locally; no
+  existing school records were rewritten or removed.
+- Backend stage commits: root 7476c0c, nested backend 7ed7113; publication-date
+  correction is a separate follow-up commit, not an amend.
+
+Verification:
+- Backend build passed; all 76 backend tests passed. Seven new report integration
+  tests cover private drafts, idempotency, stale/concurrent writes, changed source
+  data, future/empty periods, publication/retraction, protected PDF, guardian and
+  teacher revocation, tenant relations and history preservation.
+- All 150 Flutter tests passed, including 14 new report tests for responsive
+  320/768/1440 layouts, draft retention/discard, confirmation, read-only review,
+  duplicate-save prevention, pagination and child switching.
+- Flutter analyze reported no issues and the release web build passed.
+- Chromium verified teacher save/submit, parent submission invisibility, admin
+  publication, parent preview and an actual PDF download, then cookie-authenticated
+  refresh retaining the Reports page. Desktop/mobile screenshots inspected, no
+  JavaScript errors observed. Isolated browser fixtures were removed.
+- Downloaded PDF text was inspected for scores, attendance and feedback. A
+  UTC/school-date mismatch found during inspection was corrected and retested.
+- Local preview uses port 8180; port 8080 was already occupied by another service
+  and was not stopped or reconfigured.
+
+Remaining: reporting periods are currently append-only; configurable grading,
+ranks, curriculum completeness, batch actions, period corrections/archive,
+full bidirectional Arabic PDF layout and native downloads are not implemented.
+Events/resources, support workflows and other unfinished portal features remain
+separate stages. This is a working Reports flow, not full CRUD for every module.
