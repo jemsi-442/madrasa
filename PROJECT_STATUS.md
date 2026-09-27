@@ -313,3 +313,40 @@ This is the first working admin CRUD slice, not completion of all system CRUD.
 - Chromium verified the visible Remove menu item, confirmation, successful save,
   disappearance from the active list, retained inactive record and one audit
   event. Zero browser runtime errors; all temporary fixtures were removed.
+
+## Admin CRUD: Class Records (2026-09-27)
+
+- Admin > Classes now offers Edit class, Change history and Remove class.
+  Read-only accounts retain View without mutation controls.
+- Editing supports name, level, academic year, teacher assignment/unassignment
+  and optional capacity. Campus is deliberately immutable in this flow.
+- Academic year changes are blocked once records are linked. Capacity edits
+  cannot go below the current assigned-student count. Changing a teacher requires
+  cancelling current/future timetable entries first; new assignments must use
+  active school-wide teachers or teachers in the class's branch.
+- Removal follows the user's explicit policy: permanently delete only empty
+  classes; block any class with students, enrollments, attendance, fee structures,
+  timetable records, Quran sessions or support notes, including inactive,
+  cancelled and historical records. The UI lists the blocking dependencies.
+- Confirmation and a reason are required. Current-account/tenant/branch checks,
+  optimistic revisions, transactional row locks and audit logs protect edits
+  and removal. Deleted classes retain their before-state, reason and actor in
+  the audit log. No schema migration or deletion of existing school data.
+- Backend stage commits: root 074942c; nested backend df759ee.
+
+Verification:
+- Backend build passed; all 51 backend tests passed with one worker and a
+  20-second test timeout. The first full run hit a 5-second browser-session
+  timeout; that file and then the entire suite passed on repeat.
+- Eight new backend tests cover scopes, invalid inputs, stale revisions,
+  teacher/timetable guards, all child relations, retained audit history and
+  permanent empty-class removal. A schema-coverage test requires future Class
+  child relations to be included in the removal guard.
+- Flutter analyze passed and 33 targeted widget tests passed, including 12 new
+  class-management tests. Coverage includes failed-save retention, confirmation,
+  protected records, directory refresh, read-only access and 320/768/1440 layouts.
+- Release Flutter web build passed. Local preview runs on localhost:8080 and
+  the development API on localhost:4000 while those processes remain running.
+
+Remaining scope: CRUD/lifecycle controls for staff and other admin modules;
+student permanent-deletion policy is separate and has not been changed.

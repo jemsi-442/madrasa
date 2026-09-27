@@ -1,4 +1,5 @@
 import 'class_timetable_dialog.dart';
+import 'class_record_actions.dart';
 import 'package:flutter/material.dart';
 
 import 'dashboard_components.dart';
@@ -274,6 +275,13 @@ class _ClassesPageState extends State<ClassesPage> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  if (widget.submit != null)
+                                    ClassRecordActions(
+                                      schoolClass: item,
+                                      load: widget.load,
+                                      submit: widget.submit!,
+                                      onChanged: reload,
+                                    ),
                                   if (widget.submit != null)
                                     IconButton(
                                       tooltip: 'Manage timetable',

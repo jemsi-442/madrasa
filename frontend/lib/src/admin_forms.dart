@@ -42,6 +42,7 @@ Future<bool> showAdminForm(
   String saveLabel = 'Save',
   String? note,
   String? conflictMessage,
+  String? Function(Object)? errorMessage,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -54,6 +55,7 @@ Future<bool> showAdminForm(
         saveLabel: saveLabel,
         note: note,
         conflictMessage: conflictMessage,
+        errorMessage: errorMessage,
       ),
     ) ??
     false;
@@ -67,9 +69,11 @@ class _AdminForm extends StatefulWidget {
     required this.saveLabel,
     this.note,
     this.conflictMessage,
+    this.errorMessage,
   });
   final String title, saveLabel;
   final String? note, conflictMessage;
+  final String? Function(Object)? errorMessage;
   final List<AdminField> fields;
   final Future<void> Function(Map<String, dynamic>) onSave;
   final PageLoader? load;
@@ -112,17 +116,19 @@ class _AdminFormState extends State<_AdminForm> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          error = switch (e) {
-            ApiException(statusCode: 409) =>
-              widget.conflictMessage ??
-                  'This entry conflicts with an existing record. Check your details before trying again.',
-            ApiException(statusCode: 422) =>
-              'Please check the details and dates, then try again.',
-            ApiException(statusCode: 404) =>
-              'A selected record is no longer available. Please select it again.',
-            _ =>
-              'We could not confirm the save. Please try again with the same details.',
-          };
+          error =
+              widget.errorMessage?.call(e) ??
+              switch (e) {
+                ApiException(statusCode: 409) =>
+                  widget.conflictMessage ??
+                      'This entry conflicts with an existing record. Check your details before trying again.',
+                ApiException(statusCode: 422) =>
+                  'Please check the details and dates, then try again.',
+                ApiException(statusCode: 404) =>
+                  'A selected record is no longer available. Please select it again.',
+                _ =>
+                  'We could not confirm the save. Please try again with the same details.',
+              };
         });
       }
     } finally {
