@@ -32,6 +32,7 @@
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "pdfkit": "^0.20.2",
     "zod": "^3.25.28"
   },
   "devDependencies": {
@@ -40,6 +41,7 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/morgan": "^1.9.10",
     "@types/node": "^22.15.30",
+    "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.2.0",
     "prisma": "^6.8.0",
     "supertest": "^7.2.2",

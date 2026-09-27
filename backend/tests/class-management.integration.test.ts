@@ -38,6 +38,8 @@ describe("admin class management", () => {
   });
   afterAll(async () => {
     const where = { orgId: { in: [orgId, otherOrg].filter(Boolean) } };
+    await prisma.studentReport.deleteMany({ where });
+    await prisma.reportingPeriod.deleteMany({ where });
     await prisma.assessment.deleteMany({ where });
     await prisma.subject.deleteMany({ where });
     await prisma.studentSupportNote.deleteMany({ where });
@@ -127,6 +129,11 @@ describe("admin class management", () => {
   });
   it("blocks removal for every linked record, including inactive and historical links", async () => {
     const makers: Record<keyof typeof classDependencies, (id: bigint) => Promise<unknown>> = {
+      studentReports: async id => {
+        const period = await prisma.reportingPeriod.create({ data: { orgId, createdById: teacher, clientId: randomUUID(), name: "History", startsOn: new Date("2026-09-01"), endsOn: new Date("2026-09-20") } });
+        const student = await prisma.student.create({ data: { orgId, branchId: branch, admissionNo: randomUUID(), fullName: "Report learner" } });
+        return prisma.studentReport.create({ data: { orgId, periodId: period.id, classId: id, studentId: student.id, preparedById: teacher, draft: {} } });
+      },
       assessments: async id => {
         const subject = await prisma.subject.create({ data: { orgId, code: randomUUID().slice(0, 20), name: "Historical subject" } });
         return prisma.assessment.create({ data: { orgId, classId: id, subjectId: subject.id, createdById: teacher,

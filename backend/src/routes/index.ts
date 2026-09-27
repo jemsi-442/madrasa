@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { studentReportsRouter } from "../modules/student-reports/student-reports.routes";
 import { assessmentsRouter } from "../modules/assessments/assessments.routes";
 import { familyMessagesRouter } from "../modules/family-messages/messages.routes";
 import { teacherWorkspaceRouter, classTimetableRouter } from "../modules/teacher-workspace/teacher.routes";
@@ -27,6 +28,7 @@ export const apiRouter = Router();
 
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/assessments", assessmentsRouter);
+apiRouter.use("/student-reports", studentReportsRouter);
 apiRouter.use("/family-messages", familyMessagesRouter);
 apiRouter.use("/admin", adminPanelRouter);
 apiRouter.use("/fundraising", fundraisingRouter);

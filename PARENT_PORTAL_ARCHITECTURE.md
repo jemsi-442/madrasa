@@ -86,6 +86,33 @@ measured query needs; the existing org/student/date indexes cover their scope.
   /api/assessments/children/:id/academic?year=YYYY. No official PDF or report
   publication is claimed by these assessment endpoints.
 
+## Stage 4: Reviewed Student Learning Reports
+
+- ReportingPeriod supports school-configured month, term or year date ranges.
+  Periods are immutable and creation uses a retry-safe client UUID.
+- StudentReport is unique per student/period and retains its original class.
+  Assigned teachers prepare and refresh a private draft. Administrators review,
+  return, publish or retract it with revision checks and audit history.
+- The draft contains only this child's published assessment results, recorded
+  attendance, independent memorisation totals and explicit parent-facing feedback.
+  Missing subjects/days are not fabricated. No weighted term grade or rank is
+  calculated. Periods must end before submission/publication.
+- Publication verifies the saved draft against current records and writes an
+  immutable ReportRelease. Changed sources require teacher refresh/resubmission.
+  Reports with retracted assessment sources are withheld from parents, including
+  PDF downloads; republication requires a new reviewed report snapshot.
+- Attendance/Quran corrections after publication do not rewrite an issued report.
+  Staff must explicitly retract and replace affected reports. Downloaded copies
+  cannot be recalled.
+- Tenant-composite foreign keys protect relations and class-removal dependency
+  guards include reports. Guardian/account/class scope is checked for every read.
+- Protected /api/student-reports PDF endpoints return authenticated JSON/base64
+  documents, not public URLs. PDFKit embeds shipped DejaVu fonts and their license.
+  Web downloads use temporary Blob URLs; native screens support preview only.
+- The period/report workflow is currently append-only, not full CRUD. Historical
+  releases are preserved. Weighted grading, rank rules, batch publication and
+  curriculum completeness policies remain separate extensions.
+
 ## Remaining Domain Work
 
 The screenshot features below are separate backend-backed stages, not fake
