@@ -442,3 +442,46 @@ Messages are text-only in-app communication, not SMS/WhatsApp, attachments,
 realtime push or offline storage. Parents must refresh for new messages. Academic
 grades/published reports/PDFs, events/booking, resources and persisted preferences
 remain future stages; the screenshot example data is not fabricated as live data.
+
+
+## 2026-09-28 - Reviewed assessments and parent Academic Progress
+
+- Teacher Assessments supports class/subject selection, roster snapshots, draft
+  scores, parent-facing feedback and submission for review. Blank scores remain
+  unassessed, zero remains a valid score, and marks cannot exceed the maximum.
+- Admin Assessment Review provides read-only review, return-for-correction,
+  publication and reasoned retraction. Parents never see drafts or submitted
+  marks. Every release retains an immutable snapshot; republication creates a
+  new release. Retraction hides the previous release without deleting history.
+- Parent Academic Progress supports child/year selection, per-subject averages,
+  assessment history and approved feedback. Only the linked child's results are
+  serialized, never peers' records. Averages explicitly use equally weighted
+  normalized assessment percentages, not official term grades or class ranks.
+- Added tenant-composite foreign keys and assessment dependency guards for class
+  removal. Migration 202609280030_add_assessments was applied to the local DB;
+  existing school records were not rewritten or removed.
+- Creation retries reuse a client UUID. Result/state writes require the current
+  revision; failed saves retain entries and drafts require explicit discard.
+  Existing sidebar indices and remembered-page preferences were preserved.
+- Backend commits: root 371e2b1, nested backend 8ced226.
+
+Verification:
+- TypeScript build and all 69 backend tests passed. Six new integration tests
+  cover workflow permissions, roster validation, stale edits, blank/zero marks,
+  guardian isolation, immutable publication/retraction, branch/account revocation
+  and cross-tenant foreign keys. Class-removal relation coverage was extended.
+- All 136 Flutter tests passed, including 14 new assessment tests for responsive
+  320/768/1440 layouts, read-only review, save/create retry, draft retention,
+  confirmation, double-submit prevention, pagination and child switching.
+- Flutter analyze reports no issues; final release web build passed.
+- Chromium verified teacher save/submit, submitted results hidden from parent,
+  administrator publication, exactly one release and correct parent results
+  after cookie-authenticated reload. Desktop/mobile screenshots inspected; no
+  JavaScript errors observed. All isolated browser fixtures were removed.
+
+Remaining: official reporting periods/report cards/PDF, weighted term grading,
+class ranking, assessment rubric/class-subject assignment configuration and
+assessment metadata correction/cancellation workflows. This stage implements
+reviewed assessment results, not the complete Reports screenshot or full CRUD
+for every admin module. Events/resources and remaining portal features retain
+their previously documented scope.

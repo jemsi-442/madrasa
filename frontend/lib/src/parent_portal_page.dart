@@ -3,6 +3,7 @@ import 'admin_forms.dart' show shortDate;
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'teacher_ui.dart';
+import 'parent_academics.dart';
 
 typedef FamilyNavigate = void Function(int page, {String? childId});
 
@@ -168,6 +169,12 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
         attendance('${selected!['id']}')
       else if (widget.page == 3)
         quran('${selected!['id']}')
+      else if (widget.page == 8)
+        ParentAcademics(
+          load: widget.load,
+          childId: '${selected!['id']}',
+          refreshToken: widget.refreshToken,
+        )
       else if (widget.page == 5)
         payments('${selected!['id']}'),
       const _FamilyBanner(),
@@ -277,6 +284,10 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
                   onPressed: () => widget.onOpen(5, childId: '${child['id']}'),
                   child: const Text('Invoices & payments'),
                 ),
+                OutlinedButton(
+                  onPressed: () => widget.onOpen(8, childId: '${child['id']}'),
+                  child: const Text('Academic progress'),
+                ),
               ],
             ),
           ]),
@@ -284,7 +295,7 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
         second: panel(
           'Academic reports',
           const TeacherNotice(
-            'Academic grades and downloadable reports are not yet available in this portal. Please contact the school for an official report.',
+            'Published assessment scores are available under Academic Progress. Official report cards and downloadable PDFs are not available yet; contact the school for an official report.',
           ),
         ),
       ),

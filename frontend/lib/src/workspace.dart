@@ -18,6 +18,7 @@ import 'teacher_students_page.dart';
 import 'teacher_quran_page.dart';
 import 'parent_portal_page.dart';
 import 'family_messages_page.dart';
+import 'assessments_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -89,6 +90,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/courses/access-requests',
       Icons.verified_user_outlined,
       'Requests for office review',
+    ),
+    SectionSpec(
+      'Assessment Review',
+      '/api/assessments',
+      Icons.fact_check_outlined,
+      'Review and publish teacher-recorded results.',
     ),
   ],
   'ACCOUNTANT' => const [
@@ -166,6 +173,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       Icons.chat_bubble_outline,
       'Private conversations with verified parents of your assigned students.',
     ),
+    SectionSpec(
+      'Assessments',
+      '/api/assessments',
+      Icons.fact_check_outlined,
+      'Record scores and feedback, then submit for review.',
+    ),
   ],
   'PARENT' => const [
     SectionSpec(
@@ -215,6 +228,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/family-messages/conversations',
       Icons.chat_bubble_outline,
       "Stay connected with your child's assigned teacher.",
+    ),
+    SectionSpec(
+      'Academic Progress',
+      '/family/academic',
+      Icons.bar_chart_outlined,
+      "Your child's published subject scores and teacher feedback.",
     ),
   ],
   'LEARNER' => const [
@@ -276,6 +295,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   Map<String, dynamic>? teachingStudent;
 
   bool get dedicated =>
+      sections[selectedIndex].path == '/api/assessments' ||
       sections[selectedIndex].path == '/api/family-messages/conversations' ||
       widget.state.session?.role == 'PARENT' ||
       (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
@@ -354,6 +374,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
+    if (section.path == '/api/assessments') {
+      return AssessmentsPage(
+        load: widget.state.load,
+        submit: widget.state.submit,
+        admin: session.role == 'ADMIN',
+        refreshToken: refreshToken,
+      );
+    }
     if (section.path == '/api/family-messages/conversations') {
       return FamilyMessagesPage(
         key: messagesKey,

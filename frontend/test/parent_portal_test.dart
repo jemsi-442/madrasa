@@ -177,6 +177,7 @@ void main() {
         'Payments',
         'Support',
         'Messages',
+        'Academic Progress',
       ]);
       expect(sections.any((s) => s.path.contains('/admin/')), isFalse);
     },
