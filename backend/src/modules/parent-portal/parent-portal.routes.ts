@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { requireActiveSchoolAccount } from "../../shared/middleware/active-school-account";
+import { familyWorkspaceRouter } from "./family-workspace";
 
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { authenticate } from "../../shared/middleware/authenticate";
@@ -18,7 +20,8 @@ import {
 
 export const parentPortalRouter = Router();
 
-parentPortalRouter.use(authenticate, requireTenantContext, requireRole("PARENT", "ADMIN"));
+parentPortalRouter.use(authenticate, requireTenantContext, requireRole("PARENT", "ADMIN"), requireActiveSchoolAccount);
+parentPortalRouter.use("/workspace", familyWorkspaceRouter);
 
 parentPortalRouter.get("/me", asyncHandler(getParentProfileHandler));
 parentPortalRouter.get("/students", asyncHandler(listParentStudentsHandler));

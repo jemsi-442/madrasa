@@ -203,6 +203,7 @@ const loadParentGuardian = async (orgId: string, userId: string) => {
       relationship: true,
       address: true,
       studentLinks: {
+        where: { orgId: BigInt(orgId), student: { orgId: BigInt(orgId) } },
         orderBy: [{ createdAt: "desc" }],
         select: {
           isPrimary: true,
