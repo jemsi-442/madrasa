@@ -1,10 +1,25 @@
 # MODERN ISLAMIC FOUNDATION Project Status
 
-Last updated: `2026-09-25`
+Last updated: `2026-09-28`
 
 ## 1. Current State
 
 The backend remains in place. The React client has been retired in favor of Flutter for web, Android, and iOS. This is an active frontend migration, **not a release candidate**: the first Flutter app has authentication and selected read-only role views, but many former React workflows still need rebuilding.
+
+## Latest Learner Portal Stage (2026-09-28)
+
+The learner home now includes live self-owned school records. Five new pages
+provide Classes (week/list timetable), Attendance (calendar/log), Qur'an Progress
+(Surah/Juz and history), Academic Progress (published marks) and Reports
+(preview/authenticated web PDF). Existing course, progress, billing and update
+routes are preserved. No learner can select another student's ID or view
+parent-teacher conversations, draft marks or retracted reports.
+
+Verification: backend build and 82 tests; Flutter analyzer, 170 tests and release
+web build; Chromium desktop/mobile navigation, PDF download and reload retaining
+both login and the selected section. This is a tested stage, not full reference
+parity: assignments, learner messaging, events, richer subject/lesson UI and
+settings remain. See [LEARNER_PORTAL_ARCHITECTURE.md](LEARNER_PORTAL_ARCHITECTURE.md).
 
 ## 2. Backend Status
 
@@ -73,7 +88,7 @@ Current intended role shape:
 - `PARENT`
   - family home, own child attendance, own finance, own receipts, own hifdh, parent-facing updates
 - `LEARNER`
-  - own study, course access, progress, invoices, and notices only
+  - own study, courses, school timetable, attendance, Qur'an records, published assessments/reports, invoices and learner-visible notices only
 
 Important note:
 

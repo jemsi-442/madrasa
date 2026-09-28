@@ -20,6 +20,7 @@ import 'parent_portal_page.dart';
 import 'family_messages_page.dart';
 import 'assessments_page.dart';
 import 'student_reports_page.dart';
+import 'learner_portal_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -260,7 +261,7 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       'Home',
       '/api/learner/me',
       Icons.home_outlined,
-      'Your learning space',
+      'Your classes, learning records and published results in one place.',
     ),
     SectionSpec(
       'My courses',
@@ -285,6 +286,36 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/learner/announcements',
       Icons.campaign_outlined,
       'Your learning notices',
+    ),
+    SectionSpec(
+      'Classes',
+      '/api/learner/workspace/classes',
+      Icons.calendar_month_outlined,
+      'Your assigned class timetable and upcoming lessons.',
+    ),
+    SectionSpec(
+      'Attendance',
+      '/api/learner/workspace/attendance',
+      Icons.event_available_outlined,
+      'Every recorded day counts. View your attendance history.',
+    ),
+    SectionSpec(
+      "Qur'an Progress",
+      '/api/learner/workspace/quran',
+      Icons.menu_book_outlined,
+      'Follow your memorisation, reading and revision records.',
+    ),
+    SectionSpec(
+      'Academic Progress',
+      '/api/learner/workspace/academic',
+      Icons.bar_chart_outlined,
+      'Your published assessments and teacher feedback.',
+    ),
+    SectionSpec(
+      'Reports',
+      '/api/learner/workspace/reports',
+      Icons.description_outlined,
+      'View and download your published learning reports.',
     ),
   ],
   _ => const [],
@@ -318,6 +349,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       sections[selectedIndex].path == '/api/assessments' ||
       sections[selectedIndex].path == '/api/family-messages/conversations' ||
       widget.state.session?.role == 'PARENT' ||
+      (widget.state.session?.role == 'LEARNER' &&
+          (selectedIndex == 0 || selectedIndex >= 5)) ||
       (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
       [
         'Students',
@@ -417,6 +450,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         submit: widget.state.submit,
         userId: session.userId,
         teacherMode: session.role == 'TEACHER',
+        refreshToken: refreshToken,
+      );
+    }
+    if (session.role == 'LEARNER' &&
+        (selectedIndex == 0 || selectedIndex >= 5)) {
+      return LearnerPortalPage(
+        key: ValueKey('learner-$selectedIndex'),
+        load: widget.state.load,
+        page: selectedIndex,
+        onOpen: selectSection,
         refreshToken: refreshToken,
       );
     }

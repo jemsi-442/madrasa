@@ -11,7 +11,14 @@ class ParentReports extends StatefulWidget {
     required this.load,
     required this.childId,
     this.refreshToken = 0,
-  });
+  }) : learnerMode = false;
+  const ParentReports.learner({
+    super.key,
+    required this.load,
+    this.refreshToken = 0,
+  }) : childId = '',
+       learnerMode = true;
+  final bool learnerMode;
   final PageLoader load;
   final String childId;
   final int refreshToken;
@@ -27,13 +34,15 @@ class _ParentReportsState extends State<ParentReports> {
     if (oldWidget.childId != widget.childId) page = 1;
   }
 
-  String path(Map<String, dynamic> row) =>
-      '/api/student-reports/children/${widget.childId}/${row['id']}/pdf';
+  String get base => widget.learnerMode
+      ? '/api/learner/workspace/reports'
+      : '/api/student-reports/children/${widget.childId}';
+  String path(Map<String, dynamic> row) => '$base/${row['id']}/pdf';
   @override
   Widget build(BuildContext context) => TeacherData(
     key: ValueKey('${widget.childId}-$page'),
     load: widget.load,
-    path: '/api/student-reports/children/${widget.childId}?page=$page',
+    path: '$base?page=$page',
     refreshToken: widget.refreshToken,
     builder: (raw) {
       final data = recordMap(raw), reports = recordList(data['items']);
@@ -45,10 +54,11 @@ class _ParentReportsState extends State<ParentReports> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const PanelHeading(
+                PanelHeading(
                   'Available Reports',
-                  subtitle:
-                      'View and download school-published learning reports for your selected child.',
+                  subtitle: widget.learnerMode
+                      ? 'View and download your school-published learning reports.'
+                      : 'View and download school-published learning reports for your selected child.',
                 ),
                 if (reports.isEmpty)
                   const EmptyRecords(

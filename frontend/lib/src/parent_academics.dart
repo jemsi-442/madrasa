@@ -10,7 +10,14 @@ class ParentAcademics extends StatefulWidget {
     required this.load,
     required this.childId,
     this.refreshToken = 0,
-  });
+  }) : learnerMode = false;
+  const ParentAcademics.learner({
+    super.key,
+    required this.load,
+    this.refreshToken = 0,
+  }) : childId = '',
+       learnerMode = true;
+  final bool learnerMode;
   final PageLoader load;
   final String childId;
   final int refreshToken;
@@ -61,7 +68,9 @@ class _ParentAcademicsState extends State<ParentAcademics> {
       TeacherData(
         key: ValueKey('academic-${widget.childId}-$year'),
         load: widget.load,
-        path: '/api/assessments/children/${widget.childId}/academic?year=$year',
+        path: widget.learnerMode
+            ? '/api/learner/workspace/academic?year=$year'
+            : '/api/assessments/children/${widget.childId}/academic?year=$year',
         refreshToken: widget.refreshToken,
         builder: (raw) {
           final data = recordMap(raw),

@@ -916,3 +916,21 @@ The server rechecks account/school activity and obtains the branch from the
 current account. Inactive pupils leave the active teacher roster; historical
 records and class/guardian links are retained. Online learner account access is
 managed separately, not through pupil archiving.
+
+
+## Learner School Records Extension (2026-09-28)
+
+- `/api/learner/workspace/{overview,classes,attendance,quran,academic,reports}`
+  and `/reports/:releaseId/pdf` require LEARNER, a live account in an active/trial
+  school, and its active student link. Student-ID query overrides are rejected.
+- Read-only scope is the linked student, with timetable restricted to the
+  current class and actual valid occurrences. No attendance/assessment writes.
+- Academic results include only the learner's published snapshot result, never
+  classmates' marks. Only published, non-retracted reports are downloadable;
+  a retracted source assessment also hides dependent report releases.
+- Internal notes and parent-teacher conversations are not exposed. Independent
+  learners retain existing course/progress/billing access without a school class.
+- Shared parent/learner widgets reuse presentation, not parent authorization or
+  routes. The new learner constructors use separate self-only API endpoints.
+- Earlier proposed React paths remain historical; current Flutter route and
+  implementation details are in LEARNER_PORTAL_ARCHITECTURE.md.
