@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const learnerContentId = z.string().regex(/^[1-9]\\d{0,18}$/)
+  .refine(value => /^[1-9]\\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n);
+
 export const learnerAttendanceQuerySchema = z.object({
   dateFrom: z.string().date().optional(),
   dateTo: z.string().date().optional(),
@@ -26,6 +29,6 @@ export const updateLearnerLessonProgressSchema = z.object({
     .min(0, "watchSeconds cannot be negative")
     .optional(),
   markCompleted: z.boolean().optional(),
-});
+}).strict();
 
 export type UpdateLearnerLessonProgressInput = z.infer<typeof updateLearnerLessonProgressSchema>;

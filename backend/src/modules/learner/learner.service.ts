@@ -664,11 +664,10 @@ export const listLearnerCourses = async (authUser: AuthenticatedUser) => {
           fullName: true,
         },
       },
-      _count: {
-        select: {
-          modules: true,
-          lessons: true,
-        },
+      lessons: {
+        where: { orgId: BigInt(authUser.orgId), publicationStatus: "PUBLISHED", visibility: { not: "UNLISTED" } },
+        orderBy: [{ module: { position: "asc" } }, { position: "asc" }, { id: "asc" }],
+        select: { id: true, title: true, moduleId: true, visibility: true },
       },
     },
   });
@@ -686,7 +685,13 @@ export const listLearnerCourses = async (authUser: AuthenticatedUser) => {
     courses.map((course: { id: bigint }) => course.id),
   );
 
-  return courses.map((course: any) => ({
+  const progressMap = await loadLessonProgressMap(authUser, student.id, student.learnerUser.id,
+    courses.flatMap(course => course.lessons.map(lesson => lesson.id)));
+  return courses.map(course => {
+    const completed = course.lessons.filter(lesson => (progressMap.get(String(lesson.id))?.progressPercent ?? 0) >= 100).length;
+    const resume = course.lessons.find(lesson => ["OPEN", "PREVIEW"].includes(getLessonAccessState(course.visibility, lesson.visibility, grantMap.has(String(course.id))))
+      && (progressMap.get(String(lesson.id))?.progressPercent ?? 0) < 100);
+    return ({
     id: course.id.toString(),
     slug: course.slug,
     title: course.title,
@@ -718,10 +723,13 @@ export const listLearnerCourses = async (authUser: AuthenticatedUser) => {
         }
       : null,
     stats: {
-      modules: course._count.modules,
-      lessons: course._count.lessons,
+      modules: new Set(course.lessons.map(lesson => String(lesson.moduleId))).size,
+      lessons: course.lessons.length,
     },
-  }));
+    progress: { completedLessons: completed, totalLessons: course.lessons.length,
+      progressPercent: course.lessons.length ? Math.round(completed * 100 / course.lessons.length) : 0 },
+    resumeLesson: resume ? { id: String(resume.id), title: resume.title } : null,
+  }); });
 };
 
 export const getLearnerCourseDetail = async (authUser: AuthenticatedUser, courseId: string) => {
@@ -734,6 +742,7 @@ export const getLearnerCourseDetail = async (authUser: AuthenticatedUser, course
     where: {
       orgId: BigInt(authUser.orgId),
       courseId: course.id,
+      lessons: { some: { orgId: BigInt(authUser.orgId), publicationStatus: "PUBLISHED", visibility: { not: "UNLISTED" } } },
     },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     select: {
@@ -930,6 +939,7 @@ export const getLearnerLessonDetail = async (authUser: AuthenticatedUser, lesson
     where: {
       orgId: BigInt(authUser.orgId),
       courseId: lesson.course.id,
+      lessons: { some: { orgId: BigInt(authUser.orgId), publicationStatus: "PUBLISHED", visibility: { not: "UNLISTED" } } },
     },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     select: {
@@ -1460,6 +1470,13 @@ export const updateLearnerLessonProgress = async (
     throw new HttpError(403, "This lesson is not open for progress tracking yet");
   }
 
+  const previous = await learnerPrisma.courseLessonProgress.findUnique({
+    where: { lessonId_learnerUserId: { lessonId: lesson.id, learnerUserId: student.learnerUser.id } },
+    select: { orgId: true, studentId: true },
+  });
+  if (previous && (previous.orgId !== BigInt(authUser.orgId) || previous.studentId !== student.id))
+    throw new HttpError(409, "The school must reconcile this account's previous learning records before updating progress");
+
   const progressPercent = input.markCompleted ? 100 : input.progressPercent;
   const watchSeconds = input.watchSeconds ?? 0;
   const now = new Date();
@@ -1473,7 +1490,7 @@ export const updateLearnerLessonProgress = async (
     },
     update: {
       progressPercent,
-      watchSeconds,
+      ...(input.watchSeconds !== undefined ? { watchSeconds } : {}),
       lastOpenedAt: now,
       completedAt: progressPercent >= 100 ? now : null,
     },

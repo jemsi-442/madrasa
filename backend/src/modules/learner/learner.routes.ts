@@ -27,6 +27,7 @@ export const learnerRouter = Router();
 
 learnerRouter.get("/assets/:assetId/deliver", asyncHandler(deliverLearnerAssetHandler));
 learnerRouter.use(authenticate, requireTenantContext, requireRole("LEARNER"));
+learnerRouter.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
 
 learnerRouter.use("/workspace", learnerWorkspaceRouter);
 learnerRouter.get("/me", asyncHandler(getLearnerProfileHandler));

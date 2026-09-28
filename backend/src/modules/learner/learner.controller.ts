@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import {
+  learnerContentId,
   initiateLearnerCoursePaymentSchema,
   learnerAttendanceQuerySchema,
   updateLearnerLessonProgressSchema,
@@ -43,7 +44,7 @@ export const listLearnerCoursesHandler = async (req: Request, res: Response) => 
 };
 
 export const getLearnerCourseDetailHandler = async (req: Request, res: Response) => {
-  const courseId = req.params.courseId;
+  const courseId = learnerContentId.parse(req.params.courseId);
   const detail = await getLearnerCourseDetail(req.authUser!, courseId!);
 
   res.status(200).json({
@@ -66,7 +67,7 @@ export const initiateLearnerCoursePaymentHandler = async (req: Request, res: Res
 };
 
 export const getLearnerLessonDetailHandler = async (req: Request, res: Response) => {
-  const lessonId = req.params.lessonId;
+  const lessonId = learnerContentId.parse(req.params.lessonId);
   const detail = await getLearnerLessonDetail(req.authUser!, lessonId!);
 
   res.status(200).json({
@@ -87,7 +88,7 @@ export const listLearnerProgressHandler = async (req: Request, res: Response) =>
 };
 
 export const updateLearnerLessonProgressHandler = async (req: Request, res: Response) => {
-  const lessonId = req.params.lessonId;
+  const lessonId = learnerContentId.parse(req.params.lessonId);
   const input = updateLearnerLessonProgressSchema.parse(req.body);
   const detail = await updateLearnerLessonProgress(req.authUser!, lessonId!, input);
 
@@ -99,7 +100,7 @@ export const updateLearnerLessonProgressHandler = async (req: Request, res: Resp
 };
 
 export const openLearnerAssetHandler = async (req: Request, res: Response) => {
-  const assetId = req.params.assetId;
+  const assetId = learnerContentId.parse(req.params.assetId);
   const detail = await openLearnerAsset(req.authUser!, assetId!);
   const baseUrl = `${req.protocol}://${req.get("host")}`;
   const inlineUrl =
@@ -126,7 +127,7 @@ export const openLearnerAssetHandler = async (req: Request, res: Response) => {
 };
 
 export const deliverLearnerAssetHandler = async (req: Request, res: Response) => {
-  const assetId = req.params.assetId;
+  const assetId = learnerContentId.parse(req.params.assetId);
   const token = typeof req.query.token === "string" ? req.query.token : "";
   const detail = await resolveLearnerAssetDelivery(assetId!, token);
 
