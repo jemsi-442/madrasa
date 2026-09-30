@@ -4,6 +4,7 @@ import 'admin_forms.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'lesson_media_dialog.dart';
 import 'teacher_ui.dart';
 
 typedef LessonResourceOpener = Future<bool> Function(Uri uri);
@@ -69,6 +70,25 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     } finally {
       if (mounted) setState(() => saving = false);
     }
+  }
+
+  Future<void> play(Map<String, dynamic> asset) async {
+    if (preparing || saving) return;
+    setState(() {
+      preparing = true;
+      error = null;
+    });
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LessonMediaDialog(
+        assetId: recordText(asset['id']),
+        load: widget.load,
+        apiBaseUrl: widget.apiBaseUrl,
+        openResource: widget.openResource,
+      ),
+    );
+    if (mounted) setState(() => preparing = false);
   }
 
   Future<void> resource(Map<String, dynamic> asset) async {
@@ -210,10 +230,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                 ),
                         ),
                         const SizedBox(height: 22),
-                        const PanelHeading(
+                        PanelHeading(
                           'Lesson resources',
-                          subtitle:
-                              'Open resources in a browser tab or your device viewer.',
+                          subtitle: inlineLessonMediaSupported
+                              ? 'Play video and audio here, or open resources in your browser.'
+                              : 'Open resources in a browser tab or your device viewer.',
                         ),
                         if (assets.isEmpty)
                           const EmptyRecords(
@@ -246,6 +267,27 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     ),
                                   ),
                                   TeacherTag(recordText(asset['assetType'])),
+                                  if (inlineLessonMediaSupported &&
+                                      [
+                                        'VIDEO',
+                                        'AUDIO',
+                                      ].contains(asset['assetType']))
+                                    FilledButton.icon(
+                                      onPressed:
+                                          !preparing &&
+                                              !saving &&
+                                              ['OPEN', 'PREVIEW'].contains(
+                                                asset['accessState'],
+                                              ) &&
+                                              asset['sourceReady'] == true
+                                          ? () => play(asset)
+                                          : null,
+                                      icon: const Icon(
+                                        Icons.play_arrow,
+                                        size: 18,
+                                      ),
+                                      label: const Text('Play in app'),
+                                    ),
                                   OutlinedButton.icon(
                                     onPressed:
                                         !preparing &&

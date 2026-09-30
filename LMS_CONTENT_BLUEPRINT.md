@@ -1,10 +1,10 @@
 # MODERN ISLAMIC FOUNDATION LMS Content Blueprint
 
-Last updated: `2026-09-25`
+Last updated: `2026-10-01`
 
 This document defines the recommended architecture for online learning for older students and course learners.
 
-**Current implementation:** Backend subjects, courses, lessons, access grants, course invoices, and signed media-delivery redirects exist. Dedicated Flutter lesson/media screens, automatic subscription renewal, private streaming, and DRM are not delivered. A redirect can reveal its upstream URL; short-lived app tokens alone do not protect a public source URL.
+**Current implementation:** Backend subjects, courses, lessons, access grants, course invoices, and signed media-delivery redirects exist. Flutter has a dedicated course catalogue, curriculum, lesson reader, explicit completion and web audio/video/provider players. Native players, automatic subscription renewal, private streaming, and DRM are not delivered. A redirect can reveal its upstream URL; short-lived app tokens alone do not protect a public source URL. See [Learner Portal](LEARNER_PORTAL_ARCHITECTURE.md) for current scope and verification.
 
 It covers:
 

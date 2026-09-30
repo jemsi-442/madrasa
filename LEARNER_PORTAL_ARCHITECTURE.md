@@ -80,10 +80,52 @@ signed-resource redirection to a local test viewer, persisted completion and
 session/page retention after reload. Desktop/mobile screenshots were inspected;
 no browser JavaScript errors were reported. Fixtures were removed afterward.
 
+## Implemented: Web Lesson Playback (2026-10-01)
+
+Video and audio lesson assets now offer Play in app on the web portal. Native
+browser controls provide play/pause, seeking, volume and supported fullscreen
+controls without autoplay. YouTube/Vimeo sources use a sandboxed embedded player.
+PDFs and other attachments retain their existing external viewer flow; Android
+and iOS retain Open in browser until a native player is implemented.
+
+Every player open/reload obtains fresh authorization. Inline sources must match
+the configured API origin and the selected asset's signed delivery route. Direct
+media and embeds both pass through live entitlement checks on that route, with
+no-store responses. Provider URLs are parsed by host and video ID; arbitrary
+HTML, credentials, misleading hosts and malformed provider URLs are rejected.
+YouTube links become privacy-enhanced embed URLs; Vimeo unlisted hashes survive
+normalization. Provider query parameters cannot enable automatic playback.
+
+Retry removes the old player before requesting a new link. Closing/disposal
+pauses direct media, clears its source and unloads iframes. Errors, slow loads,
+expired links and blocked external launches have explicit recovery actions.
+Playback never submits completion or watch-time estimates automatically. The
+existing Mark complete action remains the learner's explicit choice.
+
+Limitations: a signed redirect can expose its upstream URL and cannot revoke
+already downloaded/buffered content. The download control hint is not DRM.
+Provider embedding restrictions, codecs and source availability still apply.
+Inline players need a current backend deployment because embedded sources now
+use signed redirects too. No schema migration or new package is required.
+
+Verification: backend build and 106 tests; clean Flutter analyzer, all 205
+Flutter tests and release web build. Chromium checks use generated local video/audio, real signed
+redirection and database access revocation. They verify playback, teardown,
+mobile layout, explicit completion and refresh. The iframe is tested using a
+mock provider response after checking its real signed redirect; live YouTube/
+Vimeo playback and Android/iOS builds were not tested. Temporary fixtures are
+removed after the browser run.
+
+Implementation references: [Flutter HTML platform views](https://api.flutter.dev/flutter/widgets/HtmlElementView/HtmlElementView.fromTagName.html),
+[HTML video controls](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/video),
+[iframe restrictions](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe)
+and [YouTube embedding](https://developers.google.com/youtube/player_parameters).
+
 ## Remaining Reference Areas
 
-- Lesson media: embedded playback, player-driven progress, favorites and
-  recommendations remain. Resource opening currently uses an external viewer.
+- Lesson media: native players, player-driven progress, favorites and
+  recommendations remain. Web audio/video playback is implemented; attachments
+  continue using an external viewer.
 - Assignments: needs class/course task allocation, deadlines, submissions,
   teacher review and attachment permissions before showing task actions.
 - Learner Messages: needs an explicit learner-teacher communication policy and

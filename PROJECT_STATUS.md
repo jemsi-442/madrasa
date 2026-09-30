@@ -1,12 +1,27 @@
 # MODERN ISLAMIC FOUNDATION Project Status
 
-Last updated: `2026-09-30`
+Last updated: `2026-10-01`
 
 ## 1. Current State
 
 The backend remains in place. The React client has been retired in favor of Flutter for web, Android, and iOS. This is an active frontend migration, **not a release candidate**: the first Flutter app has authentication and selected read-only role views, but many former React workflows still need rebuilding.
 
-## Latest Learner Portal Stage (2026-09-30)
+## Latest Learner Portal Stage (2026-10-01)
+
+The web lesson reader now includes inline audio/video playback and sandboxed
+YouTube/Vimeo embeds with fresh signed authorization on each open/reload.
+Provider URL validation and delivery headers protect the inline source boundary.
+Playback has controls, failure/retry states, external fallback and cleanup on
+close. It does not automatically mark lessons complete. PDFs/native apps retain
+external viewing; private streaming/DRM and native media players remain future
+work. Existing downloaded/buffered media cannot be revoked by a signed redirect.
+
+Backend build and 106 tests pass. All 205 Flutter tests, the analyzer and
+release web build pass. Chromium tests verify real local audio/video playback, revoked access on
+reload, disposal, mobile layout and completion/session refresh. Embedded provider
+content is mocked; live YouTube/Vimeo playback and native builds were not tested.
+
+## Previous Courses Stage (2026-09-30)
 
 My courses now has subject cards, search/subject/access filters, grid/list modes,
 published curriculum, Continue learning, a lesson reader and saved completion.
