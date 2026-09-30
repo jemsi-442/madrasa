@@ -32,6 +32,22 @@ describe("learner media sources", () => {
     expect(source("https://youtu.be/abcdefghijk", "YOUTUBE", "PDF")).toBeNull();
     expect(source("https://vimeo.com/12345", "VIMEO", "AUDIO")).toBeNull();
   });
+  it.each([
+    ["image/png", "https://media.test/asset?signature=x", "IMAGE"],
+    ["image/jpeg; charset=binary", "https://media.test/a", "IMAGE"],
+    ["application/pdf", "https://media.test/a", "PDF"],
+    ["text/plain; charset=utf-8", "https://media.test/a", "TEXT"],
+    [null, "https://media.test/a.JPG?signature=x", "IMAGE"],
+    ["application/octet-stream", "https://media.test/notes.pdf?signature=x", "PDF"],
+    [null, "https://media.test/notes.txt", "TEXT"],
+    ["text/html", "https://media.test/disguised.png", "EXTERNAL"],
+    ["image/svg+xml", "https://media.test/image.svg", "EXTERNAL"],
+    [null, "https://media.test/file.docx", "EXTERNAL"],
+    [null, "https://media.test/page.html", "EXTERNAL"],
+  ])("classifies attachment %s %s without rendering active documents", (mimeType, storageKey, playerKind) => {
+    expect(learnerMediaSource({ storageProvider: "S3", assetType: "ATTACHMENT", storageKey: storageKey!, mimeType }))
+      .toEqual({ url: storageKey, playerKind });
+  });
   it("keeps direct media URLs without accepting credentials or other schemes", () => {
     expect(source("https://media.test/lesson.mp3?signature=x", "S3", "AUDIO"))
       .toEqual({ url: "https://media.test/lesson.mp3?signature=x", playerKind: "AUDIO" });

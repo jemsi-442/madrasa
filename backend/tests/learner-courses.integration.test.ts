@@ -149,6 +149,22 @@ describe("learner course browsing and completion", () => {
     const detail = (await get(`/lessons/${first}`)).body.data.lesson;
     expect(detail.assets.find((a: { id: string }) => a.id === String(embedded.id)).sourceReady).toBe(false);
   });
+  it("authorizes image, PDF and text attachments through the same revocable signed route", async () => {
+    for (const [mimeType, playerKind] of [["image/png", "IMAGE"], ["application/pdf", "PDF"], ["text/plain", "TEXT"], ["application/zip", "EXTERNAL"]] as const) {
+      const attachment = await prisma.mediaAsset.create({ data: { orgId, courseId: free, lessonId: first,
+        assetType: "ATTACHMENT", visibility: "FREE", title: "Lesson attachment", mimeType,
+        storageKey: "https://media.example.test/private-resource", downloadAllowed: false } });
+      const opened = await get(`/assets/${attachment.id}/open`);
+      expect(opened.status).toBe(200);
+      expect(opened.body.data.delivery.playerKind).toBe(playerKind);
+      expect(opened.body.data.delivery.downloadUrl).toBeNull();
+      const url = new URL(opened.body.data.delivery.inlineUrl);
+      expect((await api.get(url.pathname + url.search)).status).toBe(302);
+      await prisma.mediaAsset.update({ where: { id: attachment.id }, data: { visibility: "LOCKED" } });
+      expect((await api.get(url.pathname + url.search)).status).toBe(403);
+      expect((await get(`/assets/${attachment.id}/open`)).status).toBe(403);
+    }
+  });
   it("does not write another linked student's old progress after account relinking", async () => {
     await prisma.student.update({ where: { id: student }, data: { learnerUserId: null } });
     await prisma.student.update({ where: { id: peerStudent }, data: { learnerUserId: learner } });

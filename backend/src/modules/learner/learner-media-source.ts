@@ -1,5 +1,5 @@
-type MediaSourceInput = { storageProvider: string; storageKey: string; assetType: string };
-type MediaSource = { url: string; playerKind: "EMBED" | "VIDEO" | "AUDIO" | "PDF" | "EXTERNAL" };
+type MediaSourceInput = { storageProvider: string; storageKey: string; assetType: string; mimeType?: string | null };
+type MediaSource = { url: string; playerKind: "EMBED" | "VIDEO" | "AUDIO" | "PDF" | "IMAGE" | "TEXT" | "EXTERNAL" };
 
 export const learnerMediaSource = (asset: MediaSourceInput): MediaSource | null => {
   let url: URL;
@@ -31,6 +31,24 @@ export const learnerMediaSource = (asset: MediaSourceInput): MediaSource | null 
     if (hash && !/^[A-Za-z0-9]+$/.test(hash)) return null;
     return { url: `https://player.vimeo.com/video/${match[1]}${hash ? `?h=${hash}` : ""}`, playerKind: "EMBED" };
   }
-  return { url: url.toString(), playerKind: asset.assetType === "VIDEO" ? "VIDEO"
-    : asset.assetType === "AUDIO" ? "AUDIO" : asset.assetType === "PDF" ? "PDF" : "EXTERNAL" };
+  let playerKind: MediaSource["playerKind"] = "EXTERNAL";
+  if (["VIDEO", "AUDIO", "PDF"].includes(asset.assetType)) {
+    playerKind = asset.assetType as "VIDEO" | "AUDIO" | "PDF";
+  } else {
+    const mime = asset.mimeType?.split(";")[0]?.trim().toLowerCase();
+    // Raster images and plain text never execute attached HTML or SVG scripts.
+    if (["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif", "image/bmp"].includes(mime ?? "")) {
+      playerKind = "IMAGE";
+    } else if (mime === "application/pdf") {
+      playerKind = "PDF";
+    } else if (mime === "text/plain") {
+      playerKind = "TEXT";
+    } else if (!mime || mime === "application/octet-stream") {
+      if (/\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(url.pathname)) playerKind = "IMAGE";
+      else if (/\.pdf$/i.test(url.pathname)) playerKind = "PDF";
+      else if (/\.txt$/i.test(url.pathname) || asset.assetType === "TEXT") playerKind = "TEXT";
+    }
+  }
+  return { url: url.toString(), playerKind };
+
 };
