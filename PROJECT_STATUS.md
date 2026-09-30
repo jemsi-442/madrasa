@@ -8,18 +8,23 @@ The backend remains in place. The React client has been retired in favor of Flut
 
 ## Latest Learner Portal Stage (2026-10-01)
 
-The web lesson reader now includes inline audio/video playback and sandboxed
-YouTube/Vimeo embeds with fresh signed authorization on each open/reload.
-Provider URL validation and delivery headers protect the inline source boundary.
-Playback has controls, failure/retry states, external fallback and cleanup on
-close. It does not automatically mark lessons complete. PDFs/native apps retain
-external viewing; private streaming/DRM and native media players remain future
-work. Existing downloaded/buffered media cannot be revoked by a signed redirect.
+Lesson video/audio, images, PDFs and plain text now open inside the portal.
+The lesson flow no longer offers external browser navigation. PDFs have page
+and zoom controls; images support zoom/pan. Supported Android/iOS media uses
+native video/audio controls and restricted provider WebViews. Other unsupported
+formats show an in-app explanation rather than leaving the lesson.
 
-Backend build and 106 tests pass. All 205 Flutter tests, the analyzer and
-release web build pass. Chromium tests verify real local audio/video playback, revoked access on
-reload, disposal, mobile layout and completion/session refresh. Embedded provider
-content is mocked; live YouTube/Vimeo playback and native builds were not tested.
+Fresh signed authorization and live access checks remain; playback never
+auto-completes lessons. Large-video uploads, transcoding, adaptive streaming
+integration and DRM are NOT implemented. A provider/API must be selected first;
+the integration boundary is documented in LEARNER_PORTAL_ARCHITECTURE.md.
+
+Backend build and 118 tests pass. Flutter analyzer, 218 tests and release web
+build pass. Chromium verifies actual PDF/image/text/video/audio, no new tabs,
+mobile PDF/video, revocation, disposal and completion/session refresh. Native
+controls use fake-platform tests; live provider embeds use mocked content.
+Android build was attempted but blocked by the missing/unaccepted NDK
+28.2.13676358 SDK component; actual Android/iOS playback remains unverified.
 
 ## Previous Courses Stage (2026-09-30)
 

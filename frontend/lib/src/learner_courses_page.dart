@@ -3,6 +3,7 @@ import 'admin_forms.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'learner_lesson_reader.dart';
+import 'lesson_media_dialog.dart';
 import 'teacher_ui.dart';
 
 bool courseIsAvailable(dynamic state) => state == 'OPEN' || state == 'PREVIEW';
@@ -20,13 +21,13 @@ class LearnerCoursesPage extends StatefulWidget {
     required this.submit,
     required this.apiBaseUrl,
     this.refreshToken = 0,
-    this.openResource,
+    this.surfaceBuilder,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final String apiBaseUrl;
   final int refreshToken;
-  final LessonResourceOpener? openResource;
+  final LessonMediaBuilder? surfaceBuilder;
   @override
   State<LearnerCoursesPage> createState() => _LearnerCoursesPageState();
 }
@@ -44,7 +45,7 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
         load: widget.load,
         submit: widget.submit,
         apiBaseUrl: widget.apiBaseUrl,
-        openResource: widget.openResource,
+        surfaceBuilder: widget.surfaceBuilder,
       ),
     );
     if (mounted) setState(() => changes++);
@@ -356,12 +357,12 @@ class CourseCurriculumDialog extends StatefulWidget {
     required this.load,
     required this.submit,
     required this.apiBaseUrl,
-    this.openResource,
+    this.surfaceBuilder,
   });
   final String id, apiBaseUrl;
   final PageLoader load;
   final PageSubmitter submit;
-  final LessonResourceOpener? openResource;
+  final LessonMediaBuilder? surfaceBuilder;
   @override
   State<CourseCurriculumDialog> createState() => _CourseCurriculumDialogState();
 }
@@ -377,7 +378,7 @@ class _CourseCurriculumDialogState extends State<CourseCurriculumDialog> {
         load: widget.load,
         submit: widget.submit,
         apiBaseUrl: widget.apiBaseUrl,
-        openResource: widget.openResource,
+        surfaceBuilder: widget.surfaceBuilder,
       ),
     );
     if (mounted) setState(() => refresh++);

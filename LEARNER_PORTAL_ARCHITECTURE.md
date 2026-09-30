@@ -121,11 +121,71 @@ Implementation references: [Flutter HTML platform views](https://api.flutter.dev
 [iframe restrictions](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe)
 and [YouTube embedding](https://developers.google.com/youtube/player_parameters).
 
+## Implemented: In-App Lesson Resources (2026-10-01)
+
+This stage supersedes the external-resource and native-player limitations above.
+Lesson resources have one action: Play in app for audio/video, View in app for
+documents/images. There is no external browser fallback in the lesson flow.
+
+- Web audio/video retains native browser controls and sandboxed provider embeds.
+- Android/iOS uses video_player for direct audio/video and webview_flutter for
+  provider embeds. Top-level navigation is restricted to the signed delivery
+  route and canonical provider players; unsupported desktop playback stays in
+  the app with an explanation. Controllers are disposed on close/reload.
+- PDFs render with pdfrx, with page navigation, scrolling and zoom. Internal PDF
+  destinations work; external document links never launch another app or tab.
+- Raster image attachments support zoom, pan and reset. Plain-text attachments
+  render selectable text, never HTML, with a 1 MiB text limit and load timeout.
+- Images/PDF/text are recognized from attachment MIME metadata, falling back to
+  extensions only when metadata is absent or generic. No schema migration.
+  SVG, HTML, ZIP and unsupported Office documents show an in-app explanation
+  instead of executing content or launching a browser.
+- Every open/reload still requires fresh authorization and an exact signed API
+  delivery URL. Revocation blocks new delivery; already loaded content is not
+  DRM-protected and cannot be recalled. Playback does not auto-complete lessons.
+
+Hosting requirements: serve direct playable media rather than a sharing page.
+Use HTTPS in production, correct MIME types, byte-range support for seeking,
+and allow the portal origin through CORS for PDFs, images and text, including
+the final storage/CDN response after redirects. Hosting/CORS failures stay in
+the viewer with retry instructions. Bundle the pdfrx web assets in deployment.
+Package versions are locked to the project's Flutter 3.38.5 toolchain.
+
+Verification: backend build and 118 tests; Flutter analyzer, 218 tests and
+release web build. Chromium checks real video/audio playback, a generated
+two-page PDF (navigation/zoom), image/text rendering, unsupported attachments,
+no external tabs, revoked access, disposal, mobile PDF/video, completion and
+session refresh. Screenshots were inspected and temporary fixtures removed.
+Native controls/late initialization/disposal are covered with a fake platform.
+No device/emulator is available; Android debug build was attempted but blocked
+by the unaccepted/missing NDK 28.2.13676358 SDK component. iOS and live provider
+playback remain unverified; embedded-provider content is mocked in browser tests.
+
+### Large-Video Upload Integration Boundary
+
+Large/resumable uploads, transcoding and adaptive streaming are NOT implemented.
+A provider/API has not been selected. The intended integration is:
+
+1. Authorized staff request a scoped upload session from the backend.
+2. The app uploads directly to the provider using resumable/multipart upload,
+   showing progress, cancellation and retry without proxying large files through
+   Express or putting provider credentials in Flutter.
+3. Verified, idempotent provider webhooks mark processing/ready/failed status.
+4. Authorized delivery issues short-lived provider playback access; the viewer
+   consumes the provider's supported stream/SDK inside the lesson.
+
+The current player accepts direct browser/device-supported media and approved
+YouTube/Vimeo embeds. Do not assume HLS/DASH plays in every browser: add the
+chosen provider SDK or adaptive-streaming adapter and test it when that API is
+integrated. Upload limits, expiry, CORS, permissions and billing need provider
+configuration, not a larger Express JSON body limit.
+
 ## Remaining Reference Areas
 
-- Lesson media: native players, player-driven progress, favorites and
-  recommendations remain. Web audio/video playback is implemented; attachments
-  continue using an external viewer.
+- Lesson media: device verification, large/resumable uploads, provider-specific
+  adaptive streaming, player-driven progress, favorites and recommendations remain.
+  Supported lesson resources now use in-app viewers; unsupported formats do not
+  launch externally.
 - Assignments: needs class/course task allocation, deadlines, submissions,
   teacher review and attachment permissions before showing task actions.
 - Learner Messages: needs an explicit learner-teacher communication policy and

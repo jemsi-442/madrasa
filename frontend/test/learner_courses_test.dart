@@ -5,6 +5,7 @@ import 'package:mif_app/src/admin_theme.dart';
 import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/learner_courses_page.dart';
 import 'package:mif_app/src/learner_lesson_reader.dart';
+import 'package:mif_app/src/lesson_media_dialog.dart';
 
 class CoursesFixture {
   final paths = <String>[];
@@ -15,6 +16,7 @@ class CoursesFixture {
   String deliveryUrl = '/api/learner/assets/30/deliver?token=test';
   DateTime expires = DateTime.now().add(const Duration(minutes: 5));
   String deliveryStatus = 'READY';
+  String kind = 'PDF';
   Map<String, dynamic> course(String id, String title, String access) => {
     'id': id,
     'title': title,
@@ -57,7 +59,9 @@ class CoursesFixture {
     if (failLoad) throw ApiException('Could not load', 503);
     if (path.endsWith('/assets/30/open')) {
       return {
+        'asset': {'title': 'Reading notes', 'downloadAllowed': false},
         'delivery': {
+          'playerKind': kind,
           'status': deliveryStatus,
           'inlineUrl': deliveryUrl,
           'expiresAt': expires.toUtc().toIso8601String(),
@@ -116,18 +120,20 @@ class CoursesFixture {
     return {'progressPercent': 100};
   }
 
-  Widget page({LessonResourceOpener? opener}) => LearnerCoursesPage(
+  Widget page({LessonMediaBuilder? builder}) => LearnerCoursesPage(
     load: load,
     submit: submit,
     apiBaseUrl: 'https://school.test',
-    openResource: opener,
+    surfaceBuilder:
+        builder ?? (delivery, ready, failed) => Text('Inline ${delivery.kind}'),
   );
-  Widget reader({LessonResourceOpener? opener}) => LearnerLessonReader(
+  Widget reader({LessonMediaBuilder? builder}) => LearnerLessonReader(
     id: '22',
     load: load,
     submit: submit,
     apiBaseUrl: 'https://school.test',
-    openResource: opener,
+    surfaceBuilder:
+        builder ?? (delivery, ready, failed) => Text('Inline ${delivery.kind}'),
   );
 }
 
@@ -162,24 +168,6 @@ Future<void> tap(WidgetTester tester, String label) async {
 }
 
 void main() {
-  test('resource URLs reject scripts, credentials and missing links', () {
-    expect(
-      lessonResourceUri('/assets/1?token=a', 'https://school.test').host,
-      'school.test',
-    );
-    for (final value in [
-      '',
-      'javascript:alert(1)',
-      'file:///tmp/a',
-      'https://user:pass@school.test/a',
-    ]) {
-      expect(
-        () => lessonResourceUri(value, 'https://school.test'),
-        throwsFormatException,
-      );
-    }
-  });
-
   testWidgets('search, subject and access filters work in grid and list', (
     tester,
   ) async {
@@ -302,97 +290,70 @@ void main() {
   });
 
   testWidgets(
-    'resources require fresh authorization and a user launch gesture',
+    'resources authorize afresh and stay in the app without saving progress',
     (tester) async {
       final data = CoursesFixture();
-      final opened = <Uri>[];
-      await host(
-        tester,
-        data.reader(
-          opener: (uri) async {
-            opened.add(uri);
-            return true;
-          },
-        ),
-      );
+      await host(tester, data.reader());
       for (final label in ['Access required', 'Not connected']) {
         final button = find.ancestor(
           of: find.text(label),
-          matching: find.byWidgetPredicate((w) => w is OutlinedButton),
+          matching: find.byWidgetPredicate((w) => w is FilledButton),
         );
-        expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+        expect(tester.widget<FilledButton>(button).onPressed, isNull);
       }
-      await tap(tester, 'Open resource');
+      await tap(tester, 'View in app');
       expect(data.paths.last, '/api/learner/assets/30/open');
-      expect(opened, isEmpty);
-      await tap(tester, 'Open in browser');
-      expect(
-        opened.single.toString(),
-        'https://school.test/api/learner/assets/30/deliver?token=test',
-      );
+      expect(find.text('Inline PDF'), findsOneWidget);
+      expect(find.text('Open in browser'), findsNothing);
       expect(data.writes, isEmpty);
+      await tester.tap(find.byTooltip('Close player'));
+      await tester.pumpAndSettle();
+      await tap(tester, 'View in app');
+      expect(data.paths.where((p) => p.endsWith('/30/open')).length, 2);
+      await tester.pumpWidget(const SizedBox());
     },
   );
 
-  testWidgets('blocked resource launches allow retry', (tester) async {
-    final data = CoursesFixture();
-    var attempts = 0;
-    await host(tester, data.reader(opener: (_) async => ++attempts > 1));
-    await tap(tester, 'Open resource');
-    await tap(tester, 'Open in browser');
-    expect(find.text('Open in browser'), findsOneWidget);
-    await tap(tester, 'Open in browser');
-    expect(attempts, 2);
-    expect(find.text('Open in browser'), findsNothing);
-  });
+  for (final kind in ['IMAGE', 'TEXT', 'AUDIO', 'VIDEO']) {
+    testWidgets('$kind opens within the lesson', (tester) async {
+      final data = CoursesFixture()..kind = kind;
+      await host(tester, data.reader());
+      await tap(tester, 'View in app');
+      expect(find.text('Inline $kind'), findsOneWidget);
+      expect(find.text('Open in browser'), findsNothing);
+      expect(data.writes, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
 
-  testWidgets('expired resource links cannot launch', (tester) async {
+  testWidgets('expired resource links cannot mount the viewer', (tester) async {
     final data = CoursesFixture()..expires = DateTime(2000);
-    var attempts = 0;
-    await host(
-      tester,
-      data.reader(
-        opener: (_) async {
-          attempts++;
-          return true;
-        },
-      ),
-    );
-    await tap(tester, 'Open resource');
-    await tap(tester, 'Open in browser');
-    expect(attempts, 0);
+    await host(tester, data.reader());
+    await tap(tester, 'View in app');
+    expect(find.text('Inline PDF'), findsNothing);
     expect(find.textContaining('expired'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets(
-    'unsafe delivery links are rejected and pending sources stay unavailable',
+    'unsafe delivery and pending sources stay unavailable with in-app retry',
     (tester) async {
       final data = CoursesFixture()..deliveryUrl = 'javascript:alert(1)';
-      var attempts = 0;
-      await host(
-        tester,
-        data.reader(
-          opener: (_) async {
-            attempts++;
-            return true;
-          },
-        ),
-      );
-      await tap(tester, 'Open resource');
+      await host(tester, data.reader());
+      await tap(tester, 'View in app');
       expect(
-        find.text('The resource could not be prepared. Please try again.'),
+        find.textContaining('not a signed school resource'),
         findsOneWidget,
       );
       data.deliveryStatus = 'PENDING_SOURCE';
-      await tap(tester, 'Open resource');
+      await tap(tester, 'Reload player');
       expect(
-        find.text(
-          'This resource is not connected yet. Please contact your teacher.',
-        ),
+        find.textContaining('not connected yet'),
         findsOneWidget,
       );
-      expect(attempts, 0);
+      expect(find.text('Inline PDF'), findsNothing);
       expect(data.writes, isEmpty);
+      await tester.pumpWidget(const SizedBox());
     },
   );
 }

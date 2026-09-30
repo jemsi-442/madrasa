@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 import '../lesson_media_delivery.dart';
 
-const inlineLessonMediaSupported = true;
-
 class LessonMediaSurface extends StatefulWidget {
   const LessonMediaSurface({
     super.key,

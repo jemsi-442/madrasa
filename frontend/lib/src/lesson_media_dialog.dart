@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'lesson_media_delivery.dart';
+import 'lesson_document_surface.dart';
 import 'teacher_ui.dart';
-import 'platform/lesson_media_stub.dart'
+import 'platform/lesson_media_native.dart'
     if (dart.library.js_interop) 'platform/lesson_media_web.dart'
     as platform;
 
-bool get inlineLessonMediaSupported => platform.inlineLessonMediaSupported;
 typedef LessonMediaBuilder =
     Widget Function(
       LessonMediaDelivery delivery,
@@ -25,19 +24,17 @@ class LessonMediaDialog extends StatefulWidget {
     required this.load,
     required this.apiBaseUrl,
     this.surfaceBuilder,
-    this.openResource,
   });
   final String assetId, apiBaseUrl;
   final PageLoader load;
   final LessonMediaBuilder? surfaceBuilder;
-  final Future<bool> Function(Uri)? openResource;
   @override
   State<LessonMediaDialog> createState() => _LessonMediaDialogState();
 }
 
 class _LessonMediaDialogState extends State<LessonMediaDialog> {
   LessonMediaDelivery? delivery;
-  bool loading = false, ready = false, opening = false;
+  bool loading = false, ready = false;
   String? error;
   int generation = 0;
   Timer? timeout;
@@ -49,7 +46,7 @@ class _LessonMediaDialogState extends State<LessonMediaDialog> {
   }
 
   Future<void> reload() async {
-    if (loading || opening) return;
+    if (loading) return;
     timeout?.cancel();
     setState(() {
       loading = true;
@@ -73,7 +70,7 @@ class _LessonMediaDialogState extends State<LessonMediaDialog> {
         if (mounted && !ready) {
           setState(
             () => error =
-                'The player is taking longer to load. Try Reload player or Open in browser.',
+                'This resource is taking longer to load. Check your connection and try Reload player.',
           );
         }
       });
@@ -107,44 +104,8 @@ class _LessonMediaDialogState extends State<LessonMediaDialog> {
     if (mounted) {
       setState(
         () => error =
-            'Playback failed or this format is not supported. Reload the player or open it in your browser.',
+            'This resource could not be displayed. Check your connection and reload. If it still fails, ask your teacher to check the file format and media hosting permissions.',
       );
-    }
-  }
-
-  Future<void> open() async {
-    final source = delivery;
-    if (source == null || opening) return;
-    if (!source.expiresAt.isAfter(DateTime.now())) {
-      setState(
-        () => error =
-            'This media link expired. Reload the player to get a fresh link.',
-      );
-      return;
-    }
-    setState(() {
-      opening = true;
-      error = null;
-    });
-    try {
-      final opened =
-          await (widget.openResource ??
-              (uri) => launchUrl(uri, mode: LaunchMode.externalApplication))(
-            source.uri,
-          );
-      if (mounted && !opened) {
-        setState(
-          () => error = 'Your browser blocked the resource. Please try again.',
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => error = 'The resource could not be opened. Please try again.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => opening = false);
     }
   }
 
@@ -200,12 +161,20 @@ class _LessonMediaDialogState extends State<LessonMediaDialog> {
                     LayoutBuilder(
                       builder: (context, size) => SizedBox(
                         height: source.kind == 'AUDIO'
-                            ? 80
+                            ? 90
+                            : ['PDF', 'IMAGE', 'TEXT'].contains(source.kind)
+                            ? MediaQuery.sizeOf(context).height * .52
                             : (size.maxWidth * 9 / 16).clamp(200, 480),
                         child: KeyedSubtree(
                           key: ValueKey(generation),
                           child: widget.surfaceBuilder != null
                               ? widget.surfaceBuilder!(source, onReady, onError)
+                              : ['PDF', 'IMAGE', 'TEXT'].contains(source.kind)
+                              ? LessonDocumentSurface(
+                                  delivery: source,
+                                  onReady: onReady,
+                                  onError: onError,
+                                )
                               : platform.LessonMediaSurface(
                                   delivery: source,
                                   onReady: onReady,
@@ -217,9 +186,15 @@ class _LessonMediaDialogState extends State<LessonMediaDialog> {
                     const SizedBox(height: 16),
                     Text(
                       source.kind == 'EMBED'
-                          ? 'Use the embedded player controls. If the provider blocks playback here, open it in your browser.'
+                          ? 'Use the embedded player controls without leaving your lesson.'
                           : ready
-                          ? 'Use the player controls to play, pause and seek.'
+                          ? source.kind == 'PDF'
+                                ? 'Scroll through the pages or use the page and zoom controls.'
+                                : source.kind == 'IMAGE'
+                                ? 'Pinch or scroll to zoom. Drag to move around the image.'
+                                : source.kind == 'TEXT'
+                                ? 'Read your lesson resource here.'
+                                : 'Use the player controls to play, pause and seek.'
                           : 'Loading media controls...',
                       style: const TextStyle(color: muted),
                     ),
@@ -235,16 +210,10 @@ class _LessonMediaDialogState extends State<LessonMediaDialog> {
                     runSpacing: 12,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: loading || opening ? null : reload,
+                        onPressed: loading ? null : reload,
                         icon: const Icon(Icons.refresh),
                         label: const Text('Reload player'),
                       ),
-                      if (delivery != null)
-                        OutlinedButton.icon(
-                          onPressed: opening ? null : open,
-                          icon: const Icon(Icons.open_in_new),
-                          label: const Text('Open in browser'),
-                        ),
                     ],
                   ),
                   const SizedBox(height: 18),

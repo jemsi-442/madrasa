@@ -4,7 +4,7 @@ Last updated: `2026-10-01`
 
 This document defines the recommended architecture for online learning for older students and course learners.
 
-**Current implementation:** Backend subjects, courses, lessons, access grants, course invoices, and signed media-delivery redirects exist. Flutter has a dedicated course catalogue, curriculum, lesson reader, explicit completion and web audio/video/provider players. Native players, automatic subscription renewal, private streaming, and DRM are not delivered. A redirect can reveal its upstream URL; short-lived app tokens alone do not protect a public source URL. See [Learner Portal](LEARNER_PORTAL_ARCHITECTURE.md) for current scope and verification.
+**Current implementation:** Backend subjects, courses, lessons, access grants, course invoices, and signed media-delivery redirects exist. Flutter has a dedicated course catalogue, curriculum, lesson reader, explicit completion and in-app audio/video/provider, PDF, raster-image and plain-text viewers. Lesson resources no longer launch an external browser. Native player code and fake-platform tests exist, but Android/iOS device playback is not verified (Android build is blocked by the local NDK license/setup). Large/resumable video uploads, provider transcoding/adaptive streaming integration, automatic subscription renewal, private streaming and DRM are not delivered. A redirect can reveal its upstream URL; short-lived app tokens alone do not protect a public source URL. See [Learner Portal](LEARNER_PORTAL_ARCHITECTURE.md) for current scope and verification.
 
 It covers:
 

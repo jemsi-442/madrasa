@@ -1,26 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'admin_forms.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'lesson_media_dialog.dart';
 import 'teacher_ui.dart';
-
-typedef LessonResourceOpener = Future<bool> Function(Uri uri);
-
-Uri lessonResourceUri(String value, String apiBaseUrl) {
-  if (value.trim().isEmpty) {
-    throw const FormatException('Missing lesson resource link');
-  }
-  final uri = Uri.parse(apiBaseUrl).resolve(value);
-  if (!['http', 'https'].contains(uri.scheme) ||
-      uri.host.isEmpty ||
-      uri.userInfo.isNotEmpty) {
-    throw const FormatException('Unsupported lesson resource link');
-  }
-  return uri;
-}
 
 class LearnerLessonReader extends StatefulWidget {
   const LearnerLessonReader({
@@ -29,12 +13,12 @@ class LearnerLessonReader extends StatefulWidget {
     required this.load,
     required this.submit,
     required this.apiBaseUrl,
-    this.openResource,
+    this.surfaceBuilder,
   });
   final String id, apiBaseUrl;
   final PageLoader load;
   final PageSubmitter submit;
-  final LessonResourceOpener? openResource;
+  final LessonMediaBuilder? surfaceBuilder;
   @override
   State<LearnerLessonReader> createState() => _LearnerLessonReaderState();
 }
@@ -85,59 +69,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         assetId: recordText(asset['id']),
         load: widget.load,
         apiBaseUrl: widget.apiBaseUrl,
-        openResource: widget.openResource,
+        surfaceBuilder: widget.surfaceBuilder,
       ),
     );
     if (mounted) setState(() => preparing = false);
-  }
-
-  Future<void> resource(Map<String, dynamic> asset) async {
-    if (preparing || saving) return;
-    setState(() {
-      preparing = true;
-      error = null;
-    });
-    try {
-      final response = recordMap(
-        await widget.load('/api/learner/assets/${asset['id']}/open'),
-      );
-      final delivery = recordMap(response['delivery']);
-      if (delivery['status'] != 'READY' || delivery['inlineUrl'] == null) {
-        if (mounted) {
-          setState(
-            () => error =
-                'This resource is not connected yet. Please contact your teacher.',
-          );
-        }
-        return;
-      }
-      final uri = lessonResourceUri(
-        recordText(delivery['inlineUrl']),
-        widget.apiBaseUrl,
-      );
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (context) => _ResourceDialog(
-          title: recordText(asset['title'], 'Lesson resource'),
-          uri: uri,
-          expiresAt: DateTime.tryParse(recordText(delivery['expiresAt'])),
-          openResource:
-              widget.openResource ??
-              (uri) => launchUrl(uri, mode: LaunchMode.externalApplication),
-        ),
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(
-          () => error = e is ApiException
-              ? e.message
-              : 'The resource could not be prepared. Please try again.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => preparing = false);
-    }
   }
 
   @override
@@ -232,9 +167,8 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         const SizedBox(height: 22),
                         PanelHeading(
                           'Lesson resources',
-                          subtitle: inlineLessonMediaSupported
-                              ? 'Play video and audio here, or open resources in your browser.'
-                              : 'Open resources in a browser tab or your device viewer.',
+                          subtitle:
+                              'Play video and audio, view images and read documents without leaving your lesson.',
                         ),
                         if (assets.isEmpty)
                           const EmptyRecords(
@@ -267,28 +201,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     ),
                                   ),
                                   TeacherTag(recordText(asset['assetType'])),
-                                  if (inlineLessonMediaSupported &&
-                                      [
-                                        'VIDEO',
-                                        'AUDIO',
-                                      ].contains(asset['assetType']))
-                                    FilledButton.icon(
-                                      onPressed:
-                                          !preparing &&
-                                              !saving &&
-                                              ['OPEN', 'PREVIEW'].contains(
-                                                asset['accessState'],
-                                              ) &&
-                                              asset['sourceReady'] == true
-                                          ? () => play(asset)
-                                          : null,
-                                      icon: const Icon(
-                                        Icons.play_arrow,
-                                        size: 18,
-                                      ),
-                                      label: const Text('Play in app'),
-                                    ),
-                                  OutlinedButton.icon(
+                                  FilledButton.icon(
                                     onPressed:
                                         !preparing &&
                                             !saving &&
@@ -297,10 +210,15 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                               'PREVIEW',
                                             ].contains(asset['accessState']) &&
                                             asset['sourceReady'] == true
-                                        ? () => resource(asset)
+                                        ? () => play(asset)
                                         : null,
-                                    icon: const Icon(
-                                      Icons.open_in_new,
+                                    icon: Icon(
+                                      [
+                                            'VIDEO',
+                                            'AUDIO',
+                                          ].contains(asset['assetType'])
+                                          ? Icons.play_circle_outline
+                                          : Icons.visibility_outlined,
                                       size: 16,
                                     ),
                                     label: Text(
@@ -311,7 +229,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                           ? 'Access required'
                                           : asset['sourceReady'] != true
                                           ? 'Not connected'
-                                          : 'Open resource',
+                                          : [
+                                              'VIDEO',
+                                              'AUDIO',
+                                            ].contains(asset['assetType'])
+                                          ? 'Play in app'
+                                          : 'View in app',
                                     ),
                                   ),
                                 ],
@@ -372,92 +295,5 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         ),
       ),
     ),
-  );
-}
-
-class _ResourceDialog extends StatefulWidget {
-  const _ResourceDialog({
-    required this.title,
-    required this.uri,
-    required this.openResource,
-    this.expiresAt,
-  });
-  final String title;
-  final Uri uri;
-  final DateTime? expiresAt;
-  final LessonResourceOpener openResource;
-  @override
-  State<_ResourceDialog> createState() => _ResourceDialogState();
-}
-
-class _ResourceDialogState extends State<_ResourceDialog> {
-  String? error;
-  bool opening = false;
-  Future<void> open() async {
-    if (widget.expiresAt != null &&
-        !DateTime.now().isBefore(widget.expiresAt!)) {
-      setState(
-        () => error =
-            'This link expired. Close this window and open the resource again.',
-      );
-      return;
-    }
-    setState(() {
-      opening = true;
-      error = null;
-    });
-    try {
-      final opened = await widget.openResource(widget.uri);
-      if (mounted) {
-        if (opened) {
-          Navigator.pop(context);
-        } else {
-          setState(
-            () => error =
-                'Your browser or device blocked this resource. Please try again.',
-          );
-        }
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => error = 'Unable to open the resource. Please try again.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => opening = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.title),
-    content: SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Your resource is ready. Open it in a new browser tab or your device viewer.',
-          ),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(error!, style: const TextStyle(color: Colors.red)),
-            ),
-        ],
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: opening ? null : () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      FilledButton.icon(
-        onPressed: opening ? null : open,
-        icon: const Icon(Icons.open_in_new),
-        label: const Text('Open in browser'),
-      ),
-    ],
   );
 }

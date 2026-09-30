@@ -19,12 +19,23 @@ class LessonMediaDelivery {
   }) {
     final delivery = response['delivery'];
     final asset = response['asset'];
+    if (delivery is Map && delivery['status'] != 'READY') {
+      throw const FormatException(
+        'This resource is not connected yet. Please contact your teacher.',
+      );
+    }
     if (delivery is! Map ||
         asset is! Map ||
-        delivery['status'] != 'READY' ||
-        !['VIDEO', 'AUDIO', 'EMBED'].contains(delivery['playerKind'])) {
+        ![
+          'VIDEO',
+          'AUDIO',
+          'EMBED',
+          'PDF',
+          'IMAGE',
+          'TEXT',
+        ].contains(delivery['playerKind'])) {
       throw const FormatException(
-        'This resource is not available for inline playback.',
+        'This file cannot be displayed here yet. Ask your teacher for a video, audio, image, PDF or plain-text version.',
       );
     }
     final base = Uri.parse(apiBaseUrl);
@@ -65,4 +76,22 @@ class LessonMediaDelivery {
       downloadAllowed: asset['downloadAllowed'] == true,
     );
   }
+}
+
+bool lessonEmbedNavigationAllowed(
+  String value,
+  Uri signedSource, {
+  required bool isMainFrame,
+}) {
+  final uri = Uri.tryParse(value);
+  if (uri == null) return false;
+  if (value == 'about:blank' || uri == signedSource) return true;
+  if (uri.scheme != 'https' || uri.userInfo.isNotEmpty || uri.port != 443) {
+    return false;
+  }
+  if (!isMainFrame) return true;
+  return (uri.host == 'www.youtube-nocookie.com' &&
+          RegExp(r'^/embed/[A-Za-z0-9_-]{11}$').hasMatch(uri.path)) ||
+      (uri.host == 'player.vimeo.com' &&
+          RegExp(r'^/video/[0-9]+$').hasMatch(uri.path));
 }
