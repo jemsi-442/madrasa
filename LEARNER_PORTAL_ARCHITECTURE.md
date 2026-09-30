@@ -49,11 +49,41 @@ result. Reports and their PDFs disappear when the report or a source assessment
 is retracted. Report history is an immutable publication snapshot, not a live
 gradebook. School dates use Africa/Dar_es_Salaam (+03:00).
 
+## Implemented: Courses and Lesson Reader (2026-09-30)
+
+`LearnerCoursesPage` replaces the generic course list at its existing route.
+Published courses have searchable subject/instructor/title cards, subject and
+access filters, grid/list modes and personal lesson completion counts. Curriculum
+dialogs show published modules and lessons; Continue learning finds the first
+accessible incomplete lesson. Draft/unlisted lessons are excluded from counts
+and curriculum. Restricted lessons remain disabled, with server-side access
+checks on each read, progress update and resource request.
+
+`LearnerLessonReader` displays reading text and lesson resources. Mark complete
+saves the signed-in learner's progress, prevents duplicate in-flight submissions,
+preserves prior watch time and refreshes curriculum/cards after closing. Failed
+saves remain retryable and do not display false completion. Completion is
+self-reported study progress, not teacher assessment or Qur'an memorisation.
+
+Resource opening requests fresh delivery authorization, then requires a user
+click to launch the browser/device viewer. Missing sources, locked assets,
+expired links and failed launches have explicit states. Script/credential URLs
+are rejected. Signed delivery rechecks live access, including revoked grants.
+External viewers can expose the source URL; this is not DRM or an inline player.
+No learner or organization identifiers are accepted from completion forms.
+
+Verification: backend build and all 88 integration tests pass; Flutter analyzer
+is clean and all 183 tests pass (13 new course/reader checks, including 320px,
+390px and desktop layouts). Release web build succeeds. Chromium verification
+uses isolated temporary records to check course/curriculum navigation, real
+signed-resource redirection to a local test viewer, persisted completion and
+session/page retention after reload. Desktop/mobile screenshots were inspected;
+no browser JavaScript errors were reported. Fixtures were removed afterward.
+
 ## Remaining Reference Areas
 
-- Rich My Subjects/lesson-media experience: existing course listing/progress
-  remains; dedicated subject cards, favorites and lesson playback need the next
-  client stage using existing course-access rules.
+- Lesson media: embedded playback, player-driven progress, favorites and
+  recommendations remain. Resource opening currently uses an external viewer.
 - Assignments: needs class/course task allocation, deadlines, submissions,
   teacher review and attachment permissions before showing task actions.
 - Learner Messages: needs an explicit learner-teacher communication policy and
@@ -65,7 +95,7 @@ gradebook. School dates use Africa/Dar_es_Salaam (+03:00).
 - No new self-marking attendance, self-grading, arbitrary child access, class
   ranks, invented trends or video-call links are introduced.
 
-## Verification
+## School Records Verification (2026-09-28)
 
 - Backend build and all 82 integration tests pass, including six new learner
   scope/records/publication tests and parent regression coverage.

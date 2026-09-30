@@ -21,6 +21,7 @@ import 'family_messages_page.dart';
 import 'assessments_page.dart';
 import 'student_reports_page.dart';
 import 'learner_portal_page.dart';
+import 'learner_courses_page.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -350,7 +351,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       sections[selectedIndex].path == '/api/family-messages/conversations' ||
       widget.state.session?.role == 'PARENT' ||
       (widget.state.session?.role == 'LEARNER' &&
-          (selectedIndex == 0 || selectedIndex >= 5)) ||
+          (selectedIndex <= 1 || selectedIndex >= 5)) ||
       (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
       [
         'Students',
@@ -450,6 +451,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         submit: widget.state.submit,
         userId: session.userId,
         teacherMode: session.role == 'TEACHER',
+        refreshToken: refreshToken,
+      );
+    }
+    if (session.role == 'LEARNER' && selectedIndex == 1) {
+      return LearnerCoursesPage(
+        load: widget.state.load,
+        submit: widget.state.submit,
+        apiBaseUrl: widget.state.api.baseUrl,
         refreshToken: refreshToken,
       );
     }

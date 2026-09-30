@@ -1,12 +1,28 @@
 # MODERN ISLAMIC FOUNDATION Project Status
 
-Last updated: `2026-09-28`
+Last updated: `2026-09-30`
 
 ## 1. Current State
 
 The backend remains in place. The React client has been retired in favor of Flutter for web, Android, and iOS. This is an active frontend migration, **not a release candidate**: the first Flutter app has authentication and selected read-only role views, but many former React workflows still need rebuilding.
 
-## Latest Learner Portal Stage (2026-09-28)
+## Latest Learner Portal Stage (2026-09-30)
+
+My courses now has subject cards, search/subject/access filters, grid/list modes,
+published curriculum, Continue learning, a lesson reader and saved completion.
+Resources open in a browser/device viewer after fresh access authorization.
+Paid/locked lessons and private/draft content retain backend access boundaries.
+Completion preserves watch time and updates course progress, independently of
+teacher assessment and Qur'an records. Native inline playback is not included.
+
+Verification: backend build and 88 integration tests; clean Flutter analyzer,
+183 tests and release web build; Chromium desktop/mobile course reading,
+resource opening, persisted completion and reload retaining login/page.
+Isolated browser fixtures were removed. Assignments, learner messaging, events,
+settings, favorites and embedded media players remain future stages.
+See [LEARNER_PORTAL_ARCHITECTURE.md](LEARNER_PORTAL_ARCHITECTURE.md).
+
+## Previous School Records Stage (2026-09-28)
 
 The learner home now includes live self-owned school records. Five new pages
 provide Classes (week/list timetable), Attendance (calendar/log), Qur'an Progress
