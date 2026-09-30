@@ -1524,7 +1524,7 @@ export const updateLearnerLessonProgress = async (
       metadata: {
         courseId: lesson.course.id.toString(),
         progressPercent,
-        watchSeconds,
+        watchSeconds: progress.watchSeconds,
         completed: progressPercent >= 100,
       },
     },

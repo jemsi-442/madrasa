@@ -91,7 +91,7 @@ describe("learner course browsing and completion", () => {
     expect((await post(`/lessons/${paidLesson}/progress`, { progressPercent: 100, markCompleted: true })).status).toBe(403);
   });
   it("validates IDs and progress inputs, and completion preserves prior watch time", async () => {
-    for (const id of ["invalid", "-1", "0", "99999999999999999999999"]) {
+    for (const id of ["invalid", "-1", "0", "1d", "9223372036854775808", "99999999999999999999999"]) {
       expect((await get(`/courses/${id}`)).status).toBe(422);
       expect((await get(`/lessons/${id}`)).status).toBe(422);
     }
@@ -99,6 +99,11 @@ describe("learner course browsing and completion", () => {
     expect((await post(`/lessons/${first}/progress`, { progressPercent: 100, studentId: String(peerStudent) })).status).toBe(422);
     const completed = await post(`/lessons/${first}/progress`, { progressPercent: 100, markCompleted: true });
     expect(completed.status).toBe(200); expect(completed.body.data.watchSeconds).toBe(240);
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      where: { orgId, actorUserId: learner, action: "LEARNER_LESSON_PROGRESS_UPDATE", entityId: String(first) },
+      orderBy: { id: "desc" },
+    });
+    expect(audit.metadata).toMatchObject({ watchSeconds: 240, completed: true });
     expect((await post(`/lessons/${next}/progress`, { progressPercent: 100, markCompleted: true })).status).toBe(200);
     const course = (await get("/courses")).body.data.find((c: { id: string }) => c.id === String(free));
     expect(course.progress.progressPercent).toBe(100); expect(course.resumeLesson).toBeNull();
