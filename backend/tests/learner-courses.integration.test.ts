@@ -126,6 +126,29 @@ describe("learner course browsing and completion", () => {
     expect((await api.get(delivery.pathname + delivery.search)).status).toBe(403);
     expect((await get(`/assets/${pendingAsset}/open`)).body.data.delivery.status).toBe("PENDING_SOURCE");
   });
+  it("uses signed delivery for embedded players and rejects unsafe provider sources", async () => {
+    const embedded = await prisma.mediaAsset.create({ data: { orgId, courseId: free, lessonId: first,
+      assetType: "VIDEO", storageProvider: "YOUTUBE", visibility: "FREE",
+      title: "Embedded lesson", storageKey: "https://youtu.be/abcdefghijk" } });
+    const opened = await get(`/assets/${embedded.id}/open`);
+    expect(opened.status).toBe(200);
+    expect(opened.body.data.delivery.playerKind).toBe("EMBED");
+    expect(opened.body.data.delivery.inlineUrl).not.toContain("youtube");
+    const url = new URL(opened.body.data.delivery.inlineUrl);
+    const delivered = await api.get(url.pathname + url.search);
+    expect(delivered.status).toBe(302);
+    expect(delivered.headers["cache-control"]).toBe("no-store");
+    expect(delivered.headers["cross-origin-resource-policy"]).toBe("cross-origin");
+    expect(delivered.headers.location).toBe("https://www.youtube-nocookie.com/embed/abcdefghijk");
+    await prisma.mediaAsset.update({ where: { id: embedded.id }, data: { visibility: "LOCKED" } });
+    expect((await api.get(url.pathname + url.search)).status).toBe(403);
+    await prisma.mediaAsset.update({ where: { id: embedded.id }, data: {
+      visibility: "FREE", storageKey: "https://evil.test/?v=abcdefghijk" } });
+    expect((await get(`/assets/${embedded.id}/open`)).body.data.delivery.status).toBe("PENDING_SOURCE");
+    expect((await api.get(url.pathname + url.search)).status).toBe(409);
+    const detail = (await get(`/lessons/${first}`)).body.data.lesson;
+    expect(detail.assets.find((a: { id: string }) => a.id === String(embedded.id)).sourceReady).toBe(false);
+  });
   it("does not write another linked student's old progress after account relinking", async () => {
     await prisma.student.update({ where: { id: student }, data: { learnerUserId: null } });
     await prisma.student.update({ where: { id: peerStudent }, data: { learnerUserId: learner } });

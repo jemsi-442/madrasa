@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { learnerMediaSource } from "./learner-media-source";
 import { Prisma } from "@prisma/client";
 
 import { env } from "../../config/env";
@@ -18,7 +19,6 @@ const learnerPrisma = prisma;
 const isPreviewVisibility = (visibility: string) => visibility === "PREVIEW";
 const isFreeVisibility = (visibility: string) => visibility === "FREE";
 const isPublished = (publicationStatus: string) => publicationStatus === "PUBLISHED";
-const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
 const splitFullName = (fullName: string): { firstname: string; lastname: string } => {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
 
@@ -490,29 +490,6 @@ const decodeLearnerAssetDeliveryToken = (token: string) => {
   }
 
   return payload;
-};
-
-const toExternalVideoEmbedUrl = (storageProvider: string, storageKey: string) => {
-  if (!isHttpUrl(storageKey)) {
-    return null;
-  }
-
-  if (storageProvider === "YOUTUBE") {
-    const youtubeMatch =
-      storageKey.match(/v=([^&]+)/i) ?? storageKey.match(/youtu\.be\/([^?&/]+)/i);
-    return youtubeMatch?.[1]
-      ? `https://www.youtube.com/embed/${youtubeMatch[1]}`
-      : storageKey;
-  }
-
-  if (storageProvider === "VIMEO") {
-    const vimeoMatch = storageKey.match(/vimeo\.com\/(\d+)/i);
-    return vimeoMatch?.[1]
-      ? `https://player.vimeo.com/video/${vimeoMatch[1]}`
-      : storageKey;
-  }
-
-  return null;
 };
 
 const loadLearnerAssetAccess = async (authUser: AuthenticatedUser, assetId: string) => {
@@ -1052,9 +1029,7 @@ export const getLearnerLessonDetail = async (authUser: AuthenticatedUser, lesson
         visibility: asset.visibility,
         downloadAllowed: asset.downloadAllowed,
         streamingProfile: asset.streamingProfile,
-        sourceReady:
-          Boolean(toExternalVideoEmbedUrl(asset.storageProvider, asset.storageKey)) ||
-          isHttpUrl(asset.storageKey),
+        sourceReady: Boolean(learnerMediaSource(asset)),
         accessState: getAssetAccessState(
           lesson.course.visibility,
           lesson.visibility,
@@ -1125,42 +1100,26 @@ export const openLearnerAsset = async (authUser: AuthenticatedUser, assetId: str
     throw new HttpError(403, "This lesson item is not open for this learner yet");
   }
 
-  const embedUrl = toExternalVideoEmbedUrl(asset.storageProvider, asset.storageKey);
+  const source = learnerMediaSource(asset);
   const token = buildLearnerAssetDeliveryToken(authUser, asset.id);
   const deliveryPath = `/api/learner/assets/${asset.id.toString()}/deliver?token=${encodeURIComponent(token)}`;
   const expiresAt = new Date(Date.now() + LEARNER_ASSET_OPEN_TTL_SECONDS * 1000).toISOString();
 
-  const delivery =
-    embedUrl
-      ? {
-          status: "READY",
-          playerKind: "EMBED",
-          inlineUrl: embedUrl,
-          downloadUrl: null,
-          expiresAt,
-        }
-      : isHttpUrl(asset.storageKey)
-        ? {
-            status: "READY",
-            playerKind:
-              asset.assetType === "VIDEO"
-                ? "VIDEO"
-                : asset.assetType === "AUDIO"
-                  ? "AUDIO"
-                  : asset.assetType === "PDF"
-                    ? "PDF"
-                    : "EXTERNAL",
-            inlineUrl: deliveryPath,
-            downloadUrl: asset.downloadAllowed ? deliveryPath : null,
-            expiresAt,
-          }
-        : {
-            status: "PENDING_SOURCE",
-            playerKind: "PLACEHOLDER",
-            inlineUrl: null,
-            downloadUrl: null,
-            expiresAt,
-          };
+  const delivery = source
+    ? {
+        status: "READY",
+        playerKind: source.playerKind,
+        inlineUrl: deliveryPath,
+        downloadUrl: source.playerKind !== "EMBED" && asset.downloadAllowed ? deliveryPath : null,
+        expiresAt,
+      }
+    : {
+        status: "PENDING_SOURCE",
+        playerKind: "PLACEHOLDER",
+        inlineUrl: null,
+        downloadUrl: null,
+        expiresAt,
+      };
 
   await prisma.auditLog.create({
     data: {
@@ -1215,12 +1174,13 @@ export const resolveLearnerAssetDelivery = async (assetId: string, token: string
     throw new HttpError(403, "This lesson item is not open for this learner yet");
   }
 
-  if (!isHttpUrl(asset.storageKey)) {
+  const source = learnerMediaSource(asset);
+  if (!source) {
     throw new HttpError(409, "This lesson item source is not connected yet");
   }
 
   return {
-    redirectUrl: asset.storageKey,
+    redirectUrl: source.url,
   };
 };
 

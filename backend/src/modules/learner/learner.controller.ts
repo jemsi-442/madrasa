@@ -131,6 +131,9 @@ export const deliverLearnerAssetHandler = async (req: Request, res: Response) =>
   const token = typeof req.query.token === "string" ? req.query.token : "";
   const detail = await resolveLearnerAssetDelivery(assetId!, token);
 
+  // The signed redirect is intentionally consumable by the separate web origin.
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Referrer-Policy", "strict-origin");
   res.redirect(302, detail.redirectUrl);
 };
 
