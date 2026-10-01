@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'accountant_components.dart';
+import 'finance_presentation.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 
@@ -320,12 +321,19 @@ class _AccountantPageState extends State<AccountantPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              PanelHeading(
+              FinanceSectionHeading(
                 switch (section) {
                   1 => 'Invoice register',
                   2 => 'Payment activity',
                   _ => 'Course payment follow-up',
                 },
+                eyebrow: section == 3 ? 'Access follow-up' : 'Collections',
+                icon: switch (section) {
+                  1 => Icons.receipt_long_outlined,
+                  2 => Icons.payments_outlined,
+                  _ => Icons.verified_user_outlined,
+                },
+                accent: section == 2 ? forest : blue,
                 subtitle: switch (section) {
                   1 =>
                     'Find an invoice, check its balance and follow the payment trail.',
@@ -484,15 +492,20 @@ class _AccountantPageState extends State<AccountantPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          section == 3
+        FinanceFilterSummary(
+          count: section == 3
               ? '${items.length} matching requests'
               : '${recordText(meta['totalItems'], 'Unknown')} matching records',
-          style: const TextStyle(color: muted, fontSize: 12),
+          filters: [
+            if (query.isNotEmpty) 'Search: $query',
+            if (status != null) 'Status: ${friendlyStatus(status)}',
+            if (channel != null) 'Channel: ${friendlyStatus(channel)}',
+            if (invoiceId != null)
+              'Invoice: ${widget.destination.invoiceNo ?? invoiceId}',
+          ],
         ),
-        const SizedBox(height: 12),
         if (items.isEmpty)
-          const EmptyRecords(
+          const FinanceEmptyState(
             'No records match this view. Try a different search or status.',
           )
         else
@@ -533,7 +546,7 @@ class _AccountantPageState extends State<AccountantPage> {
                             flex: 2,
                             child: Text('STATUS / DATE', style: _tableLabel),
                           ),
-                          const SizedBox(width: 84),
+                          const SizedBox(width: 112),
                         ],
                       ),
                     ),
@@ -688,10 +701,11 @@ class _AccountantPageState extends State<AccountantPage> {
                   ),
                 ),
                 SizedBox(
-                  width: 84,
-                  child: TextButton(
+                  width: 112,
+                  child: OutlinedButton.icon(
                     onPressed: open,
-                    child: const Text('Details'),
+                    icon: const Icon(Icons.chevron_right, size: 16),
+                    label: const Text('Details'),
                   ),
                 ),
               ],

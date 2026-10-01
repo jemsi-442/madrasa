@@ -7,6 +7,7 @@ import 'admin_forms.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'finance_entry_form.dart';
+import 'finance_presentation.dart';
 import 'foundation_ui.dart';
 
 class FinanceOperationsPage extends StatefulWidget {
@@ -214,31 +215,44 @@ class _FinanceOperationsPageState extends State<FinanceOperationsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            PanelHeading(
+            FinanceSectionHeading(
               fees
                   ? 'Fee structures'
                   : expenses
                   ? 'Expense register'
                   : 'Finance inbox',
+              eyebrow: fees
+                  ? 'Billing setup'
+                  : expenses
+                  ? 'School expenditure'
+                  : 'Office follow-up',
+              icon: fees
+                  ? Icons.price_change_outlined
+                  : expenses
+                  ? Icons.account_balance_wallet_outlined
+                  : Icons.mark_email_unread_outlined,
+              accent: fees
+                  ? gold
+                  : expenses
+                  ? forest
+                  : blue,
+              action: inquiries
+                  ? null
+                  : FilledButton.icon(
+                      onPressed: create,
+                      icon: Icon(
+                        expenses ? Icons.add_card_outlined : Icons.add,
+                      ),
+                      label: Text(
+                        expenses ? 'Record expense' : 'Add fee structure',
+                      ),
+                    ),
               subtitle: fees
                   ? 'Set billing rates. Creating a fee does not issue invoices.'
                   : expenses
                   ? 'Record school costs and keep the supporting details together.'
                   : 'Follow up finance inquiries without accessing other office messages.',
             ),
-            if (!inquiries) ...[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  onPressed: create,
-                  icon: Icon(expenses ? Icons.add_card_outlined : Icons.add),
-                  label: Text(
-                    expenses ? 'Record expense' : 'Add fee structure',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-            ],
             LayoutBuilder(
               builder: (context, box) => Wrap(
                 spacing: 12,
@@ -336,15 +350,20 @@ class _FinanceOperationsPageState extends State<FinanceOperationsPage> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      inquiries
+                    FinanceFilterSummary(
+                      count: inquiries
                           ? '${rows.length} matching inquiries'
                           : '${recordText(recordMap(map['meta'])['totalItems'], 'Unknown')} matching records',
-                      style: const TextStyle(fontSize: 12, color: muted),
+                      filters: [
+                        if (query.isNotEmpty) 'Search: $query',
+                        if (filter.isNotEmpty)
+                          'Status: ${fees ? (filter == 'true' ? 'Active' : 'Inactive') : friendlyStatus(filter)}',
+                        if (dates != null)
+                          'Dates: ${financeDate(dates!.start)} - ${financeDate(dates!.end)}',
+                      ],
                     ),
-                    const SizedBox(height: 12),
                     if (rows.isEmpty)
-                      const EmptyRecords('No records match this view.')
+                      const FinanceEmptyState('No records match this view.')
                     else
                       LayoutBuilder(
                         builder: (context, box) {
@@ -376,16 +395,58 @@ class _FinanceOperationsPageState extends State<FinanceOperationsPage> {
                                       DataCell(
                                         SizedBox(
                                           width: 240,
-                                          child: Text(
-                                            recordText(
-                                              row[inquiries
-                                                  ? 'subject'
-                                                  : fees
-                                                  ? 'name'
-                                                  : 'title'],
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                recordText(
+                                                  row[inquiries
+                                                      ? 'subject'
+                                                      : fees
+                                                      ? 'name'
+                                                      : 'title'],
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              if (!inquiries) ...[
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  [
+                                                    recordText(
+                                                      recordMap(
+                                                        row['branch'],
+                                                      )['name'],
+                                                      row.containsKey('branch')
+                                                          ? 'School-wide'
+                                                          : 'Scope not supplied',
+                                                    ),
+                                                    if (fees &&
+                                                        recordMap(
+                                                              row['class'],
+                                                            )['name'] !=
+                                                            null)
+                                                      recordText(
+                                                        recordMap(
+                                                          row['class'],
+                                                        )['name'],
+                                                      ),
+                                                  ].join(' / '),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    color: muted,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ),
                                       ),
@@ -412,9 +473,13 @@ class _FinanceOperationsPageState extends State<FinanceOperationsPage> {
                                               ),
                                       ),
                                       DataCell(
-                                        TextButton(
+                                        OutlinedButton.icon(
                                           onPressed: () => details(row),
-                                          child: const Text('Details'),
+                                          icon: const Icon(
+                                            Icons.chevron_right,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Details'),
                                         ),
                                       ),
                                     ],

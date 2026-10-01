@@ -185,6 +185,7 @@ void main() {
   for (final (size, scale) in [
     (const Size(390, 844), 1.0),
     (const Size(1440, 1000), 1.0),
+    (const Size(1024, 768), 1.0),
     (const Size(320, 740), 2.0),
   ]) {
     for (var section = 0; section < 4; section++) {

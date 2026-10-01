@@ -11,12 +11,14 @@ class WorkspaceSidebar extends StatelessWidget {
     required this.onSelect,
     required this.roleLabel,
     this.collapsed = false,
+    this.groups = const {},
   });
   final List<(String, IconData)> items;
   final int selected;
   final ValueChanged<int> onSelect;
   final String roleLabel;
   final bool collapsed;
+  final Map<int, String> groups;
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
@@ -64,7 +66,25 @@ class WorkspaceSidebar extends StatelessWidget {
                         ),
                       ),
                     ),
-                  for (var index = 0; index < items.length; index++)
+                  for (var index = 0; index < items.length; index++) ...[
+                    if (!collapsed && groups.containsKey(index))
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          12,
+                          index == 0 ? 0 : 16,
+                          12,
+                          10,
+                        ),
+                        child: Text(
+                          groups[index]!.toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFF99ADBF),
+                            fontSize: 10,
+                            letterSpacing: 1.2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Tooltip(
@@ -118,6 +138,7 @@ class WorkspaceSidebar extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
             ),

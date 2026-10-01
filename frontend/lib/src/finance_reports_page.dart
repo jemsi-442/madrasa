@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'accountant_components.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'finance_presentation.dart';
+import 'finance_monthly_chart.dart';
 import 'platform/finance_export_native.dart'
     if (dart.library.js_interop) 'platform/finance_export_web.dart'
     as platform;
@@ -130,8 +132,11 @@ class _FinanceReportsPageState extends State<FinanceReportsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const PanelHeading(
+            const FinanceSectionHeading(
               'Financial reports',
+              eyebrow: 'Year in review',
+              icon: Icons.assessment_outlined,
+              accent: blue,
               subtitle:
                   'Review the year month by month, then export the school report.',
             ),
@@ -262,6 +267,13 @@ class _FinanceReportsPageState extends State<FinanceReportsPage> {
                 'Amounts are reported without currency by this endpoint. Payments are grouped by paid date, invoices by issue date, and expenses by expense date (UTC). Invoiced less collected is a period difference, not a debtor balance.',
               ),
               const SizedBox(height: 18),
+              if (months.isNotEmpty) ...[
+                FinanceMonthlyChart(
+                  key: ValueKey('finance-chart-$year'),
+                  months: months,
+                ),
+                const SizedBox(height: 18),
+              ],
               SurfacePanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

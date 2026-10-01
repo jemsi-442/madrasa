@@ -55,6 +55,14 @@ Do not start a second server on the same port. Stop the existing preview with
 `systemctl --user stop mif-web-preview.service` before switching servers.
 The transient service is not enabled at boot; start it again after reboot.
 
+The API is a separate process. If this workspace is using the temporary
+`mif-backend-preview.service`, inspect it with
+`systemctl --user status mif-backend-preview.service` and check
+`curl http://127.0.0.1:4000/api/health`. That preview binds only to `127.0.0.1`
+and is not enabled at boot. Before starting `npm run dev` in `backend/`, stop
+it with `systemctl --user stop mif-backend-preview.service` to free port 4000.
+Stopping either preview does not delete database records.
+
 ## Native Mobile Experience
 
 Installed Android/iOS builds start at a dedicated welcome screen with Login,
@@ -195,6 +203,14 @@ The accountant has eight destinations. Desktop shows all eight in the sidebar;
 mobile keeps Home, Invoices and Payments in the bottom bar and opens the other
 five through **More**. Home also has shortcuts to the new finance tools.
 
+Desktop navigation groups the eight pages into Overview, Collections and Finance
+tools. Registers share responsive headings, primary actions and visible active
+filter summaries. Empty lists show an explicit empty state rather than sample
+records. Financial reports include a selectable monthly collection/expense chart
+using the API's reported amounts, with exact decimal labels, a shared scale,
+keyboard/screen-reader support and horizontal scrolling on small screens.
+Missing amounts remain unavailable instead of being plotted as zero.
+
 - **Home:** reported invoice, collection, expense and cash-flow totals, plus
   shortcuts to overdue invoices, pending payments and new course requests.
 - **Invoices:** debounced server search, status filters, pagination, balances and
@@ -254,7 +270,7 @@ financial information; choose an appropriate destination and recipient.
 Run the accountant tests, or opt in to fixture-only visual previews:
 
 ```bash
-flutter test test/accountant_page_test.dart test/finance_operations_test.dart test/finance_api_test.dart
+flutter test test/accountant_page_test.dart test/finance_operations_test.dart test/finance_api_test.dart test/finance_web_layout_test.dart
 flutter test test/accountant_page_test.dart --update-goldens --dart-define=ACCOUNTANT_PREVIEWS=true
 flutter test test/finance_operations_test.dart --update-goldens --dart-define=FINANCE_OPERATIONS_PREVIEWS=true
 ```

@@ -698,6 +698,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       onSelect: selectSection,
       roleLabel: _roleLabel(session.role),
       collapsed: rail,
+      groups: !mobile && session.role == 'ACCOUNTANT'
+          ? const {0: 'Overview', 1: 'Collections', 4: 'Finance tools'}
+          : const {},
     );
 
     return Scaffold(

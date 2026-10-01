@@ -165,6 +165,7 @@ void main() {
   for (final (size, scale) in [
     (const Size(390, 844), 1.0),
     (const Size(1440, 1000), 1.0),
+    (const Size(1024, 768), 1.0),
     (const Size(320, 740), 2.0),
   ]) {
     for (final page in [4, 5, 6, 7]) {
