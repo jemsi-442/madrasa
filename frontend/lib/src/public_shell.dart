@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'app_layout.dart';
+import 'public_entry_visuals.dart';
+import 'public_palette.dart';
+
+export 'public_palette.dart';
 
 typedef PublicNavigate = void Function(String path);
-
-const publicInk = Color(0xFF092136);
-// Dominant navy sampled from assets/mif-logo.png.
-const publicBrandBlue = Color(0xFF011F3D);
-const publicHeaderAccent = Color(0xFFE5BD67);
-const publicGold = Color(0xFFA87722);
-const publicCream = Color(0xFFFCFAF6);
-const publicMuted = Color(0xFF69778B);
-const publicBorder = Color(0xFFDCE2E9);
-const publicBrandName = 'Modern Islamic Foundation';
 
 ThemeData publicTheme(BuildContext context) => Theme.of(context).copyWith(
   scaffoldBackgroundColor: publicCream,
@@ -40,15 +34,15 @@ ThemeData publicTheme(BuildContext context) => Theme.of(context).copyWith(
     suffixIconColor: publicMuted,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: publicBorder),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: publicBorder),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: publicGold, width: 1.5),
     ),
   ),
@@ -259,7 +253,7 @@ class GoldAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     width: fullWidth ? double.infinity : null,
-    height: 48,
+    height: 52,
     child: FilledButton(
       onPressed: busy ? null : onPressed,
       style: FilledButton.styleFrom(
@@ -273,7 +267,7 @@ class GoldAction extends StatelessWidget {
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: busy
           ? const SizedBox(
@@ -402,16 +396,64 @@ class MobilePublicFrame extends StatelessWidget {
         leading: MobileBackButton(onNavigate: onNavigate),
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          key: const ValueKey('auth-scroll'),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: child,
+      body: EntryBackdrop(
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            key: const ValueKey('auth-scroll'),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: const EntryBackdrop(
+                        dark: true,
+                        child: Padding(
+                          padding: EdgeInsets.all(22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              PublicBrand(light: true, compact: true),
+                              SizedBox(height: 18),
+                              Text(
+                                'Faith. Knowledge. Possibility.',
+                                style: TextStyle(
+                                  color: publicHeaderAccent,
+                                  fontFamily: 'NotoSerifDisplay',
+                                  fontSize: 19,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: publicBorder),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x07092136),
+                            blurRadius: 28,
+                            offset: Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: child,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -486,9 +528,9 @@ class AuthFrame extends StatelessWidget {
                           children: [
                             if (wide)
                               SizedBox(
-                                width: (constraints.maxWidth * 0.32).clamp(
-                                  290.0,
-                                  430.0,
+                                width: (constraints.maxWidth * 0.42).clamp(
+                                  340.0,
+                                  560.0,
                                 ),
                                 child: _AuthStory(registration: registration),
                               ),
@@ -562,90 +604,82 @@ class _AuthStory extends StatelessWidget {
   final bool registration;
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [publicBrandBlue, Color(0xFF152F45)],
-      ),
-    ),
-    child: Stack(
-      children: [
-        const Positioned.fill(
-          child: IgnorePointer(child: CustomPaint(painter: MosqueSilhouette())),
-        ),
-        LayoutBuilder(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(24, 24, 0, 24),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: EntryBackdrop(
+        dark: true,
+        child: LayoutBuilder(
           builder: (context, constraints) => SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 34,
-                  vertical: 60,
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      registration
-                          ? 'Join a growing community\nbuilding brighter futures.'
-                          : 'Learning today\nfor a brighter tomorrow.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: registration
-                            ? Colors.white
-                            : const Color(0xFFE0B354),
-                        fontSize: 19,
-                        height: 1.55,
-                      ),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const EntryEyebrow('LEARN WITH PURPOSE', light: true),
+                  const SizedBox(height: 18),
+                  Text(
+                    registration
+                        ? 'A new chapter.\nA world of possibility.'
+                        : 'A place to learn.\nA community to grow.',
+                    style: const TextStyle(
+                      fontFamily: 'NotoSerifDisplay',
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                      letterSpacing: -0.7,
                     ),
-                    const SizedBox(height: 44),
-                    if (registration) ...[
-                      const _StoryFeature(
-                        Icons.school_outlined,
-                        'For learners',
-                        'Discover, learn and grow',
-                      ),
-                      const _StoryFeature(
-                        Icons.people_outline_rounded,
-                        'For families',
-                        'Stay close to their journey',
-                      ),
-                      const _StoryFeature(
-                        Icons.menu_book_outlined,
-                        'For teachers',
-                        'Teach and inspire',
-                      ),
-                      const _StoryFeature(
-                        Icons.account_balance_outlined,
-                        'For schools',
-                        'Build a stronger community',
-                      ),
-                    ] else ...[
-                      SizedBox(height: constraints.maxHeight > 700 ? 105 : 25),
-                      const SizedBox(
-                        width: 38,
-                        child: Divider(color: Color(0xFFD5AA51), thickness: 2),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Knowledge. Character.\nA world of possibility.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'NotoSerifDisplay',
-                          color: Colors.white,
-                          fontSize: 21,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Rooted in Islamic values. Connected through learning.',
+                    style: TextStyle(
+                      color: Color(0xFFCFDDE4),
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    height: (constraints.maxWidth * 0.65).clamp(180.0, 280.0),
+                    child: const LearningPortrait(compact: true),
+                  ),
+                  const SizedBox(height: 30),
+                  const _StoryFeature(
+                    Icons.auto_stories_outlined,
+                    'Keep learning',
+                    'Your classes and lessons, together',
+                  ),
+                  const _StoryFeature(
+                    Icons.insights_rounded,
+                    'See your progress',
+                    'Make every small step count',
+                  ),
+                  if (registration)
+                    const _StoryFeature(
+                      Icons.people_outline_rounded,
+                      'Grow together',
+                      'A connected learning community',
+                    ),
+                  const Divider(color: Color(0xFF46617B), height: 1),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'KNOWLEDGE  /  CHARACTER  /  BRIGHTER LIVES',
+                    style: TextStyle(
+                      color: publicHeaderAccent,
+                      fontSize: 9,
+                      letterSpacing: 1.2,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      ],
+      ),
     ),
   );
 }

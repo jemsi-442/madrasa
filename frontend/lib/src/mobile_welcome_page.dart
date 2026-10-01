@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'public_entry_visuals.dart';
 import 'public_shell.dart';
 
 class MobileWelcomeScreen extends StatelessWidget {
@@ -12,147 +13,146 @@ class MobileWelcomeScreen extends StatelessWidget {
     data: publicTheme(context),
     child: Scaffold(
       key: const ValueKey('mobile-welcome'),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [publicBrandBlue, Color(0xFF214C60)],
-          ),
-        ),
+      body: EntryBackdrop(
         child: SafeArea(
           child: LayoutBuilder(
-            builder: (context, constraints) => constraints.biggest.isEmpty
-                ? const SizedBox.shrink()
-                : SingleChildScrollView(
+            builder: (context, constraints) {
+              if (constraints.biggest.isEmpty) return const SizedBox.shrink();
+              final compact = constraints.maxHeight < 720;
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 480),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(28, 24, 28, 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              mainAxisSize: MainAxisSize.min,
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
                               children: [
-                                const Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: PublicBrand(
-                                    light: true,
-                                    compact: true,
-                                  ),
+                                const Expanded(
+                                  child: PublicBrand(compact: true),
                                 ),
-                                const SizedBox(height: 36),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Container(
-                                    width: 80,
-                                    height: 80,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF355B6A),
-                                      borderRadius: BorderRadius.circular(24),
-                                      border: Border.all(
-                                        color: const Color(0xFF648089),
-                                      ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.auto_stories_rounded,
-                                      color: publicHeaderAccent,
-                                      size: 42,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                const Text(
-                                  'Assalamu alaikum',
-                                  style: TextStyle(
-                                    color: publicHeaderAccent,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'Your learning.\nAlways with you.',
-                                  style: TextStyle(
-                                    fontSize: 34,
-                                    height: 1.15,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'Classes, lessons and progress, together in your school app.',
-                                  style: TextStyle(
-                                    color: Color(0xFFDBE5EA),
-                                    fontSize: 16,
-                                    height: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                                GoldAction(
-                                  key: const ValueKey('mobile-login'),
-                                  label: 'Login',
-                                  icon: Icons.arrow_forward_rounded,
-                                  onPressed: () => onNavigate('/login'),
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton(
-                                  key: const ValueKey('mobile-register'),
-                                  onPressed: () => onNavigate('/register'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size.fromHeight(48),
-                                    side: const BorderSide(
-                                      color: Color(0xFF93A6BA),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: const Text('Create a learner account'),
-                                ),
-                                const SizedBox(height: 12),
-                                TextButton.icon(
-                                  onPressed: () => onNavigate('/parent-access'),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: publicHeaderAccent,
-                                  ),
+                                IconButton.outlined(
+                                  tooltip: 'Contact office',
+                                  onPressed: () => onNavigate('/contact'),
                                   icon: const Icon(
-                                    Icons.family_restroom_outlined,
+                                    Icons.help_outline_rounded,
+                                    size: 20,
                                   ),
-                                  label: const Text('Need access as a parent?'),
-                                ),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  children: [
-                                    for (final (label, path) in [
-                                      ('Help', '/contact'),
-                                      ('Privacy', '/privacy'),
-                                      ('Terms', '/terms'),
-                                    ])
-                                      TextButton(
-                                        onPressed: () => onNavigate(path),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: const Color(
-                                            0xFFDBE5EA,
-                                          ),
-                                        ),
-                                        child: Text(label),
-                                      ),
-                                  ],
+                                  style: IconButton.styleFrom(
+                                    side: const BorderSide(color: publicBorder),
+                                    foregroundColor: publicInk,
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
+                            SizedBox(height: compact ? 18 : 28),
+                            EntryReveal(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const EntryEyebrow(
+                                    'ASSALAMU ALAIKUM. WELCOME HOME.',
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Rooted in faith.\nReady for tomorrow.',
+                                    style: TextStyle(
+                                      fontFamily: 'NotoSerifDisplay',
+                                      fontSize: constraints.maxWidth < 360
+                                          ? 30
+                                          : 36,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.16,
+                                      letterSpacing: -1,
+                                      color: publicInk,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Your classes, lessons and progress.\nA little closer, every day.',
+                                    style: TextStyle(
+                                      color: publicMuted,
+                                      fontSize: 14,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 22),
+                                  SizedBox(
+                                    height: compact ? 160 : 205,
+                                    child: const LearningPortrait(
+                                      compact: true,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+                            GoldAction(
+                              key: const ValueKey('mobile-login'),
+                              label: 'Login',
+                              icon: Icons.arrow_forward_rounded,
+                              onPressed: () => onNavigate('/login'),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              key: const ValueKey('mobile-register'),
+                              onPressed: () => onNavigate('/register'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: publicInk,
+                                minimumSize: const Size.fromHeight(48),
+                                side: const BorderSide(
+                                  color: Color(0xFFD1C7B5),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text('Create a learner account'),
+                            ),
+                            const SizedBox(height: 6),
+                            TextButton.icon(
+                              onPressed: () => onNavigate('/parent-access'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: publicGold,
+                              ),
+                              icon: const Icon(
+                                Icons.family_restroom_outlined,
+                                size: 20,
+                              ),
+                              label: const Text('Need access as a parent?'),
+                            ),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              children: [
+                                for (final (label, path) in [
+                                  ('Help', '/contact'),
+                                  ('Privacy', '/privacy'),
+                                  ('Terms', '/terms'),
+                                ])
+                                  TextButton(
+                                    onPressed: () => onNavigate(path),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: publicMuted,
+                                    ),
+                                    child: Text(
+                                      label,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
+                ),
+              );
+            },
           ),
         ),
       ),

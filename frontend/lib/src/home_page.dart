@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'public_shell.dart';
+import 'public_entry_visuals.dart';
 import 'public_site_footer.dart';
 
 class PublicHomeScreen extends StatefulWidget {
@@ -102,7 +103,9 @@ class _HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final wide = constraints.maxWidth >= 1150;
+      final wide =
+          constraints.maxWidth >= 1150 &&
+          MediaQuery.textScalerOf(context).scale(16) < 25;
       final compact = constraints.maxWidth < 600;
       return PublicHeaderBar(
         child: Row(
@@ -214,106 +217,80 @@ class _HomeHero extends StatelessWidget {
   final VoidCallback onExplore;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final wide = constraints.maxWidth >= 900;
-      final inset = constraints.maxWidth > 1384
-          ? (constraints.maxWidth - 1320) / 2
-          : 32.0;
-      if (!wide) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
-              child: _HeroMessage(onJoin: onJoin, onExplore: onExplore),
-            ),
-            const AspectRatio(aspectRatio: 1.45, child: _HeroPhoto()),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: PublicHomeFeatures(key: featuresKey),
-            ),
-          ],
-        );
-      }
-      return SizedBox(
-        height: 664,
-        child: Stack(
-          children: [
-            Positioned(
-              top: 0,
-              bottom: 0,
-              right: 0,
-              width: constraints.maxWidth * 0.59,
-              child: const _HeroPhoto(fade: true),
-            ),
-            Positioned(
-              top: 52,
-              left: inset,
-              width: constraints.maxWidth >= 1250 ? 620 : 470,
-              child: _HeroMessage(onJoin: onJoin, onExplore: onExplore),
-            ),
-            Positioned(
-              left: inset,
-              bottom: 30,
-              width: constraints.maxWidth >= 1200 ? 790 : 630,
-              child: PublicHomeFeatures(key: featuresKey),
-            ),
-            if (constraints.maxWidth >= 1200)
-              Positioned(
-                right: 40,
-                bottom: 28,
-                width: 300,
-                child: Container(
-                  padding: const EdgeInsets.all(13),
-                  decoration: BoxDecoration(
-                    color: publicCream.withValues(alpha: 0.91),
-                    borderRadius: BorderRadius.circular(8),
+  Widget build(BuildContext context) => EntryBackdrop(
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1384),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth == 0) return const SizedBox.shrink();
+              final wide =
+                  constraints.maxWidth >= 850 &&
+                  MediaQuery.textScalerOf(context).scale(16) < 25;
+              final message = _HeroMessage(
+                onJoin: onJoin,
+                onExplore: onExplore,
+              );
+              final portrait = Column(
+                children: [
+                  const AspectRatio(
+                    aspectRatio: 1.12,
+                    child: LearningPortrait(),
                   ),
-                  child: const Text(
-                    '“My Lord, increase me in knowledge.”\nQur\'an 20:114',
+                  const SizedBox(height: 20),
+                  const Text(
+                    'FAITH AT THE HEART. LEARNING WITHOUT LIMITS.',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: publicInk,
-                      fontSize: 12,
+                      color: publicGold,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.4,
                       height: 1.6,
                     ),
                   ),
-                ),
-              ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-class _HeroPhoto extends StatelessWidget {
-  const _HeroPhoto({this.fade = false});
-  final bool fade;
-
-  @override
-  Widget build(BuildContext context) => Stack(
-    fit: StackFit.expand,
-    children: [
-      Image.asset(
-        'assets/learning-hero.png',
-        fit: BoxFit.cover,
-        alignment: const Alignment(0.25, 0),
-        semanticLabel:
-            'Illustration of a young learner studying with a tablet in a madrasa library',
-      ),
-      if (fade)
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [publicCream, Color(0xE6FCFAF6), Color(0x00FCFAF6)],
-              stops: [0, 0.12, 0.46],
-            ),
+                ],
+              );
+              return Column(
+                children: [
+                  EntryReveal(
+                    child: wide
+                        ? Row(
+                            children: [
+                              Expanded(flex: 6, child: message),
+                              const SizedBox(width: 64),
+                              Expanded(flex: 5, child: portrait),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              message,
+                              const SizedBox(height: 36),
+                              Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 520,
+                                  ),
+                                  child: portrait,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                  const SizedBox(height: 40),
+                  const Divider(color: Color(0xFFDED5C5), height: 1),
+                  const SizedBox(height: 32),
+                  PublicHomeFeatures(key: featuresKey),
+                ],
+              );
+            },
           ),
         ),
-    ],
+      ),
+    ),
   );
 }
 
@@ -323,50 +300,41 @@ class _HeroMessage extends StatelessWidget {
   final VoidCallback onExplore;
 
   @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return Column(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'ISLAMIC VALUES. MODERN SKILLS. BRIGHTER FUTURES.',
-          style: TextStyle(
-            color: publicGold,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-            height: 1.6,
-          ),
-        ),
-        const SizedBox(height: 18),
+        const EntryEyebrow('ISLAMIC VALUES. MODERN POSSIBILITIES.'),
+        const SizedBox(height: 20),
         Text(
-          'Empowering the Next\nGeneration of Muslims',
+          'Knowledge that\nshapes brighter\ntomorrows.',
           style: TextStyle(
             color: publicInk,
-            fontFamily: 'NotoSansDisplay',
-            fontSize: width >= 1250
-                ? 51
-                : width >= 600
-                ? 43
-                : 34,
+            fontFamily: 'NotoSerifDisplay',
+            fontSize: constraints.maxWidth >= 500 ? 56 : 38,
             fontWeight: FontWeight.w700,
             letterSpacing: -1.5,
-            height: 1.13,
+            height: 1.12,
           ),
         ),
-        const SizedBox(height: 22),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 505),
-          child: Text(
-            'Authentic Islamic education, modern skills and a community that supports every learner.',
-            style: TextStyle(
-              color: Color(0xFF344D68),
-              fontSize: 16,
-              height: 1.65,
-            ),
+        const SizedBox(height: 24),
+        Container(width: 52, height: 3, color: publicGold),
+        const SizedBox(height: 24),
+        const Text(
+          'Rooted in faith. Built for your future.',
+          style: TextStyle(
+            color: publicInk,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            height: 1.5,
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 10),
+        const Text(
+          'Explore Islamic education and practical skills in one connected space for learners, families and teachers.',
+          style: TextStyle(color: publicMuted, fontSize: 16, height: 1.7),
+        ),
+        const SizedBox(height: 30),
         Wrap(
           spacing: 14,
           runSpacing: 12,
@@ -379,14 +347,14 @@ class _HeroMessage extends StatelessWidget {
               onPressed: onJoin,
             ),
             SizedBox(
-              height: 48,
+              height: 52,
               child: OutlinedButton.icon(
                 onPressed: onExplore,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: publicInk,
-                  side: const BorderSide(color: publicInk),
+                  side: const BorderSide(color: Color(0xFFD1C7B5)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                 ),
@@ -399,9 +367,14 @@ class _HeroMessage extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 24),
+        const Text(
+          'For curious minds. For every stage of learning.',
+          style: TextStyle(color: publicMuted, fontSize: 12, height: 1.5),
+        ),
       ],
-    );
-  }
+    ),
+  );
 }
 
 class PublicHomeFeatures extends StatelessWidget {
@@ -526,7 +499,8 @@ class _AboutSection extends StatelessWidget {
                   'Rooted in values.\nReady for tomorrow.',
                   style: TextStyle(
                     color: publicInk,
-                    fontSize: 32,
+                    fontFamily: 'NotoSerifDisplay',
+                    fontSize: 34,
                     fontWeight: FontWeight.w700,
                     height: 1.2,
                   ),

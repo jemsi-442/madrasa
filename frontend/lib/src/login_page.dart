@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'app_state.dart';
 import 'public_shell.dart';
+import 'public_entry_visuals.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -54,23 +55,25 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const EntryEyebrow('YOUR LEARNING STARTS HERE'),
+            const SizedBox(height: 12),
             const Text(
               'Welcome Back',
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
               style: TextStyle(
+                fontFamily: 'NotoSerifDisplay',
                 color: publicInk,
-                fontSize: 30,
+                fontSize: 32,
                 fontWeight: FontWeight.w700,
                 height: 1.2,
               ),
             ),
             const SizedBox(height: 10),
             const Text(
-              'Login to your account',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: publicMuted, fontSize: 14),
+              'A little learning. A brighter tomorrow.\nSign in to continue your journey.',
+              style: TextStyle(color: publicMuted, fontSize: 14, height: 1.5),
             ),
-            const SizedBox(height: 34),
+            const SizedBox(height: 28),
             LabeledField(
               label: 'Phone number or email',
               child: TextFormField(
@@ -143,10 +146,13 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 12),
             GoldAction(
               label: 'Login',
+              icon: Icons.arrow_forward_rounded,
               busy: widget.state.busy,
               onPressed: submit,
             ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 24),
+            const Divider(color: publicBorder, height: 1),
+            const SizedBox(height: 14),
             Wrap(
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,

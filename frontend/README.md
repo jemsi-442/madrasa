@@ -64,6 +64,27 @@ If sign-in says "We could not reach the school", check the backend with
 API URL before resetting a password. A computer-only health check does not prove
 that the installed app uses the correct server.
 
+## Entry Page Design
+
+Home and account pages share the foundation's navy, warm ivory and gold palette,
+bundled Noto Serif Display headings, geometric decoration and an arch-shaped
+learning illustration. The illustration is not a photograph of an enrolled
+student (see `assets/README.md`). Native entry remains distinct from the website:
+no website navigation/footer, safe-area scrolling and app-bar back navigation.
+
+The entrance reveal respects reduced-motion settings. Layout tests cover narrow
+screens, rotation, zero-size startup, enlarged text, keyboard insets and the
+existing sign-in/registration flows. Authentication and API selection are unchanged.
+
+To capture local entry previews with the bundled fonts and image:
+
+```bash
+flutter test test/public_entry_design_test.dart --update-goldens --dart-define=ENTRY_PREVIEWS=true
+```
+
+This opt-in writes home/login previews to `/tmp/mif-{mobile,desktop}-{home,login}-v2.png`.
+Normal test runs do not write screenshots.
+
 ## Public footer
 
 On the website, the home footer groups support and information links above a separate, divided copyright strip. Login and registration retain the minimal copyright footer.
