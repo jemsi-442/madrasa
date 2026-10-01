@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/app.dart';
+import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/workspace.dart';
 
 void main() {
   testWidgets('public entry opens a sign-in form', (tester) async {
-    await tester.pumpWidget(const MifApp());
+    await tester.pumpWidget(const MifApp(layout: AppLayout.website));
     expect(find.text('Login'), findsOneWidget);
 
     await tester.tap(find.text('Login'));
@@ -53,7 +54,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MifApp());
+    await tester.pumpWidget(const MifApp(layout: AppLayout.website));
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Login'));
     await tester.pumpAndSettle();
@@ -68,7 +69,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MifApp());
+    await tester.pumpWidget(const MifApp(layout: AppLayout.website));
     await tester.tap(find.text('Login'));
     await tester.pumpAndSettle();
 

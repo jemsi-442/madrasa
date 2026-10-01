@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api_client.dart';
 import 'app_state.dart';
+import 'app_layout.dart';
 import 'dashboard_views.dart';
 import 'foundation_ui.dart';
 import 'dashboard_components.dart';
@@ -610,7 +611,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         body: Center(child: Text('No pages are available for this account.')),
       );
     }
-    final narrow = MediaQuery.sizeOf(context).width < 1000;
+    final mobile = AppLayoutScope.isMobile(context);
+    final narrow = mobile || MediaQuery.sizeOf(context).width < 1000;
     final section = sections[selectedIndex];
     final firstName = session.role == 'TEACHER'
         ? session.fullName.trim()
@@ -636,7 +638,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       appBar: narrow
           ? AppBar(
               toolbarHeight: 64,
-              title: session.role == 'ADMIN'
+              title: !mobile && session.role == 'ADMIN'
                   ? const BrandMark(compact: true)
                   : Text(
                       section.title,
@@ -689,178 +691,189 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
               ],
             )
           : null,
-      body: Row(
-        children: [
-          if (!narrow)
-            SizedBox(
-              width: collapsed ? 84 : 250,
-              child: sidebar(rail: collapsed),
-            ),
-          Expanded(
-            child: Column(
-              children: [
-                if (!narrow)
-                  WorkspaceTopBar(
-                    fullName: session.fullName,
-                    roleLabel: session.role == 'TEACHER'
-                        ? 'Teacher account'
-                        : _roleLabel(session.role),
-                    items: items,
-                    onSelect: selectSection,
-                    collapsed: collapsed,
-                    onToggle: () => setState(() => collapsed = !collapsed),
-                    onRefresh: refresh,
-                    onSignOut: requestSignOut,
-                  ),
-                Expanded(
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFFAF9F6), Color(0xFFF4F6F8)],
-                      ),
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: Row(
+          children: [
+            if (!narrow)
+              SizedBox(
+                width: collapsed ? 84 : 250,
+                child: sidebar(rail: collapsed),
+              ),
+            Expanded(
+              child: Column(
+                children: [
+                  if (!narrow)
+                    WorkspaceTopBar(
+                      fullName: session.fullName,
+                      roleLabel: session.role == 'TEACHER'
+                          ? 'Teacher account'
+                          : _roleLabel(session.role),
+                      items: items,
+                      onSelect: selectSection,
+                      collapsed: collapsed,
+                      onToggle: () => setState(() => collapsed = !collapsed),
+                      onRefresh: refresh,
+                      onSignOut: requestSignOut,
                     ),
-                    child: ListView(
-                      key: PageStorageKey(
-                        'workspace-${session.role}-$selectedIndex',
+                  Expanded(
+                    child: DecoratedBox(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFFFAF9F6), Color(0xFFF4F6F8)],
+                        ),
                       ),
-                      padding: EdgeInsets.fromLTRB(
-                        narrow ? 16 : 26,
-                        narrow ? 24 : 28,
-                        narrow ? 16 : 26,
-                        24,
-                      ),
-                      children: [
-                        Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1560),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          if (session.role == 'TEACHER') ...[
-                                            const Text(
-                                              'MY TEACHING WORKSPACE',
+                      child: ListView(
+                        key: PageStorageKey(
+                          'workspace-${session.role}-$selectedIndex',
+                        ),
+                        padding: EdgeInsets.fromLTRB(
+                          narrow ? 16 : 26,
+                          narrow ? 24 : 28,
+                          narrow ? 16 : 26,
+                          24,
+                        ),
+                        children: [
+                          Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1560),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (session.role == 'TEACHER') ...[
+                                              const Text(
+                                                'MY TEACHING WORKSPACE',
+                                                style: TextStyle(
+                                                  color: gold,
+                                                  letterSpacing: 1.6,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                            ],
+                                            Text(
+                                              selectedIndex == 0
+                                                  ? session.role == 'PARENT'
+                                                        ? 'Welcome back, $firstName!'
+                                                        : 'Assalamu alaikum, $firstName'
+                                                  : section.title,
                                               style: TextStyle(
-                                                color: gold,
-                                                letterSpacing: 1.6,
-                                                fontSize: 11,
+                                                fontFamily: 'NotoSansDisplay',
+                                                fontSize: narrow ? 26 : 30,
                                                 fontWeight: FontWeight.w700,
+                                                height: 1.2,
+                                                color: ink,
                                               ),
                                             ),
-                                            const SizedBox(height: 12),
-                                          ],
-                                          Text(
-                                            selectedIndex == 0
-                                                ? session.role == 'PARENT'
-                                                      ? 'Welcome back, $firstName!'
-                                                      : 'Assalamu alaikum, $firstName'
-                                                : section.title,
-                                            style: TextStyle(
-                                              fontFamily: 'NotoSansDisplay',
-                                              fontSize: narrow ? 26 : 30,
-                                              fontWeight: FontWeight.w700,
-                                              height: 1.2,
-                                              color: ink,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            section.purpose,
-                                            style: const TextStyle(
-                                              color: muted,
-                                              fontSize: 14,
-                                              height: 1.5,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (!narrow &&
-                                        session.role == 'TEACHER' &&
-                                        selectedIndex == 0)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 20,
-                                          top: 12,
-                                        ),
-                                        child: FilledButton.icon(
-                                          onPressed: () => openTeacher(4),
-                                          icon: const Icon(
-                                            Icons.calendar_month_outlined,
-                                            size: 18,
-                                          ),
-                                          label: const Text('Take attendance'),
-                                        ),
-                                      ),
-                                    if (!narrow &&
-                                        session.role != 'TEACHER' &&
-                                        session.role != 'PARENT' &&
-                                        MediaQuery.sizeOf(context).width >=
-                                            1280)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 24,
-                                          top: 6,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.calendar_today_outlined,
-                                              color: gold,
-                                              size: 21,
-                                            ),
-                                            const SizedBox(width: 10),
+                                            const SizedBox(height: 8),
                                             Text(
-                                              MaterialLocalizations.of(
-                                                context,
-                                              ).formatFullDate(DateTime.now()),
+                                              section.purpose,
                                               style: const TextStyle(
                                                 color: muted,
-                                                fontSize: 12,
+                                                fontSize: 14,
+                                                height: 1.5,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                KeyedSubtree(
-                                  key: ValueKey('page-$selectedIndex'),
-                                  child: pageContent(session),
-                                ),
-                                const SizedBox(height: 28),
-                                const Divider(color: line),
-                                const SizedBox(height: 12),
-                                Text(
-                                  '\u00a9 ${DateTime.now().year} Modern Islamic Foundation. All rights reserved.',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: muted,
-                                    fontSize: 11,
+                                      if (!narrow &&
+                                          session.role == 'TEACHER' &&
+                                          selectedIndex == 0)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 20,
+                                            top: 12,
+                                          ),
+                                          child: FilledButton.icon(
+                                            onPressed: () => openTeacher(4),
+                                            icon: const Icon(
+                                              Icons.calendar_month_outlined,
+                                              size: 18,
+                                            ),
+                                            label: const Text(
+                                              'Take attendance',
+                                            ),
+                                          ),
+                                        ),
+                                      if (!narrow &&
+                                          session.role != 'TEACHER' &&
+                                          session.role != 'PARENT' &&
+                                          MediaQuery.sizeOf(context).width >=
+                                              1280)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 24,
+                                            top: 6,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.calendar_today_outlined,
+                                                color: gold,
+                                                size: 21,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                MaterialLocalizations.of(
+                                                  context,
+                                                ).formatFullDate(
+                                                  DateTime.now(),
+                                                ),
+                                                style: const TextStyle(
+                                                  color: muted,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 24),
+                                  KeyedSubtree(
+                                    key: ValueKey('page-$selectedIndex'),
+                                    child: pageContent(session),
+                                  ),
+                                  if (!mobile) ...[
+                                    const SizedBox(height: 28),
+                                    const Divider(color: line),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      '\u00a9 ${DateTime.now().year} Modern Islamic Foundation. All rights reserved.',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: muted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

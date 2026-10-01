@@ -17,15 +17,38 @@ Use `flutter devices` to find Android/iOS targets. The Android emulator defaults
 flutter run -d <device-id> --dart-define=API_BASE_URL=https://api.example.com
 ```
 
-The public home opens without the backend. Signing in and creating an online learning account require the API to be running. All roles use the same sign-in form. The backend decides the role; no role picker is shown. The Flutter app keeps access and refresh tokens in memory, not in web local storage. A restart signs the user out.
+The public home opens without the backend. Signing in and creating an online learning account require the API to be running. All roles use the same sign-in form. The backend decides the role; no role picker is shown. Native access and refresh tokens remain in memory, so a full native restart requires sign-in. Web access tokens are also in memory, while the server-managed browser session can restore sign-in after a reload.
 
 The registration page creates an independent online learner through `POST /api/auth/register` and signs them in. The server assigns `LEARNER`; public callers cannot select staff roles, organization, branch, or student ownership. It does not grant paid-course access.
 
 Contact (`/#/contact`), parent access (`/#/parent-access`), and sign-in help (`/#/forgot-password`) are dedicated pages that submit office inquiries. Sign-in help is an office-assisted recovery request, not an automated password-reset flow. Parent-child linkage and staff accounts remain office-controlled.
 
+## Native Mobile Experience
+
+Installed Android/iOS builds start at a dedicated welcome screen with Login,
+learner registration and parent-access help, not the public website homepage.
+Account and help forms use an app bar, back navigation, safe areas and
+keyboard-aware scrolling. Privacy and terms remain inside the app.
+
+After sign-in, role-specific pages use a mobile app bar, bottom navigation and
+a drawer for other sections, without website header/footer content. The website
+keeps its public home and responsive desktop layout, even in a phone browser.
+Platform selection changes presentation only; API endpoints and backend
+permissions remain the source of truth. Native token persistence is not added.
+
+For USB-connected Android development with the API running on the computer:
+
+```bash
+adb reverse tcp:4000 tcp:4000
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:4000
+```
+
+Choose the Android phone if Flutter asks for a device. With an existing
+`flutter run` session, uppercase `R` reloads the new entry flow via hot restart.
+
 ## Public footer
 
-The home footer groups support and information links above a separate, divided copyright strip. Login and registration retain the minimal copyright footer.
+On the website, the home footer groups support and information links above a separate, divided copyright strip. Login and registration retain the minimal copyright footer.
 
 Terms (`/#/terms`) and privacy (`/#/privacy`) have dedicated public pages. No approved institutional legal text was supplied, so both clearly show publication-pending notices instead of invented policies. Approved terms and privacy copy are required before public release.
 

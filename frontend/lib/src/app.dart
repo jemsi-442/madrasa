@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
+import 'app_layout.dart';
+import 'mobile_welcome_page.dart';
 import 'app_state.dart';
 import 'foundation_ui.dart';
 import 'public_pages.dart';
@@ -11,9 +13,10 @@ import 'workspace.dart';
 import 'admin_theme.dart';
 
 class MifApp extends StatefulWidget {
-  const MifApp({super.key, this.state});
+  const MifApp({super.key, this.state, this.layout});
 
   final AppState? state;
+  final AppLayout? layout;
 
   @override
   State<MifApp> createState() => _MifAppState();
@@ -120,7 +123,10 @@ class _MifAppState extends State<MifApp> {
             onNavigate: navigate,
             path: path,
           ),
-          _ => PublicHomeScreen(onNavigate: navigate),
+          _ =>
+            AppLayoutScope.isMobile(context)
+                ? MobileWelcomeScreen(onNavigate: navigate)
+                : PublicHomeScreen(onNavigate: navigate),
         };
       },
     );
@@ -131,6 +137,10 @@ class _MifAppState extends State<MifApp> {
     return MaterialApp(
       title: 'Modern Islamic Foundation',
       debugShowCheckedModeBanner: false,
+      builder: (context, child) => AppLayoutScope(
+        layout: widget.layout ?? resolveAppLayout(),
+        child: child!,
+      ),
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'NotoSansDisplay',

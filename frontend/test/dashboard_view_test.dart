@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/app.dart';
+import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/app_state.dart';
 import 'package:mif_app/src/dashboard_views.dart';
 import 'package:mif_app/src/foundation_ui.dart';
@@ -96,7 +97,7 @@ void main() {
     );
     addTearDown(state.dispose);
 
-    await tester.pumpWidget(MifApp(state: state));
+    await tester.pumpWidget(MifApp(state: state, layout: AppLayout.mobile));
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -142,7 +143,7 @@ void main() {
         role: 'ADMIN',
       );
       addTearDown(state.dispose);
-      await tester.pumpWidget(MifApp(state: state));
+      await tester.pumpWidget(MifApp(state: state, layout: AppLayout.website));
       await tester.pumpAndSettle();
       final nav = find.byKey(const ValueKey('nav-0'));
       final before = tester.getTopLeft(nav);

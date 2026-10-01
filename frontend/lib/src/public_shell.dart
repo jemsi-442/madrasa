@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_layout.dart';
+
 typedef PublicNavigate = void Function(String path);
 
 const publicInk = Color(0xFF092136);
@@ -359,128 +361,200 @@ class FormNotice extends StatelessWidget {
   );
 }
 
+class MobileBackButton extends StatelessWidget {
+  const MobileBackButton({super.key, required this.onNavigate});
+
+  final PublicNavigate onNavigate;
+
+  @override
+  Widget build(BuildContext context) => BackButton(
+    onPressed: () {
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.maybePop();
+      } else {
+        onNavigate('/');
+      }
+    },
+  );
+}
+
+class MobilePublicFrame extends StatelessWidget {
+  const MobilePublicFrame({
+    super.key,
+    required this.onNavigate,
+    required this.title,
+    required this.child,
+  });
+
+  final PublicNavigate onNavigate;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Theme(
+    data: publicTheme(context),
+    child: Scaffold(
+      key: const ValueKey('mobile-auth-frame'),
+      backgroundColor: publicCream,
+      appBar: AppBar(
+        backgroundColor: publicCream,
+        leading: MobileBackButton(onNavigate: onNavigate),
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          key: const ValueKey('auth-scroll'),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class AuthFrame extends StatelessWidget {
   const AuthFrame({
     super.key,
     required this.onNavigate,
     required this.child,
     this.registration = false,
+    this.mobileTitle = 'Your account',
   });
 
   final PublicNavigate onNavigate;
   final Widget child;
   final bool registration;
+  final String mobileTitle;
 
   @override
-  Widget build(BuildContext context) => Theme(
-    data: publicTheme(context),
-    child: Scaffold(
-      backgroundColor: publicCream,
-      body: Column(
-        children: [
-          PublicHeaderBar(
-            child: Row(
+  Widget build(BuildContext context) => AppLayoutScope.isMobile(context)
+      ? MobilePublicFrame(
+          onNavigate: onNavigate,
+          title: mobileTitle,
+          child: child,
+        )
+      : Theme(
+          data: publicTheme(context),
+          child: Scaffold(
+            backgroundColor: publicCream,
+            body: Column(
               children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: InkWell(
-                      onTap: () => onNavigate('/'),
-                      borderRadius: BorderRadius.circular(8),
-                      child: PublicBrand(
-                        light: true,
-                        compact: MediaQuery.sizeOf(context).width < 600,
+                PublicHeaderBar(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: InkWell(
+                            onTap: () => onNavigate('/'),
+                            borderRadius: BorderRadius.circular(8),
+                            child: PublicBrand(
+                              light: true,
+                              compact: MediaQuery.sizeOf(context).width < 600,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 16),
+                      TextButton.icon(
+                        onPressed: () => onNavigate('/'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: const Text('Home'),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                TextButton.icon(
-                  onPressed: () => onNavigate('/'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                  label: const Text('Home'),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              bottom: false,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final wide = constraints.maxWidth >= 900;
-                  return Row(
-                    children: [
-                      if (wide)
-                        SizedBox(
-                          width: (constraints.maxWidth * 0.32).clamp(
-                            290.0,
-                            430.0,
-                          ),
-                          child: _AuthStory(registration: registration),
-                        ),
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, contentSize) =>
-                              SingleChildScrollView(
-                                key: const ValueKey('auth-scroll'),
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    minHeight: contentSize.maxHeight,
-                                  ),
-                                  child: Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: wide ? 36 : 16,
-                                      vertical: wide ? 32 : 24,
-                                    ),
-                                    child: Center(
+                Expanded(
+                  child: SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final wide = constraints.maxWidth >= 900;
+                        return Row(
+                          children: [
+                            if (wide)
+                              SizedBox(
+                                width: (constraints.maxWidth * 0.32).clamp(
+                                  290.0,
+                                  430.0,
+                                ),
+                                child: _AuthStory(registration: registration),
+                              ),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, contentSize) =>
+                                    SingleChildScrollView(
+                                      key: const ValueKey('auth-scroll'),
                                       child: ConstrainedBox(
                                         constraints: BoxConstraints(
-                                          maxWidth: registration ? 690 : 460,
+                                          minHeight: contentSize.maxHeight,
                                         ),
-                                        child: Container(
-                                          width: double.infinity,
-                                          padding: EdgeInsets.all(
-                                            wide ? 36 : 24,
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: wide ? 36 : 16,
+                                            vertical: wide ? 32 : 24,
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(0xFFE8EBEE),
-                                            ),
-                                            boxShadow: const [
-                                              BoxShadow(
-                                                color: Color(0x08092136),
-                                                blurRadius: 35,
-                                                offset: Offset(0, 12),
+                                          child: Center(
+                                            child: ConstrainedBox(
+                                              constraints: BoxConstraints(
+                                                maxWidth: registration
+                                                    ? 690
+                                                    : 460,
                                               ),
-                                            ],
+                                              child: Container(
+                                                width: double.infinity,
+                                                padding: EdgeInsets.all(
+                                                  wide ? 36 : 24,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                  border: Border.all(
+                                                    color: const Color(
+                                                      0xFFE8EBEE,
+                                                    ),
+                                                  ),
+                                                  boxShadow: const [
+                                                    BoxShadow(
+                                                      color: Color(0x08092136),
+                                                      blurRadius: 35,
+                                                      offset: Offset(0, 12),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: child,
+                                              ),
+                                            ),
                                           ),
-                                          child: child,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
                               ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const PublicFooter(),
+              ],
             ),
           ),
-          const PublicFooter(),
-        ],
-      ),
-    ),
-  );
+        );
 }
 
 class _AuthStory extends StatelessWidget {

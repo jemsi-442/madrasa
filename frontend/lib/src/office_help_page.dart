@@ -97,6 +97,11 @@ class _OfficeHelpScreenState extends State<OfficeHelpScreen> {
   @override
   Widget build(BuildContext context) => AuthFrame(
     onNavigate: widget.onNavigate,
+    mobileTitle: recovery
+        ? 'Sign-in help'
+        : parent
+        ? 'Parent access'
+        : 'Contact office',
     child: sent
         ? Column(
             mainAxisSize: MainAxisSize.min,

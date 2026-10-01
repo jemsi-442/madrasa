@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/app.dart';
+import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/app_state.dart';
 import 'package:mif_app/src/registration_page.dart';
 import 'package:mif_app/src/office_help_page.dart';
@@ -123,7 +124,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(const MifApp());
+      await tester.pumpWidget(const MifApp(layout: AppLayout.website));
       await tester.ensureVisible(find.byKey(const ValueKey('hero-register')));
       await tester.tap(find.byKey(const ValueKey('hero-register')));
       await tester.pumpAndSettle();

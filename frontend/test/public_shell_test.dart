@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/app.dart';
+import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/public_shell.dart';
 
 void main() {
@@ -16,7 +17,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(const MifApp());
+      await tester.pumpWidget(const MifApp(layout: AppLayout.website));
 
       final header = find.byKey(const ValueKey('public-header'));
       final footer = find.byKey(const ValueKey('public-footer'));
@@ -61,7 +62,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
-    await tester.pumpWidget(const MifApp());
+    await tester.pumpWidget(const MifApp(layout: AppLayout.website));
     expect(
       tester.getTopLeft(find.byKey(const ValueKey('public-header'))).dy,
       0,

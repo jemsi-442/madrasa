@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/app.dart';
+import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/app_state.dart';
 import 'package:mif_app/src/browser_state.dart';
 import 'package:mif_app/src/public_pages.dart';
@@ -130,7 +131,9 @@ void main() {
         return http.Response('{"data":[]}', 200);
       }, storage: storage);
       addTearDown(restored.dispose);
-      await tester.pumpWidget(MifApp(state: restored));
+      await tester.pumpWidget(
+        MifApp(state: restored, layout: AppLayout.website),
+      );
       await tester.pump();
       expect(find.text('Reconnecting to your account...'), findsOneWidget);
       expect(find.byType(PublicHomeScreen), findsNothing);
@@ -157,7 +160,7 @@ void main() {
         return http.Response('{"data":{}}', 200);
       });
       addTearDown(state.dispose);
-      await tester.pumpWidget(MifApp(state: state));
+      await tester.pumpWidget(MifApp(state: state, layout: AppLayout.website));
       await tester.pumpAndSettle();
       expect(find.text('Try again'), findsOneWidget);
       expect(find.byType(PublicHomeScreen), findsNothing);
@@ -178,7 +181,7 @@ void main() {
       (_) async => http.Response('{"message":"Session expired"}', 401),
     );
     addTearDown(state.dispose);
-    await tester.pumpWidget(MifApp(state: state));
+    await tester.pumpWidget(MifApp(state: state, layout: AppLayout.website));
     await tester.pumpAndSettle();
     expect(state.session, isNull);
     expect(state.restorationError, isNull);
@@ -246,7 +249,7 @@ void main() {
       storage: storage,
     );
     addTearDown(state.dispose);
-    await tester.pumpWidget(MifApp(state: state));
+    await tester.pumpWidget(MifApp(state: state, layout: AppLayout.website));
     await tester.pumpAndSettle();
     expect(find.text('Assalamu alaikum, Teacher Amina'), findsOneWidget);
     expect(find.text('Donations'), findsNothing);

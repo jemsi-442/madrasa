@@ -47,6 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) => AuthFrame(
     onNavigate: widget.onNavigate,
+    mobileTitle: 'Sign in',
     child: AutofillGroup(
       child: Form(
         key: formKey,

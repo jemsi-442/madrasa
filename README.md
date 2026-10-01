@@ -179,7 +179,9 @@ flutter pub get
 flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:4000
 ```
 
-For the Android emulator, the default API URL is `http://10.0.2.2:4000`. For a physical Android/iOS device, supply a reachable HTTPS API URL with `--dart-define=API_BASE_URL=https://your-api.example`. Local sessions are held only in memory, so users sign in again after a restart.
+Installed Android/iOS builds open a dedicated mobile welcome and account flow, with app-bar/back navigation and a role-specific bottom navigation after login. The website keeps its public homepage, including when opened in a phone browser. See the frontend guide for USB development and native session limitations.
+
+For the Android emulator, the default API URL is `http://10.0.2.2:4000`. For a physical Android/iOS device, supply a reachable HTTPS API URL with `--dart-define=API_BASE_URL=https://your-api.example`. Native sessions are held only in memory, so users sign in again after a full app restart. Browser sessions can be restored through the server after a page reload.
 
 Verification:
 

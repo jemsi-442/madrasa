@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/app.dart';
+import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/office_help_page.dart';
 import 'package:mif_app/src/public_information_page.dart';
 import 'package:mif_app/src/public_shell.dart';
@@ -28,7 +29,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, null);
       });
-      await tester.pumpWidget(const MifApp());
+      await tester.pumpWidget(const MifApp(layout: AppLayout.website));
 
       expect(find.text('Get in Touch'), findsNothing);
       expect(find.byIcon(Icons.telegram), findsNothing);

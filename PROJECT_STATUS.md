@@ -6,6 +6,33 @@ Last updated: `2026-10-01`
 
 The backend remains in place. The React client has been retired in favor of Flutter for web, Android, and iOS. This is an active frontend migration, **not a release candidate**: the first Flutter app has authentication and selected read-only role views, but many former React workflows still need rebuilding.
 
+## Native Mobile Entry and Navigation (2026-10-01)
+
+Installed Android/iOS builds now start with a dedicated welcome screen, not
+the public website homepage. Login, learner registration and office help share
+a mobile app bar, back navigation and keyboard-aware forms without website
+chrome. Terms and privacy stay inside the app with their existing
+publication-pending notices. No policies or account-linking powers are invented.
+
+Authenticated mobile workspaces keep role-specific bottom navigation and a
+drawer, including on wide tablets, and omit the website copyright footer.
+Safe areas protect content in landscape. Web, including phone browsers, keeps
+the existing homepage, public header/footer and responsive desktop workspace.
+
+Platform selection affects presentation only. Authentication endpoints,
+server-assigned roles and backend access controls are unchanged. Native tokens
+remain in memory; secure persistent sign-in and offline sync are not implemented.
+A full native restart therefore still requires sign-in. iOS device builds and
+physical-device native media playback are not verified in this stage.
+
+Verification: clean Flutter analyzer, all 259 Flutter tests, Android arm64 debug
+APK and release web build. The 25 new mobile tests cover platform selection,
+zero-size startup/recovery, phone/tablet layouts, 2x text, keyboard clearance,
+back navigation, role-scoped login/logout and learner-only registration.
+Welcome/login previews were inspected with bundled fonts/icons. Auth/navigation
+tests use mocked API responses; the running physical phone session was not
+restarted or reinstalled. Uppercase R in flutter run loads the new entry flow.
+
 ## Android Homepage Layout Fix (2026-10-01)
 
 The user's Infinix X6525 (Android 13) log confirms successful APK build,

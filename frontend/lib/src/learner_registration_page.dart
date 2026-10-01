@@ -57,6 +57,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Widget build(BuildContext context) => AuthFrame(
     onNavigate: widget.onNavigate,
     registration: true,
+    mobileTitle: 'Create account',
     child: AnimatedBuilder(
       animation: widget.state,
       builder: (context, _) => AutofillGroup(
