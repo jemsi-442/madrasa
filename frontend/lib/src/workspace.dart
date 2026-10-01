@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'api_client.dart';
 import 'accountant_page.dart';
+import 'finance_operations_page.dart';
+import 'finance_reports_page.dart';
 import 'app_state.dart';
 import 'app_layout.dart';
 import 'dashboard_views.dart';
@@ -133,6 +135,30 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/courses/access-requests',
       Icons.verified_user_outlined,
       'Follow learner requests through invoices and payments.',
+    ),
+    SectionSpec(
+      'Fee structures',
+      '/api/fee-structures',
+      Icons.price_change_outlined,
+      'Set school billing rates and review existing fee structures.',
+    ),
+    SectionSpec(
+      'Expenses',
+      '/api/expenses',
+      Icons.account_balance_wallet_outlined,
+      'Record school costs and keep clear expense records.',
+    ),
+    SectionSpec(
+      'Financial reports',
+      '/api/reports/finance/monthly-summary',
+      Icons.assessment_outlined,
+      'Review monthly collections and expenses, with CSV exports.',
+    ),
+    SectionSpec(
+      'Finance inbox',
+      '/api/public-inquiries',
+      Icons.mark_email_unread_outlined,
+      'Follow up finance questions received by the school office.',
     ),
   ],
   'TEACHER' => const [
@@ -447,6 +473,23 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
     if (session.role == 'ACCOUNTANT') {
+      if (selectedIndex == 6) {
+        return FinanceReportsPage(
+          load: widget.state.load,
+          exportCsv: widget.state.exportCsv,
+          refreshToken: refreshToken,
+        );
+      }
+      if (selectedIndex >= 4) {
+        return FinanceOperationsPage(
+          key: ValueKey('finance-operations-$selectedIndex'),
+          page: selectedIndex,
+          load: widget.state.load,
+          submit: widget.state.submit,
+          update: widget.state.update,
+          refreshToken: refreshToken,
+        );
+      }
       return AccountantPage(
         key: ValueKey('finance-${financeDestination.key}'),
         load: widget.state.load,

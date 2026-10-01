@@ -91,8 +91,9 @@ void main() {
             }
             exports++;
             expect(request.headers['Accept'], 'text/csv');
-            if (exports == 1)
+            if (exports == 1) {
               return http.Response('{"message":"Expired"}', 401);
+            }
             expect(request.headers['Authorization'], 'Bearer new-access');
             return http.Response(
               'Month,Total\nJan,25.00',

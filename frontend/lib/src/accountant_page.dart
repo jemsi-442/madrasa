@@ -788,6 +788,34 @@ class AccountantOverview extends StatelessWidget {
               accent: blue,
               onTap: () => onOpen(const FinanceDestination(3, status: 'NEW')),
             ),
+            const SizedBox(height: 18),
+            const Text(
+              'FINANCE TOOLS',
+              style: TextStyle(
+                color: muted,
+                fontSize: 10,
+                letterSpacing: 1,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (page, label, icon) in [
+                  (4, 'Fee structures', Icons.price_change_outlined),
+                  (5, 'Expenses', Icons.account_balance_wallet_outlined),
+                  (6, 'Financial reports', Icons.assessment_outlined),
+                  (7, 'Finance inbox', Icons.mark_email_unread_outlined),
+                ])
+                  OutlinedButton.icon(
+                    onPressed: () => onOpen(FinanceDestination(page)),
+                    icon: Icon(icon, size: 17),
+                    label: Text(label),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -857,7 +885,7 @@ class AccountantOverview extends StatelessWidget {
                 ),
               ),
             const FinanceNotice(
-              'View-only financial records. No payment is initiated and no balance is changed from these pages.',
+              'Invoices and payments are view-only. Use Finance tools to record fees, expenses and office follow-up. No payment is initiated here.',
               icon: Icons.lock_outline,
             ),
           ],

@@ -130,7 +130,9 @@ Those controls are not shown as working features. See
 
 ## Accountant Workspace
 
-The accountant has four destinations on both mobile and desktop:
+The accountant has eight destinations. Desktop shows all eight in the sidebar;
+mobile keeps Home, Invoices and Payments in the bottom bar and opens the other
+five through **More**. Home also has shortcuts to the new finance tools.
 
 - **Home:** reported invoice, collection, expense and cash-flow totals, plus
   shortcuts to overdue invoices, pending payments and new course requests.
@@ -141,35 +143,67 @@ The accountant has four destinations on both mobile and desktop:
   an in-app receipt.
 - **Course access:** status-filtered requests with local learner/course search,
   office notes and the latest linked invoice, including independent learners.
+- **Fee structures:** searchable, paginated rate register with active/inactive
+  filters, details and a create form for amount, billing cycle and active status.
+- **Expenses:** searchable, paginated register, date-range filters, details and a
+  create form for amount, expense date and optional description.
+- **Financial reports:** year selector, reported totals, monthly breakdown,
+  authenticated CSV preview/copy and supported-platform CSV saving.
+- **Finance inbox:** finance-only inquiries with search, status filters, contact
+  details and NEW / CONTACTED / CLOSED status updates.
 
-The primary flow is Home -> filtered register -> invoice details -> linked
+The invoice flow is Home -> filtered register -> invoice details -> linked
 payments -> payment details -> receipt. Course requests can also lead to linked
 payments. Details use a scrollable mobile bottom sheet or a desktop dialog.
 Close/back returns to the underlying list with its filters intact. Selecting a
-different bottom tab/sidebar destination opens that section without the previous
-invoice scope; Refresh retains the current page filters.
+different navigation destination clears the previous invoice scope; Refresh
+retains the current page filters.
 
-These pages are read-only. They do not initiate charges, reconcile providers,
-edit invoices, grant access, delete financial history or generate PDF exports.
-Backend permissions and tenant/branch scope still apply. Failed requests have a
-retry state, not success notifications or fabricated balances.
+Fee/expense creation validates positive TZS amounts with up to two decimals and
+blocks duplicate taps. The account's backend branch scope is used automatically;
+an unassigned accountant creates school-wide entries, with no branch/class
+override in these forms. Unsaved changes require confirmation before discarding.
+A timeout, network failure or ambiguous save result requires checking the
+register before another entry is created. This prevents an immediate blind retry,
+but is not backend idempotency.
 
-Individual records display their API currency and exact decimal amounts. The
-existing summary endpoint supplies no currency, so its totals are explicitly
-labelled as reported amounts rather than being assumed to be TZS or converted.
-Do not use that aggregate to compare mixed-currency accounts. Invoice details
-reflect the loaded list; payment details and receipts are separately fetched.
+A fee structure does not create invoices automatically. An expense is a record,
+not a bank transfer. Inquiry status updates do not send messages or prove that
+contact occurred. Invoices, payments and course requests remain read-only.
+These pages do not initiate charges, reconcile providers, edit/delete financial
+history, grant access or generate PDFs. Backend permissions and tenant/branch
+scope remain the security boundary. Failed requests show a retry/error state,
+not fabricated balances or success notifications.
+
+Individual expense/payment records display their API currency and exact decimal
+amounts. Fee templates use the backend's TZS billing convention. The summary
+endpoint supplies no currency, so aggregate totals are reported amounts, not
+assumed TZS or converted values. Do not use that aggregate to compare
+mixed-currency accounts. Invoiced less collected is a period difference, not a
+current debtor balance. Monthly groups use UTC invoice issue dates, payment
+paid dates and expense dates.
+
+CSV export uses authenticated requests, including session refresh, and rejects
+non-CSV success responses. **View CSV** stays inside the app with explicit
+copy-to-clipboard. **Save CSV** opens Android's destination picker or requests
+a browser download on web. Cancelling Android's picker does not report success.
+Other native platforms currently support preview/copy only. Exports contain
+financial information; choose an appropriate destination and recipient.
 
 Run the accountant tests, or opt in to fixture-only visual previews:
 
 ```bash
-flutter test test/accountant_page_test.dart
+flutter test test/accountant_page_test.dart test/finance_operations_test.dart test/finance_api_test.dart
 flutter test test/accountant_page_test.dart --update-goldens --dart-define=ACCOUNTANT_PREVIEWS=true
+flutter test test/finance_operations_test.dart --update-goldens --dart-define=FINANCE_OPERATIONS_PREVIEWS=true
 ```
 
-The preview command writes four pages per layout to
-`/tmp/accountant-{mobile,desktop}-{home,invoices,payments,course-access}.png`.
-It uses mock records and does not contact or alter the live finance database.
+Preview files are written to
+`/tmp/accountant-{mobile,desktop}-{home,invoices,payments,course-access}.png` and
+`/tmp/finance-{mobile,desktop}-{fee-structures,expenses,financial-reports,finance-inbox}.png`.
+They use mock records and do not contact or alter the live finance database.
+Platform-specific Save CSV visibility follows the test host; an Android-shaped
+widget preview on Linux is not a device test of the Android file picker.
 
 ## Verify
 

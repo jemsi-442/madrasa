@@ -563,13 +563,30 @@ void main() {
         await tester.pumpAndSettle();
         for (final tab in ['Home', 'Invoices', 'Payments', 'Course access']) {
           if (tab != 'Home') {
-            final finder = layout == AppLayout.mobile
-                ? find.descendant(
-                    of: find.byType(NavigationBar),
-                    matching: find.text(tab),
-                  )
-                : find.text(tab).first;
-            await _tap(tester, finder);
+            if (layout == AppLayout.mobile && tab == 'Course access') {
+              await _tap(
+                tester,
+                find.descendant(
+                  of: find.byType(NavigationBar),
+                  matching: find.text('More'),
+                ),
+              );
+              await _tap(
+                tester,
+                find.descendant(
+                  of: find.byType(Drawer),
+                  matching: find.text(tab),
+                ),
+              );
+            } else {
+              final finder = layout == AppLayout.mobile
+                  ? find.descendant(
+                      of: find.byType(NavigationBar),
+                      matching: find.text(tab),
+                    )
+                  : find.text(tab).first;
+              await _tap(tester, finder);
+            }
           }
           expect(tester.takeException(), isNull);
           await expectLater(

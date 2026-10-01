@@ -73,10 +73,10 @@ class FinanceStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      'PAID' || 'COMPLETED' || 'APPROVED' => forest,
+      'PAID' || 'COMPLETED' || 'APPROVED' || 'ACTIVE' || 'CLOSED' => forest,
       'OVERDUE' || 'FAILED' || 'REJECTED' => const Color(0xFFAF3844),
       'PENDING' || 'NEW' => const Color(0xFF89651B),
-      'PARTIALLY_PAID' || 'REVIEWING' => blue,
+      'PARTIALLY_PAID' || 'REVIEWING' || 'CONTACTED' => blue,
       _ => muted,
     };
     return Container(
