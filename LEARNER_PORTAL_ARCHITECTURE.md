@@ -157,9 +157,13 @@ two-page PDF (navigation/zoom), image/text rendering, unsupported attachments,
 no external tabs, revoked access, disposal, mobile PDF/video, completion and
 session refresh. Screenshots were inspected and temporary fixtures removed.
 Native controls/late initialization/disposal are covered with a fake platform.
-No device/emulator is available; Android debug build was attempted but blocked
-by the unaccepted/missing NDK 28.2.13676358 SDK component. iOS and live provider
-playback remain unverified; embedded-provider content is mocked in browser tests.
+The initial Android debug build was blocked by the unaccepted/missing NDK
+28.2.13676358 SDK component. Follow-up on 2026-10-01: the user's Infinix X6525
+(Android 13) log confirms successful build, installation and Flutter startup
+after SDK setup. Its transient-width homepage assertion was reproduced and
+fixed with widget regression tests (see PROJECT_STATUS.md). Actual Android/iOS
+media playback and live provider playback remain unverified; embedded-provider
+content is mocked in browser tests.
 
 ### Large-Video Upload Integration Boundary
 

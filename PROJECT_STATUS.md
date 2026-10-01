@@ -6,6 +6,22 @@ Last updated: `2026-10-01`
 
 The backend remains in place. The React client has been retired in favor of Flutter for web, Android, and iOS. This is an active frontend migration, **not a release candidate**: the first Flutter app has authentication and selected read-only role views, but many former React workflows still need rebuilding.
 
+## Android Homepage Layout Fix (2026-10-01)
+
+The user's Infinix X6525 (Android 13) log confirms successful APK build,
+installation and Flutter startup after completing SDK/NDK setup. It also exposed
+a homepage layout assertion: zero available feature-strip width produced a
+negative card width of -10. A regression test reproduced that exact failure
+before the fix. The strip now handles zero width and uses a single column for
+narrow constraints, preserving two/four columns at normal phone/desktop widths.
+
+Verification: Flutter analyzer and all 234 tests pass, including 16 new cases
+covering tiny widths, collapsed-width recovery, column breakpoints and full-page
+phone/desktop resizing with working login navigation. The updated Android arm64
+debug APK also builds successfully with API_BASE_URL=http://127.0.0.1:4000.
+This is not verification of live native media playback; the running device
+session was left untouched. Hot restart it with uppercase R to load the fix.
+
 ## Latest Learner Portal Stage (2026-10-01)
 
 Lesson video/audio, images, PDFs and plain text now open inside the portal.
@@ -23,8 +39,9 @@ Backend build and 118 tests pass. Flutter analyzer, 218 tests and release web
 build pass. Chromium verifies actual PDF/image/text/video/audio, no new tabs,
 mobile PDF/video, revocation, disposal and completion/session refresh. Native
 controls use fake-platform tests; live provider embeds use mocked content.
-Android build was attempted but blocked by the missing/unaccepted NDK
-28.2.13676358 SDK component; actual Android/iOS playback remains unverified.
+The initial Android build's missing/unaccepted NDK blocker has since been
+resolved (see the Android follow-up above). Actual Android/iOS media playback
+remains unverified.
 
 ## Previous Courses Stage (2026-09-30)
 

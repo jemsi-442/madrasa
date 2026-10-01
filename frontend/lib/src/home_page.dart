@@ -231,7 +231,7 @@ class _HomeHero extends StatelessWidget {
             const AspectRatio(aspectRatio: 1.45, child: _HeroPhoto()),
             Padding(
               padding: const EdgeInsets.all(24),
-              child: _FeatureStrip(key: featuresKey),
+              child: PublicHomeFeatures(key: featuresKey),
             ),
           ],
         );
@@ -257,7 +257,7 @@ class _HomeHero extends StatelessWidget {
               left: inset,
               bottom: 30,
               width: constraints.maxWidth >= 1200 ? 790 : 630,
-              child: _FeatureStrip(key: featuresKey),
+              child: PublicHomeFeatures(key: featuresKey),
             ),
             if (constraints.maxWidth >= 1200)
               Positioned(
@@ -404,13 +404,19 @@ class _HeroMessage extends StatelessWidget {
   }
 }
 
-class _FeatureStrip extends StatelessWidget {
-  const _FeatureStrip({super.key});
+class PublicHomeFeatures extends StatelessWidget {
+  const PublicHomeFeatures({super.key});
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final columns = constraints.maxWidth >= 600 ? 4 : 2;
+      // Window-size transitions can briefly leave no space after page padding.
+      if (constraints.maxWidth == 0) return const SizedBox.shrink();
+      final columns = switch (constraints.maxWidth) {
+        >= 600 => 4,
+        >= 260 => 2,
+        _ => 1,
+      };
       final width = (constraints.maxWidth - 20 * (columns - 1)) / columns;
       const features = [
         (
