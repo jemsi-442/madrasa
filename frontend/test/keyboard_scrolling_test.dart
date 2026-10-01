@@ -57,6 +57,110 @@ Widget harness(Widget child, {bool reducedMotion = false}) => MaterialApp(
 );
 
 void main() {
+  desktopTest('arrow steps respond quickly and page distance stays unchanged', (
+    tester,
+  ) async {
+    viewport(tester);
+    await tester.pumpWidget(
+      harness(
+        const SingleChildScrollView(
+          primary: true,
+          child: SizedBox(height: 4000),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scroll = position(tester, primaryView);
+    final context = tester.element(find.byType(Scaffold));
+    Actions.invoke(context, const ScrollIntent(direction: AxisDirection.down));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(scroll.pixels, greaterThan(70));
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(scroll.pixels, closeTo(100, 0.1));
+    await tester.pumpAndSettle();
+    Actions.invoke(
+      context,
+      const ScrollIntent(
+        direction: AxisDirection.down,
+        type: ScrollIncrementType.page,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(scroll.pixels, closeTo(100 + scroll.viewportDimension * 0.8, 0.1));
+  });
+
+  desktopTest('held arrows keep moving and reverse without a slow restart', (
+    tester,
+  ) async {
+    viewport(tester);
+    await tester.pumpWidget(
+      harness(
+        const SingleChildScrollView(
+          primary: true,
+          child: SizedBox(height: 4000),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scroll = position(tester, primaryView);
+    final context = tester.element(find.byType(Scaffold));
+    for (var i = 0; i < 12; i++) {
+      if (kIsWeb) {
+        if (i == 0) {
+          await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+        } else {
+          await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowDown);
+        }
+      } else {
+        Actions.invoke(
+          context,
+          const ScrollIntent(direction: AxisDirection.down),
+        );
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 33));
+    }
+    if (kIsWeb) await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+    expect(scroll.pixels, greaterThan(700));
+    final beforeReverse = scroll.pixels;
+    Actions.invoke(context, const ScrollIntent(direction: AxisDirection.up));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 33));
+    expect(scroll.pixels, lessThan(beforeReverse - 70));
+    await tester.pumpAndSettle();
+    final settled = scroll.pixels;
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(scroll.pixels, settled);
+  });
+
+  desktopTest('fast arrow steps respect reduced motion and both boundaries', (
+    tester,
+  ) async {
+    viewport(tester);
+    await tester.pumpWidget(
+      harness(
+        const SingleChildScrollView(
+          primary: true,
+          child: SizedBox(height: 4000),
+        ),
+        reducedMotion: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scroll = position(tester, primaryView);
+    final context = tester.element(find.byType(Scaffold));
+    Actions.invoke(context, const ScrollIntent(direction: AxisDirection.down));
+    expect(scroll.pixels, 100);
+    scroll.jumpTo(scroll.maxScrollExtent - 20);
+    Actions.invoke(context, const ScrollIntent(direction: AxisDirection.down));
+    expect(scroll.pixels, scroll.maxScrollExtent);
+    scroll.jumpTo(20);
+    Actions.invoke(context, const ScrollIntent(direction: AxisDirection.up));
+    expect(scroll.pixels, 0);
+    await tester.pumpAndSettle();
+  });
+
   desktopTest('dropdown keys stay in the menu and do not scroll the page', (
     tester,
   ) async {

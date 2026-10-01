@@ -62,8 +62,9 @@ void _move(ScrollableState target, double offset, BuildContext context) {
     offset,
     duration: MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
-        : const Duration(milliseconds: 100),
-    curve: Curves.easeInOut,
+        : const Duration(milliseconds: 80),
+    // Key repeats must not continually restart the slow part of an ease-in.
+    curve: Curves.easeOutCubic,
   );
 }
 
@@ -79,12 +80,12 @@ class PageScrollAction extends ContextAction<ScrollIntent> {
       axisDirectionToAxis(intent.direction),
     );
     if (target == null || context == null) return;
-    _move(
-      target,
-      target.position.pixels +
-          ScrollAction.getDirectionalIncrement(target, intent),
-      context,
-    );
+    var increment = ScrollAction.getDirectionalIncrement(target, intent);
+    if (intent.type == ScrollIncrementType.line &&
+        target.widget.incrementCalculator == null) {
+      increment *= 2;
+    }
+    _move(target, target.position.pixels + increment, context);
   }
 }
 

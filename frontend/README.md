@@ -87,7 +87,9 @@ On the website, use Up/Down to scroll a little, Page Up/Page Down or
 Space/Shift+Space to scroll a page, and Home/End (also Ctrl+Home/Ctrl+End)
 to jump to the start/end. Tab and Shift+Tab still move between controls.
 Focused inputs retain text-editing keys, dropdown arrows select options, and
-Space activates a focused button instead of scrolling.
+Space activates a focused button instead of scrolling. Default arrow steps are
+100 logical pixels, using an 80 ms fast-start animation so held keys do not
+continually restart a slow ease-in. Page steps and custom increments are unchanged.
 
 Main pages and dialogs have explicit primary scroll targets. Sidebar navigation
 returns focus to the new page, while the small-screen drawer has an independent
