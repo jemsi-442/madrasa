@@ -128,6 +128,49 @@ communications delivery, notifications/global record search and offline sync.
 Those controls are not shown as working features. See
 [the admin domain contract](../ADMIN_PANEL_ARCHITECTURE.md) for their data design.
 
+## Accountant Workspace
+
+The accountant has four destinations on both mobile and desktop:
+
+- **Home:** reported invoice, collection, expense and cash-flow totals, plus
+  shortcuts to overdue invoices, pending payments and new course requests.
+- **Invoices:** debounced server search, status filters, pagination, balances and
+  a detail view with the learner, fee and due date.
+- **Payments:** server search, status/channel filters and invoice-scoped records.
+  Opening a payment fetches its latest saved details; completed payments can open
+  an in-app receipt.
+- **Course access:** status-filtered requests with local learner/course search,
+  office notes and the latest linked invoice, including independent learners.
+
+The primary flow is Home -> filtered register -> invoice details -> linked
+payments -> payment details -> receipt. Course requests can also lead to linked
+payments. Details use a scrollable mobile bottom sheet or a desktop dialog.
+Close/back returns to the underlying list with its filters intact. Selecting a
+different bottom tab/sidebar destination opens that section without the previous
+invoice scope; Refresh retains the current page filters.
+
+These pages are read-only. They do not initiate charges, reconcile providers,
+edit invoices, grant access, delete financial history or generate PDF exports.
+Backend permissions and tenant/branch scope still apply. Failed requests have a
+retry state, not success notifications or fabricated balances.
+
+Individual records display their API currency and exact decimal amounts. The
+existing summary endpoint supplies no currency, so its totals are explicitly
+labelled as reported amounts rather than being assumed to be TZS or converted.
+Do not use that aggregate to compare mixed-currency accounts. Invoice details
+reflect the loaded list; payment details and receipts are separately fetched.
+
+Run the accountant tests, or opt in to fixture-only visual previews:
+
+```bash
+flutter test test/accountant_page_test.dart
+flutter test test/accountant_page_test.dart --update-goldens --dart-define=ACCOUNTANT_PREVIEWS=true
+```
+
+The preview command writes four pages per layout to
+`/tmp/accountant-{mobile,desktop}-{home,invoices,payments,course-access}.png`.
+It uses mock records and does not contact or alter the live finance database.
+
 ## Verify
 
 ```bash

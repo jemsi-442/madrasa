@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
+import 'accountant_page.dart';
 import 'app_state.dart';
 import 'app_layout.dart';
 import 'dashboard_views.dart';
@@ -113,25 +114,25 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       'Home',
       '/api/reports/finance/home',
       Icons.home_outlined,
-      'Your finance overview',
+      'School fees, payment records and follow-up in one workspace.',
     ),
     SectionSpec(
       'Invoices',
       '/api/invoices?page=1&pageSize=20',
       Icons.receipt_long_outlined,
-      'Issued invoices',
+      'Check invoice balances and follow each payment trail.',
     ),
     SectionSpec(
       'Payments',
       '/api/payments?page=1&pageSize=20',
       Icons.payments_outlined,
-      'Payment records',
+      'Verify payment status and view confirmed receipts.',
     ),
     SectionSpec(
       'Course access',
       '/api/courses/access-requests',
       Icons.verified_user_outlined,
-      'Course payment follow-up',
+      'Follow learner requests through invoices and payments.',
     ),
   ],
   'TEACHER' => const [
@@ -344,6 +345,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   final quranKey = GlobalKey<TeacherQuranPageState>();
   String? teachingClassId;
   String? familyChildId;
+  FinanceDestination financeDestination = const FinanceDestination(0);
   Map<String, dynamic>? teachingStudent;
 
   bool get dedicated =>
@@ -351,6 +353,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       sections[selectedIndex].path == '/api/assessments' ||
       sections[selectedIndex].path == '/api/family-messages/conversations' ||
       widget.state.session?.role == 'PARENT' ||
+      widget.state.session?.role == 'ACCOUNTANT' ||
       (widget.state.session?.role == 'LEARNER' &&
           (selectedIndex <= 1 || selectedIndex >= 5)) ||
       (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
@@ -376,6 +379,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       (s) => s.path == widget.state.rememberedSection,
     );
     selectedIndex = remembered < 0 ? 0 : remembered;
+    financeDestination = FinanceDestination(selectedIndex);
     currentData = sections.isEmpty ? Future.value(null) : loadCurrent();
   }
 
@@ -400,7 +404,20 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     scaffoldKey.currentState?.closeDrawer();
   }
 
+  void openFinance(FinanceDestination destination) {
+    setState(() {
+      financeDestination = destination;
+      selectedIndex = destination.page;
+      widget.state.rememberSection(sections[selectedIndex].path);
+    });
+    scaffoldKey.currentState?.closeDrawer();
+  }
+
   void selectSection(int index) async {
+    if (widget.state.session?.role == 'ACCOUNTANT') {
+      openFinance(FinanceDestination(index));
+      return;
+    }
     if (index != selectedIndex) {
       if (!await leaveTeacherDraft() || !mounted) return;
       setState(() {
@@ -429,6 +446,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   Widget pageContent(AuthSession session) {
     final section = sections[selectedIndex];
+    if (session.role == 'ACCOUNTANT') {
+      return AccountantPage(
+        key: ValueKey('finance-${financeDestination.key}'),
+        load: widget.state.load,
+        destination: financeDestination,
+        onOpen: openFinance,
+        refreshToken: refreshToken,
+      );
+    }
     if (section.path == '/api/student-reports') {
       return StudentReportsPage(
         load: widget.state.load,
@@ -752,10 +778,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            if (session.role == 'TEACHER') ...[
-                                              const Text(
-                                                'MY TEACHING WORKSPACE',
-                                                style: TextStyle(
+                                            if (session.role == 'TEACHER' ||
+                                                session.role ==
+                                                    'ACCOUNTANT') ...[
+                                              Text(
+                                                session.role == 'ACCOUNTANT'
+                                                    ? 'MY FINANCE WORKSPACE'
+                                                    : 'MY TEACHING WORKSPACE',
+                                                style: const TextStyle(
                                                   color: gold,
                                                   letterSpacing: 1.6,
                                                   fontSize: 11,
