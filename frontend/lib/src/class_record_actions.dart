@@ -51,6 +51,7 @@ class _ClassRecordActionsState extends State<ClassRecordActions> {
           builder: (context) => AlertDialog(
             title: const Text('This class cannot be removed'),
             content: SingleChildScrollView(
+              primary: true,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,6 +223,7 @@ class _ClassHistory extends StatelessWidget {
       content: SizedBox(
         width: 540,
         child: SingleChildScrollView(
+          primary: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,

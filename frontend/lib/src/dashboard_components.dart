@@ -545,6 +545,7 @@ Future<void> showRecordDetails(
     content: SizedBox(
       width: 460,
       child: SingleChildScrollView(
+        primary: true,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

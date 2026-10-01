@@ -152,6 +152,7 @@ class _FinanceEntryState extends State<_FinanceEntry> {
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
+          primary: true,
           child: Form(
             key: form,
             onChanged: () {

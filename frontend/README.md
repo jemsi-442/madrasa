@@ -81,6 +81,32 @@ and is not enabled at boot. Before starting `npm run dev` in `backend/`, stop
 it with `systemctl --user stop mif-backend-preview.service` to free port 4000.
 Stopping either preview does not delete database records.
 
+## Keyboard Navigation
+
+On the website, use Up/Down to scroll a little, Page Up/Page Down or
+Space/Shift+Space to scroll a page, and Home/End (also Ctrl+Home/Ctrl+End)
+to jump to the start/end. Tab and Shift+Tab still move between controls.
+Focused inputs retain text-editing keys, dropdown arrows select options, and
+Space activates a focused button instead of scrolling.
+
+Main pages and dialogs have explicit primary scroll targets. Sidebar navigation
+returns focus to the new page, while the small-screen drawer has an independent
+scroll scope. Horizontal tables keep Left/Right scrolling without swallowing
+vertical page keys. Native platforms retain Flutter's platform key bindings.
+
+When adding a page, mark its main vertical scroll view `primary: true`.
+Do not share that primary controller with a sidebar or nested secondary view;
+use a separate controller or `primary: false` there. Dialog routes get their
+own primary controller. These changes do not intercept player/iframe keyboard
+events outside Flutter.
+
+Regression checks (Chrome is required for the second command):
+
+```bash
+flutter test test/keyboard_scrolling_test.dart
+flutter test --platform chrome test/keyboard_scrolling_test.dart
+```
+
 ## Native Mobile Experience
 
 Installed Android/iOS builds start at a dedicated welcome screen with Login,

@@ -628,6 +628,7 @@ class _ReceiptState extends State<_Receipt> {
     content: SizedBox(
       width: 420,
       child: SingleChildScrollView(
+        primary: true,
         child: PageResult(
           future: future,
           onRetry: () {

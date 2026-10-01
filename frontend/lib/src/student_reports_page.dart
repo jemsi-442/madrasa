@@ -628,6 +628,7 @@ class _StudentReportEditorState extends State<StudentReportEditor> {
                 const SizedBox(height: 12),
                 Flexible(
                   child: SingleChildScrollView(
+                    primary: true,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

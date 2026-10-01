@@ -89,6 +89,7 @@ class _ClassTimetableState extends State<_ClassTimetable> {
       width: 900,
       height: MediaQuery.sizeOf(context).height * .65,
       child: SingleChildScrollView(
+        primary: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

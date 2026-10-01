@@ -57,6 +57,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
           ),
           Expanded(
             child: SingleChildScrollView(
+              primary: true,
               child: Column(
                 children: [
                   _HomeHero(

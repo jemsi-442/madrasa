@@ -111,6 +111,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
             ),
             Expanded(
               child: SingleChildScrollView(
+                primary: true,
                 padding: const EdgeInsets.all(20),
                 child: PageResult(
                   future: current,

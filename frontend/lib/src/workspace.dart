@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'keyboard_scrolling.dart';
 import 'api_client.dart';
 import 'accountant_page.dart';
 import 'finance_operations_page.dart';
@@ -361,6 +362,7 @@ class WorkspaceScreen extends StatefulWidget {
 
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  final contentFocus = FocusNode(debugLabel: 'Workspace content');
   int selectedIndex = 0;
   int refreshToken = 0;
   bool collapsed = false;
@@ -393,6 +395,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         'Donations',
       ].contains(sections[selectedIndex].title);
 
+  @override
+  void dispose() {
+    contentFocus.dispose();
+    super.dispose();
+  }
+
   Future<dynamic> loadCurrent() => dedicated
       ? Future.value(null)
       : widget.state.load(sections[selectedIndex].path);
@@ -420,6 +428,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     Map<String, dynamic>? student,
   }) async {
     if (!await leaveTeacherDraft() || !mounted) return;
+    contentFocus.requestFocus();
     setState(() {
       teachingClassId = classId;
       teachingStudent = student;
@@ -431,6 +440,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   void openFinance(FinanceDestination destination) {
+    contentFocus.requestFocus();
     setState(() {
       financeDestination = destination;
       selectedIndex = destination.page;
@@ -446,6 +456,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
     if (index != selectedIndex) {
       if (!await leaveTeacherDraft() || !mounted) return;
+      contentFocus.requestFocus();
       setState(() {
         teachingStudent = null;
         selectedIndex = index;
@@ -692,21 +703,30 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     final visibleTabs = sections.length > 4 ? 3 : sections.length;
     final items = sections.map((s) => (s.title, s.icon)).toList();
 
-    Widget sidebar({bool rail = false}) => WorkspaceSidebar(
-      items: items,
-      selected: selectedIndex,
-      onSelect: selectSection,
-      roleLabel: _roleLabel(session.role),
-      collapsed: rail,
-      groups: !mobile && session.role == 'ACCOUNTANT'
-          ? const {0: 'Overview', 1: 'Collections', 4: 'Finance tools'}
-          : const {},
-    );
+    Widget sidebar({bool rail = false, bool primary = false}) =>
+        WorkspaceSidebar(
+          items: items,
+          selected: selectedIndex,
+          onSelect: selectSection,
+          roleLabel: _roleLabel(session.role),
+          collapsed: rail,
+          primary: primary,
+          groups: !mobile && session.role == 'ACCOUNTANT'
+              ? const {0: 'Overview', 1: 'Collections', 4: 'Finance tools'}
+              : const {},
+        );
 
     return Scaffold(
       key: scaffoldKey,
       backgroundColor: paper,
-      drawer: narrow ? Drawer(backgroundColor: ink, child: sidebar()) : null,
+      drawer: narrow
+          ? KeyboardScrollScope(
+              child: Drawer(
+                backgroundColor: ink,
+                child: sidebar(primary: true),
+              ),
+            )
+          : null,
       appBar: narrow
           ? AppBar(
               toolbarHeight: 64,
@@ -798,150 +818,159 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                           colors: [Color(0xFFFAF9F6), Color(0xFFF4F6F8)],
                         ),
                       ),
-                      child: ListView(
-                        key: PageStorageKey(
-                          'workspace-${session.role}-$selectedIndex',
-                        ),
-                        padding: EdgeInsets.fromLTRB(
-                          narrow ? 16 : 26,
-                          narrow ? 24 : 28,
-                          narrow ? 16 : 26,
-                          24,
-                        ),
-                        children: [
-                          Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 1560),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (session.role == 'TEACHER' ||
-                                                session.role ==
-                                                    'ACCOUNTANT') ...[
-                                              Text(
-                                                session.role == 'ACCOUNTANT'
-                                                    ? 'MY FINANCE WORKSPACE'
-                                                    : 'MY TEACHING WORKSPACE',
-                                                style: const TextStyle(
-                                                  color: gold,
-                                                  letterSpacing: 1.6,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 12),
-                                            ],
-                                            Text(
-                                              selectedIndex == 0
-                                                  ? session.role == 'PARENT'
-                                                        ? 'Welcome back, $firstName!'
-                                                        : 'Assalamu alaikum, $firstName'
-                                                  : section.title,
-                                              style: TextStyle(
-                                                fontFamily: 'NotoSansDisplay',
-                                                fontSize: narrow ? 26 : 30,
-                                                fontWeight: FontWeight.w700,
-                                                height: 1.2,
-                                                color: ink,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              section.purpose,
-                                              style: const TextStyle(
-                                                color: muted,
-                                                fontSize: 14,
-                                                height: 1.5,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      if (!narrow &&
-                                          session.role == 'TEACHER' &&
-                                          selectedIndex == 0)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 20,
-                                            top: 12,
-                                          ),
-                                          child: FilledButton.icon(
-                                            onPressed: () => openTeacher(4),
-                                            icon: const Icon(
-                                              Icons.calendar_month_outlined,
-                                              size: 18,
-                                            ),
-                                            label: const Text(
-                                              'Take attendance',
-                                            ),
-                                          ),
-                                        ),
-                                      if (!narrow &&
-                                          session.role != 'TEACHER' &&
-                                          session.role != 'PARENT' &&
-                                          MediaQuery.sizeOf(context).width >=
-                                              1280)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 24,
-                                            top: 6,
-                                          ),
-                                          child: Row(
+                      child: Focus(
+                        focusNode: contentFocus,
+                        autofocus: true,
+                        skipTraversal: true,
+                        child: ListView(
+                          primary: true,
+                          key: PageStorageKey(
+                            'workspace-${session.role}-$selectedIndex',
+                          ),
+                          padding: EdgeInsets.fromLTRB(
+                            narrow ? 16 : 26,
+                            narrow ? 24 : 28,
+                            narrow ? 16 : 26,
+                            24,
+                          ),
+                          children: [
+                            Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 1560,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              const Icon(
-                                                Icons.calendar_today_outlined,
-                                                color: gold,
-                                                size: 21,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Text(
-                                                MaterialLocalizations.of(
-                                                  context,
-                                                ).formatFullDate(
-                                                  DateTime.now(),
+                                              if (session.role == 'TEACHER' ||
+                                                  session.role ==
+                                                      'ACCOUNTANT') ...[
+                                                Text(
+                                                  session.role == 'ACCOUNTANT'
+                                                      ? 'MY FINANCE WORKSPACE'
+                                                      : 'MY TEACHING WORKSPACE',
+                                                  style: const TextStyle(
+                                                    color: gold,
+                                                    letterSpacing: 1.6,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
                                                 ),
+                                                const SizedBox(height: 12),
+                                              ],
+                                              Text(
+                                                selectedIndex == 0
+                                                    ? session.role == 'PARENT'
+                                                          ? 'Welcome back, $firstName!'
+                                                          : 'Assalamu alaikum, $firstName'
+                                                    : section.title,
+                                                style: TextStyle(
+                                                  fontFamily: 'NotoSansDisplay',
+                                                  fontSize: narrow ? 26 : 30,
+                                                  fontWeight: FontWeight.w700,
+                                                  height: 1.2,
+                                                  color: ink,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                section.purpose,
                                                 style: const TextStyle(
                                                   color: muted,
-                                                  fontSize: 12,
+                                                  fontSize: 14,
+                                                  height: 1.5,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 24),
-                                  KeyedSubtree(
-                                    key: ValueKey('page-$selectedIndex'),
-                                    child: pageContent(session),
-                                  ),
-                                  if (!mobile) ...[
-                                    const SizedBox(height: 28),
-                                    const Divider(color: line),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      '\u00a9 ${DateTime.now().year} Modern Islamic Foundation. All rights reserved.',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: muted,
-                                        fontSize: 11,
-                                      ),
+                                        if (!narrow &&
+                                            session.role == 'TEACHER' &&
+                                            selectedIndex == 0)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 20,
+                                              top: 12,
+                                            ),
+                                            child: FilledButton.icon(
+                                              onPressed: () => openTeacher(4),
+                                              icon: const Icon(
+                                                Icons.calendar_month_outlined,
+                                                size: 18,
+                                              ),
+                                              label: const Text(
+                                                'Take attendance',
+                                              ),
+                                            ),
+                                          ),
+                                        if (!narrow &&
+                                            session.role != 'TEACHER' &&
+                                            session.role != 'PARENT' &&
+                                            MediaQuery.sizeOf(context).width >=
+                                                1280)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 24,
+                                              top: 6,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.calendar_today_outlined,
+                                                  color: gold,
+                                                  size: 21,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Text(
+                                                  MaterialLocalizations.of(
+                                                    context,
+                                                  ).formatFullDate(
+                                                    DateTime.now(),
+                                                  ),
+                                                  style: const TextStyle(
+                                                    color: muted,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
                                     ),
+                                    const SizedBox(height: 24),
+                                    KeyedSubtree(
+                                      key: ValueKey('page-$selectedIndex'),
+                                      child: pageContent(session),
+                                    ),
+                                    if (!mobile) ...[
+                                      const SizedBox(height: 28),
+                                      const Divider(color: line),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        '\u00a9 ${DateTime.now().year} Modern Islamic Foundation. All rights reserved.',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: muted,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

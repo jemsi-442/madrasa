@@ -11,6 +11,7 @@ class WorkspaceSidebar extends StatelessWidget {
     required this.onSelect,
     required this.roleLabel,
     this.collapsed = false,
+    this.primary = false,
     this.groups = const {},
   });
   final List<(String, IconData)> items;
@@ -18,6 +19,7 @@ class WorkspaceSidebar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final String roleLabel;
   final bool collapsed;
+  final bool primary;
   final Map<int, String> groups;
 
   @override
@@ -48,6 +50,7 @@ class WorkspaceSidebar extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
+                primary: primary,
                 padding: const EdgeInsets.symmetric(
                   vertical: 24,
                   horizontal: 12,
@@ -348,6 +351,7 @@ class _PageSearchState extends State<_PageSearch> {
           const SizedBox(height: 12),
           Flexible(
             child: SingleChildScrollView(
+              primary: true,
               child: Column(
                 children: [
                   for (var i = 0; i < widget.items.length; i++)

@@ -233,6 +233,7 @@ class _TeachersPageState extends State<TeachersPage> {
                                       content: SizedBox(
                                         width: 460,
                                         child: SingleChildScrollView(
+                                          primary: true,
                                           child: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment:
@@ -603,6 +604,7 @@ class _SubjectCoursesState extends State<_SubjectCourses> {
     content: SizedBox(
       width: 560,
       child: SingleChildScrollView(
+        primary: true,
         child: PageResult(
           future: future,
           onRetry: () {

@@ -20,6 +20,7 @@ class MobileWelcomeScreen extends StatelessWidget {
               if (constraints.biggest.isEmpty) return const SizedBox.shrink();
               final compact = constraints.maxHeight < 720;
               return SingleChildScrollView(
+                primary: true,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: Center(

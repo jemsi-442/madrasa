@@ -183,6 +183,7 @@ class _AdminFormState extends State<_AdminForm> {
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
+          primary: true,
           child: Form(
             key: formKey,
             child: Column(
@@ -359,6 +360,7 @@ class _RecordPickerState extends State<_RecordPicker> {
           const SizedBox(height: 12),
           Expanded(
             child: SingleChildScrollView(
+              primary: true,
               child: PageResult(
                 future: future,
                 onRetry: reload,

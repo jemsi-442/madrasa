@@ -400,6 +400,7 @@ class MobilePublicFrame extends StatelessWidget {
         child: SafeArea(
           top: false,
           child: SingleChildScrollView(
+            primary: true,
             key: const ValueKey('auth-scroll'),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -538,6 +539,7 @@ class AuthFrame extends StatelessWidget {
                               child: LayoutBuilder(
                                 builder: (context, contentSize) =>
                                     SingleChildScrollView(
+                                      primary: true,
                                       key: const ValueKey('auth-scroll'),
                                       child: ConstrainedBox(
                                         constraints: BoxConstraints(
@@ -612,6 +614,7 @@ class _AuthStory extends StatelessWidget {
         dark: true,
         child: LayoutBuilder(
           builder: (context, constraints) => SingleChildScrollView(
+            primary: false,
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: Column(

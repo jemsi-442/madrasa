@@ -11,6 +11,7 @@ import 'public_information_page.dart';
 import 'registration_page.dart';
 import 'workspace.dart';
 import 'admin_theme.dart';
+import 'keyboard_scrolling.dart';
 
 class MifApp extends StatefulWidget {
   const MifApp({super.key, this.state, this.layout});
@@ -137,6 +138,10 @@ class _MifAppState extends State<MifApp> {
     return MaterialApp(
       title: 'Modern Islamic Foundation',
       debugShowCheckedModeBanner: false,
+      shortcuts: (widget.layout ?? resolveAppLayout()) == AppLayout.website
+          ? pageKeyboardShortcuts
+          : null,
+      actions: pageKeyboardActions,
       builder: (context, child) => AppLayoutScope(
         layout: widget.layout ?? resolveAppLayout(),
         child: child!,

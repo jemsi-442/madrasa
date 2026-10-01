@@ -287,6 +287,7 @@ class _AttendanceRegisterEditorState extends State<AttendanceRegisterEditor> {
                           'No students can be marked in this register.',
                         )
                       : ListView.separated(
+                          primary: true,
                           itemCount: rows.length,
                           separatorBuilder: (_, _) => const Divider(height: 28),
                           itemBuilder: (_, index) => rowFields(rows[index]),

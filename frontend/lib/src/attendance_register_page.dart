@@ -669,6 +669,7 @@ class _AttendanceHistoryState extends State<_AttendanceHistory> {
     content: SizedBox(
       width: 700,
       child: SingleChildScrollView(
+        primary: true,
         child: PageResult(
           future: future,
           onRetry: () => setState(() => future = widget.load()),

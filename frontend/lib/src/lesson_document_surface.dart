@@ -89,7 +89,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
     if (widget.delivery.kind == 'TEXT') {
       return text == null
           ? const Center(child: Text('Loading text...'))
-          : SingleChildScrollView(child: SelectableText(text!));
+          : SingleChildScrollView(primary: false, child: SelectableText(text!));
     }
     if (widget.delivery.kind == 'IMAGE') {
       return Column(

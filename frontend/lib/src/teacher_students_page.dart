@@ -351,6 +351,7 @@ class _TeacherStudentProfileState extends State<TeacherStudentProfile> {
       width: 880,
       height: MediaQuery.sizeOf(context).height * .68,
       child: SingleChildScrollView(
+        primary: true,
         child: PageResult(
           future: future,
           onRetry: reload,
@@ -511,6 +512,7 @@ class _StudentPickerState extends State<_StudentPicker> {
           const SizedBox(height: 14),
           Expanded(
             child: SingleChildScrollView(
+              primary: true,
               child: PageResult(
                 future: future,
                 onRetry: reload,

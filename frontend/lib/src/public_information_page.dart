@@ -69,6 +69,7 @@ class PublicInformationScreen extends StatelessWidget {
                 ),
               Expanded(
                 child: SingleChildScrollView(
+                  primary: true,
                   child: Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: 24,

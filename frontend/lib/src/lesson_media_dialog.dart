@@ -144,6 +144,7 @@ class _LessonMediaDialogState extends State<LessonMediaDialog> {
           ),
           Expanded(
             child: SingleChildScrollView(
+              primary: true,
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

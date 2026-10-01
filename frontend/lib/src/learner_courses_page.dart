@@ -413,6 +413,7 @@ class _CourseCurriculumDialogState extends State<CourseCurriculumDialog> {
           ),
           Expanded(
             child: SingleChildScrollView(
+              primary: true,
               padding: const EdgeInsets.all(20),
               child: TeacherData(
                 load: widget.load,

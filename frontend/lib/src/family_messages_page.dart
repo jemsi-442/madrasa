@@ -509,6 +509,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
                     ),
                   )
                 : ListView(
+                    primary: false,
                     key: ValueKey('messages-$selectedId-$before'),
                     reverse: true,
                     children: [
@@ -680,6 +681,7 @@ class _ContactPickerState extends State<_ContactPicker> {
             const SizedBox(height: 14),
             Flexible(
               child: SingleChildScrollView(
+                primary: true,
                 child: TeacherData(
                   load: widget.load,
                   path:

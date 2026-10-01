@@ -203,6 +203,7 @@ class _StudentHistory extends StatelessWidget {
       content: SizedBox(
         width: 540,
         child: SingleChildScrollView(
+          primary: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,

@@ -252,6 +252,7 @@ Future<void> showPublishedReport(
             ),
             Flexible(
               child: SingleChildScrollView(
+                primary: true,
                 child: LearningReportPreview(
                   snapshot: recordMap(row['snapshot']),
                   published: true,

@@ -582,6 +582,7 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
                 const SizedBox(height: 16),
                 Flexible(
                   child: SingleChildScrollView(
+                    primary: true,
                     child: LayoutBuilder(
                       builder: (context, bounds) {
                         Widget score(Map<String, dynamic> r) => TextField(

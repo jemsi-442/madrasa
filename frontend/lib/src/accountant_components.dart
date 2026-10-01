@@ -302,7 +302,7 @@ Future<void> showFinanceDetail(
         ),
         child: SafeArea(
           top: false,
-          child: SingleChildScrollView(child: contents(context)),
+          child: SingleChildScrollView(primary: true, child: contents(context)),
         ),
       ),
     );
@@ -313,7 +313,7 @@ Future<void> showFinanceDetail(
         backgroundColor: Colors.white,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 660),
-          child: SingleChildScrollView(child: contents(context)),
+          child: SingleChildScrollView(primary: true, child: contents(context)),
         ),
       ),
     );
