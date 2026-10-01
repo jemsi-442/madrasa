@@ -11,7 +11,7 @@ flutter run -d web-server --web-port 8080 --dart-define=API_BASE_URL=http://127.
 
 Open `http://127.0.0.1:8080` in a browser. The public home, sign-in, and registration pages are separate routes.
 
-Use `flutter devices` to find Android/iOS targets. The Android emulator defaults to `http://10.0.2.2:4000`; web and iOS Simulator default to `http://127.0.0.1:4000`. A physical device needs a reachable API URL, preferably HTTPS:
+Use `flutter devices` to find Android/iOS targets. Native builds default to `http://127.0.0.1:4000` for local development; USB-connected Android phones need `adb reverse` as shown below. Local web builds use the browser host on port 4000. Devices outside this local setup need a reachable API URL, using HTTPS:
 
 ```bash
 flutter run -d <device-id> --dart-define=API_BASE_URL=https://api.example.com
@@ -40,11 +40,29 @@ For USB-connected Android development with the API running on the computer:
 
 ```bash
 adb reverse tcp:4000 tcp:4000
-flutter run --dart-define=API_BASE_URL=http://127.0.0.1:4000
+flutter run
 ```
 
-Choose the Android phone if Flutter asks for a device. With an existing
-`flutter run` session, uppercase `R` reloads the new entry flow via hot restart.
+Choose the Android phone if Flutter asks for a device. Keep the backend running
+on the computer and repeat `adb reverse` after reconnecting USB or restarting
+ADB. `adb reverse --list` should include `tcp:4000 tcp:4000`. With multiple
+devices, use `adb -s` and `flutter run -d` with the same actual device ID from
+`flutter devices`.
+
+For an Android emulator without port reversal, explicitly select its host alias:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
+```
+
+Do not use `10.0.2.2` on a physical phone. An explicit `API_BASE_URL` always
+overrides the native default. Stop and rerun Flutter when changing
+`--dart-define`; hot reload/restart does not change the launch arguments.
+
+If sign-in says "We could not reach the school", check the backend with
+`curl http://127.0.0.1:4000/api/health`, the USB reverse mapping and the build's
+API URL before resetting a password. A computer-only health check does not prove
+that the installed app uses the correct server.
 
 ## Public footer
 

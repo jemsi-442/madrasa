@@ -27,9 +27,7 @@ String browserApiBaseUrl(String configured, Uri location) {
 String defaultApiBaseUrl() {
   if (kIsWeb) return browserApiBaseUrl(configuredApiBaseUrl, Uri.base);
   if (configuredApiBaseUrl.isNotEmpty) return configuredApiBaseUrl;
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    return 'http://10.0.2.2:4000';
-  }
+  // USB-connected Android devices reach this through adb reverse.
   return 'http://127.0.0.1:4000';
 }
 
