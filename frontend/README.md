@@ -29,7 +29,7 @@ From `frontend/`, build the current source for a local preview:
 
 ```bash
 flutter build web --release --no-web-resources-cdn --pwa-strategy=none --dart-define=API_BASE_URL=http://127.0.0.1:4000
-python3 -m http.server 8080 --bind 127.0.0.1 --directory build/web
+node tool/serve_web.mjs
 ```
 
 Open `http://127.0.0.1:8080`. Keep the backend on port 4000 running.
@@ -40,14 +40,32 @@ computer only and is not a public production deployment.
 `--no-web-resources-cdn` serves the Flutter renderer locally; optional font
 fallbacks may still request external fonts. `--pwa-strategy=none` avoids adding
 offline caching to this development preview. Rebuild after source changes and
-reload the browser; use Ctrl+Shift+R if an older page is still displayed.
-This does not enable offline login or data access.
+reload the browser. The local Node preview sends `Cache-Control: no-store` and
+versions the bootstrap/app scripts using the actual build hash. It does not run
+Flutter builds automatically. This does not enable offline login or data access.
+
+If a browser still shows the old four-page accountant menu, open
+`http://127.0.0.1:8080/__preview__/refresh` once. This uncached route unregisters
+only this origin's root `flutter_service_worker.js`, then opens the current
+build. It does not clear cookies, local storage, unrelated service workers or
+database records. `--pwa-strategy=none` alone does not unregister a worker from
+an older visit. Use the same host and port as the old tab: `localhost` and
+`127.0.0.1` have separate browser storage. The correct menu has eight pages,
+including Fee structures, Expenses, Financial reports and Finance inbox.
+
+`/__preview__/version` shows the current local build fingerprint. These routes
+belong to the local preview server, not the public app or production API.
+Preview checks require Node 20+ and no npm installation:
+
+```bash
+node --test tool/serve_web.test.mjs
+```
 
 On Linux, the preview can alternatively run as a transient user service, so it
 does not depend on an open terminal. Run these commands from `frontend/`:
 
 ```bash
-systemd-run --user --unit=mif-web-preview --collect --property="WorkingDirectory=$PWD/build/web" /usr/bin/python3 -m http.server 8080 --bind 127.0.0.1
+systemd-run --user --unit=mif-web-preview --collect /usr/bin/node "$PWD/tool/serve_web.mjs"
 systemctl --user status mif-web-preview.service
 ```
 

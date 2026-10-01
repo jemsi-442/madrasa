@@ -161,6 +161,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Local web preview tests
+        working-directory: frontend
+        run: node --test tool/serve_web.test.mjs
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.5'
