@@ -109,10 +109,11 @@ class MifApiClient {
     String method = 'GET',
     String? accessToken,
     Map<String, dynamic>? body,
+    bool expectCsv = false,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
     final headers = <String, String>{
-      'Accept': 'application/json',
+      'Accept': expectCsv ? 'text/csv' : 'application/json',
       if (browserAuth && path.startsWith('/api/auth/browser/'))
         'X-MIF-Browser': '1',
       if (body != null) 'Content-Type': 'application/json',
@@ -143,6 +144,21 @@ class MifApiClient {
       }
     } catch (_) {
       throw const ApiException('Cannot connect to the school right now.', 0);
+    }
+
+    if (expectCsv && response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.headers['content-type']
+              ?.split(';')
+              .first
+              .trim()
+              .toLowerCase() !=
+          'text/csv') {
+        throw const ApiException(
+          'The school did not return a CSV report.',
+          502,
+        );
+      }
+      return utf8.decode(response.bodyBytes);
     }
 
     dynamic envelope;

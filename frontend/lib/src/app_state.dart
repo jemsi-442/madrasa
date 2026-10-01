@@ -146,10 +146,17 @@ class AppState extends ChangeNotifier {
   Future<dynamic> submit(String path, Map<String, dynamic> body) =>
       _request(path, method: 'POST', body: body);
 
+  Future<dynamic> update(String path, Map<String, dynamic> body) =>
+      _request(path, method: 'PATCH', body: body);
+
+  Future<String> exportCsv(String path) async =>
+      await _request(path, expectCsv: true) as String;
+
   Future<dynamic> _request(
     String path, {
     String method = 'GET',
     Map<String, dynamic>? body,
+    bool expectCsv = false,
   }) async {
     if (_browserSignedOut) {
       _authVersion++;
@@ -167,6 +174,7 @@ class AppState extends ChangeNotifier {
         method: method,
         body: body,
         accessToken: current.accessToken,
+        expectCsv: expectCsv,
       );
     } on ApiException catch (exception) {
       if (exception.statusCode != 401) rethrow;
@@ -212,6 +220,7 @@ class AppState extends ChangeNotifier {
       method: method,
       body: body,
       accessToken: session!.accessToken,
+      expectCsv: expectCsv,
     );
   }
 
