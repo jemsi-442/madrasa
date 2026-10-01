@@ -23,6 +23,38 @@ The registration page creates an independent online learner through `POST /api/a
 
 Contact (`/#/contact`), parent access (`/#/parent-access`), and sign-in help (`/#/forgot-password`) are dedicated pages that submit office inquiries. Sign-in help is an office-assisted recovery request, not an automated password-reset flow. Parent-child linkage and staff accounts remain office-controlled.
 
+## Preview the Built Website
+
+From `frontend/`, build the current source for a local preview:
+
+```bash
+flutter build web --release --no-web-resources-cdn --pwa-strategy=none --dart-define=API_BASE_URL=http://127.0.0.1:4000
+python3 -m http.server 8080 --bind 127.0.0.1 --directory build/web
+```
+
+Open `http://127.0.0.1:8080`. Keep the backend on port 4000 running.
+The API must allow this exact origin in `WEB_APP_ORIGINS`. The preview serves
+only `build/web`, not the repository or backend secrets. It listens on this
+computer only and is not a public production deployment.
+
+`--no-web-resources-cdn` serves the Flutter renderer locally; optional font
+fallbacks may still request external fonts. `--pwa-strategy=none` avoids adding
+offline caching to this development preview. Rebuild after source changes and
+reload the browser; use Ctrl+Shift+R if an older page is still displayed.
+This does not enable offline login or data access.
+
+On Linux, the preview can alternatively run as a transient user service, so it
+does not depend on an open terminal. Run these commands from `frontend/`:
+
+```bash
+systemd-run --user --unit=mif-web-preview --collect --property="WorkingDirectory=$PWD/build/web" /usr/bin/python3 -m http.server 8080 --bind 127.0.0.1
+systemctl --user status mif-web-preview.service
+```
+
+Do not start a second server on the same port. Stop the existing preview with
+`systemctl --user stop mif-web-preview.service` before switching servers.
+The transient service is not enabled at boot; start it again after reboot.
+
 ## Native Mobile Experience
 
 Installed Android/iOS builds start at a dedicated welcome screen with Login,
@@ -63,6 +95,35 @@ If sign-in says "We could not reach the school", check the backend with
 `curl http://127.0.0.1:4000/api/health`, the USB reverse mapping and the build's
 API URL before resetting a password. A computer-only health check does not prove
 that the installed app uses the correct server.
+
+### Prepare Android While the Phone Is Disconnected
+
+The build does not need a connected phone. For the Infinix arm64 device, run
+from `frontend/`:
+
+```bash
+flutter build apk --debug --target-platform android-arm64 --dart-define=API_BASE_URL=http://127.0.0.1:4000
+```
+
+The development APK is `build/app/outputs/flutter-apk/app-debug.apk`.
+It is a native Flutter Android app, not a browser shortcut. This debug-signed,
+local-API build is for development, not Play Store distribution.
+
+After reconnecting and authorizing USB debugging, with only the intended phone
+connected, run from `frontend/`:
+
+```bash
+adb devices -l
+adb reverse tcp:4000 tcp:4000
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+adb shell am start -n org.modernislamicfoundation.mif_app/.MainActivity
+```
+
+`install -r` updates the existing app without uninstalling it. If Android reports
+a signature mismatch, do not uninstall or clear app data to work around it;
+check the signing key first. With multiple devices, add `-s` and the intended
+device's actual ID to every adb command. API access through this USB mapping
+stops when the phone is disconnected. Reapply the mapping after reconnecting.
 
 ## Entry Page Design
 
