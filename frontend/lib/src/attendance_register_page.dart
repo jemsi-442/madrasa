@@ -34,12 +34,14 @@ class AttendanceRegisterPage extends StatefulWidget {
     this.refreshToken = 0,
     this.teacherMode = false,
     this.initialClassId,
+    this.onClassChanged,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final int refreshToken;
   final bool teacherMode;
   final String? initialClassId;
+  final ValueChanged<String>? onClassChanged;
   @override
   State<AttendanceRegisterPage> createState() => _AttendanceRegisterPageState();
 }
@@ -176,6 +178,7 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
                     ],
                     onChanged: (value) {
                       classId = value ?? '';
+                      widget.onClassChanged?.call(classId);
                       page = 1;
                       reload();
                     },

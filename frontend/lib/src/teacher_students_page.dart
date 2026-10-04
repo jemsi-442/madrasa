@@ -12,12 +12,14 @@ class TeacherStudentsPage extends StatefulWidget {
     required this.onOpen,
     this.initialClassId,
     this.initialStudent,
+    this.onClassChanged,
     this.refreshToken = 0,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final TeacherNavigate onOpen;
   final String? initialClassId;
+  final ValueChanged<String>? onClassChanged;
   final Map<String, dynamic>? initialStudent;
   final int refreshToken;
   @override
@@ -182,6 +184,7 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
                           ],
                           onChanged: (v) {
                             classId = v ?? '';
+                            widget.onClassChanged?.call(classId);
                             page = 1;
                             reload();
                           },

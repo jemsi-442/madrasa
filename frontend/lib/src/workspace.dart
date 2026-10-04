@@ -12,6 +12,7 @@ import 'foundation_ui.dart';
 import 'dashboard_components.dart';
 import 'workspace_chrome.dart';
 import 'workspace_flow.dart';
+import 'learning_record_links.dart';
 import 'student_registry_page.dart';
 import 'classes_page.dart';
 import 'attendance_page.dart';
@@ -552,6 +553,28 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
   }
 
+  void rememberClass(String id) {
+    final next = id.isEmpty ? null : id;
+    if (teachingClassId != next) teachingStudent = null;
+    // Page controls own their rebuild; navigation reads this latest selection.
+    teachingClassId = next;
+  }
+
+  void openLearningRecord(LearningRecordPage page, String classId) {
+    final role = widget.state.session?.role;
+    final index = switch ((role, page)) {
+      ('TEACHER', LearningRecordPage.attendance) => 4,
+      ('TEACHER', LearningRecordPage.quran) => 3,
+      ('TEACHER', LearningRecordPage.assessments) => 8,
+      ('TEACHER', LearningRecordPage.reports) => 9,
+      ('ADMIN', LearningRecordPage.attendance) => 5,
+      ('ADMIN', LearningRecordPage.assessments) => 10,
+      ('ADMIN', LearningRecordPage.reports) => 11,
+      _ => -1,
+    };
+    if (index >= 0) navigate(_WorkspaceVisit(index, classId: classId));
+  }
+
   void openRelated(int index) {
     if (widget.state.session?.role == 'TEACHER' && index <= 4) {
       openTeacher(index, classId: teachingClassId, student: teachingStudent);
@@ -617,6 +640,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         load: widget.state.load,
         submit: widget.state.submit,
         admin: session.role == 'ADMIN',
+        initialClassId: teachingClassId,
+        onClassChanged: rememberClass,
+        onOpenRecord: openLearningRecord,
         refreshToken: refreshToken,
       );
     }
@@ -625,6 +651,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         load: widget.state.load,
         submit: widget.state.submit,
         admin: session.role == 'ADMIN',
+        initialClassId: teachingClassId,
+        onClassChanged: rememberClass,
+        onOpenRecord: openLearningRecord,
         refreshToken: refreshToken,
       );
     }
@@ -688,6 +717,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           onOpen: openTeacher,
           initialClassId: teachingClassId,
           initialStudent: teachingStudent,
+          onClassChanged: rememberClass,
           refreshToken: refreshToken,
         ),
         3 => TeacherQuranPage(
@@ -697,6 +727,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           teacherId: session.userId,
           initialClassId: teachingClassId,
           initialStudent: teachingStudent,
+          onContextChanged: (classId, student) {
+            rememberClass(classId);
+            teachingStudent = student;
+          },
         ),
         _ => AttendanceRegisterPage(
           key: ValueKey('teacher-attendance-$teachingClassId'),
@@ -705,6 +739,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           refreshToken: refreshToken,
           teacherMode: true,
           initialClassId: teachingClassId,
+          onClassChanged: rememberClass,
         ),
       };
     }
@@ -757,6 +792,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           return AttendanceRegisterPage(
             load: widget.state.load,
             submit: widget.state.submit,
+            initialClassId: teachingClassId,
+            onClassChanged: rememberClass,
             refreshToken: refreshToken,
           );
         }

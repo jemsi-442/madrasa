@@ -4,6 +4,7 @@ import 'api_client.dart';
 import 'assessments_page.dart' show assessmentStates;
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'learning_record_links.dart';
 import 'report_preview.dart';
 import 'teacher_ui.dart';
 
@@ -14,17 +15,43 @@ class StudentReportsPage extends StatefulWidget {
     required this.submit,
     required this.admin,
     this.refreshToken = 0,
+    this.initialClassId,
+    this.onClassChanged,
+    this.onOpenRecord,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final bool admin;
   final int refreshToken;
+  final String? initialClassId;
+  final ValueChanged<String>? onClassChanged;
+  final OpenLearningRecord? onOpenRecord;
   @override
   State<StudentReportsPage> createState() => _StudentReportsPageState();
 }
 
 class _StudentReportsPageState extends State<StudentReportsPage> {
-  String classId = '', periodId = '', status = '';
+  String periodId = '', status = '';
+  late String classId = widget.initialClassId ?? '';
+
+  void changeClass(String id) {
+    setState(() {
+      classId = id;
+      page = 1;
+    });
+    widget.onClassChanged?.call(id);
+  }
+
+  @override
+  void didUpdateWidget(covariant StudentReportsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialClassId != widget.initialClassId &&
+        classId != (widget.initialClassId ?? '')) {
+      classId = widget.initialClassId ?? '';
+      page = 1;
+    }
+  }
+
   int page = 1, refresh = 0;
   bool opening = false;
   Future<void> open(String id) async {
@@ -99,6 +126,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
         AdminField(
           'classId',
           'Class',
+          initial: classId.isEmpty ? null : classId,
           options: {
             for (final c in recordList(options['classes']))
               '${c['id']}': '${c['name']}',
@@ -107,6 +135,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
         AdminField(
           'periodId',
           'Reporting period',
+          initial: periodId.isEmpty ? null : periodId,
           options: {
             for (final p in recordList(options['periods']))
               '${p['id']}': '${p['name']}',
@@ -119,7 +148,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
     );
     if (!selected || !mounted || choice == null) return;
     setState(() => opening = true);
-    String? created;
+    String? created, preparedClass;
     try {
       final roster = recordList(
         await widget.load(
@@ -154,13 +183,18 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
             }),
           );
           created = '${row['id']}';
+          preparedClass = '${row['classId'] ?? choice!['classId']}';
         },
       );
       if (saved && mounted) {
         setState(() {
+          classId = preparedClass ?? classId;
+          periodId = '${choice!['periodId']}';
+          status = '';
           refresh++;
           page = 1;
         });
+        widget.onClassChanged?.call(classId);
       }
     } catch (_) {
       if (mounted) {
@@ -186,6 +220,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
   ) => SizedBox(
     width: 230,
     child: DropdownButtonFormField<String>(
+      key: ValueKey('$label-$value'),
       initialValue: value,
       isExpanded: true,
       decoration: InputDecoration(labelText: label),
@@ -212,9 +247,25 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
     refreshToken: refresh + widget.refreshToken,
     builder: (raw) {
       final options = recordMap(raw);
+      final classes = recordList(options['classes']);
+      if (!learningClassAvailable(classes, classId)) {
+        return UnavailableLearningClass(onClear: () => changeClass(''));
+      }
+      final canPrepare =
+          classes.isNotEmpty && recordList(options['periods']).isNotEmpty;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (classId.isNotEmpty && widget.onOpenRecord != null)
+            LearningRecordLinks(
+              classId: classId,
+              className: recordText(
+                classes.firstWhere((c) => '${c['id']}' == classId)['name'],
+              ),
+              current: LearningRecordPage.reports,
+              admin: widget.admin,
+              onOpen: opening ? null : widget.onOpenRecord,
+            ),
           TeacherNotice(
             widget.admin
                 ? 'Set reporting periods, review each report, then publish. Retraction preserves the old snapshot but removes parent access.'
@@ -227,7 +278,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               FilledButton.icon(
-                onPressed: opening
+                onPressed: opening || (!widget.admin && !canPrepare)
                     ? null
                     : () => widget.admin ? period() : prepare(options),
                 icon: const Icon(Icons.add),
@@ -239,13 +290,28 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
                 for (final p in recordList(options['periods']))
                   '${p['id']}': '${p['name']}',
               }, (v) => periodId = v),
-              filter('Classes', classId, {
-                for (final c in recordList(options['classes']))
-                  '${c['id']}': '${c['name']}',
-              }, (v) => classId = v),
+              filter(
+                'Classes',
+                classId,
+                {
+                  for (final c in recordList(options['classes']))
+                    '${c['id']}': '${c['name']}',
+                },
+                (v) {
+                  classId = v;
+                  widget.onClassChanged?.call(v);
+                },
+              ),
               filter('Statuses', status, assessmentStates, (v) => status = v),
             ],
           ),
+          if (!widget.admin && classes.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: TeacherNotice(
+                'No classes are available. Ask the school office to assign your teaching classes before preparing reports.',
+              ),
+            ),
           if (recordList(options['periods']).isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 16),

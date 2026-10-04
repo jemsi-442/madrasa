@@ -3,6 +3,7 @@ import 'admin_forms.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'learning_record_links.dart';
 import 'teacher_ui.dart';
 
 const assessmentStates = {
@@ -18,18 +19,44 @@ class AssessmentsPage extends StatefulWidget {
     required this.submit,
     required this.admin,
     this.refreshToken = 0,
+    this.initialClassId,
+    this.onClassChanged,
+    this.onOpenRecord,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final bool admin;
   final int refreshToken;
+  final String? initialClassId;
+  final ValueChanged<String>? onClassChanged;
+  final OpenLearningRecord? onOpenRecord;
   @override
   State<AssessmentsPage> createState() => _AssessmentsPageState();
 }
 
 class _AssessmentsPageState extends State<AssessmentsPage> {
   int page = 1, refresh = 0;
-  String status = '', classId = '';
+  String status = '';
+  late String classId = widget.initialClassId ?? '';
+
+  void changeClass(String id) {
+    setState(() {
+      classId = id;
+      page = 1;
+    });
+    widget.onClassChanged?.call(id);
+  }
+
+  @override
+  void didUpdateWidget(covariant AssessmentsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialClassId != widget.initialClassId &&
+        classId != (widget.initialClassId ?? '')) {
+      classId = widget.initialClassId ?? '';
+      page = 1;
+    }
+  }
+
   bool opening = false;
   Future<void> open(String id) async {
     if (opening) return;
@@ -62,7 +89,7 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
 
   Future<void> create(Map<String, dynamic> options) async {
     final clientId = submissionId();
-    String? created;
+    String? created, savedClass;
     final saved = await showAdminForm(
       context,
       title: 'New assessment',
@@ -72,6 +99,7 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
         AdminField(
           'classId',
           'Class',
+          initial: classId.isEmpty ? null : classId,
           options: {
             for (final r in recordList(options['classes']))
               '${r['id']}': recordText(r['name']),
@@ -112,13 +140,17 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
           }),
         );
         created = '${response['id']}';
+        savedClass = '${response['classId'] ?? body['classId']}';
       },
     );
     if (saved && mounted) {
       setState(() {
+        classId = savedClass ?? classId;
+        status = '';
         page = 1;
         refresh++;
       });
+      widget.onClassChanged?.call(classId);
       if (created != null) await open(created!);
     }
   }
@@ -130,9 +162,25 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
     refreshToken: widget.refreshToken,
     builder: (raw) {
       final options = recordMap(raw);
+      final classes = recordList(options['classes']);
+      if (!learningClassAvailable(classes, classId)) {
+        return UnavailableLearningClass(onClear: () => changeClass(''));
+      }
+      final canCreate =
+          classes.isNotEmpty && recordList(options['subjects']).isNotEmpty;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (classId.isNotEmpty && widget.onOpenRecord != null)
+            LearningRecordLinks(
+              classId: classId,
+              className: recordText(
+                classes.firstWhere((c) => '${c['id']}' == classId)['name'],
+              ),
+              current: LearningRecordPage.assessments,
+              admin: widget.admin,
+              onOpen: opening ? null : widget.onOpenRecord,
+            ),
           TeacherNotice(
             widget.admin
                 ? 'Review teacher-recorded marks before publishing. Parents see only their own child\'s published results. Retraction removes parent access while preserving the publication history.'
@@ -145,20 +193,25 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
             children: [
               if (!widget.admin)
                 FilledButton.icon(
-                  onPressed: opening ? null : () => create(options),
+                  onPressed: opening || !canCreate
+                      ? null
+                      : () => create(options),
                   icon: const Icon(Icons.add),
                   label: const Text('New assessment'),
                 ),
               SizedBox(
                 width: 220,
                 child: DropdownButtonFormField<String>(
+                  key: ValueKey('assessment-class-$classId'),
                   initialValue: classId,
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Class'),
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: '',
-                      child: Text('All my classes'),
+                      child: Text(
+                        widget.admin ? 'All classes' : 'All my classes',
+                      ),
                     ),
                     for (final c in recordList(options['classes']))
                       DropdownMenuItem(
@@ -166,12 +219,7 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
                         child: Text(recordText(c['name'])),
                       ),
                   ],
-                  onChanged: opening
-                      ? null
-                      : (v) => setState(() {
-                          classId = v ?? '';
-                          page = 1;
-                        }),
+                  onChanged: opening ? null : (v) => changeClass(v ?? ''),
                 ),
               ),
               SizedBox(
@@ -206,6 +254,13 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
               ),
             ],
           ),
+          if (!widget.admin && !canCreate)
+            const Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: TeacherNotice(
+                'A class assignment and an approved school subject are needed before you can create an assessment. Ask the school office to complete this setup.',
+              ),
+            ),
           const SizedBox(height: 18),
           TeacherData(
             key: ValueKey('$classId-$status-$page'),

@@ -443,6 +443,34 @@ class TeacherClassesPage extends StatelessWidget {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'LEARNING & REPORTS',
+                              style: TextStyle(
+                                color: muted,
+                                fontSize: 10,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                for (final (page, label) in [
+                                  (3, "Qur'an"),
+                                  (8, 'Assessments'),
+                                  (9, 'Reports'),
+                                ])
+                                  TextButton(
+                                    key: ValueKey(
+                                      'class-${c['id']}-record-$page',
+                                    ),
+                                    onPressed: () =>
+                                        onOpen(page, classId: '${c['id']}'),
+                                    child: Text(label),
+                                  ),
+                              ],
+                            ),
                             const SizedBox(height: 6),
                             Text(
                               recordText(recordMap(c['branch'])['name']),

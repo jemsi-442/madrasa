@@ -16,12 +16,15 @@ class TeacherQuranPage extends StatefulWidget {
     required this.teacherId,
     this.initialClassId,
     this.initialStudent,
+    this.onContextChanged,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final String teacherId;
   final String? initialClassId;
   final Map<String, dynamic>? initialStudent;
+  final void Function(String classId, Map<String, dynamic>? student)?
+  onContextChanged;
   @override
   State<TeacherQuranPage> createState() => TeacherQuranPageState();
 }
@@ -122,6 +125,7 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
     setState(() {
       classId = value;
       student = null;
+      widget.onContextChanged?.call(classId, null);
       progress = null;
       clearDraft();
       page = 1;
@@ -134,6 +138,7 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
     if (selected == null || !mounted) return;
     setState(() {
       student = selected;
+      widget.onContextChanged?.call(classId, student);
       clearDraft();
       page = 1;
       progress = fetchProgress();

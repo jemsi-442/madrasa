@@ -124,8 +124,10 @@ history; at Home with no history the normal platform exit behavior applies.
 A restored non-home section with no history offers Back to the overview.
 
 Navigation restores context passed between pages: the teacher's class/student,
-the parent's child, and accountant status/invoice scope. Page-local searches,
-pagination and filters changed inside a page are not a full saved-page snapshot.
+the parent's child, and accountant status/invoice scope. Class changes in the
+teaching and academic record pages also update that navigation context.
+Other page-local searches, pagination, periods and status filters are not a
+full saved-page snapshot.
 The trail is bounded to 30 visits and is not persisted across reload/sign-out.
 The existing per-account last-section restoration remains unchanged; this does
 not add browser address-bar routes, browser Back/Forward history or deep links.
@@ -142,6 +144,44 @@ Regression checks:
 ```bash
 flutter test test/workspace_flow_test.dart
 flutter test --platform chrome test/workspace_flow_test.dart
+```
+
+## Connected Learning Records
+
+Teacher class cards open that class's students, attendance, Qur'an, assessments
+and reports. Assessments and Reports carry the chosen class into their API
+filters and show a **Working with [class]** panel linking its source records.
+Administrators can move between class-scoped assessment review, reports and
+attendance; teacher-only Qur'an recording is not exposed to administrators.
+
+Class selections made inside Students, Attendance, Qur'an, Assessments or Reports
+update the workspace's in-memory context for subsequent navigation. Choosing a
+different class clears a previously selected learner. Qur'an class/student
+changes update shared context only after the existing draft confirmation.
+Back restores the class of the prior visit, not just the page name.
+
+New assessment forms preselect the current class. Report preparation preselects
+the current class and the report page's selected period, then loads that class's
+authorized roster. A successful create follows the saved class, resets the list
+page and removes a status filter that could hide the newly prepared draft.
+Opening links or forms never creates, submits or publishes records by itself.
+
+An incoming class absent from the authorized academic options shows an explicit
+unavailable state before any filtered list request. It does not silently change
+to all classes. The user can explicitly choose **Show available classes**.
+Teacher creation is disabled when the required class/subject or reporting period
+setup is absent; the screen explains what the school office needs to configure.
+The administrator's reporting-period setup remains available.
+
+Reports still use the existing server workflow: recorded attendance and Qur'an
+sessions plus published assessments within the reporting period. Teachers prepare,
+refresh sources and submit drafts; administrators review and publish. Published
+snapshots are not automatically overwritten. Parents/learners retain their
+existing published-only, ownership-scoped views. No new APIs, database tables,
+automatic messages or permission changes are introduced here.
+
+```bash
+flutter test test/learning_workflow_test.dart test/assessments_test.dart test/student_reports_test.dart
 ```
 
 ## Native Mobile Experience
