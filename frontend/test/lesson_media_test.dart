@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/admin_theme.dart';
 import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/lesson_media_delivery.dart';
-import 'package:mif_app/src/lesson_media_dialog.dart';
+import 'package:mif_app/src/lesson_media_viewer.dart';
 
 Map<String, dynamic> response({
   String? url,
@@ -42,7 +42,7 @@ Future<void> host(
   await tester.pumpWidget(
     MaterialApp(
       theme: adminTheme(ThemeData()),
-      home: Scaffold(body: child),
+      home: Scaffold(body: SingleChildScrollView(child: child)),
     ),
   );
   await tester.pumpAndSettle();
@@ -116,7 +116,7 @@ void main() {
       final paths = <String>[];
       await host(
         tester,
-        LessonMediaDialog(
+        LessonMediaViewer(
           assetId: '3',
           apiBaseUrl: 'https://school.test',
           load: (path) async {
@@ -145,7 +145,7 @@ void main() {
       var attempts = 0;
       await host(
         tester,
-        LessonMediaDialog(
+        LessonMediaViewer(
           assetId: '3',
           apiBaseUrl: 'https://school.test',
           load: (_) async {
@@ -171,7 +171,7 @@ void main() {
     var calls = 0;
     await host(
       tester,
-      LessonMediaDialog(
+      LessonMediaViewer(
         assetId: '3',
         apiBaseUrl: 'https://school.test',
         load: (_) async {
@@ -210,7 +210,7 @@ void main() {
       final pending = Completer<dynamic>();
       await tester.pumpWidget(
         MaterialApp(
-          home: LessonMediaDialog(
+          home: LessonMediaViewer(
             assetId: '3',
             apiBaseUrl: 'https://school.test',
             load: (_) => pending.future,
@@ -228,7 +228,7 @@ void main() {
   testWidgets('playback errors and slow loading offer retry', (tester) async {
     await host(
       tester,
-      LessonMediaDialog(
+      LessonMediaViewer(
         assetId: '3',
         apiBaseUrl: 'https://school.test',
         load: (_) async => response(),
@@ -249,7 +249,7 @@ void main() {
       (tester) async {
         await host(
           tester,
-          LessonMediaDialog(
+          LessonMediaViewer(
             assetId: '3',
             apiBaseUrl: 'https://school.test',
             load: (_) async => response(kind: kind),
@@ -301,7 +301,7 @@ void main() {
     (tester) async {
       await host(
         tester,
-        LessonMediaDialog(
+        LessonMediaViewer(
           assetId: '3',
           apiBaseUrl: 'https://school.test',
           load: (_) async => response(kind: 'EXTERNAL'),
@@ -320,7 +320,7 @@ void main() {
   testWidgets('expired response never mounts inline media', (tester) async {
     await host(
       tester,
-      LessonMediaDialog(
+      LessonMediaViewer(
         assetId: '3',
         apiBaseUrl: 'https://school.test',
         load: (_) async => response(expiry: DateTime(2000)),

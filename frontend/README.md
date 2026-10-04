@@ -184,6 +184,36 @@ automatic messages or permission changes are introduced here.
 flutter test test/learning_workflow_test.dart test/assessments_test.dart test/student_reports_test.dart
 ```
 
+## Lesson Media Experience
+
+Courses and lessons open as ordinary full-page routes inside the app, with
+**Back to courses** and **Back to course** actions. Media does not open another
+dialog or route: the selected resource is embedded in the lesson beside the
+resource list on wide screens, and above the list on small screens. Lesson
+notes and explicit completion remain on the same page.
+
+Video and audio retain their playback controls. Images retain pan/reset zoom;
+PDFs retain page and zoom controls; text attachments remain plain, selectable
+text. Audio has a dedicated listening area. Native transport controls use a
+high-contrast strip with a separate time label for narrow screens and larger
+text. Opening media does not autoplay or automatically mark a lesson complete.
+
+Selecting another resource disposes the previous surface. **Back to lesson
+text** stops/removes it without leaving the lesson; page Back disposes it and
+returns to the curriculum. Resizing between desktop and mobile preserves the
+selected player's state instead of fetching another authorization link.
+Completion still blocks duplicate saves and navigation while saving.
+
+Every resource opening/reload uses the existing authorized delivery endpoint.
+Locked and unconnected resources remain unavailable. Errors and expired links
+offer an inline retry, not an external-browser fallback. Late authorization
+responses and callbacks from replaced players cannot overwrite the active
+resource. No media upload/provider/backend permissions are changed here.
+
+```bash
+flutter test test/learner_courses_test.dart test/lesson_media_test.dart test/lesson_media_flow_test.dart test/lesson_media_native_test.dart
+```
+
 ## Native Mobile Experience
 
 Installed Android/iOS builds start at a dedicated welcome screen with Login,

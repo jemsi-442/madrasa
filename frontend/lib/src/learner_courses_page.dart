@@ -3,7 +3,8 @@ import 'admin_forms.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'learner_lesson_reader.dart';
-import 'lesson_media_dialog.dart';
+import 'learning_page.dart';
+import 'lesson_media_viewer.dart';
 import 'teacher_ui.dart';
 
 bool courseIsAvailable(dynamic state) => state == 'OPEN' || state == 'PREVIEW';
@@ -38,14 +39,15 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   int changes = 0;
 
   Future<void> openCourse(Map<String, dynamic> course) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => CourseCurriculumDialog(
-        id: recordText(course['id']),
-        load: widget.load,
-        submit: widget.submit,
-        apiBaseUrl: widget.apiBaseUrl,
-        surfaceBuilder: widget.surfaceBuilder,
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => CourseCurriculumPage(
+          id: recordText(course['id']),
+          load: widget.load,
+          submit: widget.submit,
+          apiBaseUrl: widget.apiBaseUrl,
+          surfaceBuilder: widget.surfaceBuilder,
+        ),
       ),
     );
     if (mounted) setState(() => changes++);
@@ -350,8 +352,8 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   );
 }
 
-class CourseCurriculumDialog extends StatefulWidget {
-  const CourseCurriculumDialog({
+class CourseCurriculumPage extends StatefulWidget {
+  const CourseCurriculumPage({
     super.key,
     required this.id,
     required this.load,
@@ -364,229 +366,173 @@ class CourseCurriculumDialog extends StatefulWidget {
   final PageSubmitter submit;
   final LessonMediaBuilder? surfaceBuilder;
   @override
-  State<CourseCurriculumDialog> createState() => _CourseCurriculumDialogState();
+  State<CourseCurriculumPage> createState() => _CourseCurriculumPageState();
 }
 
-class _CourseCurriculumDialogState extends State<CourseCurriculumDialog> {
+class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
   int refresh = 0;
   Future<void> lesson(String id) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => LearnerLessonReader(
-        id: id,
-        load: widget.load,
-        submit: widget.submit,
-        apiBaseUrl: widget.apiBaseUrl,
-        surfaceBuilder: widget.surfaceBuilder,
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => LearnerLessonReader(
+          id: id,
+          load: widget.load,
+          submit: widget.submit,
+          apiBaseUrl: widget.apiBaseUrl,
+          surfaceBuilder: widget.surfaceBuilder,
+        ),
       ),
     );
     if (mounted) setState(() => refresh++);
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
-    backgroundColor: Colors.white,
-    insetPadding: const EdgeInsets.all(16),
-    child: SizedBox(
-      width: 1000,
-      height: MediaQuery.sizeOf(context).height * .88,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
-            child: Row(
+  Widget build(BuildContext context) => LearningPage(
+    title: 'Course curriculum',
+    backLabel: 'Back to courses',
+    onBack: () => Navigator.pop(context),
+    child: TeacherData(
+      load: widget.load,
+      path: '/api/learner/courses/${widget.id}',
+      refreshToken: refresh,
+      builder: (raw) {
+        final course = recordMap(recordMap(raw)['course']),
+            modules = recordList(course['modules']);
+        final lessons = modules
+            .expand((m) => recordList(m['lessons']))
+            .toList();
+        final next = lessons
+            .where(
+              (l) =>
+                  courseIsAvailable(l['accessState']) &&
+                  recordNumber(recordMap(l['progress'])['progressPercent']) <
+                      100,
+            )
+            .firstOrNull;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              recordText(course['title']),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              recordText(course['summary']),
+              style: const TextStyle(color: muted),
+            ),
+            const SizedBox(height: 14),
+            if (course['description'] != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: SelectableText(recordText(course['description'])),
+              ),
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Expanded(
-                  child: Text(
-                    'Course curriculum',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                TeacherTag(
+                  courseAccessLabel(course['accessState']),
+                  color: gold,
+                ),
+                Text(
+                  '${recordMap(course['progress'])['completedLessons']} / ${recordMap(course['progress'])['totalLessons']} lessons complete',
+                ),
+                if (next != null)
+                  FilledButton.icon(
+                    onPressed: () => lesson(recordText(next['id'])),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Continue learning'),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Close course',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
               ],
             ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              primary: true,
-              padding: const EdgeInsets.all(20),
-              child: TeacherData(
-                load: widget.load,
-                path: '/api/learner/courses/${widget.id}',
-                refreshToken: refresh,
-                builder: (raw) {
-                  final course = recordMap(recordMap(raw)['course']),
-                      modules = recordList(course['modules']);
-                  final lessons = modules
-                      .expand((m) => recordList(m['lessons']))
-                      .toList();
-                  final next = lessons
-                      .where(
-                        (l) =>
-                            courseIsAvailable(l['accessState']) &&
-                            recordNumber(
-                                  recordMap(l['progress'])['progressPercent'],
-                                ) <
-                                100,
-                      )
-                      .firstOrNull;
-                  return Column(
+            const SizedBox(height: 18),
+            if (!courseIsAvailable(course['accessState']))
+              const Padding(
+                padding: EdgeInsets.only(bottom: 18),
+                child: TeacherNotice(
+                  'Some lessons require school-approved access. Available previews can be opened below. Contact the school about enrolment or payment.',
+                  warning: true,
+                ),
+              ),
+            if (modules.isEmpty)
+              const EmptyRecords('No published lessons in this course yet.'),
+            for (final module in modules)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: SurfacePanel(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        recordText(course['title']),
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      PanelHeading(
+                        recordText(module['title']),
+                        subtitle: module['summary'] as String?,
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        recordText(course['summary']),
-                        style: const TextStyle(color: muted),
-                      ),
-                      const SizedBox(height: 14),
-                      if (course['description'] != null)
+                      for (final row in recordList(module['lessons']))
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: SelectableText(
-                            recordText(course['description']),
-                          ),
-                        ),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 10,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          TeacherTag(
-                            courseAccessLabel(course['accessState']),
-                            color: gold,
-                          ),
-                          Text(
-                            '${recordMap(course['progress'])['completedLessons']} / ${recordMap(course['progress'])['totalLessons']} lessons complete',
-                          ),
-                          if (next != null)
-                            FilledButton.icon(
-                              onPressed: () => lesson(recordText(next['id'])),
-                              icon: const Icon(Icons.play_arrow),
-                              label: const Text('Continue learning'),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      if (!courseIsAvailable(course['accessState']))
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 18),
-                          child: TeacherNotice(
-                            'Some lessons require school-approved access. Available previews can be opened below. Contact the school about enrolment or payment.',
-                            warning: true,
-                          ),
-                        ),
-                      if (modules.isEmpty)
-                        const EmptyRecords(
-                          'No published lessons in this course yet.',
-                        ),
-                      for (final module in modules)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 18),
-                          child: SurfacePanel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                PanelHeading(
-                                  recordText(module['title']),
-                                  subtitle: module['summary'] as String?,
-                                ),
-                                for (final row in recordList(module['lessons']))
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    child: Wrap(
-                                      spacing: 14,
-                                      runSpacing: 10,
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      children: [
-                                        Icon(
-                                          recordNumber(
-                                                    recordMap(
-                                                      row['progress'],
-                                                    )['progressPercent'],
-                                                  ) >=
-                                                  100
-                                              ? Icons.check_circle
-                                              : courseIsAvailable(
-                                                  row['accessState'],
-                                                )
-                                              ? Icons.menu_book_outlined
-                                              : Icons.lock_outline,
-                                          color:
-                                              recordNumber(
-                                                    recordMap(
-                                                      row['progress'],
-                                                    )['progressPercent'],
-                                                  ) >=
-                                                  100
-                                              ? forest
-                                              : muted,
-                                        ),
-                                        SizedBox(
-                                          width: 210,
-                                          child: Text(
-                                            recordText(row['title']),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        TeacherTag(
-                                          courseAccessLabel(row['accessState']),
-                                        ),
-                                        if (row['estimatedMinutes'] != null)
-                                          Text(
-                                            '${row['estimatedMinutes']} min',
-                                            style: const TextStyle(
-                                              color: muted,
-                                            ),
-                                          ),
-                                        OutlinedButton(
-                                          onPressed:
-                                              courseIsAvailable(
-                                                row['accessState'],
-                                              )
-                                              ? () => lesson(
-                                                  recordText(row['id']),
-                                                )
-                                              : null,
-                                          child: Text(
-                                            courseIsAvailable(
-                                                  row['accessState'],
-                                                )
-                                                ? 'Open lesson'
-                                                : 'Locked',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Wrap(
+                            spacing: 14,
+                            runSpacing: 10,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Icon(
+                                recordNumber(
+                                          recordMap(
+                                            row['progress'],
+                                          )['progressPercent'],
+                                        ) >=
+                                        100
+                                    ? Icons.check_circle
+                                    : courseIsAvailable(row['accessState'])
+                                    ? Icons.menu_book_outlined
+                                    : Icons.lock_outline,
+                                color:
+                                    recordNumber(
+                                          recordMap(
+                                            row['progress'],
+                                          )['progressPercent'],
+                                        ) >=
+                                        100
+                                    ? forest
+                                    : muted,
+                              ),
+                              SizedBox(
+                                width: 210,
+                                child: Text(
+                                  recordText(row['title']),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
                                   ),
-                              ],
-                            ),
+                                ),
+                              ),
+                              TeacherTag(courseAccessLabel(row['accessState'])),
+                              if (row['estimatedMinutes'] != null)
+                                Text(
+                                  '${row['estimatedMinutes']} min',
+                                  style: const TextStyle(color: muted),
+                                ),
+                              OutlinedButton(
+                                onPressed: courseIsAvailable(row['accessState'])
+                                    ? () => lesson(recordText(row['id']))
+                                    : null,
+                                child: Text(
+                                  courseIsAvailable(row['accessState'])
+                                      ? 'Open lesson'
+                                      : 'Locked',
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                     ],
-                  );
-                },
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     ),
   );
 }

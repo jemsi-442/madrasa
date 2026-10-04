@@ -5,7 +5,7 @@ import 'package:mif_app/src/admin_theme.dart';
 import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/learner_courses_page.dart';
 import 'package:mif_app/src/learner_lesson_reader.dart';
-import 'package:mif_app/src/lesson_media_dialog.dart';
+import 'package:mif_app/src/lesson_media_viewer.dart';
 
 class CoursesFixture {
   final paths = <String>[];
@@ -149,12 +149,14 @@ Future<void> host(
   await tester.pumpWidget(
     MaterialApp(
       theme: adminTheme(ThemeData()),
-      home: Scaffold(
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: child,
-        ),
-      ),
+      home: child is LearnerLessonReader
+          ? child
+          : Scaffold(
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: child,
+              ),
+            ),
     ),
   );
   await tester.pumpAndSettle();
@@ -241,10 +243,10 @@ void main() {
         'body': {'progressPercent': 100, 'markCompleted': true},
       });
       expect(find.text('Lesson completed'), findsOneWidget);
-      await tester.tap(find.byTooltip('Close lesson'));
+      await tester.tap(find.byTooltip('Back to course'));
       await tester.pumpAndSettle();
       expect(find.text('Continue learning'), findsNothing);
-      await tester.tap(find.byTooltip('Close course'));
+      await tester.tap(find.byTooltip('Back to courses'));
       await tester.pumpAndSettle();
       expect(find.text('1 / 2 lessons complete'), findsNWidgets(2));
       expect(tester.takeException(), isNull);
@@ -270,7 +272,7 @@ void main() {
       tester
           .widget<IconButton>(
             find.byWidgetPredicate(
-              (w) => w is IconButton && w.tooltip == 'Close lesson',
+              (w) => w is IconButton && w.tooltip == 'Back to course',
             ),
           )
           .onPressed,
@@ -306,7 +308,10 @@ void main() {
       expect(find.text('Inline PDF'), findsOneWidget);
       expect(find.text('Open in browser'), findsNothing);
       expect(data.writes, isEmpty);
-      await tester.tap(find.byTooltip('Close player'));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('return-to-lesson-text')),
+      );
+      await tester.tap(find.byKey(const ValueKey('return-to-lesson-text')));
       await tester.pumpAndSettle();
       await tap(tester, 'View in app');
       expect(data.paths.where((p) => p.endsWith('/30/open')).length, 2);
@@ -347,10 +352,7 @@ void main() {
       );
       data.deliveryStatus = 'PENDING_SOURCE';
       await tap(tester, 'Reload player');
-      expect(
-        find.textContaining('not connected yet'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('not connected yet'), findsOneWidget);
       expect(find.text('Inline PDF'), findsNothing);
       expect(data.writes, isEmpty);
       await tester.pumpWidget(const SizedBox());

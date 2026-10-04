@@ -3,7 +3,8 @@ import 'admin_forms.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
-import 'lesson_media_dialog.dart';
+import 'learning_page.dart';
+import 'lesson_media_viewer.dart';
 import 'teacher_ui.dart';
 
 class LearnerLessonReader extends StatefulWidget {
@@ -27,12 +28,20 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   late Future<dynamic> current = widget.load(
     '/api/learner/lessons/${widget.id}',
   );
-  bool saving = false, preparing = false;
-  Map<String, dynamic>? savedProgress;
+  final mediaAnchor = GlobalKey();
+  final mediaFocus = FocusNode(debugLabel: 'Lesson resource');
+  bool saving = false;
+  Map<String, dynamic>? savedProgress, selectedAsset;
   String? error;
 
+  @override
+  void dispose() {
+    mediaFocus.dispose();
+    super.dispose();
+  }
+
   Future<void> complete() async {
-    if (saving || preparing) return;
+    if (saving) return;
     setState(() {
       saving = true;
       error = null;
@@ -56,244 +65,290 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     }
   }
 
-  Future<void> play(Map<String, dynamic> asset) async {
-    if (preparing || saving) return;
-    setState(() {
-      preparing = true;
-      error = null;
+  void play(Map<String, dynamic> asset) {
+    if (saving) return;
+    setState(() => selectedAsset = asset);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = mediaAnchor.currentContext;
+      if (!mounted || target == null) return;
+      mediaFocus.requestFocus();
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
+      );
     });
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LessonMediaDialog(
-        assetId: recordText(asset['id']),
-        load: widget.load,
-        apiBaseUrl: widget.apiBaseUrl,
-        surfaceBuilder: widget.surfaceBuilder,
-      ),
-    );
-    if (mounted) setState(() => preparing = false);
   }
 
-  @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !saving && !preparing,
-    child: Dialog(
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: 960,
-        height: MediaQuery.sizeOf(context).height * .9,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
-              child: Row(
+  Widget resources(List<Map<String, dynamic>> assets) => SurfacePanel(
+    padding: const EdgeInsets.all(18),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PanelHeading(
+          'Lesson resources',
+          subtitle: '${assets.length} resources in this lesson',
+        ),
+        if (assets.isEmpty)
+          const EmptyRecords('No resources attached to this lesson.'),
+        for (final (index, asset) in assets.indexed) ...[
+          if (index > 0) const Divider(height: 28, color: line),
+          DecoratedBox(
+            key: ValueKey('resource-${asset['id']}'),
+            decoration: BoxDecoration(
+              color: selectedAsset?['id'] == asset['id']
+                  ? gold.withValues(alpha: .09)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Lesson reader',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        lessonResourceIcon(recordText(asset['assetType'])),
+                        color: gold,
+                        size: 22,
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          recordText(asset['title'], 'Lesson resource'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: ink,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: 'Close lesson',
-                    onPressed: saving || preparing
-                        ? null
-                        : () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                  const SizedBox(height: 8),
+                  Text(
+                    selectedAsset?['id'] == asset['id']
+                        ? 'Selected resource'
+                        : recordText(asset['assetType']),
+                    style: const TextStyle(color: muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.tonalIcon(
+                    key: ValueKey('open-resource-${asset['id']}'),
+                    onPressed:
+                        !saving &&
+                            [
+                              'OPEN',
+                              'PREVIEW',
+                            ].contains(asset['accessState']) &&
+                            asset['sourceReady'] == true
+                        ? () => play(asset)
+                        : null,
+                    icon: Icon(
+                      selectedAsset?['id'] == asset['id']
+                          ? Icons.check_circle_outline
+                          : Icons.arrow_forward,
+                      size: 17,
+                    ),
+                    label: Text(
+                      !['OPEN', 'PREVIEW'].contains(asset['accessState'])
+                          ? 'Access required'
+                          : asset['sourceReady'] != true
+                          ? 'Not connected'
+                          : selectedAsset?['id'] == asset['id']
+                          ? 'Viewing now'
+                          : ['VIDEO', 'AUDIO'].contains(asset['assetType'])
+                          ? 'Play in app'
+                          : 'View in app',
+                    ),
                   ),
                 ],
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                primary: true,
-                padding: const EdgeInsets.all(20),
-                child: PageResult(
-                  future: current,
-                  onRetry: () => setState(() {
-                    current = widget.load('/api/learner/lessons/${widget.id}');
-                    error = null;
-                  }),
-                  builder: (raw) {
-                    final lesson = recordMap(recordMap(raw)['lesson']),
-                        assets = recordList(lesson['assets']);
-                    final progress =
-                        savedProgress ?? recordMap(lesson['progress']);
-                    final completed =
-                        recordNumber(progress['progressPercent']) >= 100;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          recordText(recordMap(lesson['course'])['title']),
-                          style: const TextStyle(color: muted),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          recordText(lesson['title']),
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        if (lesson['summary'] != null)
-                          Text(
-                            recordText(lesson['summary']),
-                            style: const TextStyle(color: muted),
-                          ),
-                        const SizedBox(height: 18),
-                        SurfacePanel(
-                          child:
-                              lesson['contentText'] == null ||
-                                  recordText(
-                                    lesson['contentText'],
-                                  ).trim().isEmpty
-                              ? const Text(
-                                  'This lesson has no reading text. Check its resources below.',
-                                )
-                              : SelectableText(
-                                  recordText(lesson['contentText']),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    height: 1.8,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(height: 22),
-                        PanelHeading(
-                          'Lesson resources',
-                          subtitle:
-                              'Play video and audio, view images and read documents without leaving your lesson.',
-                        ),
-                        if (assets.isEmpty)
-                          const EmptyRecords(
-                            'No resources attached to this lesson.',
-                          ),
-                        for (final asset in assets)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: SurfacePanel(
-                              child: Wrap(
-                                spacing: 14,
-                                runSpacing: 10,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  Icon(
-                                    asset['assetType'] == 'VIDEO'
-                                        ? Icons.play_circle_outline
-                                        : asset['assetType'] == 'AUDIO'
-                                        ? Icons.headphones_outlined
-                                        : Icons.description_outlined,
-                                    color: gold,
-                                  ),
-                                  SizedBox(
-                                    width: 220,
-                                    child: Text(
-                                      recordText(
-                                        asset['title'],
-                                        'Lesson resource',
-                                      ),
-                                    ),
-                                  ),
-                                  TeacherTag(recordText(asset['assetType'])),
-                                  FilledButton.icon(
-                                    onPressed:
-                                        !preparing &&
-                                            !saving &&
-                                            [
-                                              'OPEN',
-                                              'PREVIEW',
-                                            ].contains(asset['accessState']) &&
-                                            asset['sourceReady'] == true
-                                        ? () => play(asset)
-                                        : null,
-                                    icon: Icon(
-                                      [
-                                            'VIDEO',
-                                            'AUDIO',
-                                          ].contains(asset['assetType'])
-                                          ? Icons.play_circle_outline
-                                          : Icons.visibility_outlined,
-                                      size: 16,
-                                    ),
-                                    label: Text(
-                                      ![
-                                            'OPEN',
-                                            'PREVIEW',
-                                          ].contains(asset['accessState'])
-                                          ? 'Access required'
-                                          : asset['sourceReady'] != true
-                                          ? 'Not connected'
-                                          : [
-                                              'VIDEO',
-                                              'AUDIO',
-                                            ].contains(asset['assetType'])
-                                          ? 'Play in app'
-                                          : 'View in app',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        if (error != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 18),
-                            child: TeacherNotice(error!, warning: true),
-                          ),
-                        const SizedBox(height: 14),
-                        Wrap(
-                          spacing: 14,
-                          runSpacing: 12,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            TeacherTag(
-                              completed
-                                  ? 'Completed'
-                                  : '${progress['progressPercent'] ?? 0}% recorded',
-                              color: forest,
-                            ),
-                            FilledButton.icon(
-                              onPressed: saving || preparing || completed
-                                  ? null
-                                  : complete,
-                              icon: saving
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.check),
-                              label: Text(
-                                saving
-                                    ? 'Saving...'
-                                    : completed
-                                    ? 'Lesson completed'
-                                    : 'Mark complete',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        const TeacherNotice(
-                          'Mark complete when you finish this lesson. Your saved completion appears in course progress.',
-                        ),
-                      ],
-                    );
-                  },
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Widget reading(Map<String, dynamic> lesson) => SurfacePanel(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const PanelHeading('Lesson notes'),
+        SelectableText(
+          lesson['contentText'] == null ||
+                  recordText(lesson['contentText']).trim().isEmpty
+              ? 'This lesson has no reading text. Explore its resources to continue learning.'
+              : recordText(lesson['contentText']),
+          style: const TextStyle(fontSize: 16, height: 1.8, color: ink),
+        ),
+      ],
+    ),
+  );
+
+  Widget completion(Map<String, dynamic> progress) {
+    final completed = recordNumber(progress['progressPercent']) >= 100;
+    return SurfacePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              TeacherTag(
+                completed
+                    ? 'Completed'
+                    : '${progress['progressPercent'] ?? 0}% recorded',
+                color: forest,
+              ),
+              FilledButton.icon(
+                onPressed: saving || completed ? null : complete,
+                icon: saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check),
+                label: Text(
+                  saving
+                      ? 'Saving...'
+                      : completed
+                      ? 'Lesson completed'
+                      : 'Mark complete',
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Mark complete when you finish this lesson. Opening a resource does not save completion.',
+            style: TextStyle(color: muted, fontSize: 12, height: 1.6),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: TeacherNotice(error!, warning: true),
             ),
-          ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !saving,
+    child: LearningPage(
+      title: 'Lesson reader',
+      backLabel: 'Back to course',
+      onBack: saving ? null : () => Navigator.pop(context),
+      child: PageResult(
+        future: current,
+        onRetry: () => setState(() {
+          current = widget.load('/api/learner/lessons/${widget.id}');
+          error = null;
+        }),
+        builder: (raw) {
+          final lesson = recordMap(recordMap(raw)['lesson']);
+          final assets = recordList(lesson['assets']);
+          final progress = savedProgress ?? recordMap(lesson['progress']);
+          final stage = selectedAsset == null
+              ? null
+              : Focus(
+                  key: mediaAnchor,
+                  focusNode: mediaFocus,
+                  child: LessonMediaViewer(
+                    key: ValueKey(selectedAsset!['id']),
+                    assetId: recordText(selectedAsset!['id']),
+                    title: recordText(
+                      selectedAsset!['title'],
+                      'Lesson resource',
+                    ),
+                    load: widget.load,
+                    apiBaseUrl: widget.apiBaseUrl,
+                    surfaceBuilder: widget.surfaceBuilder,
+                    onClose: () => setState(() => selectedAsset = null),
+                  ),
+                );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                recordText(recordMap(lesson['course'])['title']),
+                style: const TextStyle(color: muted, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                recordText(lesson['title']),
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  color: ink,
+                  height: 1.2,
+                ),
+              ),
+              if (lesson['summary'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    recordText(lesson['summary']),
+                    style: const TextStyle(color: muted, height: 1.6),
+                  ),
+                ),
+              const SizedBox(height: 24),
+              LayoutBuilder(
+                builder: (context, box) {
+                  if (box.maxWidth >= 980) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (stage != null) ...[
+                                stage,
+                                const SizedBox(height: 20),
+                              ],
+                              reading(lesson),
+                              const SizedBox(height: 20),
+                              completion(progress),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        SizedBox(width: 300, child: resources(assets)),
+                      ],
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (stage != null) ...[stage, const SizedBox(height: 20)],
+                      if (stage == null) ...[
+                        reading(lesson),
+                        const SizedBox(height: 20),
+                      ],
+                      resources(assets),
+                      const SizedBox(height: 20),
+                      if (stage != null) ...[
+                        reading(lesson),
+                        const SizedBox(height: 20),
+                      ],
+                      completion(progress),
+                    ],
+                  );
+                },
+              ),
+            ],
+          );
+        },
       ),
     ),
   );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../lesson_media_delivery.dart';
+import '../foundation_ui.dart';
 
 class LessonMediaSurface extends StatefulWidget {
   const LessonMediaSurface({
@@ -146,7 +147,14 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
     }
     final controller = player;
     if (controller == null || !controller.value.isInitialized) {
-      return const Center(child: Text('Loading player...'));
+      return Center(
+        child: Text(
+          'Loading player...',
+          style: TextStyle(
+            color: widget.delivery.kind == 'VIDEO' ? Colors.white : ink,
+          ),
+        ),
+      );
     }
     final value = controller.value;
     return Column(
@@ -161,20 +169,47 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
             ),
           ),
         if (value.isBuffering) const LinearProgressIndicator(),
-        Row(
-          children: [
-            IconButton(
-              tooltip: value.isPlaying ? 'Pause' : 'Play',
-              onPressed: () =>
-                  control(value.isPlaying ? controller.pause : controller.play),
-              icon: Icon(value.isPlaying ? Icons.pause : Icons.play_arrow),
+        Material(
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 12, 8),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: value.isPlaying ? 'Pause' : 'Play',
+                      onPressed: () => control(
+                        value.isPlaying ? controller.pause : controller.play,
+                      ),
+                      icon: Icon(
+                        value.isPlaying ? Icons.pause : Icons.play_arrow,
+                        color: ink,
+                      ),
+                    ),
+                    Expanded(
+                      child: VideoProgressIndicator(
+                        controller,
+                        allowScrubbing: true,
+                        colors: VideoProgressColors(
+                          playedColor: gold,
+                          bufferedColor: gold.withValues(alpha: .2),
+                          backgroundColor: line,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${time(value.position)} / ${time(value.duration)}',
+                    style: const TextStyle(fontSize: 11, color: muted),
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: VideoProgressIndicator(controller, allowScrubbing: true),
-            ),
-            const SizedBox(width: 8),
-            Text('${time(value.position)} / ${time(value.duration)}'),
-          ],
+          ),
         ),
       ],
     );

@@ -84,8 +84,15 @@ void main() {
   Widget surface(
     String kind,
     VoidCallback ready,
-    VoidCallback failed,
-  ) => MaterialApp(
+    VoidCallback failed, {
+    double scale = 1,
+  }) => MaterialApp(
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: TextScaler.linear(scale)),
+      child: child!,
+    ),
     home: Scaffold(
       body: SizedBox(
         width: 280,
@@ -127,6 +134,24 @@ void main() {
         expect(platform.calls, contains('seek'));
         expect(failed, 0);
         expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+        await tester.pumpAndSettle();
+        expect(platform.calls, contains('dispose'));
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+    );
+  }
+  for (final kind in ['AUDIO', 'VIDEO']) {
+    testWidgets(
+      '$kind controls remain readable with enlarged text',
+      (tester) async {
+        await tester.pumpWidget(surface(kind, () {}, () {}, scale: 2));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byTooltip('Play'));
+        await tester.pumpAndSettle();
+        expect(platform.calls, contains('play'));
         await tester.pumpWidget(const SizedBox());
         await tester.runAsync(() => Future<void>.delayed(Duration.zero));
         await tester.pumpAndSettle();
