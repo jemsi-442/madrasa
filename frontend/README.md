@@ -198,11 +198,24 @@ text. Audio has a dedicated listening area. Native transport controls use a
 high-contrast strip with a separate time label for narrow screens and larger
 text. Opening media does not autoplay or automatically mark a lesson complete.
 
+**Previous resource** and **Next resource** follow the lesson's available
+resource order, skipping locked or unconnected items. The counter describes
+available resources, not completion. Boundaries are disabled; there is no
+automatic advance or autoplay, and each selected resource is authorized again.
+
+**Focus view** expands the inline viewing area and temporarily hides notes and
+the resource list. It is not another route, dialog or browser fullscreen window.
+The active surface and its playback/zoom state are retained. The exit button,
+page Back, or native Back restores the lesson first; Escape also exits when
+Flutter controls have keyboard focus. Embedded players may handle their own
+keyboard shortcuts. Previous/Next remains available in Focus view.
+
 Selecting another resource disposes the previous surface. **Back to lesson
-text** stops/removes it without leaving the lesson; page Back disposes it and
-returns to the curriculum. Resizing between desktop and mobile preserves the
-selected player's state instead of fetching another authorization link.
-Completion still blocks duplicate saves and navigation while saving.
+text** stops/removes it, exits Focus view, and scrolls/focuses the reading notes.
+Outside Focus view, page Back disposes media and returns to the curriculum.
+Resizing between desktop and mobile preserves the selected player's state
+instead of fetching another authorization link. Completion still blocks
+duplicate saves, resource navigation and focus toggling while saving.
 
 Every resource opening/reload uses the existing authorized delivery endpoint.
 Locked and unconnected resources remain unavailable. Errors and expired links

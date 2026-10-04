@@ -34,11 +34,21 @@ class LessonMediaViewer extends StatefulWidget {
     required this.apiBaseUrl,
     this.title = 'Lesson resource',
     this.onClose,
+    this.position,
+    this.total,
+    this.onPrevious,
+    this.onNext,
+    this.onToggleFocus,
+    this.focusView = false,
     this.surfaceBuilder,
-  });
+  }) : assert((position == null) == (total == null)),
+       assert(position == null || (position > 0 && position <= (total ?? 0)));
   final String assetId, apiBaseUrl, title;
   final PageLoader load;
   final VoidCallback? onClose;
+  final int? position, total;
+  final VoidCallback? onPrevious, onNext, onToggleFocus;
+  final bool focusView;
   final LessonMediaBuilder? surfaceBuilder;
   @override
   State<LessonMediaViewer> createState() => _LessonMediaViewerState();
@@ -146,8 +156,13 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         height: source.kind == 'AUDIO'
             ? 136
             : document
-            ? (MediaQuery.sizeOf(context).height * .6).clamp(300.0, 680.0)
-            : (box.maxWidth * 9 / 16).clamp(190.0, 620.0),
+            ? (MediaQuery.sizeOf(context).height *
+                      (widget.focusView ? .75 : .6))
+                  .clamp(300.0, widget.focusView ? 900.0 : 680.0)
+            : (box.maxWidth * 9 / 16).clamp(
+                190.0,
+                widget.focusView ? 900.0 : 620.0,
+              ),
         child: ColoredBox(
           color: document
               ? const Color(0xFFF3F4F3)
@@ -240,11 +255,66 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('Reload player'),
                   ),
+                  if (widget.onToggleFocus != null)
+                    TextButton.icon(
+                      key: const ValueKey('media-focus-view'),
+                      onPressed: widget.onToggleFocus,
+                      icon: Icon(
+                        widget.focusView
+                            ? Icons.close_fullscreen
+                            : Icons.open_in_full,
+                        size: 18,
+                      ),
+                      label: Text(
+                        widget.focusView ? 'Exit focus view' : 'Focus view',
+                      ),
+                    ),
                 ],
               ),
             ],
           ),
         ),
+        if (widget.position != null)
+          Container(
+            key: const ValueKey('media-resource-navigation'),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: const BoxDecoration(
+              color: paper,
+              border: Border(
+                top: BorderSide(color: line),
+                bottom: BorderSide(color: line),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Resource ${widget.position} of ${widget.total} available',
+                  style: const TextStyle(color: muted, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('previous-resource'),
+                      onPressed: widget.onPrevious,
+                      icon: const Icon(Icons.chevron_left, size: 18),
+                      label: const Text('Previous resource'),
+                    ),
+                    OutlinedButton.icon(
+                      key: const ValueKey('next-resource'),
+                      onPressed: widget.onNext,
+                      icon: const Icon(Icons.chevron_right, size: 18),
+                      label: const Text('Next resource'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         if (loading)
           const SizedBox(
             height: 200,

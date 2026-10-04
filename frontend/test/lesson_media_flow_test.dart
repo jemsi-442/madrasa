@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/admin_theme.dart';
 import 'package:mif_app/src/learner_lesson_reader.dart';
@@ -17,6 +18,7 @@ class RouteLog extends NavigatorObserver {
 
 class MediaFixture extends CoursesFixture {
   final events = <String>[];
+  bool includeAudio = true;
   @override
   Future<dynamic> load(String path) async {
     if (path == '/api/learner/assets/33/open') {
@@ -27,9 +29,9 @@ class MediaFixture extends CoursesFixture {
       );
     }
     final result = await super.load(path);
-    if (path == '/api/learner/lessons/22') {
+    if (path == '/api/learner/lessons/22' && includeAudio) {
       result['lesson']['assets'].add({
-        ...asset('33', 'Listen and practise', 'OPEN', true),
+        ...asset('33', 'Listen and practise', 'PREVIEW', true),
         'assetType': 'AUDIO',
       });
     }
@@ -112,6 +114,192 @@ Future<void> tap(WidgetTester t, Finder target) async {
 }
 
 void main() {
+  testWidgets(
+    'previous and next follow available resources without opening locked or unconnected assets',
+    (t) async {
+      final f = MediaFixture();
+      await host(t, f.reader(builder: f.surface));
+      await tap(t, find.byKey(const ValueKey('open-resource-30')));
+      expect(find.text('Resource 1 of 2 available'), findsOneWidget);
+      expect(
+        t
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('previous-resource')),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tap(t, find.byKey(const ValueKey('next-resource')));
+      expect(find.text('Resource 2 of 2 available'), findsOneWidget);
+      expect(
+        t
+            .widget<OutlinedButton>(find.byKey(const ValueKey('next-resource')))
+            .onPressed,
+        isNull,
+      );
+      expect(find.text('Test AUDIO surface'), findsOneWidget);
+      await tap(t, find.byKey(const ValueKey('previous-resource')));
+      expect(find.text('Test PDF surface'), findsOneWidget);
+      expect(f.paths.where((p) => p.endsWith('/open')).toList(), [
+        '/api/learner/assets/30/open',
+        '/api/learner/assets/33/open',
+        '/api/learner/assets/30/open',
+      ]);
+      expect(f.events, [
+        'mount PDF',
+        'dispose PDF',
+        'mount AUDIO',
+        'dispose AUDIO',
+        'mount PDF',
+      ]);
+      expect(f.writes, isEmpty);
+      await t.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('single available resource disables both sequence boundaries', (
+    t,
+  ) async {
+    final f = MediaFixture()..includeAudio = false;
+    await host(t, f.reader(builder: f.surface));
+    await tap(t, find.byKey(const ValueKey('open-resource-30')));
+    expect(find.text('Resource 1 of 1 available'), findsOneWidget);
+    for (final key in ['previous-resource', 'next-resource']) {
+      expect(
+        t.widget<OutlinedButton>(find.byKey(ValueKey(key))).onPressed,
+        isNull,
+      );
+    }
+    expect(f.paths.where((p) => p.endsWith('/open')).length, 1);
+    expect(f.writes, isEmpty);
+    await t.pumpWidget(const SizedBox());
+  });
+
+  for (final width in [320.0, 1440.0]) {
+    testWidgets(
+      'focus view preserves playback and authorization at width $width',
+      (t) async {
+        final f = MediaFixture();
+        await host(t, f.reader(builder: f.surface), width: width, scale: 2);
+        await tap(t, find.byKey(const ValueKey('open-resource-30')));
+        final normal = t.getSize(
+          find.byKey(const ValueKey('lesson-media-stage')),
+        );
+        await tap(t, find.byKey(const ValueKey('media-focus-view')));
+        expect(find.text('Lesson resources'), findsNothing);
+        expect(find.text('Lesson notes'), findsNothing);
+        expect(find.text('Exit focus view'), findsOneWidget);
+        expect(find.byType(Dialog), findsNothing);
+        final focused = t.getSize(
+          find.byKey(const ValueKey('lesson-media-stage')),
+        );
+        expect(focused.height, greaterThan(normal.height));
+        if (width == 1440) expect(focused.width, greaterThan(normal.width));
+        expect(f.events, ['mount PDF']);
+        expect(f.paths.where((p) => p.endsWith('/30/open')).length, 1);
+        await tap(t, find.byKey(const ValueKey('next-resource')));
+        expect(find.text('Test AUDIO surface'), findsOneWidget);
+        expect(find.text('Exit focus view'), findsOneWidget);
+        await tap(t, find.byKey(const ValueKey('media-focus-view')));
+        expect(find.text('Lesson resources'), findsOneWidget);
+        expect(f.events, ['mount PDF', 'dispose PDF', 'mount AUDIO']);
+        expect(f.paths.where((p) => p.endsWith('/33/open')).length, 1);
+        expect(f.writes, isEmpty);
+        await t.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'Escape and page Back leave focus view before leaving the lesson',
+    (t) async {
+      final f = MediaFixture(), routes = RouteLog();
+      await host(t, f.page(builder: f.surface), observer: routes);
+      await tap(t, find.text('View lessons').first);
+      await tap(t, find.text('Continue learning'));
+      await tap(t, find.byKey(const ValueKey('open-resource-30')));
+      final before = routes.pushed.length;
+      await tap(t, find.byKey(const ValueKey('media-focus-view')));
+      await t.sendKeyEvent(LogicalKeyboardKey.escape);
+      await t.pumpAndSettle();
+      expect(find.text('Lesson resources'), findsOneWidget);
+      await tap(t, find.byKey(const ValueKey('media-focus-view')));
+      await tap(t, find.byTooltip('Back to lesson'));
+      expect(find.byType(LearnerLessonReader), findsOneWidget);
+      expect(find.text('Focus view'), findsOneWidget);
+      await tap(t, find.byKey(const ValueKey('media-focus-view')));
+      await t.binding.handlePopRoute();
+      await t.pumpAndSettle();
+      expect(find.byType(LearnerLessonReader), findsOneWidget);
+      expect(find.text('Focus view'), findsOneWidget);
+      expect(f.events, ['mount PDF']);
+      expect(routes.pushed.length, before);
+      await t.binding.handlePopRoute();
+      await t.pumpAndSettle();
+      expect(find.text('Course curriculum'), findsOneWidget);
+      expect(f.events.last, 'dispose PDF');
+      expect(f.writes, isEmpty);
+    },
+  );
+
+  for (final focused in [false, true]) {
+    testWidgets(
+      'return to notes restores visible reading position, focus=$focused',
+      (t) async {
+        final f = MediaFixture();
+        await host(t, f.reader(builder: f.surface), width: 320);
+        await tap(t, find.byKey(const ValueKey('open-resource-30')));
+        if (focused) {
+          await tap(t, find.byKey(const ValueKey('media-focus-view')));
+        }
+        await tap(t, find.byKey(const ValueKey('return-to-lesson-text')));
+        expect(find.text('Lesson notes').hitTestable(), findsOneWidget);
+        expect(t.getTopLeft(find.text('Lesson notes')).dy, greaterThan(50));
+        expect(t.getTopLeft(find.text('Lesson notes')).dy, lessThan(300));
+        expect(find.byType(LessonMediaViewer), findsNothing);
+        expect(find.text('Lesson resources'), findsOneWidget);
+        expect(f.events.last, 'dispose PDF');
+        expect(f.writes, isEmpty);
+      },
+    );
+  }
+
+  testWidgets(
+    'pending progress save disables sequence changes and focus toggle',
+    (t) async {
+      final f = MediaFixture()..pendingSave = Completer<dynamic>();
+      await host(t, f.reader(builder: f.surface));
+      await tap(t, find.byKey(const ValueKey('open-resource-30')));
+      await t.ensureVisible(find.text('Mark complete'));
+      await t.tap(find.text('Mark complete'));
+      await t.pump();
+      expect(
+        t
+            .widget<OutlinedButton>(find.byKey(const ValueKey('next-resource')))
+            .onPressed,
+        isNull,
+      );
+      expect(find.byKey(const ValueKey('media-focus-view')), findsNothing);
+      expect(
+        t
+            .widget<IconButton>(
+              find.byWidgetPredicate(
+                (w) => w is IconButton && w.tooltip == 'Back to course',
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
+      f.pendingSave!.complete();
+      await t.pumpAndSettle();
+      expect(find.text('Lesson completed'), findsOneWidget);
+      expect(find.byKey(const ValueKey('media-focus-view')), findsOneWidget);
+      expect(f.events, ['mount PDF']);
+      expect(f.writes.length, 1);
+      await t.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets(
     'course and lesson use full pages, media opens inline without another route',
     (t) async {

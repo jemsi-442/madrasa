@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'admin_forms.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
@@ -6,6 +7,10 @@ import 'foundation_ui.dart';
 import 'learning_page.dart';
 import 'lesson_media_viewer.dart';
 import 'teacher_ui.dart';
+
+class _ExitMediaFocusIntent extends Intent {
+  const _ExitMediaFocusIntent();
+}
 
 class LearnerLessonReader extends StatefulWidget {
   const LearnerLessonReader({
@@ -29,14 +34,17 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     '/api/learner/lessons/${widget.id}',
   );
   final mediaAnchor = GlobalKey();
+  final notesAnchor = GlobalKey();
   final mediaFocus = FocusNode(debugLabel: 'Lesson resource');
-  bool saving = false;
+  final notesFocus = FocusNode(debugLabel: 'Lesson notes');
+  bool saving = false, focusView = false;
   Map<String, dynamic>? savedProgress, selectedAsset;
   String? error;
 
   @override
   void dispose() {
     mediaFocus.dispose();
+    notesFocus.dispose();
     super.dispose();
   }
 
@@ -65,13 +73,15 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     }
   }
 
-  void play(Map<String, dynamic> asset) {
-    if (saving) return;
-    setState(() => selectedAsset = asset);
+  bool canOpen(Map<String, dynamic> asset) =>
+      ['OPEN', 'PREVIEW'].contains(asset['accessState']) &&
+      asset['sourceReady'] == true;
+
+  void reveal(GlobalKey anchor, FocusNode focus) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final target = mediaAnchor.currentContext;
+      final target = anchor.currentContext;
       if (!mounted || target == null) return;
-      mediaFocus.requestFocus();
+      focus.requestFocus();
       Scrollable.ensureVisible(
         target,
         alignment: 0,
@@ -80,6 +90,26 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
             : const Duration(milliseconds: 220),
       );
     });
+  }
+
+  void play(Map<String, dynamic> asset) {
+    if (saving || !canOpen(asset)) return;
+    setState(() => selectedAsset = asset);
+    reveal(mediaAnchor, mediaFocus);
+  }
+
+  void toggleFocus() {
+    if (saving || selectedAsset == null) return;
+    setState(() => focusView = !focusView);
+    reveal(mediaAnchor, mediaFocus);
+  }
+
+  void returnToNotes() {
+    setState(() {
+      focusView = false;
+      selectedAsset = null;
+    });
+    reveal(notesAnchor, notesFocus);
   }
 
   Widget resources(List<Map<String, dynamic>> assets) => SurfacePanel(
@@ -138,13 +168,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                   const SizedBox(height: 12),
                   FilledButton.tonalIcon(
                     key: ValueKey('open-resource-${asset['id']}'),
-                    onPressed:
-                        !saving &&
-                            [
-                              'OPEN',
-                              'PREVIEW',
-                            ].contains(asset['accessState']) &&
-                            asset['sourceReady'] == true
+                    onPressed: !saving && canOpen(asset)
                         ? () => play(asset)
                         : null,
                     icon: Icon(
@@ -174,19 +198,23 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     ),
   );
 
-  Widget reading(Map<String, dynamic> lesson) => SurfacePanel(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const PanelHeading('Lesson notes'),
-        SelectableText(
-          lesson['contentText'] == null ||
-                  recordText(lesson['contentText']).trim().isEmpty
-              ? 'This lesson has no reading text. Explore its resources to continue learning.'
-              : recordText(lesson['contentText']),
-          style: const TextStyle(fontSize: 16, height: 1.8, color: ink),
-        ),
-      ],
+  Widget reading(Map<String, dynamic> lesson) => Focus(
+    key: notesAnchor,
+    focusNode: notesFocus,
+    child: SurfacePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const PanelHeading('Lesson notes'),
+          SelectableText(
+            lesson['contentText'] == null ||
+                    recordText(lesson['contentText']).trim().isEmpty
+                ? 'This lesson has no reading text. Explore its resources to continue learning.'
+                : recordText(lesson['contentText']),
+            style: const TextStyle(fontSize: 16, height: 1.8, color: ink),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -243,112 +271,157 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !saving,
-    child: LearningPage(
-      title: 'Lesson reader',
-      backLabel: 'Back to course',
-      onBack: saving ? null : () => Navigator.pop(context),
-      child: PageResult(
-        future: current,
-        onRetry: () => setState(() {
-          current = widget.load('/api/learner/lessons/${widget.id}');
-          error = null;
-        }),
-        builder: (raw) {
-          final lesson = recordMap(recordMap(raw)['lesson']);
-          final assets = recordList(lesson['assets']);
-          final progress = savedProgress ?? recordMap(lesson['progress']);
-          final stage = selectedAsset == null
-              ? null
-              : Focus(
-                  key: mediaAnchor,
-                  focusNode: mediaFocus,
-                  child: LessonMediaViewer(
-                    key: ValueKey(selectedAsset!['id']),
-                    assetId: recordText(selectedAsset!['id']),
-                    title: recordText(
-                      selectedAsset!['title'],
-                      'Lesson resource',
-                    ),
-                    load: widget.load,
-                    apiBaseUrl: widget.apiBaseUrl,
-                    surfaceBuilder: widget.surfaceBuilder,
-                    onClose: () => setState(() => selectedAsset = null),
-                  ),
-                );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                recordText(recordMap(lesson['course'])['title']),
-                style: const TextStyle(color: muted, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                recordText(lesson['title']),
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                  color: ink,
-                  height: 1.2,
-                ),
-              ),
-              if (lesson['summary'] != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(
-                    recordText(lesson['summary']),
-                    style: const TextStyle(color: muted, height: 1.6),
-                  ),
-                ),
-              const SizedBox(height: 24),
-              LayoutBuilder(
-                builder: (context, box) {
-                  if (box.maxWidth >= 980) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (stage != null) ...[
-                                stage,
-                                const SizedBox(height: 20),
-                              ],
-                              reading(lesson),
-                              const SizedBox(height: 20),
-                              completion(progress),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        SizedBox(width: 300, child: resources(assets)),
-                      ],
-                    );
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (stage != null) ...[stage, const SizedBox(height: 20)],
-                      if (stage == null) ...[
-                        reading(lesson),
-                        const SizedBox(height: 20),
-                      ],
-                      resources(assets),
-                      const SizedBox(height: 20),
-                      if (stage != null) ...[
-                        reading(lesson),
-                        const SizedBox(height: 20),
-                      ],
-                      completion(progress),
-                    ],
-                  );
-                },
-              ),
-            ],
-          );
+    canPop: !saving && !focusView,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop && focusView && !saving) toggleFocus();
+    },
+    child: Shortcuts(
+      shortcuts: {
+        if (focusView)
+          const SingleActivator(LogicalKeyboardKey.escape):
+              const _ExitMediaFocusIntent(),
+      },
+      child: Actions(
+        actions: {
+          _ExitMediaFocusIntent: CallbackAction<_ExitMediaFocusIntent>(
+            onInvoke: (_) {
+              if (focusView) toggleFocus();
+              return null;
+            },
+          ),
         },
+        child: LearningPage(
+          title: 'Lesson reader',
+          backLabel: focusView ? 'Back to lesson' : 'Back to course',
+          onBack: saving
+              ? null
+              : focusView
+              ? toggleFocus
+              : () => Navigator.pop(context),
+          child: PageResult(
+            future: current,
+            onRetry: () => setState(() {
+              current = widget.load('/api/learner/lessons/${widget.id}');
+              error = null;
+            }),
+            builder: (raw) {
+              final lesson = recordMap(recordMap(raw)['lesson']);
+              final assets = recordList(lesson['assets']);
+              final available = assets.where(canOpen).toList();
+              final selectedIndex = available.indexWhere(
+                (asset) => asset['id'] == selectedAsset?['id'],
+              );
+              final progress = savedProgress ?? recordMap(lesson['progress']);
+              final stage = selectedAsset == null
+                  ? null
+                  : Focus(
+                      key: mediaAnchor,
+                      focusNode: mediaFocus,
+                      child: LessonMediaViewer(
+                        key: ValueKey(selectedAsset!['id']),
+                        assetId: recordText(selectedAsset!['id']),
+                        title: recordText(
+                          selectedAsset!['title'],
+                          'Lesson resource',
+                        ),
+                        load: widget.load,
+                        apiBaseUrl: widget.apiBaseUrl,
+                        surfaceBuilder: widget.surfaceBuilder,
+                        onClose: returnToNotes,
+                        focusView: focusView,
+                        onToggleFocus: saving ? null : toggleFocus,
+                        position: selectedIndex < 0 ? null : selectedIndex + 1,
+                        total: selectedIndex < 0 ? null : available.length,
+                        onPrevious: saving || selectedIndex <= 0
+                            ? null
+                            : () => play(available[selectedIndex - 1]),
+                        onNext:
+                            saving ||
+                                selectedIndex < 0 ||
+                                selectedIndex >= available.length - 1
+                            ? null
+                            : () => play(available[selectedIndex + 1]),
+                      ),
+                    );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    recordText(recordMap(lesson['course'])['title']),
+                    style: const TextStyle(color: muted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    recordText(lesson['title']),
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      color: ink,
+                      height: 1.2,
+                    ),
+                  ),
+                  if (lesson['summary'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        recordText(lesson['summary']),
+                        style: const TextStyle(color: muted, height: 1.6),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  LayoutBuilder(
+                    builder: (context, box) {
+                      if (focusView && stage != null) return stage;
+                      if (box.maxWidth >= 980) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (stage != null) ...[
+                                    stage,
+                                    const SizedBox(height: 20),
+                                  ],
+                                  reading(lesson),
+                                  const SizedBox(height: 20),
+                                  completion(progress),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            SizedBox(width: 300, child: resources(assets)),
+                          ],
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (stage != null) ...[
+                            stage,
+                            const SizedBox(height: 20),
+                          ],
+                          if (stage == null) ...[
+                            reading(lesson),
+                            const SizedBox(height: 20),
+                          ],
+                          resources(assets),
+                          const SizedBox(height: 20),
+                          if (stage != null) ...[
+                            reading(lesson),
+                            const SizedBox(height: 20),
+                          ],
+                          completion(progress),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     ),
   );
