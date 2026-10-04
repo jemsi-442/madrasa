@@ -63,6 +63,49 @@ test('HEAD and renderer MIME types work', async t => {
   assert.equal(await response.text(), '');
 });
 
+test('bundled media has correct MIME types and seekable byte ranges', async t => {
+  const { base, directory } = await fixture(t);
+  for (const [extension, type] of [['mp4', 'video/mp4'], ['m4a', 'audio/mp4'], ['pdf', 'application/pdf'], ['txt', 'text/plain; charset=utf-8']]) {
+    await writeFile(join(directory, `sample.${extension}`), '0123456789');
+    const head = await fetch(`${base}/sample.${extension}`, { method: 'HEAD', headers: { Range: 'bytes=2-4' } });
+    assert.equal(head.status, 200);
+    assert.equal(head.headers.get('content-type'), type);
+    assert.equal(head.headers.get('content-length'), '10');
+    assert.equal(head.headers.get('accept-ranges'), 'bytes');
+    assert.equal(await head.text(), '');
+    for (const [range, content, bounds] of [
+      ['bytes=2-4', '234', '2-4'], ['bytes=7-', '789', '7-9'],
+      ['bytes=-3', '789', '7-9'], ['bytes=8-99', '89', '8-9'],
+      ['bytes=-99', '0123456789', '0-9'], ['bytes=0-0', '0', '0-0'],
+    ]) {
+      const response = await fetch(`${base}/sample.${extension}`, { headers: { Range: range } });
+      assert.equal(response.status, 206);
+      assert.equal(response.headers.get('content-range'), `bytes ${bounds}/10`);
+      assert.equal(response.headers.get('content-length'), String(content.length));
+      assert.equal(response.headers.get('content-type'), type);
+      assert.equal(await response.text(), content);
+    }
+  }
+});
+
+test('unsatisfiable ranges are rejected and unsupported syntax cannot escape static files', async t => {
+  const { base, directory } = await fixture(t);
+  await writeFile(join(directory, 'sample.mp4'), '0123456789');
+  await writeFile(join(directory, 'empty.mp4'), '');
+  for (const range of ['bytes=10-', 'bytes=8-2', 'bytes=-0', 'bytes=99999999999999999999-']) {
+    const response = await fetch(base + '/sample.mp4', { headers: { Range: range } });
+    assert.equal(response.status, 416);
+    assert.equal(response.headers.get('content-range'), 'bytes */10');
+  }
+  assert.equal((await fetch(base + '/empty.mp4', { headers: { Range: 'bytes=0-' } })).status, 416);
+  for (const range of ['bytes=-', 'bytes=0-1,4-5', 'not-a-range']) {
+    const response = await fetch(base + '/sample.mp4', { headers: { Range: range } });
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), '0123456789');
+  }
+  assert.equal((await fetch(base + '/escape.txt', { headers: { Range: 'bytes=0-4' } })).status, 404);
+});
+
 test('does not expose directories, dotfiles, parent files or symlinks outside the build', async t => {
   const { base } = await fixture(t);
   for (const path of ['/escape.txt', '/.env', '/%2e%2e%2fprivate.txt', '/missing', '/%00']) {

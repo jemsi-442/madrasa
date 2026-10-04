@@ -22,6 +22,12 @@ const contentTypes = {
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
   '.otf': 'font/otf',
+  '.mp4': 'video/mp4',
+  '.m4a': 'audio/mp4',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.pdf': 'application/pdf',
+  '.txt': 'text/plain; charset=utf-8',
 };
 
 function recoveryPage(buildId) {
@@ -131,6 +137,31 @@ export async function createPreviewServer(directory) {
           : body.replace('src="flutter_bootstrap.js"', `src="flutter_bootstrap.js?v=${id}"`);
         response.setHeader('X-Preview-Build', id);
         send(200, body, type);
+        return;
+      }
+      response.setHeader('Accept-Ranges', 'bytes');
+      // Media elements request byte ranges when seeking. Only one range is
+      // served; unsupported/multipart syntax falls back to the complete file.
+      const range = request.method === 'GET'
+        ? /^bytes=(\d*)-(\d*)$/.exec(request.headers.range || '')
+        : null;
+      if (range && (range[1] || range[2])) {
+        const start = range[1] ? Number(range[1]) : Math.max(0, info.size - Number(range[2]));
+        const end = range[1] && range[2] ? Math.min(Number(range[2]), info.size - 1) : info.size - 1;
+        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) ||
+            start > end || start >= info.size) {
+          response.setHeader('Content-Range', `bytes */${info.size}`);
+          send(416, 'Requested range is unavailable');
+          return;
+        }
+        response.writeHead(206, {
+          'Content-Type': type,
+          'Content-Length': end - start + 1,
+          'Content-Range': `bytes ${start}-${end}/${info.size}`,
+        });
+        const stream = createReadStream(file, { start, end });
+        response.on('close', () => stream.destroy());
+        stream.on('error', () => response.destroy()).pipe(response);
         return;
       }
       response.writeHead(200, { 'Content-Type': type, 'Content-Length': info.size });

@@ -5,6 +5,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'lesson_media_delivery.dart';
 import 'lesson_document_surface.dart';
+import 'media_player_samples.dart';
 import 'teacher_ui.dart';
 import 'platform/lesson_media_native.dart'
     if (dart.library.js_interop) 'platform/lesson_media_web.dart'
@@ -41,10 +42,31 @@ class LessonMediaViewer extends StatefulWidget {
     this.onToggleFocus,
     this.focusView = false,
     this.surfaceBuilder,
-  }) : assert((position == null) == (total == null)),
+  }) : previewSample = null,
+       assert((position == null) == (total == null)),
+       assert(position == null || (position > 0 && position <= (total ?? 0)));
+
+  const LessonMediaViewer.preview({
+    super.key,
+    required MediaPlayerSample sample,
+    this.position,
+    this.total,
+    this.onPrevious,
+    this.onNext,
+    this.onToggleFocus,
+    this.focusView = false,
+    this.surfaceBuilder,
+  }) : previewSample = sample,
+       assetId = '',
+       apiBaseUrl = '',
+       title = 'Player preview',
+       load = null,
+       onClose = null,
+       assert((position == null) == (total == null)),
        assert(position == null || (position > 0 && position <= (total ?? 0)));
   final String assetId, apiBaseUrl, title;
-  final PageLoader load;
+  final PageLoader? load;
+  final MediaPlayerSample? previewSample;
   final VoidCallback? onClose;
   final int? position, total;
   final VoidCallback? onPrevious, onNext, onToggleFocus;
@@ -71,7 +93,8 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
   void didUpdateWidget(covariant LessonMediaViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.assetId != widget.assetId ||
-        oldWidget.apiBaseUrl != widget.apiBaseUrl) {
+        oldWidget.apiBaseUrl != widget.apiBaseUrl ||
+        oldWidget.previewSample != widget.previewSample) {
       loading = false;
       reload();
     }
@@ -88,15 +111,20 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
       ready = false;
     });
     try {
-      final raw = await widget.load(
-        '/api/learner/assets/${widget.assetId}/open',
-      );
+      final LessonMediaDelivery parsed;
+      if (widget.previewSample case final sample?) {
+        parsed = sample.delivery;
+      } else {
+        final raw = await widget.load!(
+          '/api/learner/assets/${widget.assetId}/open',
+        );
+        parsed = LessonMediaDelivery.parse(
+          recordMap(raw),
+          apiBaseUrl: widget.apiBaseUrl,
+          assetId: widget.assetId,
+        );
+      }
       if (!mounted || request != generation) return;
-      final parsed = LessonMediaDelivery.parse(
-        recordMap(raw),
-        apiBaseUrl: widget.apiBaseUrl,
-        assetId: widget.assetId,
-      );
       setState(() => delivery = parsed);
       timeout = Timer(const Duration(seconds: 15), () {
         if (mounted && request == generation && !ready) {
@@ -134,8 +162,9 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
     if (!mounted || request != generation) return;
     timeout?.cancel();
     setState(
-      () => error =
-          'This resource could not be displayed. Check your connection and reload. If it still fails, ask your teacher to check the file format and media hosting permissions.',
+      () => error = widget.previewSample != null
+          ? 'This sample could not be displayed. Try Reload player or choose another sample. Audio and video require a supported browser or mobile device.'
+          : 'This resource could not be displayed. Check your connection and reload. If it still fails, ask your teacher to check the file format and media hosting permissions.',
     );
   }
 
@@ -289,7 +318,9 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Resource ${widget.position} of ${widget.total} available',
+                  widget.previewSample == null
+                      ? 'Resource ${widget.position} of ${widget.total} available'
+                      : 'Sample ${widget.position} of ${widget.total}',
                   style: const TextStyle(color: muted, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
@@ -377,9 +408,11 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                   icon: const Icon(Icons.menu_book_outlined, size: 18),
                   label: const Text('Back to lesson text'),
                 ),
-              const Text(
-                'Opening media does not mark the lesson complete.',
-                style: TextStyle(color: muted, fontSize: 11, height: 1.5),
+              Text(
+                widget.previewSample == null
+                    ? 'Opening media does not mark the lesson complete.'
+                    : 'Sample only. No school records or learning progress are saved.',
+                style: const TextStyle(color: muted, fontSize: 11, height: 1.5),
               ),
             ],
           ),

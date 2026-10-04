@@ -1,0 +1,16 @@
+PLAYER PREVIEW
+
+These are practice materials, not a school lesson.
+No learning progress or school records are saved here.
+
+1. Choose Video and press Play. Pause whenever you like.
+2. Try moving forward or back by 10 seconds.
+3. Change playback speed, then return it to 1x.
+4. Try Audio at a comfortable volume.
+5. Open Image, zoom in and use Reset zoom.
+6. Open PDF and move between its two pages.
+7. Use Focus view for more viewing space.
+8. Return to your workspace when you are ready.
+
+Your real lessons use the same controls. Opening a lesson resource does
+not mark it complete; use Mark complete only when you finish that lesson.

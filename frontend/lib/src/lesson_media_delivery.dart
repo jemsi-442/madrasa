@@ -5,11 +5,14 @@ class LessonMediaDelivery {
     required this.title,
     required this.expiresAt,
     required this.downloadAllowed,
+    this.assetPath,
   });
   final Uri uri;
   final String kind, title;
-  final DateTime expiresAt;
+  final DateTime? expiresAt;
   final bool downloadAllowed;
+  // Set only by the bundled sample catalogue, never by API response parsing.
+  final String? assetPath;
 
   factory LessonMediaDelivery.parse(
     Map<String, dynamic> response, {

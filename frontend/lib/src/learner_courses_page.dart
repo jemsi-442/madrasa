@@ -5,6 +5,7 @@ import 'foundation_ui.dart';
 import 'learner_lesson_reader.dart';
 import 'learning_page.dart';
 import 'lesson_media_viewer.dart';
+import 'media_player_preview.dart';
 import 'teacher_ui.dart';
 
 bool courseIsAvailable(dynamic state) => state == 'OPEN' || state == 'PREVIEW';
@@ -163,7 +164,29 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   );
 
   @override
-  Widget build(BuildContext context) => TeacherData(
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SurfacePanel(
+        child: Wrap(
+          spacing: 20,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text(
+              'Explore the player, even before your first lesson.',
+              style: TextStyle(color: ink, fontWeight: FontWeight.w600),
+            ),
+            MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
+          ],
+        ),
+      ),
+      const SizedBox(height: 18),
+      catalogue(),
+    ],
+  );
+
+  Widget catalogue() => TeacherData(
     load: widget.load,
     path: '/api/learner/courses',
     refreshToken: widget.refreshToken + changes,

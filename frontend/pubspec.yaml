@@ -29,6 +29,7 @@ flutter:
   assets:
     - assets/mif-logo.png
     - assets/learning-hero.png
+    - assets/media-preview/
   fonts:
     - family: NotoSansDisplay
       fonts:

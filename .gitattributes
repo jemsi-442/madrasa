@@ -1,0 +1,2 @@
+# Preserve byte offsets in the bundled PDF sample across checkouts.
+frontend/assets/media-preview/*.pdf binary

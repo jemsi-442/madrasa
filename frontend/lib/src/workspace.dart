@@ -29,6 +29,7 @@ import 'assessments_page.dart';
 import 'student_reports_page.dart';
 import 'learner_portal_page.dart';
 import 'learner_courses_page.dart';
+import 'media_player_preview.dart';
 
 class SectionSpec {
   const SectionSpec(this.title, this.path, this.icon, this.purpose);
@@ -894,8 +895,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 ),
                 PopupMenuButton<String>(
                   tooltip: 'Account menu',
-                  onSelected: (_) => requestSignOut(),
+                  onSelected: (value) {
+                    if (value == 'media-preview') {
+                      openMediaPlayerPreview(context);
+                    } else if (value == 'sign-out') {
+                      requestSignOut();
+                    }
+                  },
                   itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'media-preview',
+                      child: Text('Try media player'),
+                    ),
                     PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
                   ],
                   icon: const Icon(Icons.account_circle_outlined),

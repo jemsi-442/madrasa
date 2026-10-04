@@ -186,6 +186,32 @@ flutter test test/learning_workflow_test.dart test/assessments_test.dart test/st
 
 ## Lesson Media Experience
 
+### Try The Player Without A Course
+
+Every signed-in role can open **Account menu > Try media player** on desktop
+or mobile. **My courses** also has a preview button that stays available when
+the catalogue is empty or cannot load. The preview opens a normal in-app page
+and returns to your previous work, without signing you out.
+
+Five built-in samples let users explore the actual player: a 40-second silent
+video, 40 seconds of quiet synthetic audio, an illustration, a two-page PDF
+and a text checklist. The samples are clearly labelled, do not autoplay, and
+use the same playback, seeking, speed, zoom, resource and Focus view controls
+as lessons. No course, upload, payment or learning-progress record is needed
+or created. Sources are packaged Flutter assets, not external demo links.
+The signed-school-resource URL/expiry checks are unchanged for real lessons.
+
+The local preview server serves media MIME types and single byte ranges so
+video/audio seeking works. Keep equivalent range support on production static
+asset hosting. See `assets/README.md` for sample provenance and regeneration.
+
+```bash
+flutter test test/media_player_preview_test.dart test/lesson_media_native_test.dart
+node --test tool/serve_web.test.mjs
+```
+
+### Learning With Real Resources
+
 Courses and lessons open as ordinary full-page routes inside the app, with
 **Back to courses** and **Back to course** actions. Media does not open another
 dialog or route: the selected resource is embedded in the lesson beside the

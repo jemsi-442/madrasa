@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'foundation_ui.dart';
 import 'public_shell.dart';
+import 'media_player_preview.dart';
 
 class WorkspaceSidebar extends StatelessWidget {
   const WorkspaceSidebar({
@@ -321,8 +322,18 @@ class WorkspaceTopBar extends StatelessWidget {
           const SizedBox(width: 12),
           PopupMenuButton<String>(
             tooltip: 'Account menu',
-            onSelected: (_) => onSignOut(),
+            onSelected: (value) {
+              if (value == 'media-preview') {
+                openMediaPlayerPreview(context);
+              } else if (value == 'sign-out') {
+                onSignOut();
+              }
+            },
             itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'media-preview',
+                child: Text('Try media player'),
+              ),
               PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
             ],
             child: Padding(

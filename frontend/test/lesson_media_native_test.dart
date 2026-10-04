@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 import 'package:mif_app/src/lesson_media_delivery.dart';
 import 'package:mif_app/src/lesson_playback_tools.dart';
+import 'package:mif_app/src/media_player_samples.dart';
 import 'package:mif_app/src/platform/lesson_media_native.dart';
 
 class TestMediaPlatform extends VideoPlayerPlatform {
@@ -17,6 +18,7 @@ class TestMediaPlatform extends VideoPlayerPlatform {
   double? rejectedSpeed;
   bool failSeek = false;
   String? source;
+  DataSource? requestedSource;
   bool fail = false;
   bool delay = false;
   @override
@@ -25,6 +27,7 @@ class TestMediaPlatform extends VideoPlayerPlatform {
   Future<int?> createWithOptions(VideoCreationOptions options) async {
     events = StreamController<VideoEvent>();
     source = options.dataSource.uri;
+    requestedSource = options.dataSource;
     if (fail) {
       events.addError(
         PlatformException(code: 'VideoError', message: 'Unsupported media'),
@@ -100,6 +103,7 @@ void main() {
     VoidCallback ready,
     VoidCallback failed, {
     double scale = 1,
+    bool preview = false,
   }) => MaterialApp(
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(
@@ -112,15 +116,20 @@ void main() {
         width: 280,
         height: kind == 'AUDIO' ? 168 : 240,
         child: LessonMediaSurface(
-          delivery: LessonMediaDelivery(
-            uri: Uri.parse(
-              'https://school.test/api/learner/assets/3/deliver?token=signed',
-            ),
-            kind: kind,
-            title: 'Practice',
-            expiresAt: DateTime.now().add(const Duration(minutes: 5)),
-            downloadAllowed: false,
-          ),
+          delivery: preview
+              ? (kind == 'VIDEO'
+                        ? MediaPlayerSample.video
+                        : MediaPlayerSample.audio)
+                    .delivery
+              : LessonMediaDelivery(
+                  uri: Uri.parse(
+                    'https://school.test/api/learner/assets/3/deliver?token=signed',
+                  ),
+                  kind: kind,
+                  title: 'Practice',
+                  expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+                  downloadAllowed: false,
+                ),
           onReady: ready,
           onError: failed,
         ),
@@ -128,6 +137,35 @@ void main() {
     ),
   );
   for (final kind in ['AUDIO', 'VIDEO']) {
+    testWidgets(
+      '$kind preview uses a bundled asset with working native controls',
+      (tester) async {
+        await tester.pumpWidget(
+          surface(kind, () {}, () => fail('Sample failed'), preview: true),
+        );
+        await tester.pumpAndSettle();
+        expect(platform.requestedSource?.sourceType, DataSourceType.asset);
+        expect(
+          platform.requestedSource?.asset,
+          kind == 'VIDEO'
+              ? MediaPlayerSample.video.assetPath
+              : MediaPlayerSample.audio.assetPath,
+        );
+        expect(platform.source, isNull);
+        expect(platform.calls, isNot(contains('play')));
+        await tester.tap(find.byTooltip('Play'));
+        await tester.pumpAndSettle();
+        expect(platform.calls, contains('play'));
+        await tester.tap(find.byTooltip('Forward 10 seconds'));
+        await tester.pumpAndSettle();
+        expect(platform.seeks.last.inSeconds, 10);
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+        await tester.pumpAndSettle();
+        expect(platform.calls.last, 'dispose');
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+    );
     testWidgets(
       '$kind quick seek clamps to start/end and does not autoplay',
       (tester) async {

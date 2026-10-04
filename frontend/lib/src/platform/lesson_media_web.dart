@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 import '../lesson_media_delivery.dart';
@@ -101,7 +102,10 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface> {
         // A browser UI hint only; source redirects are not DRM.
         node.setAttribute('controlslist', 'nodownload');
       }
-      media.src = widget.delivery.uri.toString();
+      final asset = widget.delivery.assetPath;
+      media.src = asset == null
+          ? widget.delivery.uri.toString()
+          : ui_web.assetManager.getAssetUrl(asset);
     }
   }
 

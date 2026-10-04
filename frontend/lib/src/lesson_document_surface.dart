@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdfrx/pdfrx.dart';
 import 'lesson_media_delivery.dart';
@@ -49,6 +50,14 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
 
   Future<void> loadText() async {
     try {
+      final asset = widget.delivery.assetPath;
+      if (asset != null) {
+        final value = await rootBundle.loadString(asset);
+        if (!mounted) return;
+        setState(() => text = value);
+        notify(true);
+        return;
+      }
       // Keep text attachments bounded; never interpret them as HTML.
       final response = await client
           .send(http.Request('GET', widget.delivery.uri))
@@ -78,7 +87,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   void dispose() {
     client.close();
     zoom.dispose();
-    if (widget.delivery.kind == 'IMAGE') {
+    if (widget.delivery.kind == 'IMAGE' && widget.delivery.assetPath == null) {
       unawaited(NetworkImage(widget.delivery.uri.toString()).evict());
     }
     super.dispose();
@@ -86,6 +95,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
 
   @override
   Widget build(BuildContext context) {
+    final asset = widget.delivery.assetPath;
     if (widget.delivery.kind == 'TEXT') {
       return text == null
           ? const Center(child: Text('Loading text...'))
@@ -108,8 +118,10 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
               minScale: 1,
               maxScale: 5,
               child: Center(
-                child: Image.network(
-                  widget.delivery.uri.toString(),
+                child: Image(
+                  image: asset != null
+                      ? AssetImage(asset)
+                      : NetworkImage(widget.delivery.uri.toString()),
                   semanticLabel: widget.delivery.title,
                   fit: BoxFit.contain,
                   frameBuilder: (context, child, frame, synchronous) {
@@ -160,10 +172,14 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
           ],
         ),
         Expanded(
-          child: PdfViewer.uri(
-            widget.delivery.uri,
+          child: PdfViewer(
+            asset != null
+                ? PdfDocumentRefAsset(asset, useProgressiveLoading: false)
+                : PdfDocumentRefUri(
+                    widget.delivery.uri,
+                    useProgressiveLoading: false,
+                  ),
             controller: pdf,
-            useProgressiveLoading: false,
             params: PdfViewerParams(
               onViewerReady: (document, controller) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {

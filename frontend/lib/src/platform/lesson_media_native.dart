@@ -72,9 +72,10 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
         await controller.loadRequest(widget.delivery.uri);
         if (mounted) setState(() {});
       } else {
-        final controller = VideoPlayerController.networkUrl(
-          widget.delivery.uri,
-        );
+        final asset = widget.delivery.assetPath;
+        final controller = asset == null
+            ? VideoPlayerController.networkUrl(widget.delivery.uri)
+            : VideoPlayerController.asset(asset);
         player = controller;
         controller.addListener(changed);
         await controller.initialize();

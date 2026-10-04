@@ -1,5 +1,24 @@
 # Public Page Assets
 
+## Media Player Samples
+
+`media-preview/video.mp4` is an original 40-second silent animation generated
+with ffmpeg and the bundled Noto Sans Display fonts. `audio.m4a` contains
+low-volume synthetic tones, not a lesson recording. `guide.pdf` is a two-page
+original player guide; `checklist.txt` is plain sample text. The image preview
+reuses the illustration described below. These samples are bundled in web and
+native builds and never create course, student or learning-progress records.
+
+Regenerate the video, audio and PDF from `frontend/` with:
+
+```bash
+node tool/generate_media_preview.mjs
+```
+
+Generation requires ffmpeg with the H.264 encoder; running the app does not.
+
+## Homepage Illustration
+
 `learning-hero.png` was generated using the built-in `image_gen` tool for the public homepage. It is an illustrative scene, not a photograph of an enrolled student. The image is bundled locally and has no third-party branding.
 
 Generation prompt:
