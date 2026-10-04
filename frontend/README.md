@@ -186,6 +186,26 @@ flutter test test/learning_workflow_test.dart test/assessments_test.dart test/st
 
 ## Lesson Media Experience
 
+### Player Inside Each Lesson
+
+Go to **My courses > View lessons > Open lesson / Continue learning**. The
+lesson player is visible above the notes, even before any media has loaded.
+**Load lesson video/audio** opens the first available recording in that same
+player; other resources can still be selected from **Lesson resources**.
+The recording does not autoplay. Locked or unconnected resources are never
+selected by this shortcut, and real delivery still requires API authorization.
+
+When no playable recording is available, **Load sample video** and
+**Load sample audio** let you try the controls inside the lesson itself, without
+visiting Explore or a separate preview page. Samples are explicitly labelled as
+practice, not lesson content. They neither call school-media endpoints nor save
+progress, and never replace a failed real recording automatically. Returning to
+notes, changing resources/lessons or leaving the reader releases playback.
+
+```bash
+flutter test test/lesson_player_entry_test.dart test/lesson_media_flow_test.dart
+```
+
 ### Try The Player Without A Course
 
 Every signed-in role can open **Account menu > Try media player** on desktop

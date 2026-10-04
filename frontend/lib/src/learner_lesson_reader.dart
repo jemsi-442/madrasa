@@ -6,6 +6,8 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'learning_page.dart';
 import 'lesson_media_viewer.dart';
+import 'lesson_player_entry.dart';
+import 'media_player_samples.dart';
 import 'teacher_ui.dart';
 
 class _ExitMediaFocusIntent extends Intent {
@@ -42,6 +44,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   final notesFocus = FocusNode(debugLabel: 'Lesson notes');
   bool saving = false, focusView = false;
   Map<String, dynamic>? savedProgress, selectedAsset;
+  MediaPlayerSample? selectedSample;
   String? error;
 
   @override
@@ -92,6 +95,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     setState(() {
       lessonId = id;
       selectedAsset = null;
+      selectedSample = null;
       savedProgress = null;
       error = null;
       focusView = false;
@@ -119,12 +123,24 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
 
   void play(Map<String, dynamic> asset) {
     if (saving || !canOpen(asset)) return;
-    setState(() => selectedAsset = asset);
+    setState(() {
+      selectedAsset = asset;
+      selectedSample = null;
+    });
+    reveal(mediaAnchor, mediaFocus);
+  }
+
+  void playSample(MediaPlayerSample sample) {
+    if (saving) return;
+    setState(() {
+      selectedAsset = null;
+      selectedSample = sample;
+    });
     reveal(mediaAnchor, mediaFocus);
   }
 
   void toggleFocus() {
-    if (saving || selectedAsset == null) return;
+    if (saving) return;
     setState(() => focusView = !focusView);
     reveal(mediaAnchor, mediaFocus);
   }
@@ -133,6 +149,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     setState(() {
       focusView = false;
       selectedAsset = null;
+      selectedSample = null;
     });
     reveal(notesAnchor, notesFocus);
   }
@@ -444,16 +461,54 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                 );
                 final assets = recordList(lesson['assets']);
                 final available = assets.where(canOpen).toList();
+                final playback = available
+                    .where(
+                      (asset) =>
+                          ['VIDEO', 'AUDIO'].contains(asset['assetType']),
+                    )
+                    .firstOrNull;
                 final selectedIndex = available.indexWhere(
                   (asset) => asset['id'] == selectedAsset?['id'],
                 );
                 final progress = savedProgress ?? recordMap(lesson['progress']);
-                final stage = selectedAsset == null
-                    ? null
-                    : Focus(
-                        key: mediaAnchor,
-                        focusNode: mediaFocus,
-                        child: LessonMediaViewer(
+                final stage = Focus(
+                  key: mediaAnchor,
+                  focusNode: mediaFocus,
+                  child: selectedSample != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const TeacherNotice(
+                              'Practice sample only, not lesson content. Your learning progress is unchanged.',
+                            ),
+                            const SizedBox(height: 12),
+                            LessonMediaViewer.preview(
+                              key: ValueKey(selectedSample),
+                              sample: selectedSample!,
+                              surfaceBuilder: widget.surfaceBuilder,
+                              onClose: returnToNotes,
+                              onToggleFocus: saving ? null : toggleFocus,
+                              focusView: focusView,
+                            ),
+                          ],
+                        )
+                      : selectedAsset == null
+                      ? LessonPlayerEntry(
+                          resourceTitle: playback == null
+                              ? null
+                              : recordText(
+                                  playback['title'],
+                                  'Lesson resource',
+                                ),
+                          audio: playback?['assetType'] == 'AUDIO',
+                          onOpen: saving || playback == null
+                              ? null
+                              : () => play(playback),
+                          onSample: saving ? null : playSample,
+                          onFocus: saving ? null : toggleFocus,
+                          focusView: focusView,
+                        )
+                      : LessonMediaViewer(
                           key: ValueKey(selectedAsset!['id']),
                           assetId: recordText(selectedAsset!['id']),
                           title: recordText(
@@ -480,7 +535,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                               ? null
                               : () => play(available[selectedIndex + 1]),
                         ),
-                      );
+                );
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -529,7 +584,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                     const SizedBox(height: 24),
                     LayoutBuilder(
                       builder: (context, box) {
-                        if (focusView && stage != null) return stage;
+                        if (focusView) return stage;
                         if (box.maxWidth >= 980) {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,10 +594,8 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    if (stage != null) ...[
-                                      stage,
-                                      const SizedBox(height: 20),
-                                    ],
+                                    stage,
+                                    const SizedBox(height: 20),
                                     reading(lesson),
                                     const SizedBox(height: 20),
                                     completion(progress),
@@ -557,20 +610,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (stage != null) ...[
-                              stage,
-                              const SizedBox(height: 20),
-                            ],
-                            if (stage == null) ...[
-                              reading(lesson),
-                              const SizedBox(height: 20),
-                            ],
+                            stage,
+                            const SizedBox(height: 20),
+                            reading(lesson),
+                            const SizedBox(height: 20),
                             resources(assets),
                             const SizedBox(height: 20),
-                            if (stage != null) ...[
-                              reading(lesson),
-                              const SizedBox(height: 20),
-                            ],
                             completion(progress),
                           ],
                         );

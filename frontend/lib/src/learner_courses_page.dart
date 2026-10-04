@@ -174,7 +174,7 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Text(
-              'Explore the player, even before your first lesson.',
+              'Choose a course, open a lesson, and play its media there.',
               style: TextStyle(color: ink, fontWeight: FontWeight.w600),
             ),
             MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),

@@ -57,12 +57,12 @@ class LessonMediaViewer extends StatefulWidget {
     this.onToggleFocus,
     this.focusView = false,
     this.surfaceBuilder,
+    this.onClose,
   }) : previewSample = sample,
        assetId = '',
        apiBaseUrl = '',
        title = 'Player preview',
        load = null,
-       onClose = null,
        assert((position == null) == (total == null)),
        assert(position == null || (position > 0 && position <= (total ?? 0)));
   final String assetId, apiBaseUrl, title;
