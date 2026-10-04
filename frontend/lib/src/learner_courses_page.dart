@@ -4,6 +4,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'learner_lesson_reader.dart';
 import 'learning_page.dart';
+import 'learning_library_ui.dart';
 import 'lesson_media_viewer.dart';
 import 'media_player_preview.dart';
 import 'teacher_ui.dart';
@@ -39,7 +40,10 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   bool grid = true;
   int changes = 0;
 
-  Future<void> openCourse(Map<String, dynamic> course) async {
+  Future<void> openCourse(
+    Map<String, dynamic> course, {
+    bool resume = false,
+  }) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (context) => CourseCurriculumPage(
@@ -48,6 +52,9 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
           submit: widget.submit,
           apiBaseUrl: widget.apiBaseUrl,
           surfaceBuilder: widget.surfaceBuilder,
+          resumeLessonId: resume
+              ? recordMap(course['resumeLesson'])['id'] as String?
+              : null,
         ),
       ),
     );
@@ -85,28 +92,11 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: forest.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.auto_stories_outlined,
-                color: forest,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                recordText(recordMap(course['subject'])['name']),
-                style: const TextStyle(color: muted),
-              ),
-            ),
-          ],
+        CourseCover(
+          subject: recordText(recordMap(course['subject'])['name']),
+          lessons: recordNumber(
+            recordMap(course['progress'])['totalLessons'],
+          ).toInt(),
         ),
         const SizedBox(height: 16),
         Text(
@@ -167,22 +157,12 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      SurfacePanel(
-        child: Wrap(
-          spacing: 20,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            const Text(
-              'Choose a course, open a lesson, and play its media there.',
-              style: TextStyle(color: ink, fontWeight: FontWeight.w600),
-            ),
-            MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
-          ],
-        ),
-      ),
-      const SizedBox(height: 18),
       catalogue(),
+      const SizedBox(height: 18),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
+      ),
     ],
   );
 
@@ -209,9 +189,94 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
                     ? courseIsAvailable(course['accessState'])
                     : !courseIsAvailable(course['accessState'])));
       }).toList();
+      final resume = courseToResume(rows);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (resume != null) ...[
+            ContinueCourseCard(
+              course: resume,
+              onResume: () => openCourse(resume, resume: true),
+            ),
+            const SizedBox(height: 22),
+          ],
+          if (subjects.isNotEmpty) ...[
+            const PanelHeading(
+              'Browse by subject',
+              subtitle: 'Choose a subject to filter your learning library.',
+            ),
+            LayoutBuilder(
+              builder: (context, box) {
+                final columns = box.maxWidth >= 900
+                    ? 4
+                    : box.maxWidth >= 540
+                    ? 2
+                    : 1;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final entry in subjects.entries)
+                      SizedBox(
+                        width: (box.maxWidth - (columns - 1) * 12) / columns,
+                        child: Semantics(
+                          selected: selectedSubject == entry.key,
+                          child: Material(
+                            color: selectedSubject == entry.key
+                                ? ink
+                                : subjectStyle(
+                                    entry.value,
+                                  ).$2.withValues(alpha: .09),
+                            borderRadius: BorderRadius.circular(14),
+                            child: InkWell(
+                              key: ValueKey('subject-filter-${entry.key}'),
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () => setState(
+                                () => subject = selectedSubject == entry.key
+                                    ? 'all'
+                                    : entry.key,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(18),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      subjectStyle(entry.value).$1,
+                                      color: selectedSubject == entry.key
+                                          ? Colors.white
+                                          : subjectStyle(entry.value).$2,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        entry.value,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: selectedSubject == entry.key
+                                              ? Colors.white
+                                              : ink,
+                                        ),
+                                      ),
+                                    ),
+                                    if (selectedSubject == entry.key)
+                                      const Icon(
+                                        Icons.check_circle,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 22),
+          ],
           SurfacePanel(
             child: Wrap(
               spacing: 14,
@@ -375,6 +440,172 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   );
 }
 
+/// The home shelf shares the same authorized course-to-lesson flow as the library.
+class LearnerLearningHome extends StatefulWidget {
+  const LearnerLearningHome({
+    super.key,
+    required this.load,
+    required this.submit,
+    required this.apiBaseUrl,
+    required this.onBrowse,
+    this.refreshToken = 0,
+    this.surfaceBuilder,
+  });
+  final PageLoader load;
+  final PageSubmitter submit;
+  final String apiBaseUrl;
+  final VoidCallback onBrowse;
+  final int refreshToken;
+  final LessonMediaBuilder? surfaceBuilder;
+  @override
+  State<LearnerLearningHome> createState() => _LearnerLearningHomeState();
+}
+
+class _LearnerLearningHomeState extends State<LearnerLearningHome> {
+  int changes = 0;
+  Future<void> open(Map<String, dynamic> course, {bool resume = false}) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => CourseCurriculumPage(
+          backLabel: 'Back to home',
+          id: recordText(course['id']),
+          load: widget.load,
+          submit: widget.submit,
+          apiBaseUrl: widget.apiBaseUrl,
+          surfaceBuilder: widget.surfaceBuilder,
+          resumeLessonId: resume
+              ? recordText(recordMap(course['resumeLesson'])['id'], '')
+              : null,
+        ),
+      ),
+    );
+    if (mounted) setState(() => changes++);
+  }
+
+  @override
+  Widget build(BuildContext context) => TeacherData(
+    load: widget.load,
+    path: '/api/learner/courses',
+    refreshToken: widget.refreshToken + changes,
+    builder: (raw) {
+      final courses = recordList(raw), resume = courseToResume(recordList(raw));
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const LearningWelcome(
+            title: 'Make room for discovery.',
+            subtitle:
+                'Your subjects, lessons and next steps, all in one place.',
+          ),
+          const SizedBox(height: 18),
+          if (resume != null) ...[
+            ContinueCourseCard(
+              course: resume,
+              onResume: () => open(resume, resume: true),
+            ),
+            const SizedBox(height: 18),
+          ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Wrap(
+              spacing: 18,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Text(
+                  'Your learning library',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: ink,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: widget.onBrowse,
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  label: const Text('All courses'),
+                ),
+              ],
+            ),
+          ),
+          if (courses.isEmpty)
+            const EmptyRecords(
+              'Published courses will appear here when your school makes them available.',
+            )
+          else
+            LayoutBuilder(
+              builder: (context, box) {
+                final columns = box.maxWidth >= 540 ? 2 : 1;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final course in courses.take(4))
+                      SizedBox(
+                        width: (box.maxWidth - (columns - 1) * 12) / columns,
+                        child: Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          child: InkWell(
+                            key: ValueKey('home-course-${course['id']}'),
+                            onTap: () => open(course),
+                            borderRadius: BorderRadius.circular(14),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  CourseCover(
+                                    subject: recordText(
+                                      recordMap(course['subject'])['name'],
+                                    ),
+                                    lessons: recordNumber(
+                                      recordMap(
+                                        course['progress'],
+                                      )['totalLessons'],
+                                    ).toInt(),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      4,
+                                      12,
+                                      4,
+                                      6,
+                                    ),
+                                    child: Text(
+                                      recordText(course['title']),
+                                      style: const TextStyle(
+                                        color: ink,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Text(
+                                      courseAccessLabel(course['accessState']),
+                                      style: const TextStyle(
+                                        color: muted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+        ],
+      );
+    },
+  );
+}
+
 class CourseCurriculumPage extends StatefulWidget {
   const CourseCurriculumPage({
     super.key,
@@ -383,17 +614,23 @@ class CourseCurriculumPage extends StatefulWidget {
     required this.submit,
     required this.apiBaseUrl,
     this.surfaceBuilder,
+    this.resumeLessonId,
+    this.backLabel = 'Back to courses',
   });
   final String id, apiBaseUrl;
   final PageLoader load;
   final PageSubmitter submit;
   final LessonMediaBuilder? surfaceBuilder;
+  final String? resumeLessonId;
+  final String backLabel;
   @override
   State<CourseCurriculumPage> createState() => _CourseCurriculumPageState();
 }
 
 class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
   int refresh = 0;
+  bool resumeHandled = false;
+  String? resumeNotice;
   Future<void> lesson(String id, List<Map<String, dynamic>> outline) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -413,7 +650,7 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
   @override
   Widget build(BuildContext context) => LearningPage(
     title: 'Course curriculum',
-    backLabel: 'Back to courses',
+    backLabel: widget.backLabel,
     onBack: () => Navigator.pop(context),
     child: TeacherData(
       load: widget.load,
@@ -425,7 +662,11 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
         final lessons = [
           for (final module in modules)
             for (final row in recordList(module['lessons']))
-              {...row, 'moduleTitle': recordText(module['title'])},
+              {
+                ...row,
+                'moduleTitle': recordText(module['title']),
+                'moduleId': module['id'],
+              },
         ];
         final next = lessons
             .where(
@@ -435,9 +676,40 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
                       100,
             )
             .firstOrNull;
+        if (!resumeHandled && widget.resumeLessonId != null) {
+          resumeHandled = true;
+          final target = lessons
+              .where(
+                (row) =>
+                    recordText(row['id']) == widget.resumeLessonId &&
+                    courseIsAvailable(row['accessState']),
+              )
+              .firstOrNull;
+          if (target == null) {
+            resumeNotice =
+                'That lesson is no longer available. Choose an available lesson below.';
+          } else {
+            // A resume hint is not authorization. Use the freshly loaded outline.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) lesson(recordText(target['id']), lessons);
+            });
+          }
+        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (resumeNotice != null) ...[
+              TeacherNotice(resumeNotice!, warning: true),
+              const SizedBox(height: 16),
+            ],
+            CourseCover(
+              subject: recordText(
+                recordMap(course['subject'])['name'],
+                'Course curriculum',
+              ),
+              lessons: lessons.length,
+            ),
+            const SizedBox(height: 20),
             Text(
               recordText(course['title']),
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),

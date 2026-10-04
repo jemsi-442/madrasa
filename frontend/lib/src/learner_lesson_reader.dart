@@ -6,6 +6,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'learning_page.dart';
 import 'lesson_media_viewer.dart';
+import 'lesson_contents.dart';
 import 'lesson_player_entry.dart';
 import 'media_player_samples.dart';
 import 'teacher_ui.dart';
@@ -35,7 +36,7 @@ class LearnerLessonReader extends StatefulWidget {
 
 class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   late String lessonId = widget.id;
-  late Future<dynamic> current = widget.load('/api/learner/lessons/$lessonId');
+  late Future<dynamic> current = requestLesson(lessonId);
   final lessonAnchor = GlobalKey();
   final lessonFocus = FocusNode(debugLabel: 'Current lesson');
   final mediaAnchor = GlobalKey();
@@ -46,6 +47,16 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   Map<String, dynamic>? savedProgress, selectedAsset;
   MediaPlayerSample? selectedSample;
   String? error;
+  double readingSize = 16;
+  final progressByLesson = <String, Map<String, dynamic>>{};
+
+  Future<dynamic> requestLesson(String id) {
+    final request = Future.sync(() => widget.load('/api/learner/lessons/$id'));
+    // Handle fast failures before the next frame attaches PageResult. The
+    // original future still delivers the error to the lesson's retry UI.
+    request.ignore();
+    return request;
+  }
 
   @override
   void dispose() {
@@ -66,7 +77,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         '/api/learner/lessons/$lessonId/progress',
         {'progressPercent': 100, 'markCompleted': true},
       );
-      if (mounted) setState(() => savedProgress = recordMap(result));
+      if (mounted) {
+        setState(() {
+          savedProgress = recordMap(result);
+          progressByLesson[lessonId] = savedProgress!;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(
@@ -101,7 +117,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       focusView = false;
       // The outline is navigation context, not authorization. Load each lesson
       // again so revoked access and updated progress are checked by the server.
-      current = widget.load('/api/learner/lessons/$lessonId');
+      current = requestLesson(lessonId);
     });
     reveal(lessonAnchor, lessonFocus);
   }
@@ -248,12 +264,42 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const PanelHeading('Lesson notes'),
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Icon(Icons.text_fields, size: 19, color: muted),
+              Text(
+                '${readingSize.toInt()}px',
+                style: const TextStyle(color: muted, fontSize: 12),
+              ),
+              IconButton(
+                tooltip: 'Smaller lesson text',
+                onPressed: readingSize <= 14
+                    ? null
+                    : () => setState(() => readingSize -= 2),
+                icon: const Icon(Icons.remove, size: 18),
+              ),
+              IconButton(
+                tooltip: 'Larger lesson text',
+                onPressed: readingSize >= 24
+                    ? null
+                    : () => setState(() => readingSize += 2),
+                icon: const Icon(Icons.add, size: 18),
+              ),
+              TextButton(
+                onPressed: () => setState(() => readingSize = 16),
+                child: const Text('Reset text size'),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
           SelectableText(
             lesson['contentText'] == null ||
                     recordText(lesson['contentText']).trim().isEmpty
                 ? 'This lesson has no reading text. Explore its resources to continue learning.'
                 : recordText(lesson['contentText']),
-            style: const TextStyle(fontSize: 16, height: 1.8, color: ink),
+            style: TextStyle(fontSize: readingSize, height: 1.8, color: ink),
           ),
         ],
       ),
@@ -356,6 +402,59 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     );
   }
 
+  Widget contents(Map<String, dynamic> progress, {required bool compact}) {
+    final content = SingleChildScrollView(
+      primary: false,
+      child: LessonContents(
+        lessons: widget.outline,
+        currentId: lessonId,
+        progress: {...progressByLesson, lessonId: progress},
+        onSelect: saving ? null : changeLesson,
+      ),
+    );
+    return SurfacePanel(
+      padding: EdgeInsets.zero,
+      child: compact
+          ? ExpansionTile(
+              shape: const Border(),
+              collapsedShape: const Border(),
+              key: ValueKey('mobile-contents-$lessonId'),
+              leading: const Icon(Icons.format_list_bulleted, color: gold),
+              title: const Text(
+                'Course contents',
+                style: TextStyle(color: ink, fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text('Choose a topic in this course'),
+              children: [SizedBox(height: 330, child: content)],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 18, 16, 0),
+                  child: Text(
+                    'Course contents',
+                    style: TextStyle(
+                      color: ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: (MediaQuery.sizeOf(context).height * .55).clamp(
+                      280,
+                      600,
+                    ),
+                  ),
+                  child: content,
+                ),
+              ],
+            ),
+    );
+  }
+
   Widget courseNavigation(int index) {
     final previous = index > 0 ? widget.outline[index - 1] : null;
     final next = index + 1 < widget.outline.length
@@ -451,7 +550,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
               key: ValueKey(lessonId),
               future: current,
               onRetry: () => setState(() {
-                current = widget.load('/api/learner/lessons/$lessonId');
+                current = requestLesson(lessonId);
                 error = null;
               }),
               builder: (raw) {
@@ -555,6 +654,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                             color: gold,
                           ),
                           Text(
+                            key: const ValueKey('current-module'),
                             recordText(
                               widget.outline[lessonIndex]['moduleTitle'],
                             ),
@@ -603,13 +703,30 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                 ),
                               ),
                               const SizedBox(width: 24),
-                              SizedBox(width: 300, child: resources(assets)),
+                              SizedBox(
+                                width: 300,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (widget.outline.isNotEmpty) ...[
+                                      contents(progress, compact: false),
+                                      const SizedBox(height: 18),
+                                    ],
+                                    resources(assets),
+                                  ],
+                                ),
+                              ),
                             ],
                           );
                         }
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            if (widget.outline.isNotEmpty) ...[
+                              contents(progress, compact: true),
+                              const SizedBox(height: 18),
+                            ],
                             stage,
                             const SizedBox(height: 20),
                             reading(lesson),

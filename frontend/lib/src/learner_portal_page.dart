@@ -16,10 +16,12 @@ class LearnerPortalPage extends StatefulWidget {
     required this.page,
     required this.onOpen,
     this.refreshToken = 0,
+    this.learningLibrary,
   });
   final PageLoader load;
   final int page, refreshToken;
   final ValueChanged<int> onOpen;
+  final Widget? learningLibrary;
   @override
   State<LearnerPortalPage> createState() => _LearnerPortalPageState();
 }
@@ -186,98 +188,100 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
       PanelColumns(
         firstFlex: 2,
 
-        first: panel(
-          'Your learning',
-          stack([
-            const Text(
-              'Continue your courses, revisit lessons and follow your recorded progress.',
-              style: TextStyle(color: muted),
-            ),
-            LayoutBuilder(
-              builder: (context, size) => Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final item in const [
-                    (
-                      1,
-                      'My courses',
-                      'Subjects and available lessons',
-                      Icons.auto_stories_outlined,
-                      forest,
-                    ),
-                    (
-                      2,
-                      'Course progress',
-                      'Continue your learning journey',
-                      Icons.trending_up,
-                      blue,
-                    ),
-                    (
-                      7,
-                      "Qur'an tracker",
-                      'Memorisation and learning history',
-                      Icons.menu_book_outlined,
-                      gold,
-                    ),
-                    (
-                      8,
-                      'Academic results',
-                      'Published scores and feedback',
-                      Icons.school_outlined,
-                      blue,
-                    ),
-                  ])
-                    SizedBox(
-                      width: size.maxWidth >= 440
-                          ? (size.maxWidth - 12) / 2
-                          : size.maxWidth,
-                      child: Material(
-                        color: item.$5.withValues(alpha: .07),
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => widget.onOpen(item.$1),
-                          child: Padding(
-                            padding: const EdgeInsets.all(18),
-                            child: Row(
-                              children: [
-                                Icon(item.$4, color: item.$5, size: 28),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.$2,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
+        first:
+            widget.learningLibrary ??
+            panel(
+              'Your learning',
+              stack([
+                const Text(
+                  'Continue your courses, revisit lessons and follow your recorded progress.',
+                  style: TextStyle(color: muted),
+                ),
+                LayoutBuilder(
+                  builder: (context, size) => Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      for (final item in const [
+                        (
+                          1,
+                          'My courses',
+                          'Subjects and available lessons',
+                          Icons.auto_stories_outlined,
+                          forest,
+                        ),
+                        (
+                          2,
+                          'Course progress',
+                          'Continue your learning journey',
+                          Icons.trending_up,
+                          blue,
+                        ),
+                        (
+                          7,
+                          "Qur'an tracker",
+                          'Memorisation and learning history',
+                          Icons.menu_book_outlined,
+                          gold,
+                        ),
+                        (
+                          8,
+                          'Academic results',
+                          'Published scores and feedback',
+                          Icons.school_outlined,
+                          blue,
+                        ),
+                      ])
+                        SizedBox(
+                          width: size.maxWidth >= 440
+                              ? (size.maxWidth - 12) / 2
+                              : size.maxWidth,
+                          child: Material(
+                            color: item.$5.withValues(alpha: .07),
+                            borderRadius: BorderRadius.circular(12),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => widget.onOpen(item.$1),
+                              child: Padding(
+                                padding: const EdgeInsets.all(18),
+                                child: Row(
+                                  children: [
+                                    Icon(item.$4, color: item.$5, size: 28),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.$2,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            item.$3,
+                                            style: const TextStyle(
+                                              color: muted,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 5),
-                                      Text(
-                                        item.$3,
-                                        style: const TextStyle(
-                                          color: muted,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                    const Icon(Icons.chevron_right, size: 18),
+                                  ],
                                 ),
-                                const Icon(Icons.chevron_right, size: 18),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
+              ]),
             ),
-          ]),
-        ),
         second: panel(
           "Today's classes",
           sessionList(recordList(result['sessions'])),

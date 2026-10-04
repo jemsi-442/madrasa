@@ -680,6 +680,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         (selectedIndex == 0 || selectedIndex >= 5)) {
       return LearnerPortalPage(
         key: ValueKey('learner-$selectedIndex'),
+        learningLibrary: selectedIndex == 0
+            ? LearnerLearningHome(
+                load: widget.state.load,
+                submit: widget.state.submit,
+                apiBaseUrl: widget.state.api.baseUrl,
+                refreshToken: refreshToken,
+                onBrowse: () => selectSection(1),
+              )
+            : null,
         load: widget.state.load,
         page: selectedIndex,
         onOpen: selectSection,

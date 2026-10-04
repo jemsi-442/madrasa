@@ -117,7 +117,10 @@ void main() {
         );
         await tap(t, control('next-lesson'));
         expect(find.text('Lesson 3 of 3'), findsOneWidget);
-        expect(find.text('Putting it together'), findsOneWidget);
+        expect(
+          t.widget<Text>(control('current-module')).data,
+          'Putting it together',
+        );
         expect(find.text('End of published lessons'), findsOneWidget);
         expect(control('next-lesson'), findsNothing);
         expect(find.text('0% recorded'), findsOneWidget);

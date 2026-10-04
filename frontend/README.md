@@ -186,6 +186,30 @@ flutter test test/learning_workflow_test.dart test/assessments_test.dart test/st
 
 ## Lesson Media Experience
 
+### Learning Library And Course Contents
+
+The learner Home links into the same course library and curriculum used by
+**My courses**. Subject filters, illustrated subject covers, search and grid/list
+views use the published course API; covers are generated UI artwork, not uploaded
+course photos. No points, study-time totals or quiz results are fabricated.
+
+**Start learning / Resume lesson** uses the API's `resumeLesson` hint and checks
+the current curriculum before opening it. If access changed, the curriculum
+stays visible with an explanation. The lesson endpoint checks access again.
+This is the next available unfinished lesson, not a saved video playback position.
+
+In the reader, **Course contents** sits beside the lesson on wide screens and
+opens as an inline collapsible panel on phones. Modules group the topics; current,
+completed and locked lessons have distinct states. Choosing a topic releases the
+old media and reloads authorized content without pushing another reader route.
+Completion indicators update only after a successful explicit save. Lesson notes
+include text-size controls (14-24px), in addition to system accessibility scaling.
+Existing admin, finance, teacher and parent navigation is unchanged.
+
+```bash
+flutter test test/learning_library_design_test.dart test/lesson_journey_test.dart
+```
+
 ### Player Inside Each Lesson
 
 Go to **My courses > View lessons > Open lesson / Continue learning**. The
