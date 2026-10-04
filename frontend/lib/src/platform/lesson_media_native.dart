@@ -5,7 +5,7 @@ import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../lesson_media_delivery.dart';
 import '../lesson_playback_tools.dart';
-import '../foundation_ui.dart';
+import '../lesson_playback_frame.dart';
 
 class LessonMediaSurface extends StatefulWidget {
   const LessonMediaSurface({
@@ -13,9 +13,13 @@ class LessonMediaSurface extends StatefulWidget {
     required this.delivery,
     required this.onReady,
     required this.onError,
+    this.onToggleFocus,
+    this.focusView = false,
   });
   final LessonMediaDelivery delivery;
   final VoidCallback onReady, onError;
+  final VoidCallback? onToggleFocus;
+  final bool focusView;
   @override
   State<LessonMediaSurface> createState() => _LessonMediaSurfaceState();
 }
@@ -25,6 +29,7 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
   VideoPlayerController? player;
   WebViewController? embed;
   bool failed = false, changingSpeed = false;
+  double previousVolume = 1;
   bool get supported => [
     TargetPlatform.android,
     TargetPlatform.iOS,
@@ -85,7 +90,10 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
         }
       }
     } catch (_) {
-      if (mounted) widget.onError();
+      if (mounted) {
+        setState(() => failed = true);
+        widget.onError();
+      }
     }
   }
 
@@ -146,8 +154,24 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
     super.dispose();
   }
 
-  String time(Duration value) =>
-      '${value.inMinutes}:${(value.inSeconds % 60).toString().padLeft(2, '0')}';
+  Future<void> stop() async {
+    final controller = player;
+    if (controller == null) return;
+    await control(() async {
+      await controller.pause();
+      await controller.seekTo(Duration.zero);
+    });
+  }
+
+  void mute() {
+    final controller = player;
+    if (controller == null) return;
+    final volume = controller.value.volume;
+    if (volume > 0) previousVolume = volume;
+    unawaited(
+      control(() => controller.setVolume(volume > 0 ? 0 : previousVolume)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,97 +188,67 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
           : WebViewWidget(controller: embed!);
     }
     final controller = player;
-    if (controller == null || !controller.value.isInitialized) {
-      return Center(
-        child: Text(
-          'Loading player...',
-          style: TextStyle(
-            color: widget.delivery.kind == 'VIDEO' ? Colors.white : ink,
-          ),
-        ),
-      );
-    }
-    final value = controller.value;
-    return Column(
-      children: [
-        if (widget.delivery.kind == 'VIDEO')
-          Expanded(
-            child: Center(
+    final value = controller?.value;
+    final ready = value?.isInitialized == true && !failed;
+    final canSeek = ready && value!.duration > Duration.zero;
+    final play = ready
+        ? () => control(value!.isPlaying ? controller!.pause : controller!.play)
+        : null;
+    final backward = canSeek
+        ? () => control(
+            () => controller!.seekTo(
+              controller.value.position - const Duration(seconds: 10),
+            ),
+          )
+        : null;
+    final forward = canSeek
+        ? () => control(
+            () => controller!.seekTo(
+              controller.value.position + const Duration(seconds: 10),
+            ),
+          )
+        : null;
+    return LessonPlaybackFrame(
+      ready: ready,
+      failed: failed,
+      audio: widget.delivery.kind == 'AUDIO',
+      playing: value?.isPlaying ?? false,
+      buffering: value?.isBuffering ?? false,
+      onPlay: play,
+      onBackward: backward,
+      onForward: forward,
+      onMute: ready ? mute : null,
+      controls: LessonPlaybackTools(
+        speed: value?.playbackSpeed ?? 1,
+        position: value?.position ?? Duration.zero,
+        duration: value?.duration ?? Duration.zero,
+        playing: value?.isPlaying ?? false,
+        volume: value?.volume ?? 1,
+        looping: value?.isLooping ?? false,
+        onPlay: play,
+        onStop: ready ? stop : null,
+        onBackward: backward,
+        onForward: forward,
+        onSeek: canSeek ? (v) => control(() => controller!.seekTo(v)) : null,
+        onSpeed: ready && !changingSpeed ? changeSpeed : null,
+        onVolume: ready ? (v) => control(() => controller!.setVolume(v)) : null,
+        onMute: ready ? mute : null,
+        onLoop: ready
+            ? () => control(() => controller!.setLooping(!value!.isLooping))
+            : null,
+        onFocus: widget.onToggleFocus,
+        focusView: widget.focusView,
+      ),
+      child: ready && widget.delivery.kind == 'VIDEO'
+          ? Center(
               child: AspectRatio(
-                aspectRatio: value.aspectRatio > 0 ? value.aspectRatio : 16 / 9,
-                child: VideoPlayer(controller),
+                aspectRatio: value!.aspectRatio > 0
+                    ? value.aspectRatio
+                    : 16 / 9,
+                child: VideoPlayer(controller!),
               ),
-            ),
-          ),
-        if (value.isBuffering) const LinearProgressIndicator(),
-        Material(
-          color: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 12, 8),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      tooltip: value.isPlaying ? 'Pause' : 'Play',
-                      onPressed: () => control(
-                        value.isPlaying ? controller.pause : controller.play,
-                      ),
-                      icon: Icon(
-                        value.isPlaying ? Icons.pause : Icons.play_arrow,
-                        color: ink,
-                      ),
-                    ),
-                    Expanded(
-                      child: value.duration <= Duration.zero
-                          ? const SizedBox(
-                              height: 4,
-                              child: ColoredBox(color: line),
-                            )
-                          : VideoProgressIndicator(
-                              controller,
-                              allowScrubbing: true,
-                              colors: VideoProgressColors(
-                                playedColor: gold,
-                                bufferedColor: gold.withValues(alpha: .2),
-                                backgroundColor: line,
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '${time(value.position)} / ${value.duration > Duration.zero ? time(value.duration) : '--:--'}',
-                    style: const TextStyle(fontSize: 11, color: muted),
-                  ),
-                ),
-                LessonPlaybackTools(
-                  speed: value.playbackSpeed,
-                  onBackward: value.duration > Duration.zero
-                      ? () => control(
-                          () => controller.seekTo(
-                            controller.value.position -
-                                const Duration(seconds: 10),
-                          ),
-                        )
-                      : null,
-                  onForward: value.duration > Duration.zero
-                      ? () => control(
-                          () => controller.seekTo(
-                            controller.value.position +
-                                const Duration(seconds: 10),
-                          ),
-                        )
-                      : null,
-                  onSpeed: changingSpeed ? null : changeSpeed,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

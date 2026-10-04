@@ -13,6 +13,8 @@ class TestMediaPlatform extends VideoPlayerPlatform {
   final calls = <String>[];
   final seeks = <Duration>[];
   final speeds = <double>[];
+  final volumes = <double>[];
+  final repeats = <bool>[];
   Duration position = Duration.zero;
   Duration duration = const Duration(seconds: 30);
   double? rejectedSpeed;
@@ -73,9 +75,15 @@ class TestMediaPlatform extends VideoPlayerPlatform {
   @override
   Future<Duration> getPosition(int playerId) async => position;
   @override
-  Future<void> setLooping(int playerId, bool looping) async {}
+  Future<void> setLooping(int playerId, bool looping) async {
+    repeats.add(looping);
+  }
+
   @override
-  Future<void> setVolume(int playerId, double volume) async {}
+  Future<void> setVolume(int playerId, double volume) async {
+    volumes.add(volume);
+  }
+
   @override
   Future<void> setPlaybackSpeed(int playerId, double speed) async {
     speeds.add(speed);
@@ -114,7 +122,7 @@ void main() {
     home: Scaffold(
       body: SizedBox(
         width: 280,
-        height: kind == 'AUDIO' ? 168 : 240,
+        height: kind == 'AUDIO' ? 340 : 400,
         child: LessonMediaSurface(
           delivery: preview
               ? (kind == 'VIDEO'
@@ -242,7 +250,7 @@ void main() {
         await tester.tap(find.byTooltip('Pause'));
         await tester.pumpAndSettle();
         expect(platform.calls, contains('pause'));
-        await tester.tap(find.byType(LinearProgressIndicator).last);
+        await tester.tap(find.byKey(const ValueKey('playback-timeline')));
         await tester.pumpAndSettle();
         expect(platform.calls, contains('seek'));
         expect(failed, 0);
@@ -255,6 +263,38 @@ void main() {
       variant: TargetPlatformVariant.only(TargetPlatform.android),
     );
   }
+  testWidgets(
+    'stop, mute and repeat control the native engine',
+    (tester) async {
+      await tester.pumpWidget(
+        surface('VIDEO', () {}, () => fail('Control failed')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Forward 10 seconds'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Play'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Stop'));
+      await tester.pumpAndSettle();
+      expect(platform.seeks.last, Duration.zero);
+      expect(find.byTooltip('Play'), findsOneWidget);
+      await tester.tap(find.byTooltip('Mute'));
+      await tester.pumpAndSettle();
+      expect(platform.volumes.last, 0);
+      await tester.tap(find.byTooltip('Unmute'));
+      await tester.pumpAndSettle();
+      expect(platform.volumes.last, 1);
+      await tester.tap(find.byTooltip('Repeat'));
+      await tester.pumpAndSettle();
+      expect(platform.repeats.last, isTrue);
+      await tester.tap(find.byTooltip('Disable repeat'));
+      await tester.pumpAndSettle();
+      expect(platform.repeats.last, isFalse);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
   testWidgets(
     'unsupported speed restores the previous setting and reports an error',
     (tester) async {
@@ -343,6 +383,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(ready, 0);
       expect(failed, greaterThan(0));
+      expect(find.text('Unable to play this media'), findsOneWidget);
+      expect(find.text('Opening media...'), findsNothing);
+      expect(
+        tester
+            .widget<LessonPlaybackTools>(find.byType(LessonPlaybackTools))
+            .onPlay,
+        isNull,
+      );
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(() => Future<void>.delayed(Duration.zero));
       await tester.pumpAndSettle();

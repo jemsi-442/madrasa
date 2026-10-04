@@ -115,6 +115,70 @@ Future<void> tap(WidgetTester t, Finder target) async {
 
 void main() {
   testWidgets(
+    'desktop video reserves viewport space for its transport controls',
+    (t) async {
+      await host(
+        t,
+        LessonMediaViewer(
+          assetId: '3',
+          apiBaseUrl: 'https://school.test',
+          load: (_) async => response(),
+          focusView: true,
+          surfaceBuilder: (_, ready, failed) => const Text('Video'),
+        ),
+      );
+      final size = t.getSize(find.byKey(const ValueKey('lesson-media-stage')));
+      expect(size.height, lessThanOrEqualTo(500));
+      expect(size.height, greaterThanOrEqualTo(360));
+      await t.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Back releases a reloaded player before the route transition ends',
+    (t) async {
+      final f = MediaFixture();
+      final navigator = GlobalKey<NavigatorState>();
+      await t.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigator,
+          home: const Scaffold(body: Text('Workspace')),
+        ),
+      );
+      navigator.currentState!.push(
+        PageRouteBuilder<void>(
+          transitionDuration: const Duration(seconds: 2),
+          reverseTransitionDuration: const Duration(seconds: 2),
+          pageBuilder: (_, animation, secondary) => Scaffold(
+            body: SingleChildScrollView(
+              child: LessonMediaViewer(
+                assetId: '3',
+                apiBaseUrl: 'https://school.test',
+                load: (_) async => response(),
+                surfaceBuilder: f.surface,
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      await tap(t, find.text('Reload player'));
+      expect(f.events.where((e) => e == 'mount VIDEO').length, 2);
+      expect(f.events.where((e) => e == 'dispose VIDEO').length, 1);
+      navigator.currentState!.pop();
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 50));
+      expect(f.events.last, 'dispose VIDEO');
+      expect(f.events.where((e) => e == 'dispose VIDEO').length, 2);
+      expect(find.byType(TrackedSurface), findsNothing);
+      expect(find.byType(LessonMediaViewer), findsOneWidget);
+      await t.pumpAndSettle();
+      expect(find.byType(LessonMediaViewer), findsNothing);
+      expect(f.writes, isEmpty);
+    },
+  );
+
+  testWidgets(
     'previous and next follow available resources without opening locked or unconnected assets',
     (t) async {
       final f = MediaFixture();
@@ -443,4 +507,34 @@ void main() {
       await t.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('a media failure clears Ready and never leaves loading copy', (
+    t,
+  ) async {
+    late VoidCallback loaded, failed;
+    await host(
+      t,
+      LessonMediaViewer(
+        assetId: '3',
+        load: (_) async => response(),
+        apiBaseUrl: 'https://school.test',
+        surfaceBuilder: (_, onReady, onError) {
+          loaded = onReady;
+          failed = onError;
+          return const Text('Player');
+        },
+      ),
+    );
+    loaded();
+    await t.pumpAndSettle();
+    expect(find.text('Ready'), findsOneWidget);
+    failed();
+    await t.pumpAndSettle();
+    expect(find.text('Ready'), findsNothing);
+    expect(find.text('Needs attention'), findsOneWidget);
+    expect(find.text('Loading media controls...'), findsNothing);
+    expect(find.textContaining('Playback needs attention'), findsOneWidget);
+    await t.pump(const Duration(seconds: 16));
+    expect(find.textContaining('taking longer to load'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+  });
 }

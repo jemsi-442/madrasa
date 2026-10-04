@@ -6,6 +6,7 @@ import 'foundation_ui.dart';
 import 'lesson_media_delivery.dart';
 import 'lesson_document_surface.dart';
 import 'media_player_samples.dart';
+import 'lesson_playback_tools.dart';
 import 'teacher_ui.dart';
 import 'platform/lesson_media_native.dart'
     if (dart.library.js_interop) 'platform/lesson_media_web.dart'
@@ -82,11 +83,35 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
   String? error;
   int generation = 0;
   Timer? timeout;
+  ModalRoute<dynamic>? owningRoute;
+  bool get playback => ['VIDEO', 'AUDIO'].contains(delivery?.kind);
+  Color get secondary => playback ? playbackMuted : muted;
 
   @override
   void initState() {
     super.initState();
     reload();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route == null || identical(route, owningRoute)) return;
+    owningRoute = route;
+    route.popped.then((_) {
+      if (!mounted || !identical(route, owningRoute)) return;
+      // Release streams immediately on Back, not after the outgoing route's
+      // overlays/transition finish. Also invalidate any pending authorization.
+      generation++;
+      timeout?.cancel();
+      setState(() {
+        delivery = null;
+        loading = false;
+        ready = false;
+        error = null;
+      });
+    });
   }
 
   @override
@@ -161,17 +186,31 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
   void onError(int request) {
     if (!mounted || request != generation) return;
     timeout?.cancel();
-    setState(
-      () => error = widget.previewSample != null
+    setState(() {
+      ready = false;
+      error = widget.previewSample != null
           ? 'This sample could not be displayed. Try Reload player or choose another sample. Audio and video require a supported browser or mobile device.'
-          : 'This resource could not be displayed. Check your connection and reload. If it still fails, ask your teacher to check the file format and media hosting permissions.',
-    );
+          : 'This resource could not be displayed. Check your connection and reload. If it still fails, ask your teacher to check the file format and media hosting permissions.';
+    });
   }
 
   @override
   void dispose() {
     timeout?.cancel();
     super.dispose();
+  }
+
+  double videoHeight(BuildContext context, double width) {
+    final toolbar = width < 640 ? 200.0 : 108.0;
+    // Reserve desktop space for the title, resource navigation and transport
+    // footer, so Focus view does not push playback controls below the screen.
+    final limit = width >= 700
+        ? (MediaQuery.sizeOf(context).height - 400).clamp(
+            360.0,
+            widget.focusView ? 900.0 : 620.0,
+          )
+        : (widget.focusView ? 600.0 : 520.0);
+    return (width * 9 / 16 + toolbar).clamp(360.0, limit);
   }
 
   Widget surface(LessonMediaDelivery source) {
@@ -183,25 +222,21 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
       builder: (context, box) => SizedBox(
         key: const ValueKey('lesson-media-stage'),
         height: source.kind == 'AUDIO'
-            ? 192
+            ? 340
             : document
             ? (MediaQuery.sizeOf(context).height *
                       (widget.focusView ? .75 : .6))
                   .clamp(300.0, widget.focusView ? 900.0 : 680.0)
+            : source.kind == 'VIDEO'
+            ? videoHeight(context, box.maxWidth)
             : (box.maxWidth * 9 / 16).clamp(
                 240.0,
                 widget.focusView ? 900.0 : 620.0,
               ),
         child: ColoredBox(
-          color: document
-              ? const Color(0xFFF3F4F3)
-              : source.kind == 'AUDIO'
-              ? Colors.white
-              : const Color(0xFF10263A),
+          color: document ? const Color(0xFFF3F4F3) : const Color(0xFF0D0E10),
           child: Padding(
-            padding: EdgeInsets.all(
-              document || source.kind == 'AUDIO' ? 12 : 0,
-            ),
+            padding: EdgeInsets.all(document ? 12 : 0),
             child: KeyedSubtree(
               key: ValueKey(generation),
               child: widget.surfaceBuilder != null
@@ -216,6 +251,8 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                       delivery: source,
                       onReady: onLoaded,
                       onError: onFailed,
+                      onToggleFocus: widget.onToggleFocus,
+                      focusView: widget.focusView,
                     ),
             ),
           ),
@@ -226,7 +263,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white,
+    color: playback ? playbackPanel : Colors.white,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16),
       side: const BorderSide(color: line),
@@ -249,10 +286,10 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                   Expanded(
                     child: Text(
                       delivery?.title ?? widget.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: ink,
+                        color: playback ? Colors.white : ink,
                       ),
                     ),
                   ),
@@ -272,20 +309,30 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                         : ready
                         ? 'Ready'
                         : 'Loading controls',
-                    color: error != null ? gold : forest,
+                    color: playback
+                        ? (error != null
+                              ? playbackAccent
+                              : const Color(0xFF7DDCB4))
+                        : (error != null ? gold : forest),
                   ),
                   if (delivery != null)
                     Text(
                       delivery!.kind,
-                      style: const TextStyle(color: muted, fontSize: 11),
+                      style: TextStyle(color: secondary, fontSize: 11),
                     ),
                   TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: playback ? playbackAccent : ink,
+                    ),
                     onPressed: loading ? null : reload,
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('Reload player'),
                   ),
                   if (widget.onToggleFocus != null)
                     TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: playback ? playbackAccent : ink,
+                      ),
                       key: const ValueKey('media-focus-view'),
                       onPressed: widget.onToggleFocus,
                       icon: Icon(
@@ -307,11 +354,11 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
           Container(
             key: const ValueKey('media-resource-navigation'),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: const BoxDecoration(
-              color: paper,
+            decoration: BoxDecoration(
+              color: playback ? const Color(0xFF191A1C) : paper,
               border: Border(
-                top: BorderSide(color: line),
-                bottom: BorderSide(color: line),
+                top: BorderSide(color: playback ? Colors.white12 : line),
+                bottom: BorderSide(color: playback ? Colors.white12 : line),
               ),
             ),
             child: Column(
@@ -321,7 +368,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                   widget.previewSample == null
                       ? 'Resource ${widget.position} of ${widget.total} available'
                       : 'Sample ${widget.position} of ${widget.total}',
-                  style: const TextStyle(color: muted, fontSize: 12),
+                  style: TextStyle(color: secondary, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -330,12 +377,26 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                   runSpacing: 8,
                   children: [
                     OutlinedButton.icon(
+                      style: playback
+                          ? OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              disabledForegroundColor: Colors.white30,
+                              side: const BorderSide(color: Colors.white24),
+                            )
+                          : null,
                       key: const ValueKey('previous-resource'),
                       onPressed: widget.onPrevious,
                       icon: const Icon(Icons.chevron_left, size: 18),
                       label: const Text('Previous resource'),
                     ),
                     OutlinedButton.icon(
+                      style: playback
+                          ? OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              disabledForegroundColor: Colors.white30,
+                              side: const BorderSide(color: Colors.white24),
+                            )
+                          : null,
                       key: const ValueKey('next-resource'),
                       onPressed: widget.onNext,
                       icon: const Icon(Icons.chevron_right, size: 18),
@@ -352,30 +413,13 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
             child: Center(child: CircularProgressIndicator()),
           ),
         if (delivery case final source?) ...[
-          if (source.kind == 'AUDIO')
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF4EDDC), Color(0xFFF4F8F6)],
-                ),
-              ),
-              child: const Column(
-                children: [
-                  Icon(Icons.headphones_outlined, size: 48, color: gold),
-                  SizedBox(height: 12),
-                  Text(
-                    'Listen at your own pace',
-                    style: TextStyle(color: ink, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
           surface(source),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
             child: Text(
-              source.kind == 'EMBED'
+              error != null
+                  ? 'Playback needs attention. Reload the player or choose another resource.'
+                  : source.kind == 'EMBED'
                   ? 'Use the embedded player controls without leaving your lesson.'
                   : ready
                   ? switch (source.kind) {
@@ -387,7 +431,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                       _ => 'Use the player controls to play, pause and seek.',
                     }
                   : 'Loading media controls...',
-              style: const TextStyle(color: muted, fontSize: 12, height: 1.6),
+              style: TextStyle(color: secondary, fontSize: 12, height: 1.6),
             ),
           ),
         ],
@@ -403,6 +447,9 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
             children: [
               if (widget.onClose != null)
                 TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: playback ? playbackAccent : ink,
+                  ),
                   key: const ValueKey('return-to-lesson-text'),
                   onPressed: widget.onClose,
                   icon: const Icon(Icons.menu_book_outlined, size: 18),
@@ -412,7 +459,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                 widget.previewSample == null
                     ? 'Opening media does not mark the lesson complete.'
                     : 'Sample only. No school records or learning progress are saved.',
-                style: const TextStyle(color: muted, fontSize: 11, height: 1.5),
+                style: TextStyle(color: secondary, fontSize: 11, height: 1.5),
               ),
             ],
           ),

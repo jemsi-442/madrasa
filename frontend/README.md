@@ -233,17 +233,25 @@ and leaving the reader are blocked while that save is pending. At the end of
 published lessons, **Return to curriculum** offers a review of remaining work
 without claiming that the entire course is complete.
 
-Video and audio retain their playback controls. Images retain pan/reset zoom;
+Video and audio share a VLC-inspired dark stage and orange transport bar on
+web and supported native platforms. Images retain pan/reset zoom;
 PDFs retain page and zoom controls; text attachments remain plain, selectable
-text. Audio has a dedicated listening area. Native transport controls use a
+text. Audio has a dedicated listening area. Shared transport controls use a
 high-contrast strip with a separate time label for narrow screens and larger
 text. Opening media does not autoplay or automatically mark a lesson complete.
 
 Direct video and audio include **Back 10 seconds**, **Forward 10 seconds**, and
 a **Playback speed** menu (0.5x to 2x) on web and supported native platforms.
 Seeking stays within the recording; changing speed does not start playback.
-Quick seeking is disabled until a finite duration is available. The browser's
-own playback-speed controls stay in sync with the menu. Focus view and resizing
+Quick seeking is disabled until a finite duration is available. **Stop** pauses
+and rewinds, **Mute** restores the previous volume when unmuted, and **Repeat**
+loops only the current recording. Wide players also offer a volume slider.
+The custom controls replace the browser's default video/audio toolbar.
+Click the playback stage to focus its shortcuts: Space toggles playback,
+Left/Right seek 10 seconds and M toggles mute. Focused buttons and sliders keep
+their own keyboard behavior. Media failures show an in-stage explanation and
+disable transport instead of leaving a browser error panel and loading message.
+Focus view and resizing
 retain the selected speed; opening another resource starts at normal speed.
 Embedded provider videos retain their own controls instead of showing tools
 that cannot control the provider's player. PDFs, images and text are unchanged.
