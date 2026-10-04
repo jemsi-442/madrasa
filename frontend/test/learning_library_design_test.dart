@@ -44,6 +44,37 @@ Finder key(String value) => find.byKey(ValueKey(value));
 
 void main() {
   for (final width in [320.0, 1440.0]) {
+    testWidgets(
+      'course search filters content, not dashboard pages, at $width',
+      (t) async {
+        final f = DesignFixture();
+        await host(t, f.page(builder: f.surface), width: width);
+        final search = find.widgetWithText(
+          TextField,
+          'Search subjects or courses',
+        );
+        await t.ensureVisible(search);
+        await t.enterText(search, '  ARABIC  ');
+        await t.pumpAndSettle();
+        expect(find.byType(CourseCover), findsOneWidget);
+        expect(find.text('Practical fiqh'), findsNothing);
+        expect(find.text('Resume lesson'), findsOneWidget);
+        await t.enterText(search, 'fiqh');
+        await t.pumpAndSettle();
+        expect(find.text('Practical fiqh'), findsOneWidget);
+        expect(find.text('Arabic foundations'), findsNothing);
+        await t.enterText(search, 'not-a-published-course');
+        await t.pumpAndSettle();
+        expect(find.text('No courses match these filters.'), findsOneWidget);
+        await t.enterText(search, '');
+        await t.pumpAndSettle();
+        expect(find.byType(CourseCover), findsNWidgets(2));
+        expect(f.paths, ['/api/learner/courses']);
+        expect(f.writes, isEmpty);
+        expect(t.takeException(), isNull);
+      },
+    );
+
     testWidgets('illustrated library, subject filters and resume fit $width', (
       t,
     ) async {

@@ -124,7 +124,7 @@ void main() {
   });
 
   testWidgets(
-    'desktop sidebar stays fixed, collapses, and searches real pages',
+    'desktop sidebar stays fixed, collapses, and opens pages directly',
     (tester) async {
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1;
@@ -166,16 +166,8 @@ void main() {
       expect(find.byTooltip('Expand sidebar'), findsOneWidget);
       await tester.tap(find.byTooltip('Expand sidebar'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Find a page...'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'Attendance');
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.widgetWithText(ListTile, 'Attendance'),
-        ),
-      );
+      expect(find.textContaining('Find a page'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('nav-5')));
       await tester.pumpAndSettle();
       expect(requests, contains('/api/classes'));
       expect(requests, isNot(contains('/api/reports/attendance/summary')));

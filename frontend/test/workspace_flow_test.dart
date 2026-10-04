@@ -339,47 +339,65 @@ void main() {
   });
 
   for (final mobile in [false, true]) {
-    testWidgets('task search describes only permitted pages, mobile=$mobile', (
-      tester,
-    ) async {
-      await showWorkspace(
-        tester,
-        'ACCOUNTANT',
-        mobile: mobile,
-        width: mobile ? 390 : 1440,
+    for (final role in roles) {
+      testWidgets(
+        '$role uses direct navigation without page search, mobile=$mobile',
+        (tester) async {
+          await showWorkspace(
+            tester,
+            role,
+            mobile: mobile,
+            width: mobile ? 390 : 1440,
+          );
+          expect(find.textContaining('Find a page'), findsNothing);
+          expect(find.byTooltip('Find a page'), findsNothing);
+          if (mobile) {
+            await tap(tester, find.byTooltip('Open navigation menu'));
+          }
+          final sidebar = tester.widget<WorkspaceSidebar>(
+            find.byType(WorkspaceSidebar),
+          );
+          expect(
+            sidebar.items.map((item) => item.$1),
+            sectionsForRole(role).map((page) => page.title),
+          );
+          expect(
+            find.descendant(
+              of: find.byType(WorkspaceSidebar),
+              matching: find.byIcon(Icons.search),
+            ),
+            findsNothing,
+          );
+          expect(find.byTooltip('Find a page'), findsNothing);
+          await tap(tester, find.byKey(const ValueKey('nav-1')));
+          expect(find.byType(AlertDialog), findsNothing);
+          expect(find.byKey(const ValueKey('workspace-back')), findsOneWidget);
+          final title = sectionsForRole(role)[1].title;
+          if (mobile) {
+            expect(find.byType(Drawer), findsNothing);
+            expect(
+              find.descendant(
+                of: find.byType(AppBar),
+                matching: find.text(title),
+              ),
+              findsOneWidget,
+            );
+          } else {
+            expect(
+              tester
+                  .widget<Text>(
+                    find.byKey(const ValueKey('workspace-page-label')),
+                  )
+                  .data,
+              title,
+            );
+          }
+          await tap(tester, find.byKey(const ValueKey('workspace-back')));
+          expect(find.byKey(const ValueKey('workspace-back')), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
       );
-      if (mobile) {
-        await tap(tester, find.byTooltip('Find a page').first);
-      } else {
-        await tap(tester, find.text('Find a page...'));
-      }
-      await tester.enterText(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        ),
-        'confirmed receipts',
-      );
-      await tester.pumpAndSettle();
-      final results = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(ListTile),
-      );
-      expect(results, findsOneWidget);
-      expect(
-        find.descendant(of: results, matching: find.text('Payments')),
-        findsOneWidget,
-      );
-      await tap(tester, results);
-      expect(
-        tester
-            .widget<AccountantPage>(find.byType(AccountantPage))
-            .destination
-            .page,
-        2,
-      );
-      expect(find.byKey(const ValueKey('workspace-back')), findsOneWidget);
-    });
+    }
   }
 
   testWidgets('related pages navigate to real destinations', (tester) async {
@@ -391,28 +409,27 @@ void main() {
     expect(section(tester), 1);
   });
 
-  testWidgets('small phone trail, drawer and task search support large text', (
-    tester,
-  ) async {
-    await showWorkspace(
-      tester,
-      'ACCOUNTANT',
-      mobile: true,
-      width: 320,
-      scale: 2,
-    );
-    await tap(
-      tester,
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Invoices'),
-      ),
-    );
-    expect(tester.takeException(), isNull);
-    await tap(tester, find.byTooltip('Find a page').first);
-    expect(tester.takeException(), isNull);
-    await tap(tester, find.text('Close'));
-    await tap(tester, find.byTooltip('Open navigation menu'));
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'small phone trail and drawer support large text without page search',
+    (tester) async {
+      await showWorkspace(
+        tester,
+        'ACCOUNTANT',
+        mobile: true,
+        width: 320,
+        scale: 2,
+      );
+      await tap(
+        tester,
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Invoices'),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byTooltip('Find a page'), findsNothing);
+      await tap(tester, find.byTooltip('Open navigation menu'));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

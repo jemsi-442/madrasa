@@ -584,16 +584,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
   }
 
-  Future<void> findPage() async {
-    final selected = await showWorkspacePageSearch(
-      context,
-      items: sections.map((s) => (s.title, s.icon)).toList(),
-      descriptions: sections.map((s) => s.purpose).toList(),
-      selected: selectedIndex,
-    );
-    if (selected != null && mounted) selectSection(selected);
-  }
-
   void requestSignOut() async {
     if (!await leaveTeacherDraft() || !mounted) return;
     await widget.state.signOut();
@@ -860,10 +850,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           collapsed: rail,
           primary: primary,
           groups: workspaceGroups(session.role),
-          onFindPage: () {
-            scaffoldKey.currentState?.closeDrawer();
-            findPage();
-          },
         );
 
     final scaffold = Scaffold(
@@ -892,11 +878,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       ),
                     ),
               actions: [
-                IconButton(
-                  tooltip: 'Find a page',
-                  onPressed: findPage,
-                  icon: const Icon(Icons.search_rounded),
-                ),
                 IconButton(
                   tooltip: 'Refresh page',
                   onPressed: refresh,
@@ -969,10 +950,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       roleLabel: session.role == 'TEACHER'
                           ? 'Teacher account'
                           : _roleLabel(session.role),
-                      items: items,
-                      descriptions: sections.map((s) => s.purpose).toList(),
-                      selected: selectedIndex,
-                      onSelect: selectSection,
+                      pageTitle: section.title,
+                      pageIcon: section.icon,
                       collapsed: collapsed,
                       onToggle: () => setState(() => collapsed = !collapsed),
                       onRefresh: refresh,

@@ -14,7 +14,6 @@ class WorkspaceSidebar extends StatelessWidget {
     this.collapsed = false,
     this.primary = false,
     this.groups = const {},
-    this.onFindPage,
   });
   final List<(String, IconData)> items;
   final int selected;
@@ -23,7 +22,6 @@ class WorkspaceSidebar extends StatelessWidget {
   final bool collapsed;
   final bool primary;
   final Map<int, String> groups;
-  final VoidCallback? onFindPage;
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
@@ -69,41 +67,6 @@ class WorkspaceSidebar extends StatelessWidget {
                           fontSize: 10,
                           letterSpacing: 1.6,
                           fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  if (onFindPage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Tooltip(
-                        message: 'Find a page',
-                        child: InkWell(
-                          onTap: onFindPage,
-                          borderRadius: BorderRadius.circular(8),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              mainAxisAlignment: collapsed
-                                  ? MainAxisAlignment.center
-                                  : MainAxisAlignment.start,
-                              children: [
-                                const Icon(
-                                  Icons.search,
-                                  size: 20,
-                                  color: Colors.white70,
-                                ),
-                                if (!collapsed) ...[
-                                  const SizedBox(width: 12),
-                                  const Expanded(
-                                    child: Text(
-                                      'Find a page',
-                                      style: TextStyle(color: Colors.white70),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
                         ),
                       ),
                     ),
@@ -215,52 +178,26 @@ class WorkspaceSidebar extends StatelessWidget {
   );
 }
 
-Future<int?> showWorkspacePageSearch(
-  BuildContext context, {
-  required List<(String, IconData)> items,
-  List<String> descriptions = const [],
-  int? selected,
-}) => showDialog<int>(
-  context: context,
-  builder: (_) =>
-      _PageSearch(items: items, descriptions: descriptions, selected: selected),
-);
-
 class WorkspaceTopBar extends StatelessWidget {
   const WorkspaceTopBar({
     super.key,
     required this.fullName,
     required this.roleLabel,
-    required this.items,
-    required this.onSelect,
+    required this.pageTitle,
+    required this.pageIcon,
     required this.onToggle,
     required this.onRefresh,
     required this.onSignOut,
     required this.collapsed,
-    this.descriptions = const [],
-    this.selected,
   });
   final String fullName;
   final String roleLabel;
-  final List<(String, IconData)> items;
-  final ValueChanged<int> onSelect;
+  final String pageTitle;
+  final IconData pageIcon;
   final VoidCallback onToggle;
   final VoidCallback onRefresh;
   final VoidCallback onSignOut;
   final bool collapsed;
-
-  final List<String> descriptions;
-  final int? selected;
-
-  Future<void> findPage(BuildContext context) async {
-    final result = await showWorkspacePageSearch(
-      context,
-      items: items,
-      descriptions: descriptions,
-      selected: selected,
-    );
-    if (result != null && context.mounted) onSelect(result);
-  }
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
@@ -280,37 +217,24 @@ class WorkspaceTopBar extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: Material(
-                  color: const Color(0xFFF3F5F7),
-                  borderRadius: BorderRadius.circular(10),
-                  child: InkWell(
-                    onTap: () => findPage(context),
-                    borderRadius: BorderRadius.circular(10),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 13,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.search, color: muted, size: 20),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Find a page...',
-                              style: TextStyle(color: muted, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
+            child: Row(
+              children: [
+                Icon(pageIcon, color: gold, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    pageTitle,
+                    key: const ValueKey('workspace-page-label'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
           const SizedBox(width: 18),
@@ -386,90 +310,5 @@ class WorkspaceTopBar extends StatelessWidget {
         ],
       ),
     ),
-  );
-}
-
-class _PageSearch extends StatefulWidget {
-  const _PageSearch({
-    required this.items,
-    required this.descriptions,
-    this.selected,
-  });
-  final List<(String, IconData)> items;
-  final List<String> descriptions;
-  final int? selected;
-  @override
-  State<_PageSearch> createState() => _PageSearchState();
-}
-
-class _PageSearchState extends State<_PageSearch> {
-  String query = '';
-  bool matches(int index) =>
-      ('${widget.items[index].$1} ${index < widget.descriptions.length ? widget.descriptions[index] : ''}')
-          .toLowerCase()
-          .contains(query.trim());
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Find a page'),
-    content: SizedBox(
-      width: 460,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            autofocus: true,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Search a page or task',
-            ),
-            onChanged: (value) => setState(() => query = value.toLowerCase()),
-          ),
-          const SizedBox(height: 12),
-          Flexible(
-            child: SingleChildScrollView(
-              primary: true,
-              child: Column(
-                children: [
-                  for (var i = 0; i < widget.items.length; i++)
-                    if (matches(i))
-                      ListTile(
-                        leading: Icon(widget.items[i].$2, color: gold),
-                        title: Text(widget.items[i].$1),
-                        subtitle: i < widget.descriptions.length
-                            ? Text(widget.descriptions[i])
-                            : null,
-                        selected: widget.selected == i,
-                        trailing: widget.selected == i
-                            ? const Tooltip(
-                                message: 'Current page',
-                                child: Icon(
-                                  Icons.check_circle_outline,
-                                  size: 20,
-                                ),
-                              )
-                            : const Icon(Icons.chevron_right, size: 20),
-                        onTap: () => Navigator.pop(context, i),
-                      ),
-                  if (!List.generate(
-                    widget.items.length,
-                    (i) => i,
-                  ).any(matches))
-                    const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text('No matching pages.'),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Close'),
-      ),
-    ],
   );
 }

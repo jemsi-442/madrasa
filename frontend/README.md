@@ -113,9 +113,11 @@ flutter test --platform chrome test/keyboard_scrolling_test.dart
 
 Every role uses the same navigation pattern on web and native mobile:
 a fixed current-page trail with **Back** and a **Home** icon, grouped menu
-sections and **Find a page** search. Search matches page names and their task
-descriptions, shows the current page, and lists only that role's destinations.
-On mobile it is available from the app bar and drawer.
+sections containing only that role's destinations. The desktop header shows
+the current page name and icon; neither the header nor the sidebar/drawer has
+a page-search control. Use **Search subjects or courses** in the learner course
+library to filter learning content. Page-local record searches (such as students
+and invoices) remain available in their respective pages.
 
 **Back** retraces the workspace pages visited during this session. On Android,
 system Back closes an open drawer first, then returns through that same page
@@ -432,7 +434,7 @@ The Instagram icon is intentionally disabled until the foundation supplies its o
 
 ## Dashboard Design Stage
 
-The signed-in workspace uses a fixed navy sidebar, gold selection, collapsible desktop navigation, page search, and mobile drawer/bottom navigation. Sidebar links remain role-specific.
+The signed-in workspace uses a fixed navy sidebar, gold selection, collapsible desktop navigation, a current-page header, and mobile drawer/bottom navigation. Sidebar links remain role-specific. Search belongs to content pages, not the navigation menu.
 
 The admin reference implementation now includes a six-card overview with actual
 admissions, assessment coverage, recent activity, donations and upcoming events.
