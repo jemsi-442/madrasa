@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../lesson_media_delivery.dart';
+import '../lesson_playback_tools.dart';
 import '../foundation_ui.dart';
 
 class LessonMediaSurface extends StatefulWidget {
@@ -23,7 +24,7 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
     with WidgetsBindingObserver {
   VideoPlayerController? player;
   WebViewController? embed;
-  bool failed = false;
+  bool failed = false, changingSpeed = false;
   bool get supported => [
     TargetPlatform.android,
     TargetPlatform.iOS,
@@ -101,6 +102,22 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
       await action();
     } catch (_) {
       if (mounted) widget.onError();
+    }
+  }
+
+  Future<void> changeSpeed(double speed) async {
+    final controller = player;
+    if (controller == null || changingSpeed) return;
+    final previous = controller.value.playbackSpeed;
+    setState(() => changingSpeed = true);
+    try {
+      await controller.setPlaybackSpeed(speed);
+    } catch (_) {
+      if (!mounted) return;
+      await control(() => controller.setPlaybackSpeed(previous));
+      if (mounted) widget.onError();
+    } finally {
+      if (mounted) setState(() => changingSpeed = false);
     }
   }
 
@@ -188,24 +205,49 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
                       ),
                     ),
                     Expanded(
-                      child: VideoProgressIndicator(
-                        controller,
-                        allowScrubbing: true,
-                        colors: VideoProgressColors(
-                          playedColor: gold,
-                          bufferedColor: gold.withValues(alpha: .2),
-                          backgroundColor: line,
-                        ),
-                      ),
+                      child: value.duration <= Duration.zero
+                          ? const SizedBox(
+                              height: 4,
+                              child: ColoredBox(color: line),
+                            )
+                          : VideoProgressIndicator(
+                              controller,
+                              allowScrubbing: true,
+                              colors: VideoProgressColors(
+                                playedColor: gold,
+                                bufferedColor: gold.withValues(alpha: .2),
+                                backgroundColor: line,
+                              ),
+                            ),
                     ),
                   ],
                 ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    '${time(value.position)} / ${time(value.duration)}',
+                    '${time(value.position)} / ${value.duration > Duration.zero ? time(value.duration) : '--:--'}',
                     style: const TextStyle(fontSize: 11, color: muted),
                   ),
+                ),
+                LessonPlaybackTools(
+                  speed: value.playbackSpeed,
+                  onBackward: value.duration > Duration.zero
+                      ? () => control(
+                          () => controller.seekTo(
+                            controller.value.position -
+                                const Duration(seconds: 10),
+                          ),
+                        )
+                      : null,
+                  onForward: value.duration > Duration.zero
+                      ? () => control(
+                          () => controller.seekTo(
+                            controller.value.position +
+                                const Duration(seconds: 10),
+                          ),
+                        )
+                      : null,
+                  onSpeed: changingSpeed ? null : changeSpeed,
                 ),
               ],
             ),

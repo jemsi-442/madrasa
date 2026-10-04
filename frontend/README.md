@@ -198,6 +198,15 @@ text. Audio has a dedicated listening area. Native transport controls use a
 high-contrast strip with a separate time label for narrow screens and larger
 text. Opening media does not autoplay or automatically mark a lesson complete.
 
+Direct video and audio include **Back 10 seconds**, **Forward 10 seconds**, and
+a **Playback speed** menu (0.5x to 2x) on web and supported native platforms.
+Seeking stays within the recording; changing speed does not start playback.
+Quick seeking is disabled until a finite duration is available. The browser's
+own playback-speed controls stay in sync with the menu. Focus view and resizing
+retain the selected speed; opening another resource starts at normal speed.
+Embedded provider videos retain their own controls instead of showing tools
+that cannot control the provider's player. PDFs, images and text are unchanged.
+
 **Previous resource** and **Next resource** follow the lesson's available
 resource order, skipping locked or unconnected items. The counter describes
 available resources, not completion. Boundaries are disabled; there is no
@@ -224,7 +233,8 @@ responses and callbacks from replaced players cannot overwrite the active
 resource. No media upload/provider/backend permissions are changed here.
 
 ```bash
-flutter test test/learner_courses_test.dart test/lesson_media_test.dart test/lesson_media_flow_test.dart test/lesson_media_native_test.dart
+flutter test test/learner_courses_test.dart test/lesson_media_test.dart test/lesson_media_flow_test.dart test/lesson_media_native_test.dart test/lesson_playback_tools_test.dart
+flutter test --platform chrome test/lesson_playback_tools_test.dart test/lesson_media_flow_test.dart
 ```
 
 ## Native Mobile Experience

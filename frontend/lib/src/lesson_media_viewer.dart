@@ -154,13 +154,13 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
       builder: (context, box) => SizedBox(
         key: const ValueKey('lesson-media-stage'),
         height: source.kind == 'AUDIO'
-            ? 136
+            ? 192
             : document
             ? (MediaQuery.sizeOf(context).height *
                       (widget.focusView ? .75 : .6))
                   .clamp(300.0, widget.focusView ? 900.0 : 680.0)
             : (box.maxWidth * 9 / 16).clamp(
-                190.0,
+                240.0,
                 widget.focusView ? 900.0 : 620.0,
               ),
         child: ColoredBox(

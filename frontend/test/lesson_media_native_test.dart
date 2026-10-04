@@ -4,11 +4,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 import 'package:mif_app/src/lesson_media_delivery.dart';
+import 'package:mif_app/src/lesson_playback_tools.dart';
 import 'package:mif_app/src/platform/lesson_media_native.dart';
 
 class TestMediaPlatform extends VideoPlayerPlatform {
   late final StreamController<VideoEvent> events;
   final calls = <String>[];
+  final seeks = <Duration>[];
+  final speeds = <double>[];
+  Duration position = Duration.zero;
+  Duration duration = const Duration(seconds: 30);
+  double? rejectedSpeed;
+  bool failSeek = false;
   String? source;
   bool fail = false;
   bool delay = false;
@@ -32,7 +39,7 @@ class TestMediaPlatform extends VideoPlayerPlatform {
     VideoEvent(
       eventType: VideoEventType.initialized,
       size: const Size(640, 360),
-      duration: const Duration(seconds: 30),
+      duration: duration,
     ),
   );
   @override
@@ -55,16 +62,23 @@ class TestMediaPlatform extends VideoPlayerPlatform {
   @override
   Future<void> seekTo(int playerId, Duration position) async {
     calls.add('seek');
+    if (failSeek) throw PlatformException(code: 'SeekError');
+    seeks.add(position);
+    this.position = position;
   }
 
   @override
-  Future<Duration> getPosition(int playerId) async => Duration.zero;
+  Future<Duration> getPosition(int playerId) async => position;
   @override
   Future<void> setLooping(int playerId, bool looping) async {}
   @override
   Future<void> setVolume(int playerId, double volume) async {}
   @override
-  Future<void> setPlaybackSpeed(int playerId, double speed) async {}
+  Future<void> setPlaybackSpeed(int playerId, double speed) async {
+    speeds.add(speed);
+    if (speed == rejectedSpeed) throw PlatformException(code: 'SpeedError');
+  }
+
   @override
   Widget buildView(int playerId) => const ColoredBox(color: Colors.black);
 }
@@ -96,7 +110,7 @@ void main() {
     home: Scaffold(
       body: SizedBox(
         width: 280,
-        height: kind == 'AUDIO' ? 90 : 240,
+        height: kind == 'AUDIO' ? 168 : 240,
         child: LessonMediaSurface(
           delivery: LessonMediaDelivery(
             uri: Uri.parse(
@@ -114,6 +128,67 @@ void main() {
     ),
   );
   for (final kind in ['AUDIO', 'VIDEO']) {
+    testWidgets(
+      '$kind quick seek clamps to start/end and does not autoplay',
+      (tester) async {
+        var errors = 0;
+        await tester.pumpWidget(surface(kind, () {}, () => errors++));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Back 10 seconds'));
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) {
+          await tester.tap(find.byTooltip('Forward 10 seconds'));
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(find.byTooltip('Back 10 seconds'));
+        await tester.pumpAndSettle();
+        expect(platform.seeks.map((value) => value.inSeconds), [
+          0,
+          10,
+          20,
+          30,
+          30,
+          20,
+        ]);
+        expect(platform.calls, isNot(contains('play')));
+        expect(find.text('0:20 / 0:30'), findsOneWidget);
+        expect(errors, 0);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+    );
+    testWidgets(
+      '$kind speed changes without autoplay or recreating the player',
+      (tester) async {
+        await tester.pumpWidget(surface(kind, () {}, () {}, scale: 2));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Playback speed'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('playback-speed-1.25x')));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<LessonPlaybackTools>(find.byType(LessonPlaybackTools))
+              .speed,
+          1.25,
+        );
+        expect(platform.calls, isNot(contains('play')));
+        await tester.tap(find.byTooltip('Play'));
+        await tester.pumpAndSettle();
+        expect(platform.speeds, contains(1.25));
+        await tester.tap(find.byTooltip('Playback speed'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('playback-speed-0.75x')));
+        await tester.pumpAndSettle();
+        expect(platform.speeds.last, .75);
+        expect(platform.calls, isNot(contains('dispose')));
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+    );
     testWidgets(
       '$kind native controls play, pause, seek and dispose inside app',
       (tester) async {
@@ -142,6 +217,67 @@ void main() {
       variant: TargetPlatformVariant.only(TargetPlatform.android),
     );
   }
+  testWidgets(
+    'unsupported speed restores the previous setting and reports an error',
+    (tester) async {
+      platform.rejectedSpeed = 1.5;
+      var errors = 0;
+      await tester.pumpWidget(surface('AUDIO', () {}, () => errors++));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Play'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Playback speed'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('playback-speed-1.5x')));
+      await tester.pumpAndSettle();
+      expect(errors, 1);
+      expect(platform.speeds, containsAllInOrder([1.5, 1]));
+      expect(
+        tester
+            .widget<LessonPlaybackTools>(find.byType(LessonPlaybackTools))
+            .speed,
+        1,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+  testWidgets(
+    'quick seek is unavailable for a resource without a known duration',
+    (tester) async {
+      platform.duration = Duration.zero;
+      await tester.pumpWidget(surface('AUDIO', () {}, () {}));
+      await tester.pumpAndSettle();
+      final tools = tester.widget<LessonPlaybackTools>(
+        find.byType(LessonPlaybackTools),
+      );
+      expect(tools.onBackward, isNull);
+      expect(tools.onForward, isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+  testWidgets(
+    'quick seek failure reports an error without leaving the player',
+    (tester) async {
+      platform.failSeek = true;
+      var errors = 0;
+      await tester.pumpWidget(surface('AUDIO', () {}, () => errors++));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Forward 10 seconds'));
+      await tester.pumpAndSettle();
+      expect(errors, 1);
+      expect(platform.calls, isNot(contains('play')));
+      expect(find.byType(LessonMediaSurface), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
   for (final kind in ['AUDIO', 'VIDEO']) {
     testWidgets(
       '$kind controls remain readable with enlarged text',
