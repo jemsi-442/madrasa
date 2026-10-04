@@ -30,9 +30,15 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
   int page = 1;
   late Future<dynamic> future = fetch();
   late Future<dynamic> classes = widget.load('/api/teacher-workspace/classes');
-  Future<dynamic> fetch() => widget.load(
-    '/api/teacher-workspace/students?${Uri(queryParameters: {if (classId.isNotEmpty) 'classId': classId, 'search': search, 'support': support, 'page': '$page'}).query}',
-  );
+  Future<dynamic> fetch() {
+    final request = widget.load(
+      '/api/teacher-workspace/students?${Uri(queryParameters: {if (classId.isNotEmpty) 'classId': classId, 'search': search, 'support': support, 'page': '$page'}).query}',
+    );
+    // Reloads can fail before the next frame attaches PageResult's listener.
+    request.ignore();
+    return request;
+  }
+
   void reload() => setState(() {
     future = fetch();
   });

@@ -637,10 +637,22 @@ void main() {
           matching: find.text('More'),
         ),
       );
-      await _tap(
-        tester,
-        find.descendant(of: find.byType(Drawer), matching: find.text(name)),
+      final destination = find.descendant(
+        of: find.byType(Drawer),
+        matching: find.text(name),
       );
+      await tester.scrollUntilVisible(
+        destination,
+        240,
+        scrollable: find
+            .descendant(
+              of: find.byType(Drawer),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      await _tap(tester, destination);
       expect(paths.last, path);
       expect(find.byType(Drawer), findsNothing);
       expect(tester.takeException(), isNull);

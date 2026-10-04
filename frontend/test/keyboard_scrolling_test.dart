@@ -388,6 +388,17 @@ void main() {
       addTearDown(state.dispose);
       await tester.pumpWidget(MifApp(state: state, layout: AppLayout.website));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('nav-1')),
+        150,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('nav-1')));
       await tester.pumpAndSettle();
       final main = position(tester, primaryView);

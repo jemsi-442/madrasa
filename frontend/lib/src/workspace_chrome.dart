@@ -13,6 +13,7 @@ class WorkspaceSidebar extends StatelessWidget {
     this.collapsed = false,
     this.primary = false,
     this.groups = const {},
+    this.onFindPage,
   });
   final List<(String, IconData)> items;
   final int selected;
@@ -21,6 +22,7 @@ class WorkspaceSidebar extends StatelessWidget {
   final bool collapsed;
   final bool primary;
   final Map<int, String> groups;
+  final VoidCallback? onFindPage;
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
@@ -66,6 +68,41 @@ class WorkspaceSidebar extends StatelessWidget {
                           fontSize: 10,
                           letterSpacing: 1.6,
                           fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  if (onFindPage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Tooltip(
+                        message: 'Find a page',
+                        child: InkWell(
+                          onTap: onFindPage,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              mainAxisAlignment: collapsed
+                                  ? MainAxisAlignment.center
+                                  : MainAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.search,
+                                  size: 20,
+                                  color: Colors.white70,
+                                ),
+                                if (!collapsed) ...[
+                                  const SizedBox(width: 12),
+                                  const Expanded(
+                                    child: Text(
+                                      'Find a page',
+                                      style: TextStyle(color: Colors.white70),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -177,6 +214,17 @@ class WorkspaceSidebar extends StatelessWidget {
   );
 }
 
+Future<int?> showWorkspacePageSearch(
+  BuildContext context, {
+  required List<(String, IconData)> items,
+  List<String> descriptions = const [],
+  int? selected,
+}) => showDialog<int>(
+  context: context,
+  builder: (_) =>
+      _PageSearch(items: items, descriptions: descriptions, selected: selected),
+);
+
 class WorkspaceTopBar extends StatelessWidget {
   const WorkspaceTopBar({
     super.key,
@@ -188,6 +236,8 @@ class WorkspaceTopBar extends StatelessWidget {
     required this.onRefresh,
     required this.onSignOut,
     required this.collapsed,
+    this.descriptions = const [],
+    this.selected,
   });
   final String fullName;
   final String roleLabel;
@@ -198,12 +248,17 @@ class WorkspaceTopBar extends StatelessWidget {
   final VoidCallback onSignOut;
   final bool collapsed;
 
+  final List<String> descriptions;
+  final int? selected;
+
   Future<void> findPage(BuildContext context) async {
-    final selected = await showDialog<int>(
-      context: context,
-      builder: (_) => _PageSearch(items: items),
+    final result = await showWorkspacePageSearch(
+      context,
+      items: items,
+      descriptions: descriptions,
+      selected: selected,
     );
-    if (selected != null) onSelect(selected);
+    if (result != null && context.mounted) onSelect(result);
   }
 
   @override
@@ -324,14 +379,24 @@ class WorkspaceTopBar extends StatelessWidget {
 }
 
 class _PageSearch extends StatefulWidget {
-  const _PageSearch({required this.items});
+  const _PageSearch({
+    required this.items,
+    required this.descriptions,
+    this.selected,
+  });
   final List<(String, IconData)> items;
+  final List<String> descriptions;
+  final int? selected;
   @override
   State<_PageSearch> createState() => _PageSearchState();
 }
 
 class _PageSearchState extends State<_PageSearch> {
   String query = '';
+  bool matches(int index) =>
+      ('${widget.items[index].$1} ${index < widget.descriptions.length ? widget.descriptions[index] : ''}')
+          .toLowerCase()
+          .contains(query.trim());
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Find a page'),
@@ -344,7 +409,7 @@ class _PageSearchState extends State<_PageSearch> {
             autofocus: true,
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
-              hintText: 'Type a page name',
+              hintText: 'Search a page or task',
             ),
             onChanged: (value) => setState(() => query = value.toLowerCase()),
           ),
@@ -355,15 +420,29 @@ class _PageSearchState extends State<_PageSearch> {
               child: Column(
                 children: [
                   for (var i = 0; i < widget.items.length; i++)
-                    if (widget.items[i].$1.toLowerCase().contains(query))
+                    if (matches(i))
                       ListTile(
                         leading: Icon(widget.items[i].$2, color: gold),
                         title: Text(widget.items[i].$1),
+                        subtitle: i < widget.descriptions.length
+                            ? Text(widget.descriptions[i])
+                            : null,
+                        selected: widget.selected == i,
+                        trailing: widget.selected == i
+                            ? const Tooltip(
+                                message: 'Current page',
+                                child: Icon(
+                                  Icons.check_circle_outline,
+                                  size: 20,
+                                ),
+                              )
+                            : const Icon(Icons.chevron_right, size: 20),
                         onTap: () => Navigator.pop(context, i),
                       ),
-                  if (!widget.items.any(
-                    (item) => item.$1.toLowerCase().contains(query),
-                  ))
+                  if (!List.generate(
+                    widget.items.length,
+                    (i) => i,
+                  ).any(matches))
                     const Padding(
                       padding: EdgeInsets.all(20),
                       child: Text('No matching pages.'),

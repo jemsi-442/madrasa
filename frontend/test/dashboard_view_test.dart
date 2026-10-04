@@ -109,6 +109,17 @@ void main() {
     expect(find.text('More'), findsOneWidget);
     await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Course access'),
+      240,
+      scrollable: find
+          .descendant(
+            of: find.byType(Drawer),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Course access'), findsOneWidget);
   });
 

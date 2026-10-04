@@ -11,6 +11,7 @@ import 'dashboard_views.dart';
 import 'foundation_ui.dart';
 import 'dashboard_components.dart';
 import 'workspace_chrome.dart';
+import 'workspace_flow.dart';
 import 'student_registry_page.dart';
 import 'classes_page.dart';
 import 'attendance_page.dart';
@@ -351,6 +352,27 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
   _ => const [],
 };
 
+class _WorkspaceVisit {
+  const _WorkspaceVisit(
+    this.index, {
+    this.classId,
+    this.student,
+    this.childId,
+    this.finance,
+  });
+  final int index;
+  final String? classId, childId;
+  final Map<String, dynamic>? student;
+  final FinanceDestination? finance;
+
+  bool sameAs(_WorkspaceVisit other) =>
+      index == other.index &&
+      classId == other.classId &&
+      student?['id'] == other.student?['id'] &&
+      childId == other.childId &&
+      finance?.key == other.finance?.key;
+}
+
 class WorkspaceScreen extends StatefulWidget {
   const WorkspaceScreen({super.key, required this.state});
 
@@ -366,6 +388,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   int selectedIndex = 0;
   int refreshToken = 0;
   bool collapsed = false;
+  bool navigating = false;
+  final visits = <_WorkspaceVisit>[];
   late Future<dynamic> currentData;
   late List<SectionSpec> sections;
 
@@ -401,9 +425,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     super.dispose();
   }
 
-  Future<dynamic> loadCurrent() => dedicated
-      ? Future.value(null)
-      : widget.state.load(sections[selectedIndex].path);
+  Future<dynamic> loadCurrent() {
+    final request = dedicated
+        ? Future<dynamic>.value(null)
+        : widget.state.load(sections[selectedIndex].path);
+    // Navigation may finish its request before the next frame subscribes.
+    request.ignore();
+    return request;
+  }
 
   @override
   void initState() {
@@ -422,49 +451,123 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     return await messagesKey.currentState?.confirmLeave() ?? true;
   }
 
+  _WorkspaceVisit get currentVisit => _WorkspaceVisit(
+    selectedIndex,
+    classId: teachingClassId,
+    student: teachingStudent,
+    childId: familyChildId,
+    finance: widget.state.session?.role == 'ACCOUNTANT'
+        ? financeDestination
+        : null,
+  );
+
+  bool get canGoBack => visits.isNotEmpty || selectedIndex != 0;
+  String get backTitle =>
+      sections[visits.isEmpty ? 0 : visits.last.index].title;
+
+  Future<void> navigate(
+    _WorkspaceVisit visit, {
+    bool back = false,
+    bool home = false,
+  }) async {
+    if (navigating || visit.index < 0 || visit.index >= sections.length) return;
+    if (visit.sameAs(currentVisit) && !home && !back) {
+      scaffoldKey.currentState?.closeDrawer();
+      return;
+    }
+    navigating = true;
+    try {
+      if (!await leaveTeacherDraft() || !mounted) return;
+      contentFocus.requestFocus();
+      setState(() {
+        if (home) {
+          visits.clear();
+        } else if (back) {
+          if (visits.isNotEmpty) visits.removeLast();
+        } else {
+          visits.add(currentVisit);
+          if (visits.length > 30) visits.removeAt(0);
+        }
+        selectedIndex = visit.index;
+        teachingClassId = visit.classId;
+        teachingStudent = visit.student;
+        familyChildId = visit.childId;
+        financeDestination = visit.finance ?? FinanceDestination(visit.index);
+        widget.state.rememberSection(sections[selectedIndex].path);
+        currentData = loadCurrent();
+      });
+      scaffoldKey.currentState?.closeDrawer();
+    } finally {
+      navigating = false;
+    }
+  }
+
+  void goHome() => navigate(
+    _WorkspaceVisit(
+      0,
+      childId: familyChildId,
+      finance: widget.state.session?.role == 'ACCOUNTANT'
+          ? const FinanceDestination(0)
+          : null,
+    ),
+    home: true,
+  );
+
+  void goBack() {
+    if (scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      scaffoldKey.currentState?.closeDrawer();
+      return;
+    }
+    if (visits.isEmpty) {
+      if (selectedIndex != 0) goHome();
+      return;
+    }
+    navigate(visits.last, back: true);
+  }
+
   void openTeacher(
     int index, {
     String? classId,
     Map<String, dynamic>? student,
-  }) async {
-    if (!await leaveTeacherDraft() || !mounted) return;
-    contentFocus.requestFocus();
-    setState(() {
-      teachingClassId = classId;
-      teachingStudent = student;
-      selectedIndex = index;
-      widget.state.rememberSection(sections[index].path);
-      currentData = loadCurrent();
-    });
-    scaffoldKey.currentState?.closeDrawer();
-  }
+  }) => navigate(_WorkspaceVisit(index, classId: classId, student: student));
 
-  void openFinance(FinanceDestination destination) {
-    contentFocus.requestFocus();
-    setState(() {
-      financeDestination = destination;
-      selectedIndex = destination.page;
-      widget.state.rememberSection(sections[selectedIndex].path);
-    });
-    scaffoldKey.currentState?.closeDrawer();
-  }
+  void openFinance(FinanceDestination destination) =>
+      navigate(_WorkspaceVisit(destination.page, finance: destination));
 
-  void selectSection(int index) async {
-    if (widget.state.session?.role == 'ACCOUNTANT') {
+  void selectSection(int index) {
+    if (index == 0) {
+      goHome();
+    } else if (widget.state.session?.role == 'ACCOUNTANT') {
       openFinance(FinanceDestination(index));
-      return;
+    } else if (index != selectedIndex) {
+      navigate(
+        _WorkspaceVisit(
+          index,
+          classId: teachingClassId,
+          childId: familyChildId,
+        ),
+      );
+    } else {
+      scaffoldKey.currentState?.closeDrawer();
     }
-    if (index != selectedIndex) {
-      if (!await leaveTeacherDraft() || !mounted) return;
-      contentFocus.requestFocus();
-      setState(() {
-        teachingStudent = null;
-        selectedIndex = index;
-        widget.state.rememberSection(sections[index].path);
-        currentData = loadCurrent();
-      });
+  }
+
+  void openRelated(int index) {
+    if (widget.state.session?.role == 'TEACHER' && index <= 4) {
+      openTeacher(index, classId: teachingClassId, student: teachingStudent);
+    } else {
+      selectSection(index);
     }
-    scaffoldKey.currentState?.closeDrawer();
+  }
+
+  Future<void> findPage() async {
+    final selected = await showWorkspacePageSearch(
+      context,
+      items: sections.map((s) => (s.title, s.icon)).toList(),
+      descriptions: sections.map((s) => s.purpose).toList(),
+      selected: selectedIndex,
+    );
+    if (selected != null && mounted) selectSection(selected);
   }
 
   void requestSignOut() async {
@@ -560,10 +663,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         childId: familyChildId,
         refreshToken: refreshToken,
         onChildSelected: (id) => setState(() => familyChildId = id),
-        onOpen: (index, {childId}) {
-          if (childId != null) familyChildId = childId;
-          selectSection(index);
-        },
+        onOpen: (index, {childId}) =>
+            navigate(_WorkspaceVisit(index, childId: childId ?? familyChildId)),
       );
     }
     if (session.role == 'TEACHER' && selectedIndex <= 4) {
@@ -711,12 +812,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           roleLabel: _roleLabel(session.role),
           collapsed: rail,
           primary: primary,
-          groups: !mobile && session.role == 'ACCOUNTANT'
-              ? const {0: 'Overview', 1: 'Collections', 4: 'Finance tools'}
-              : const {},
+          groups: workspaceGroups(session.role),
+          onFindPage: () {
+            scaffoldKey.currentState?.closeDrawer();
+            findPage();
+          },
         );
 
-    return Scaffold(
+    final scaffold = Scaffold(
       key: scaffoldKey,
       backgroundColor: paper,
       drawer: narrow
@@ -734,12 +837,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   ? const BrandMark(compact: true)
                   : Text(
                       section.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
               actions: [
+                IconButton(
+                  tooltip: 'Find a page',
+                  onPressed: findPage,
+                  icon: const Icon(Icons.search_rounded),
+                ),
                 IconButton(
                   tooltip: 'Refresh page',
                   onPressed: refresh,
@@ -803,12 +913,22 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                           ? 'Teacher account'
                           : _roleLabel(session.role),
                       items: items,
+                      descriptions: sections.map((s) => s.purpose).toList(),
+                      selected: selectedIndex,
                       onSelect: selectSection,
                       collapsed: collapsed,
                       onToggle: () => setState(() => collapsed = !collapsed),
                       onRefresh: refresh,
                       onSignOut: requestSignOut,
                     ),
+                  WorkspaceTrail(
+                    homeTitle: sections.first.title,
+                    pageTitle: section.title,
+                    atHome: selectedIndex == 0,
+                    onHome: goHome,
+                    backTitle: backTitle,
+                    onBack: canGoBack ? goBack : null,
+                  ),
                   Expanded(
                     child: DecoratedBox(
                       decoration: const BoxDecoration(
@@ -952,6 +1072,22 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                       key: ValueKey('page-$selectedIndex'),
                                       child: pageContent(session),
                                     ),
+                                    WorkspaceNextSteps(
+                                      pages: [
+                                        for (final index
+                                            in relatedWorkspacePages(
+                                              session.role,
+                                              selectedIndex,
+                                            ))
+                                          (
+                                            index: index,
+                                            title: sections[index].title,
+                                            purpose: sections[index].purpose,
+                                            icon: sections[index].icon,
+                                          ),
+                                      ],
+                                      onSelect: openRelated,
+                                    ),
                                     if (!mobile) ...[
                                       const SizedBox(height: 28),
                                       const Divider(color: line),
@@ -980,6 +1116,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           ],
         ),
       ),
+    );
+    return PopScope(
+      canPop: !canGoBack,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) goBack();
+      },
+      child: scaffold,
     );
   }
 }

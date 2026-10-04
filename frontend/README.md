@@ -109,6 +109,41 @@ flutter test test/keyboard_scrolling_test.dart
 flutter test --platform chrome test/keyboard_scrolling_test.dart
 ```
 
+## Workspace Navigation Flow
+
+Every role uses the same navigation pattern on web and native mobile:
+a fixed current-page trail with **Back** and a **Home** icon, grouped menu
+sections and **Find a page** search. Search matches page names and their task
+descriptions, shows the current page, and lists only that role's destinations.
+On mobile it is available from the app bar and drawer.
+
+**Back** retraces the workspace pages visited during this session. On Android,
+system Back closes an open drawer first, then returns through that same page
+history; at Home with no history the normal platform exit behavior applies.
+**Home** returns to the role's overview and clears the in-memory trail.
+A restored non-home section with no history offers Back to the overview.
+
+Navigation restores context passed between pages: the teacher's class/student,
+the parent's child, and accountant status/invoice scope. Page-local searches,
+pagination and filters changed inside a page are not a full saved-page snapshot.
+The trail is bounded to 30 visits and is not persisted across reload/sign-out.
+The existing per-account last-section restoration remains unchanged; this does
+not add browser address-bar routes, browser Back/Forward history or deep links.
+
+Related links below each non-home page offer up to two real next destinations,
+for example Invoices -> Payments, My Classes -> My Students / Attendance,
+or Academic Progress -> Reports. They navigate only; they do not submit forms,
+send messages or perform financial actions. Leaving Qur'an tracking or an
+unsent family message still uses the existing draft confirmation. Dialog forms
+keep their own close/discard behavior. Backend authorization is unchanged.
+
+Regression checks:
+
+```bash
+flutter test test/workspace_flow_test.dart
+flutter test --platform chrome test/workspace_flow_test.dart
+```
+
 ## Native Mobile Experience
 
 Installed Android/iOS builds start at a dedicated welcome screen with Login,
