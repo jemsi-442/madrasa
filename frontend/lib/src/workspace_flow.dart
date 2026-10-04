@@ -120,7 +120,9 @@ class WorkspaceTrail extends StatelessWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: ink,
                   minimumSize: const Size(0, 48),
-                  textStyle: const TextStyle(fontSize: 13),
+                  textStyle: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontSize: 13),
                 ),
               ),
             ),

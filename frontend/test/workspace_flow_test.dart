@@ -185,6 +185,21 @@ void main() {
     },
   );
 
+  testWidgets('Back retains the bundled font without external font loading', (
+    tester,
+  ) async {
+    await showWorkspace(tester, 'ACCOUNTANT');
+    await tap(tester, find.byKey(const ValueKey('nav-1')));
+    final label = find.descendant(
+      of: find.byKey(const ValueKey('workspace-back')),
+      matching: find.text('Back'),
+    );
+    expect(
+      DefaultTextStyle.of(tester.element(label)).style.fontFamily,
+      'NotoSansDisplay',
+    );
+  });
+
   testWidgets('reselecting a destination does not duplicate the Back trail', (
     tester,
   ) async {
