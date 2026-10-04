@@ -371,7 +371,7 @@ class CourseCurriculumPage extends StatefulWidget {
 
 class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
   int refresh = 0;
-  Future<void> lesson(String id) async {
+  Future<void> lesson(String id, List<Map<String, dynamic>> outline) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (context) => LearnerLessonReader(
@@ -380,6 +380,7 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
           submit: widget.submit,
           apiBaseUrl: widget.apiBaseUrl,
           surfaceBuilder: widget.surfaceBuilder,
+          outline: outline,
         ),
       ),
     );
@@ -398,9 +399,11 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
       builder: (raw) {
         final course = recordMap(recordMap(raw)['course']),
             modules = recordList(course['modules']);
-        final lessons = modules
-            .expand((m) => recordList(m['lessons']))
-            .toList();
+        final lessons = [
+          for (final module in modules)
+            for (final row in recordList(module['lessons']))
+              {...row, 'moduleTitle': recordText(module['title'])},
+        ];
         final next = lessons
             .where(
               (l) =>
@@ -441,7 +444,7 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
                 ),
                 if (next != null)
                   FilledButton.icon(
-                    onPressed: () => lesson(recordText(next['id'])),
+                    onPressed: () => lesson(recordText(next['id']), lessons),
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Continue learning'),
                   ),
@@ -515,7 +518,8 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
                                 ),
                               OutlinedButton(
                                 onPressed: courseIsAvailable(row['accessState'])
-                                    ? () => lesson(recordText(row['id']))
+                                    ? () =>
+                                          lesson(recordText(row['id']), lessons)
                                     : null,
                                 child: Text(
                                   courseIsAvailable(row['accessState'])

@@ -192,6 +192,21 @@ dialog or route: the selected resource is embedded in the lesson beside the
 resource list on wide screens, and above the list on small screens. Lesson
 notes and explicit completion remain on the same page.
 
+The reader shows its position in the published curriculum and the current
+module. **Previous lesson** and **Next lesson** move within the same reader
+route, including across modules; Back returns directly to the curriculum and
+refreshes its progress. Adjacent locked lessons stay disabled instead of being
+silently skipped. Available previews can still be opened from the curriculum.
+Each lesson change loads fresh server-authorized content and progress, disposes
+the previous media, clears local errors and returns scroll/focus to the top.
+An authorization failure shows a retry for the requested lesson, not old content.
+
+Moving between lessons neither completes them nor advances automatically after
+a save. **Mark complete** applies only to the active lesson; lesson navigation
+and leaving the reader are blocked while that save is pending. At the end of
+published lessons, **Return to curriculum** offers a review of remaining work
+without claiming that the entire course is complete.
+
 Video and audio retain their playback controls. Images retain pan/reset zoom;
 PDFs retain page and zoom controls; text attachments remain plain, selectable
 text. Audio has a dedicated listening area. Native transport controls use a
@@ -217,7 +232,8 @@ the resource list. It is not another route, dialog or browser fullscreen window.
 The active surface and its playback/zoom state are retained. The exit button,
 page Back, or native Back restores the lesson first; Escape also exits when
 Flutter controls have keyboard focus. Embedded players may handle their own
-keyboard shortcuts. Previous/Next remains available in Focus view.
+keyboard shortcuts. Previous/Next resource remains available in Focus view;
+course navigation is restored when leaving Focus view.
 
 Selecting another resource disposes the previous surface. **Back to lesson
 text** stops/removes it, exits Focus view, and scrolls/focuses the reading notes.
@@ -233,8 +249,8 @@ responses and callbacks from replaced players cannot overwrite the active
 resource. No media upload/provider/backend permissions are changed here.
 
 ```bash
-flutter test test/learner_courses_test.dart test/lesson_media_test.dart test/lesson_media_flow_test.dart test/lesson_media_native_test.dart test/lesson_playback_tools_test.dart
-flutter test --platform chrome test/lesson_playback_tools_test.dart test/lesson_media_flow_test.dart
+flutter test test/learner_courses_test.dart test/lesson_journey_test.dart test/lesson_media_test.dart test/lesson_media_flow_test.dart test/lesson_media_native_test.dart test/lesson_playback_tools_test.dart
+flutter test --platform chrome test/lesson_journey_test.dart test/lesson_playback_tools_test.dart test/lesson_media_flow_test.dart
 ```
 
 ## Native Mobile Experience
