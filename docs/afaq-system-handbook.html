@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Afaq Foundation | System User Handbook</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    :root { --navy:#092542; --deep:#061b32; --gold:#c39435; --gold-soft:#f6efdf; --ink:#163149; --muted:#61758d; --line:#dce4e9; --paper:#fffefa; --green:#247954; --blue:#3371ad; --red:#a94343; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; padding:0; color:var(--ink); font-family:"DejaVu Sans",Arial,sans-serif; font-size:10pt; line-height:1.48; background:#e8edf0; }
+    .page { position:relative; width:210mm; height:297mm; padding:18mm 18mm 19mm; overflow:hidden; margin:8mm auto; background:var(--paper); page-break-after:always; break-after:page; }
+    .page:last-child { page-break-after:auto; break-after:auto; }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { margin-bottom:8px; color:var(--navy); font-size:29pt; line-height:1.1; letter-spacing:-.7px; }
+    h2 { margin-bottom:12px; color:var(--navy); font-size:20pt; line-height:1.16; letter-spacing:-.35px; }
+    h3 { margin:0 0 5px; color:var(--navy); font-size:11.5pt; line-height:1.25; }
+    p { margin:0 0 9px; }
+    ul,ol { margin:5px 0 9px; padding-left:19px; }
+    li { margin:0 0 5px; padding-left:2px; }
+    strong { color:var(--navy); }
+    .kicker { margin-bottom:7px; color:var(--gold); font-size:8pt; letter-spacing:2.1px; font-weight:800; text-transform:uppercase; }
+    .deck { max-width:160mm; margin-bottom:16px; color:var(--muted); font-size:12pt; line-height:1.45; }
+    .brand { display:flex; align-items:center; gap:10px; color:var(--navy); }
+    .brand svg { width:38px; height:38px; flex:none; }
+    .brand-name { font-size:21pt; font-weight:800; letter-spacing:-.8px; line-height:1; }
+    .brand-sub { margin-top:3px; color:var(--gold); font-size:7pt; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
+    .topline { display:flex; align-items:center; justify-content:space-between; padding-bottom:9px; margin-bottom:17px; border-bottom:1px solid var(--line); }
+    .topline .brand svg { width:26px; height:26px; }
+    .topline .brand-name { font-size:14pt; }
+    .topline .brand-sub { font-size:5.5pt; }
+    .topline .chapter { color:var(--muted); font-size:8pt; letter-spacing:1px; text-transform:uppercase; }
+    .footer { position:absolute; right:18mm; bottom:9mm; left:18mm; display:flex; justify-content:space-between; padding-top:5px; border-top:1px solid var(--line); color:#8292a1; font-size:7.3pt; }
+    .footer b { color:var(--gold); letter-spacing:1px; }
+    .cover { display:flex; flex-direction:column; justify-content:space-between; padding:24mm 21mm 18mm; color:white; background:radial-gradient(circle at 85% 18%,#164569 0,transparent 31%),linear-gradient(145deg,#061b32 0%,#0c3150 65%,#124357 100%); }
+    .cover:before { position:absolute; top:95mm; right:-30mm; width:145mm; height:145mm; border:1px solid rgba(224,179,76,.28); border-radius:50%; content:""; }
+    .cover:after { position:absolute; top:107mm; right:-18mm; width:121mm; height:121mm; border:1px solid rgba(224,179,76,.17); border-radius:50%; content:""; }
+    .cover .brand { position:relative; z-index:1; color:#fff; }
+    .cover .brand-name { color:#fff; font-size:34pt; }
+    .cover .brand-sub { color:#e1b84d; font-size:9pt; }
+    .cover-main { position:relative; z-index:1; max-width:160mm; margin-top:32mm; }
+    .cover .kicker { color:#e3bc5b; }
+    .cover h1 { max-width:155mm; margin-bottom:12px; color:#fff; font-size:37pt; }
+    .cover .deck { max-width:132mm; color:#d3dfeb; font-size:14pt; }
+    .cover-rule { width:26mm; height:3px; margin:20px 0; background:var(--gold); }
+    .cover-meta { display:flex; gap:20px; margin-top:22px; color:#c4d0db; font-size:9pt; }
+    .cover-meta span { padding-left:10px; border-left:2px solid var(--gold); }
+    .cover-bottom { position:relative; z-index:1; display:flex; align-items:end; justify-content:space-between; color:#d1dce5; font-size:9pt; }
+    .cover-bottom .motto { max-width:90mm; color:#e7c56d; font-size:9pt; font-weight:700; letter-spacing:.8px; }
+    .callout { padding:10px 12px; margin:10px 0 13px; border-left:3px solid var(--gold); border-radius:0 8px 8px 0; background:var(--gold-soft); }
+    .callout p:last-child { margin-bottom:0; }
+    .callout.blue { border-color:var(--blue); background:#edf4fb; }
+    .callout.green { border-color:var(--green); background:#edf6f1; }
+    .callout.red { border-color:var(--red); background:#fbefee; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+    .card { padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    .card p:last-child,.card ul:last-child { margin-bottom:0; }
+    .card.gold { border-color:#eadcb9; background:#fcf8ee; }
+    .card.navy { border-color:#153c5a; color:#eaf1f6; background:var(--navy); }
+    .card.navy h3,.card.navy strong { color:white; }
+    .card.navy p { color:#d0dce7; }
+    .step { display:grid; grid-template-columns:25px 1fr; gap:9px; margin-bottom:8px; }
+    .num { display:flex; width:23px; height:23px; align-items:center; justify-content:center; border-radius:50%; color:white; background:var(--navy); font-size:9pt; font-weight:800; }
+    .flow { display:flex; align-items:stretch; gap:6px; margin:12px 0 15px; }
+    .flow .node { flex:1; display:flex; min-height:45px; align-items:center; justify-content:center; padding:7px 8px; border:1px solid #d7e0e6; border-radius:8px; background:white; color:var(--navy); text-align:center; font-size:8.3pt; font-weight:700; }
+    .flow .arrow { align-self:center; color:var(--gold); font-size:15pt; font-weight:800; }
+    .pill { display:inline-block; padding:3px 8px; border-radius:30px; color:var(--navy); background:#edf2f5; font-size:8pt; font-weight:700; }
+    .pill.gold { color:#78530d; background:#f5ecd6; }
+    .pill.green { color:#246648; background:#e6f3eb; }
+    .role-head { display:flex; align-items:center; gap:11px; margin:2px 0 13px; }
+    .role-icon { display:flex; width:43px; height:43px; align-items:center; justify-content:center; border-radius:12px; color:var(--gold); background:#f6efdf; font-size:19pt; font-weight:800; }
+    .role-head h2 { margin:0; }
+    .role-head p { margin:3px 0 0; color:var(--muted); font-size:9pt; }
+    .small { color:var(--muted); font-size:8.3pt; }
+    .tight li { margin-bottom:3px; }
+    .contents { display:grid; grid-template-columns:1fr 1fr; gap:7px 15px; margin-top:10px; }
+    .contents div { display:flex; gap:9px; padding:8px 0; border-bottom:1px solid var(--line); }
+    .contents b { min-width:22px; color:var(--gold); }
+    .check { color:var(--green); font-weight:800; }
+    .rule { height:1px; margin:13px 0; background:var(--line); }
+    .mini-label { margin-bottom:4px; color:var(--gold); font-size:7pt; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; }
+    .avoid-break { break-inside:avoid; }
+    @media print { body { background:white; } .page { margin:0; } }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#fff" d="M13 24 28 39 13 57 2 57V40z"/><path fill="#e9eef3" d="M51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg>
+      <div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div>
+    </div>
+    <div class="cover-main">
+      <div class="kicker">A practical guide for the whole school</div>
+      <h1>System User Handbook</h1>
+      <p class="deck">A clear, step-by-step guide to managing school operations, teaching, learning and family engagement with Afaq.</p>
+      <div class="cover-rule"></div>
+      <div class="cover-meta"><span>Administration</span><span>Finance</span><span>Teaching</span><span>Families &amp; Learners</span></div>
+    </div>
+    <div class="cover-bottom"><div class="motto">KNOWLEDGE&nbsp; • &nbsp;CHARACTER&nbsp; • &nbsp;BRIGHTER LIVES</div><div>English edition &nbsp;|&nbsp; October 2026</div></div>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">START HERE</div></header>
+    <div class="kicker">Welcome</div><h2>One school. Connected workspaces.</h2>
+    <p class="deck">Afaq brings school records and daily work into one system. Each person signs in to a workspace shaped around their responsibilities.</p>
+    <div class="grid-2">
+      <div class="card"><div class="mini-label">Who uses Afaq?</div><ul class="tight"><li><strong>Administrator:</strong> oversees school setup, records and approvals.</li><li><strong>Finance Officer:</strong> follows invoices, payments, fees and expenses.</li><li><strong>Teacher:</strong> manages assigned classes and records learning.</li><li><strong>Parent:</strong> follows linked children and school communication.</li><li><strong>Learner:</strong> accesses courses and personal learning records.</li></ul></div>
+      <div class="card gold"><div class="mini-label">How to use this handbook</div><p>Start with the shared navigation guide, then follow the chapter for your role. The screen labels in <strong>bold</strong> match the app.</p><p>What you can see depends on your account, school setup and assigned permissions. Some pages may be empty until the school publishes or records information.</p></div>
+    </div>
+    <h3 style="margin-top:18px">In this handbook</h3>
+    <div class="contents">
+      <div><b>03</b><span>Sign in and move around</span></div><div><b>04</b><span>Administrator: school setup</span></div>
+      <div><b>05</b><span>Administrator: review and publish</span></div><div><b>06</b><span>Finance Officer: invoices and payments</span></div>
+      <div><b>07</b><span>Finance Officer: fees and reporting</span></div><div><b>08</b><span>Teacher: classes and daily records</span></div>
+      <div><b>09</b><span>Parent: follow a child's school journey</span></div><div><b>10</b><span>Learner: courses and progress</span></div>
+      <div><b>11</b><span>Learning content and media</span></div><div><b>12</b><span>Good practice and help</span></div>
+    </div>
+    <div class="callout blue" style="margin-top:17px"><p><strong>Keep records trustworthy.</strong> Enter information only when you have checked it. A screen that opens does not automatically save, send, approve or publish a record.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; SYSTEM USER HANDBOOK</span><b>02</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">START HERE</div></header>
+    <div class="kicker">01 · Getting started</div><h2>Sign in, then follow the page trail.</h2>
+    <p class="deck">Open Afaq in the app or on the school website and sign in with the account details issued to you.</p>
+    <div class="flow"><div class="node">Open Afaq</div><div class="arrow">›</div><div class="node">Enter your account details</div><div class="arrow">›</div><div class="node">Open your role workspace</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Move between pages</h3><ol class="tight"><li>Use the left menu on a wide screen.</li><li>On a phone, use the bottom tabs or tap <strong>More</strong> to open the menu.</li><li>Use <strong>Back</strong> to return to the previous page and <strong>Home</strong> to return to your role overview.</li><li>Use <strong>Refresh</strong> if a page needs to reload.</li></ol></div>
+      <div class="card"><h3>Find learning content</h3><p>Learners can search subjects and courses inside <strong>My courses</strong>. Record pages may also have their own search and filters, such as invoices or students.</p><p class="small">The workspace menu opens pages directly. It does not search for dashboard pages.</p></div>
+    </div>
+    <h3 style="margin-top:16px">If sign-in does not work</h3>
+    <div class="step"><span class="num">1</span><div><strong>Check the account details.</strong><br><span class="small">Use the school-issued phone number or email and password. Check for extra spaces.</span></div></div>
+    <div class="step"><span class="num">2</span><div><strong>Check the connection.</strong><br><span class="small">The app must reach the school's Afaq service. Reconnect to the internet or the configured school network, then retry.</span></div></div>
+    <div class="step"><span class="num">3</span><div><strong>Ask the school office.</strong><br><span class="small">Staff accounts and parent-child links are managed by the school. Public learner registration is only available if the school has enabled it.</span></div></div>
+    <div class="callout"><p><strong>Protect your account.</strong> Do not share a password or leave a signed-in account open on a shared device. Sign out from the account menu when you finish.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; GETTING STARTED</span><b>03</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">ADMINISTRATOR</div></header>
+    <div class="role-head"><div class="role-icon">01</div><div><h2>Set up the school workspace</h2><p>Administrator · School records and day-to-day oversight</p></div></div>
+    <p class="deck">Begin with the school's core structure. Accurate classes, staff and subjects make later registers and reports easier to use.</p>
+    <div class="flow"><div class="node">Review Overview</div><div class="arrow">›</div><div class="node">Set up school records</div><div class="arrow">›</div><div class="node">Check assignments</div><div class="arrow">›</div><div class="node">Monitor activity</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Students</h3><p>Open <strong>Students</strong> to find and maintain student records. Confirm identity and class details before making a correction. Keep a reason when the form requests one.</p></div>
+      <div class="card"><h3>Classes</h3><p>Open <strong>Classes</strong> to review school classes and their assignments. Check the campus, teacher and class details so attendance and academic work are scoped correctly.</p></div>
+      <div class="card"><h3>Teachers</h3><p>Open <strong>Teachers</strong> to manage staff accounts, teaching assignments and workload. Assign the required class and subject before expecting class work to appear.</p></div>
+      <div class="card"><h3>Subjects and courses</h3><p>Use <strong>Subjects</strong> for the school subject catalogue and <strong>Courses</strong> for online learning content. Published courses and lessons become available through learner access rules.</p></div>
+    </div>
+    <h3 style="margin-top:17px">A sensible setup sequence</h3>
+    <div class="step"><span class="num">1</span><div><strong>Confirm school structure.</strong> Check campuses or branches, class names and reporting periods where available.</div></div>
+    <div class="step"><span class="num">2</span><div><strong>Connect people to their work.</strong> Verify staff accounts, class assignments and subject ownership.</div></div>
+    <div class="step"><span class="num">3</span><div><strong>Review access.</strong> Confirm that staff see their assigned classes and that families are linked to the correct students.</div></div>
+    <div class="step"><span class="num">4</span><div><strong>Check the overview.</strong> Use real counts and activity to spot missing setup before a new term begins.</div></div>
+    <div class="callout blue"><p><strong>Access is scoped.</strong> A user's role, school and branch assignments determine which records can be opened. If a record is missing, check the assignment with the office instead of sharing another person's login.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; ADMINISTRATOR WORKSPACE</span><b>04</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">ADMINISTRATOR</div></header>
+    <div class="role-head"><div class="role-icon">02</div><div><h2>Review, approve and publish</h2><p>Administrator · Academic oversight</p></div></div>
+    <p class="deck">Teaching records move through review steps so families see approved information and school reports reflect their source records.</p>
+    <div class="flow"><div class="node">Teacher records work</div><div class="arrow">›</div><div class="node">Teacher submits</div><div class="arrow">›</div><div class="node">Administrator reviews</div><div class="arrow">›</div><div class="node">Publish for families</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Attendance</h3><p>Use the attendance register and summary to review daily records. Unmarked students remain unmarked; confirm the class and date before assessing coverage.</p></div>
+      <div class="card"><h3>Assessment Review</h3><p>Open submitted assessment work, review class and reporting-period scope, then approve or return it according to the school's process.</p></div>
+      <div class="card"><h3>Reports</h3><p>Teachers prepare reports from attendance, Qur'an sessions and published assessments. Review the submitted snapshot before publishing it to parent and learner views.</p></div>
+      <div class="card"><h3>Course access</h3><p>Review course access requests, inspect linked invoices and notes, and apply the available decision. Payment confirmation may grant access through the configured workflow.</p></div>
+    </div>
+    <h3 style="margin-top:17px">Before publishing a report</h3>
+    <ul class="tight">
+      <li>Confirm the correct class, learner and reporting period.</li>
+      <li>Refresh source records and check attendance, Qur'an and published assessment information.</li>
+      <li>Read teacher feedback and the parent-facing preview for clarity.</li>
+      <li>Publish only when the report is ready to be seen by the family.</li>
+    </ul>
+    <div class="callout red"><p><strong>Published reports are snapshots.</strong> Later source changes do not silently rewrite an already published report. Follow the school's correction process if an issued report needs attention.</p></div>
+    <div class="callout"><p><strong>Separate roles, separate duties.</strong> Qur'an session recording belongs to assigned teachers. Administrators review academic work but should not enter teaching observations on behalf of a teacher.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; ADMINISTRATOR WORKSPACE</span><b>05</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">FINANCE OFFICER</div></header>
+    <div class="role-head"><div class="role-icon">01</div><div><h2>Follow invoices and payments</h2><p>Finance Officer · Collections workflow</p></div></div>
+    <p class="deck">Use the finance home to spot follow-up work, then open the relevant record to check its current details.</p>
+    <div class="flow"><div class="node">Finance Home</div><div class="arrow">›</div><div class="node">Invoices</div><div class="arrow">›</div><div class="node">Invoice details</div><div class="arrow">›</div><div class="node">Linked payments / receipt</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Home</h3><p>Review the reported invoice count, collections, outstanding amount and expenses. Use shortcuts to open overdue invoices, pending payments and course access requests.</p></div>
+      <div class="card"><h3>Invoices</h3><p>Search, filter by status and move through the register. Open an invoice to check the learner, fee, due date, balance and linked payment history.</p></div>
+      <div class="card"><h3>Payments</h3><p>Filter by status or channel and inspect invoice-scoped payments. Open a payment to load its saved details. Completed payments can show an in-app receipt.</p></div>
+      <div class="card"><h3>Course access</h3><p>Follow requests for paid courses, check the linked invoice and office notes, and review the request's current status. Access follows the school's configured grant or confirmed-payment flow.</p></div>
+    </div>
+    <h3 style="margin-top:17px">Work a payment question</h3>
+    <div class="step"><span class="num">1</span><div>Find the learner's invoice using the register search or status filter.</div></div>
+    <div class="step"><span class="num">2</span><div>Open invoice details and follow the linked payment record.</div></div>
+    <div class="step"><span class="num">3</span><div>Check the latest saved payment status and reference. Open the receipt when available.</div></div>
+    <div class="step"><span class="num">4</span><div>Return to the list; filters remain in place for continued work.</div></div>
+    <div class="callout red"><p><strong>If a save or network request times out, check the register before trying again.</strong> An uncertain result could already have been recorded.</p></div>
+    <p class="small">The finance workspace records and displays transactions. It does not initiate a charge, edit financial history or reconcile a payment provider.</p>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; FINANCE WORKSPACE</span><b>06</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">FINANCE OFFICER</div></header>
+    <div class="role-head"><div class="role-icon">02</div><div><h2>Maintain fees and finance records</h2><p>Finance Officer · Finance tools</p></div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Fee structures</h3><p>Search the rate register, review active or inactive structures, and open a form to record a fee amount and billing cycle. Check the branch or school scope before saving.</p></div>
+      <div class="card"><h3>Expenses</h3><p>Record a positive amount, expense date and optional description. Use date filters and record details to review entries already in the register.</p></div>
+      <div class="card"><h3>Financial reports</h3><p>Select a year and review reported totals and monthly collections and expenses. Preview or save the available CSV export for further analysis.</p></div>
+      <div class="card"><h3>Finance inbox</h3><p>Review finance inquiries, search and filter by status, then update a request to NEW, CONTACTED or CLOSED as appropriate.</p></div>
+    </div>
+    <h3 style="margin-top:17px">Before recording an expense</h3>
+    <ol class="tight"><li>Check that the expense has not already been entered.</li><li>Confirm the amount, date and currency shown for the record.</li><li>Add a useful description when it helps identify the purpose.</li><li>Save once, then confirm the entry appears in the register.</li></ol>
+    <div class="callout blue"><p><strong>A fee structure is a rate record.</strong> Saving it does not automatically create invoices. An expense record documents a cost; it does not transfer money from a bank.</p></div>
+    <h3>Read financial totals carefully</h3>
+    <ul class="tight"><li>Summary totals reflect what the API reports for the selected period.</li><li>Invoiced minus collected is a period difference, not necessarily today's debtor balance.</li><li>Individual entries display their recorded currency. Do not add mixed currencies without conversion.</li><li>CSV exports contain financial information. Choose an appropriate folder and recipient.</li></ul>
+    <div class="callout"><p><strong>Maintain an audit trail.</strong> Use the official register and school procedures to investigate discrepancies. Do not treat an inquiry status as proof that a message was sent or a payment was received.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; FINANCE WORKSPACE</span><b>07</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">TEACHER</div></header>
+    <div class="role-head"><div class="role-icon">01</div><div><h2>Teach from your assigned workspace</h2><p>Teacher · Class-based workflow</p></div></div>
+    <p class="deck">Start from your Dashboard or My Classes. Class context follows you into the records used for that class.</p>
+    <div class="flow"><div class="node">Dashboard</div><div class="arrow">›</div><div class="node">My Classes</div><div class="arrow">›</div><div class="node">Select a class</div><div class="arrow">›</div><div class="node">Record or follow up</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Dashboard and My Classes</h3><p>Review today's teaching work, assigned classes and timetable. Open a class to reach its students and daily class tasks.</p></div>
+      <div class="card"><h3>My Students</h3><p>Search your assigned roster and open a learner profile. Use support notes for relevant follow-up; only access learners assigned to you.</p></div>
+      <div class="card"><h3>Attendance</h3><p>Select the class and date, then record each student's actual status. Unmarked students stay unmarked. Correct an entry through the available audited correction flow.</p></div>
+      <div class="card"><h3>Qur'an Tracking</h3><p>Select a class and learner, then record the specific reading, memorisation or revision session and observation. These are distinct activities.</p></div>
+      <div class="card"><h3>Assessments</h3><p>Choose the class and reporting period, record scores and feedback, review the draft, then submit it for administrator review.</p></div>
+      <div class="card"><h3>Reports</h3><p>Prepare a learner report from the selected class and period. Refresh source records, review the feedback and submit the draft for administrator publication.</p></div>
+    </div>
+    <div class="callout green" style="margin-top:14px"><p><strong>Keep the class context visible.</strong> If you change classes, confirm the new class before creating or reviewing records. Choosing a learner also narrows the work to that learner.</p></div>
+    <div class="callout"><p><strong>Recording is not publishing.</strong> An assessment or report draft becomes visible to families only after it passes the school's review and publication process.</p></div>
+    <p class="small">Teachers cannot enrol students, change staff assignments or edit the approved subject catalogue. Contact the school administrator if setup is missing.</p>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; TEACHER WORKSPACE</span><b>08</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">PARENT</div></header>
+    <div class="role-head"><div class="role-icon">01</div><div><h2>Follow your child's school journey</h2><p>Parent · Family workspace</p></div></div>
+    <p class="deck">Use the Dashboard for an overview, then open your child's records for detail. On pages that support more than one child, select the child before reviewing information.</p>
+    <div class="flow"><div class="node">Dashboard</div><div class="arrow">›</div><div class="node">Choose child</div><div class="arrow">›</div><div class="node">Open a record</div><div class="arrow">›</div><div class="node">Contact school if needed</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>My Children</h3><p>Review linked child profiles, class information, attendance, academic progress and recent activity.</p></div>
+      <div class="card"><h3>Attendance</h3><p>Check recorded days, notes and teacher remarks. Contact the school if a date or absence note needs clarification.</p></div>
+      <div class="card"><h3>Qur'an and academic progress</h3><p>Follow teacher-recorded Qur'an sessions and published subject results. Teacher comments appear with the relevant learning record.</p></div>
+      <div class="card"><h3>Reports</h3><p>Open and download reports after the school publishes them. Drafts awaiting review are not shown as final reports.</p></div>
+      <div class="card"><h3>Payments</h3><p>Review your child's invoices and confirmed payment records. Open a record to inspect the current details or receipt when available.</p></div>
+      <div class="card"><h3>Messages and updates</h3><p>Read published school notices and contact your child's assigned teacher through the private conversation area.</p></div>
+    </div>
+    <h3 style="margin-top:17px">Ask the right question</h3>
+    <ul class="tight"><li><strong>Missing child or wrong class:</strong> contact the school office to check the family link or enrolment.</li><li><strong>Attendance or learning record:</strong> message the assigned teacher with the relevant date or subject.</li><li><strong>Invoice or payment:</strong> contact the finance office and include the invoice or payment reference.</li><li><strong>Report not available:</strong> ask whether the reporting period has been reviewed and published.</li></ul>
+    <div class="callout blue"><p><strong>Privacy follows your family link.</strong> The parent workspace shows records for children linked to your account. The school office manages those links.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; PARENT WORKSPACE</span><b>09</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">LEARNER</div></header>
+    <div class="role-head"><div class="role-icon">01</div><div><h2>Find a course and keep learning</h2><p>Learner · Personal learning workspace</p></div></div>
+    <p class="deck">Use Home for your learning overview or open My courses to find a subject, search the course library and choose a lesson.</p>
+    <div class="flow"><div class="node">Home / My courses</div><div class="arrow">›</div><div class="node">Find a course</div><div class="arrow">›</div><div class="node">View lessons</div><div class="arrow">›</div><div class="node">Read, watch or listen</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Search and filter</h3><p>Search subjects or courses by title, subject or instructor. Use subject and access filters to narrow the library, then switch between Grid and List views.</p></div>
+      <div class="card"><h3>Start or resume</h3><p>Choose <strong>Start learning</strong> or <strong>Resume lesson</strong>. Afaq checks that the lesson is still available before opening it.</p></div>
+      <div class="card"><h3>Course contents</h3><p>Open a module and choose an available lesson. On a wide screen the contents sit beside the reader; on a phone they open in a compact panel.</p></div>
+      <div class="card"><h3>Save completion</h3><p>Use <strong>Mark complete</strong> when you finish. Opening, switching or leaving a lesson does not mark it complete automatically.</p></div>
+    </div>
+    <h3 style="margin-top:17px">Understand course access</h3>
+    <div class="grid-3"><div class="card"><span class="pill green">Available</span><p style="margin-top:8px">Open the lesson and study.</p></div><div class="card"><span class="pill gold">Preview</span><p style="margin-top:8px">Open the lesson labelled as a preview.</p></div><div class="card"><span class="pill">Access required</span><p style="margin-top:8px">Follow the payment or school approval instructions shown.</p></div></div>
+    <div class="callout" style="margin-top:15px"><p><strong>Learning progress is specific.</strong> A lesson is complete only after a successful completion save. Teacher-recorded scores and Qur'an memorisation are shown separately from course progress.</p></div>
+    <p class="small">If a course or lesson is missing, check the access label or ask your school. Do not use someone else's account to open restricted content.</p>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; LEARNER WORKSPACE</span><b>10</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">LEARNING CONTENT</div></header>
+    <div class="kicker">Courses, lessons and media</div><h2>Keep the lesson in one learning space.</h2>
+    <p class="deck">The course reader keeps lesson notes, resources and playback together so learners can move through a published curriculum.</p>
+    <div class="flow"><div class="node">My courses</div><div class="arrow">›</div><div class="node">Course curriculum</div><div class="arrow">›</div><div class="node">Lesson reader</div><div class="arrow">›</div><div class="node">Course contents</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Video and audio</h3><p>Choose an available recording or load the lesson sample. Playback stays inside the lesson. Use play, pause, seeking and speed controls when available.</p></div>
+      <div class="card"><h3>Documents and images</h3><p>Select a resource in the lesson to read a PDF, view an image or open text. Return to the lesson notes when you are ready.</p></div>
+      <div class="card"><h3>Choose another topic</h3><p>Open Course contents, expand a module and select an available topic. The reader loads fresh lesson content and releases the previous media.</p></div>
+      <div class="card"><h3>Adjust reading</h3><p>Use the text-size controls in the notes or your device accessibility settings. Return to the curriculum when you want to review the course sequence.</p></div>
+    </div>
+    <h3 style="margin-top:17px">A few playback tips</h3>
+    <ul class="tight"><li>Real lesson media is checked against your course access before it opens.</li><li>Playback does not automatically start or mark a lesson complete.</li><li>A sample video or audio is practice material, not the teacher's lesson recording.</li><li>If playback fails, retry or contact the school with the course and lesson title.</li></ul>
+    <div class="callout blue"><p><strong>Resume means continue with an available unfinished lesson.</strong> It does not restore an exact video timestamp. Use the player timeline to seek within a recording during the current session.</p></div>
+    <div class="card navy"><h3>Teacher workflow around online courses</h3><p>Teachers open <strong>My courses</strong> to work with their assigned online courses. School curriculum assignments and learner access are managed by the appropriate school role.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; LEARNING CONTENT</span><b>11</b></footer>
+  </section>
+
+  <section class="page">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">GOOD PRACTICE</div></header>
+    <div class="kicker">Everyday use</div><h2>Keep work clear and secure.</h2>
+    <div class="grid-2">
+      <div class="card"><h3>Before you save</h3><ul class="tight"><li>Check the selected learner, class and date.</li><li>Review amounts, status and reporting period.</li><li>Read the confirmation before submitting a form.</li><li>Wait for a saved result before leaving the page.</li></ul></div>
+      <div class="card"><h3>When a page looks empty</h3><ul class="tight"><li>Refresh the page once and check the connection.</li><li>Review the selected class, child, year or status filter.</li><li>Ask whether the school has assigned or published the record.</li><li>Use the page's retry action if a request failed.</li></ul></div>
+      <div class="card"><h3>Protect school information</h3><ul class="tight"><li>Use your own account and keep your password private.</li><li>Open only the records needed for your role.</li><li>Sign out on shared devices.</li><li>Store downloaded reports and finance exports carefully.</li></ul></div>
+      <div class="card"><h3>Ask for support</h3><ul class="tight"><li>Contact the school office for account, family-link or class-assignment issues.</li><li>Contact the finance office for invoices and payment records.</li><li>Contact the assigned teacher about attendance or learning records.</li><li>Include a page name and record reference; never send your password.</li></ul></div>
+    </div>
+    <h3 style="margin-top:17px">Common status labels</h3>
+    <div class="grid-3"><div class="card"><span class="pill">Draft</span><p style="margin-top:7px">Saved for preparation; not yet final.</p></div><div class="card"><span class="pill gold">Under review</span><p style="margin-top:7px">Waiting for the responsible reviewer.</p></div><div class="card"><span class="pill green">Published / Confirmed</span><p style="margin-top:7px">Available or recorded as the status indicates.</p></div></div>
+    <div class="callout red" style="margin-top:15px"><p><strong>Need help?</strong> Contact the school using its official support route. Afaq does not display staff passwords or ask you to share them in a support request.</p></div>
+    <div style="position:absolute;right:18mm;bottom:31mm;left:18mm;padding:13px 15px;border-radius:12px;background:linear-gradient(110deg,#f6efdf,#fffefa)"><div class="mini-label">Afaq Foundation</div><h3 style="font-size:16pt">Knowledge. Character. Brighter lives.</h3><p class="small" style="margin-bottom:0">Afaq System User Handbook · English edition · October 2026</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; SYSTEM USER HANDBOOK</span><b>12</b></footer>
+  </section>
+</body>
+</html>
