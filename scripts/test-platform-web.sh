@@ -21,4 +21,5 @@ cd "$root_dir/frontend"
   test/platform_audit_test.dart \
   test/platform_overview_test.dart \
   test/platform_list_refresh_test.dart \
+  test/platform_health_test.dart \
   test/platform_dialog_session_test.dart

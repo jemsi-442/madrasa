@@ -2037,6 +2037,12 @@ class PlatformHealthPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final healthy = snapshot?['status'] == 'healthy';
     final checks = (snapshot?['checks'] as List?) ?? [];
+    final databaseUnavailable = checks.any(
+      (check) => check['name'] == 'database' && check['status'] != 'available',
+    );
+    final redisUnavailable = checks.any(
+      (check) => check['name'] == 'redis' && check['status'] != 'available',
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -2097,6 +2103,39 @@ class PlatformHealthPanel extends StatelessWidget {
               trailing: check['latencyMs'] == null
                   ? null
                   : Text('${check['latencyMs']} ms'),
+            ),
+          ),
+        if (databaseUnavailable || redisUnavailable)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Operator next steps',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  if (databaseUnavailable)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Database: verify service availability and API connectivity using approved infrastructure tools. Reads and writes may fail. If a write timed out, verify its outcome before submitting it again.',
+                      ),
+                    ),
+                  if (redisUnavailable)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Redis: verify the service and API connectivity. Protected login rate limiting may deny new sign-ins while Redis is unavailable. Do not bypass rate limits, MFA or session checks to restore access.',
+                      ),
+                    ),
+                  const Text(
+                    'Record the check time and affected service in your approved incident channel. Do not include passwords, tokens or school records. Escalate to the on-call operator, then use Refresh to verify recovery. This panel does not create an incident or restart services.',
+                  ),
+                ],
+              ),
             ),
           ),
         const Padding(

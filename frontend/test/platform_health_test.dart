@@ -36,6 +36,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('4 ms'), findsOneWidget);
+    expect(find.text('Operator next steps'), findsOneWidget);
+    expect(find.textContaining('Redis: verify'), findsOneWidget);
+    expect(find.textContaining('Database: verify'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -51,7 +54,48 @@ void main() {
     );
     expect(find.text('No health result available'), findsOneWidget);
     expect(find.text('Core services available'), findsNothing);
+    expect(find.text('Operator next steps'), findsNothing);
   });
+
+  for (final unavailable in [true, false]) {
+    testWidgets(
+      'database guidance follows current availability: $unavailable',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: PlatformHealthPanel(
+                  snapshot: {
+                    'status': unavailable ? 'degraded' : 'healthy',
+                    'checkedAt': '2026-10-08T00:00:00.000Z',
+                    'checks': [
+                      {
+                        'name': 'database',
+                        'status': unavailable ? 'unavailable' : 'available',
+                      },
+                      {'name': 'redis', 'status': 'available'},
+                    ],
+                  },
+                  loading: false,
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(
+          find.textContaining('Database: verify'),
+          unavailable ? findsOneWidget : findsNothing,
+        );
+        expect(find.textContaining('Redis: verify'), findsNothing);
+        expect(
+          find.textContaining('This panel does not create an incident'),
+          unavailable ? findsOneWidget : findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets(
     'IT health tab uses protected API and removes stale results on refresh failure',
@@ -97,6 +141,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Service attention needed'), findsNothing);
       expect(find.text('No health result available'), findsOneWidget);
+      expect(find.text('Operator next steps'), findsNothing);
       await tester.pumpWidget(const SizedBox());
       api.close();
     },

@@ -674,6 +674,14 @@ database connection attempt. There is no background polling or persistent health
 history. UI Refresh clears the prior snapshot before a new request so failures
 cannot leave an old green result displayed as current.
 
+Unavailable services show contextual, read-only operator guidance: database
+connectivity checks and verification of uncertain writes, or Redis connectivity
+checks without bypassing login protections. Operators are directed to record
+the check time/service in their approved incident channel without credentials
+or school records, escalate and explicitly refresh to verify recovery. Guidance
+is hidden when no failed service is reported or the snapshot is cleared. This
+does not create incidents, restart infrastructure or add operational permissions.
+
 This is an operator connectivity view, not a public readiness probe, uptime SLA,
 threat detector or backup verifier. Authentication itself needs the database;
 if authentication, the database or the API is down, use independent infrastructure
@@ -861,11 +869,12 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 34 tests pass in headless Chromium, including sign-in through the form,
+Verified: 39 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application-scoped audit navigation, onboarding overview navigation,
-main-list refresh failure/retry handling, and session-bound dialogs.
+main-list refresh failure/retry handling, service-specific health guidance,
+and session-bound dialogs.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data
