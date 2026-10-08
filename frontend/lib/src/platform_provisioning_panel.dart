@@ -22,6 +22,7 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
   int page = 1;
   final searchController = TextEditingController();
   String search = '';
+  String setup = '';
   List<Map<String, dynamic>> records = [];
   Map<String, dynamic>? selected;
   Map<String, dynamic>? progress;
@@ -41,7 +42,7 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
     super.dispose();
   }
 
-  Future<void> load(int target, {String? query}) async {
+  Future<void> load(int target, {String? query, String? setupFilter}) async {
     if (busy || !current) return;
     setState(() {
       busy = true;
@@ -52,10 +53,11 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
       message = null;
       page = target;
       if (query != null) search = query.trim();
+      if (setupFilter != null) setup = setupFilter;
     });
     try {
       final data = await widget.call(
-        '/provisioning-queue?page=$target&pageSize=20${search.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(search)}'}',
+        '/provisioning-queue?page=$target&pageSize=20${search.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(search)}'}${setup.isEmpty ? '' : '&setup=$setup'}',
       );
       if (!current) return;
       setState(() {
@@ -264,6 +266,25 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
                 ],
               ),
             ] else ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final filter in const {
+                    '': 'All approved',
+                    'pending': 'Awaiting setup',
+                    'created': 'Created madrassas',
+                  }.entries)
+                    ChoiceChip(
+                      label: Text(filter.value),
+                      selected: setup == filter.key,
+                      onSelected: busy
+                          ? null
+                          : (_) => load(1, setupFilter: filter.key),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: searchController,
                 enabled: !busy,
@@ -306,7 +327,9 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
               ),
               if (!busy && records.isEmpty && message == null)
                 Text(
-                  search.isEmpty
+                  setup.isNotEmpty
+                      ? 'No approved madrassas match these filters on this page.'
+                      : search.isEmpty
                       ? 'No approved applications on this page.'
                       : 'No approved madrassas match this search on this page.',
                 ),

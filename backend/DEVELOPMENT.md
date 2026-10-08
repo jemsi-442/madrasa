@@ -454,6 +454,13 @@ to page one for a new query, retains the applied query during refresh/pagination
 and offers **Clear search**. Empty results do not reveal unapproved applications
 or nominated administrator emails.
 
+The optional `setup=pending|created` filter separates approved applications with
+no linked school from those already linked to a school. **All approved** removes
+this filter; **Awaiting setup** and **Created madrassas** reset pagination to page
+one and retain the applied search. Refresh retains both filters, while **Clear
+search** clears only the text query. Created is not the same as active: each row
+still shows its actual school status, and linked schools cannot be created again.
+
 ### First Admin Invitation Foundation
 
 Migration `202610081300_add_school_admin_invitations` and internal lifecycle
@@ -835,9 +842,9 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 24 tests pass in headless Chromium, including sign-in through the form,
+Verified: 25 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
-successful retry, IT queue search/pagination, provisioning/progress views, and session-bound dialogs.
+successful retry, IT queue search/setup filters/pagination, provisioning/progress views, and session-bound dialogs.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data

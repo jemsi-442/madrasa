@@ -39,6 +39,20 @@ describe('IT provisioning queue', () => {
       skip: 20, take: 20,
     }));
   });
+  it.each(['pending', 'created'])('filters %s setup without granting active access', async (setup) => {
+    const f = fixture();
+    await f.service.listProvisioningQueue(actor, { setup, q: 'School', page: 2, pageSize: 20 });
+    expect(f.tx.tenantApplication.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'APPROVED', organizationId: setup === 'pending' ? null : { not: null },
+        OR: [{ schoolName: { contains: 'School' } }, { requestedCode: { contains: 'School' } }] },
+      skip: 20, take: 20,
+    }));
+  });
+  it.each(['active', 'all', ['pending'], { not: null }])('rejects unsupported setup filter', async (setup) => {
+    const f = fixture();
+    await expect(f.service.listProvisioningQueue(actor, { setup })).rejects.toThrow();
+    expect(f.tx.tenantApplication.findMany).not.toHaveBeenCalled();
+  });
   it('escapes wildcard characters and accepts whitespace as an unfiltered query', async () => {
     const f = fixture();
     await f.service.listProvisioningQueue(actor, { q: '%_\\' });

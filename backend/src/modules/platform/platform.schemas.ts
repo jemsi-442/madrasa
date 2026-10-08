@@ -27,6 +27,7 @@ export const platformPageSchema = z.object({
 
 export const platformProvisioningQuerySchema = platformPageSchema.extend({
   q: z.string().trim().max(100).optional(),
+  setup: z.enum(["pending", "created"]).optional(),
 });
 
 export const platformAuditQuerySchema = platformPageSchema.extend({

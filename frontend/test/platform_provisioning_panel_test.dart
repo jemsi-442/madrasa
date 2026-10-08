@@ -5,6 +5,76 @@ import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
   testWidgets(
+    'setup filters combine with search and preserve inactive status',
+    (tester) async {
+      final paths = <Uri>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PlatformProvisioningPanel(
+                sessionIsCurrent: () => true,
+                call: (path, {body}) async {
+                  expect(body, isNull);
+                  final uri = Uri.parse(path);
+                  paths.add(uri);
+                  return [
+                    {
+                      'id': 'school',
+                      'schoolName': 'School',
+                      'requestedCode': 'school',
+                      'organization': uri.queryParameters['setup'] == 'pending'
+                          ? null
+                          : {'status': 'PENDING_ACTIVATION'},
+                    },
+                  ];
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Awaiting setup'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters['setup'], 'pending');
+      expect(paths.last.queryParameters['page'], '1');
+      expect(find.text('Review setup'), findsOneWidget);
+      final field = find.widgetWithText(
+        TextField,
+        'Search madrassa name or code',
+      );
+      await tester.enterText(field, 'School');
+      await tester.tap(find.text('Search madrassas'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Created madrassas'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters, {
+        'page': '1',
+        'pageSize': '20',
+        'q': 'School',
+        'setup': 'created',
+      });
+      expect(find.text('School status: PENDING_ACTIVATION'), findsOneWidget);
+      expect(find.text('Review setup'), findsNothing);
+      await tester.tap(find.text('Refresh queue'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters['setup'], 'created');
+      await tester.tap(find.text('Clear search'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters, {
+        'page': '1',
+        'pageSize': '20',
+        'setup': 'created',
+      });
+      await tester.tap(find.text('All approved'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters, {'page': '1', 'pageSize': '20'});
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'queue search resets pagination and survives refresh until cleared',
     (tester) async {
       final paths = <Uri>[];

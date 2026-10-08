@@ -82,13 +82,15 @@ export class PlatformGovernanceService {
   }
 
   async listProvisioningQueue(actor: PlatformContext, input: unknown = {}) {
-    const { page, pageSize, q } = platformProvisioningQuerySchema.parse(input);
+    const { page, pageSize, q, setup } = platformProvisioningQuerySchema.parse(input);
     // Treat SQL LIKE metacharacters as literal search text, not wildcards.
     const search = q?.replace(/[\\%_]/g, "\\$&");
     return this.db.$transaction(async (tx) => {
       await this.authorize(tx, actor, "tenant.provisioning.create");
       const applications = await tx.tenantApplication.findMany({
-        where: { status: "APPROVED", ...(search ? { OR: [
+        where: { status: "APPROVED",
+          ...(setup === "pending" ? { organizationId: null } : setup === "created" ? { organizationId: { not: null } } : {}),
+          ...(search ? { OR: [
           { schoolName: { contains: search } }, { requestedCode: { contains: search } },
         ] } : {}) },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
