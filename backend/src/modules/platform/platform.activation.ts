@@ -4,21 +4,16 @@ import { HttpError } from "../../shared/errors/http-error";
 import { assertPlatformPermission } from "./platform.permissions";
 import { platformAccountIdSchema } from "./platform.schemas";
 import type { PlatformContext } from "./platform.service";
+import { activationApplicationSelect, technicalReviewFingerprint } from "./platform.technical-review";
 
 const activationSchema = z.object({
   invitationId: platformAccountIdSchema,
-  evidenceReference: z.string().trim().min(10).max(500),
-  checks: z.object({
-    tenantIsolation: z.literal(true),
-    accessControls: z.literal(true),
-    auditTrail: z.literal(true),
-    backupRecovery: z.literal(true),
-    supportEscalation: z.literal(true),
-  }).strict(),
+  technicalReviewId: platformAccountIdSchema,
+  approvalReason: z.string().trim().min(10).max(500),
 }).strict();
 
 // Internal only until invitation delivery/acceptance and the review UI are connected.
-// Checklist entries are operator attestations, not automated verification results.
+// Office approval references independent IT evidence; it cannot submit technical attestations.
 export async function activateSchool(db: PrismaClient, actor: PlatformContext, applicationId: unknown, input: unknown) {
   const id = platformAccountIdSchema.parse(applicationId);
   const data = activationSchema.parse(input);
@@ -30,12 +25,7 @@ export async function activateSchool(db: PrismaClient, actor: PlatformContext, a
       });
       if (!account || account.status !== "ACTIVE") throw new HttpError(403, "Active platform account required");
       assertPlatformPermission(account.role, "tenant.activation.approve");
-      const application = await tx.tenantApplication.findUnique({ where: { id },
-        select: { status: true, requestedById: true, reviewedById: true, reviewedAt: true, provisionedAt: true, adminEmail: true,
-          organization: { select: { id: true, status: true } },
-          adminInvitation: { select: { id: true, email: true, acceptedAt: true,
-            acceptedUser: { select: { id: true, orgId: true, email: true, role: true, status: true } } } } },
-      });
+      const application = await tx.tenantApplication.findUnique({ where: { id }, select: activationApplicationSelect });
       if (!application || application.status !== "APPROVED" || !application.organization || !application.provisionedAt) {
         throw new HttpError(409, "Approved provisioned school required");
       }
@@ -65,6 +55,21 @@ export async function activateSchool(db: PrismaClient, actor: PlatformContext, a
       if (organization.status !== "PENDING_ACTIVATION" || user.status !== "DISABLED") {
         throw new HttpError(409, "School or administrator is not awaiting activation");
       }
+      const review = await tx.platformAuditEvent.findFirst({ where: {
+        id: data.technicalReviewId, entityType: "TenantApplication", entityId: id,
+        action: "tenant.technical-review.recorded", actorRole: "IT_SECURITY",
+      }, select: { id: true, actorId: true, createdAt: true, metadata: true } });
+      const metadata = review?.metadata;
+      const age = review ? Date.now() - review.createdAt.getTime() : -1;
+      if (!review || review.actorId === account.id || age < 0 || age >= 86_400_000
+        || !metadata || typeof metadata !== "object" || Array.isArray(metadata)
+        || metadata.fingerprint !== technicalReviewFingerprint(application)) {
+        throw new HttpError(409, "Current independent IT sign-off required");
+      }
+      const operator = await tx.platformAccount.findUnique({ where: { id: review.actorId }, select: { role: true, status: true } });
+      if (operator?.role !== "IT_SECURITY" || operator.status !== "ACTIVE") {
+        throw new HttpError(409, "IT sign-off operator is no longer authorized");
+      }
       const changed = await tx.organization.updateMany({
         where: { id: organization.id, status: "PENDING_ACTIVATION" }, data: { status: "ACTIVE" },
       });
@@ -78,7 +83,7 @@ export async function activateSchool(db: PrismaClient, actor: PlatformContext, a
         entityType: "TenantApplication", entityId: id,
         metadata: { previousStatus: "PENDING_ACTIVATION", status: "ACTIVE",
           invitationId: invitation.id, organizationId: organization.id.toString(),
-          evidenceReference: data.evidenceReference, operatorAttestations: data.checks },
+          technicalReviewId: review.id, approvalReason: data.approvalReason },
       } });
       return { organizationId: organization.id.toString(), status: "ACTIVE" as const, activated: true };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

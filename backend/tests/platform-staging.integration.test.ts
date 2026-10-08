@@ -11,6 +11,7 @@ import { createPlatformHealthReader } from "../src/modules/platform/platform.hea
 import { issueSchoolAdminInvitation, acceptSchoolAdminInvitation } from "../src/modules/platform/platform.school-invitation";
 import bcrypt from "bcryptjs";
 import { activateSchool } from "../src/modules/platform/platform.activation";
+import { recordTechnicalReview } from "../src/modules/platform/platform.technical-review";
 import express from "express";
 import request from "supertest";
 import { createSchoolInvitationRouter } from "../src/modules/platform/platform.invitation-routes";
@@ -280,9 +281,18 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
   it('activates school and accepted admin atomically, with safe concurrency and replay', async () => {
     const application = await db.tenantApplication.findUniqueOrThrow({ where: { requestedCode: 'pending-school' }, include: { adminInvitation: true } });
     const actor = { scope: 'platform' as const, accountId: application.reviewedById!, sessionId: 'isolated-activation-test' };
-    const input = { invitationId: application.adminInvitation!.id, evidenceReference: 'isolated-staging-attestation-not-production-evidence', checks: {
+    const technicalInput = { invitationId: application.adminInvitation!.id, evidenceReference: 'isolated-staging-attestation-not-production-evidence', checks: {
       tenantIsolation: true, accessControls: true, auditTrail: true, backupRecovery: true, supportEscalation: true,
     } };
+    await expect(recordTechnicalReview(db, actor, application.id, technicalInput)).rejects.toMatchObject({ statusCode: 403 });
+    const operator = await db.platformAccount.findFirstOrThrow({ where: { role: 'IT_SECURITY', status: 'ACTIVE' } });
+    const itActor = { ...actor, accountId: operator.id };
+    const review = await recordTechnicalReview(db, itActor, application.id, technicalInput);
+    const input = { invitationId: application.adminInvitation!.id, technicalReviewId: review.reviewId, approvalReason: 'Office onboarding requirements approved' };
+    await expect(activateSchool(db, itActor, application.id, input)).rejects.toMatchObject({ statusCode: 403 });
+    await expect(activateSchool(db, actor, application.id, { ...input, technicalReviewId: 'missing-review' })).rejects.toMatchObject({ statusCode: 409 });
+    const officeEvents = await service.listAuditEvents(actor, { applicationId: application.id });
+    expect(officeEvents.some((event) => event.action === 'tenant.technical-review.recorded')).toBe(false);
     await db.tenantApplication.update({ where: { id: application.id }, data: { provisionedAt: null } });
     try {
       await expect(activateSchool(db, actor, application.id, input)).rejects.toMatchObject({ statusCode: 409 });

@@ -544,14 +544,26 @@ PENDING_ACTIVATION school with a recorded provisioning timestamp, and the exact 
 user must belong to that school, match the nominated email and have ADMIN role.
 The caller cannot choose a school/user ID to activate.
 
-All five review attestations (tenant isolation, access controls, audit trail,
-backup/recovery and support escalation) and an evidence reference are mandatory.
-These are operator-entered attestations, not automated proof that those checks
-passed. Do not supply production attestations without actually performing the
-review. The reference should identify an internal review record, never secrets.
+Technical review is a separate internal `recordTechnicalReview` service, available
+only to active IT_SECURITY accounts. It requires all five attestations (tenant
+isolation, access controls, audit trail, backup/recovery and support escalation)
+plus a private evidence reference. These are human attestations, not automated
+proof. They must represent actual review, and the reference must never contain
+secrets. The service records `tenant.technical-review.recorded` without changing
+school or administrator access. Super Admin cannot submit this review.
+
+The immutable audit receipt binds the sign-off to the exact reviewed application,
+school, invitation and accepted administrator state using a SHA-256 fingerprint.
+It is valid for less than 24 hours (an internal freshness policy), and the IT signer
+must still be active with IT_SECURITY role at activation. Missing, stale, future,
+foreign-application or mismatched-state receipts fail closed before access changes.
+Office activation input is now only `invitationId`, `technicalReviewId` and
+`approvalReason`; technical checklist/evidence fields are rejected. IT cannot
+provide the final office approval. No sign-off or activation HTTP route is exposed.
 
 A serializable transaction changes only the pending school and accepted disabled
-admin to ACTIVE, then records `tenant.school.activated` with the review evidence.
+admin to ACTIVE, then records `tenant.school.activated` with the IT receipt ID and
+office approval reason, not a copied technical checklist.
 An audit failure rolls back both changes. A completed, audited activation can be
 replayed without duplicate audit or writes only while both school and admin
 remain ACTIVE. An existing activation audit with inconsistent current access
@@ -905,8 +917,9 @@ cover direct technical endpoint/filter denial and the office allowlist. Both
 isolated fresh-install and upgrade-baseline suites pass; the upgrade HTTP journey
 also verifies real database office history excludes provisioning events visible
 to IT. The internal activation service is still not exposed as an operator action;
-separate recorded IT technical sign-off and office activation approval remain a
-prerequisite before exposing that workflow.
+independent IT sign-off and office activation approval are enforced internally.
+Delivery, operator-facing review screens and reviewed rollout remain prerequisites
+before exposing that workflow.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data

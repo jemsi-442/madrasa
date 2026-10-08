@@ -7,6 +7,7 @@ export const platformPermissions = [
   "tenant.provisioning.inspect",
   "tenant.provisioning.create",
   "tenant.activation.approve",
+  "tenant.technical-review.create",
   "platform.audit.read",
   "platform.office-history.read",
   "platform.session.self",
@@ -27,7 +28,7 @@ const grants: Readonly<Record<string, readonly PlatformPermission[]>> = {
     "platform.session.self", "platform.account.read", "platform.account.disable.it",
     "platform.account.restore.it", "platform.overview.read",
   ],
-  IT_SECURITY: ["platform.audit.read", "platform.health.read", "platform.session.self", "tenant.onboarding.read", "tenant.provisioning.inspect", "tenant.provisioning.create"],
+  IT_SECURITY: ["platform.audit.read", "platform.health.read", "platform.session.self", "tenant.onboarding.read", "tenant.provisioning.inspect", "tenant.provisioning.create", "tenant.technical-review.create"],
 };
 
 export function hasPlatformPermission(role: string, permission: PlatformPermission): boolean {
