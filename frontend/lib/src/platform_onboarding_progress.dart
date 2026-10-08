@@ -115,6 +115,29 @@ class PlatformOnboardingProgress extends StatelessWidget {
   const PlatformOnboardingProgress({super.key, required this.data});
   final Map<String, dynamic> data;
 
+  String get responsibleNext => switch (data['stage']) {
+    'PROVISIONING_PENDING' => 'IT team',
+    'INVITATION_PENDING' || 'INVITATION_EXPIRED' => 'IT team',
+    'ACCEPTANCE_PENDING' =>
+      data['deliveryConfigured'] == true
+          ? 'Invited madrassa administrator'
+          : 'IT team',
+    'ACTIVATION_REVIEW_PENDING' =>
+      data['nextResponsibility'] == 'OFFICE_APPROVAL'
+          ? 'Independent office approver'
+          : 'IT team',
+    'ACTIVE' => 'Madrassa administrator',
+    _ => 'IT team',
+  };
+
+  bool get invitationDeliveryBlocked =>
+      data['deliveryConfigured'] != true &&
+      const [
+        'INVITATION_PENDING',
+        'INVITATION_EXPIRED',
+        'ACCEPTANCE_PENDING',
+      ].contains(data['stage']);
+
   String timestamp(dynamic value) => value is String
       ? DateTime.tryParse(value)?.toUtc().toIso8601String() ?? 'Not recorded'
       : 'Not recorded';
@@ -127,6 +150,48 @@ class PlatformOnboardingProgress extends StatelessWidget {
       Text(
         '${data['schoolName']} / ${data['requestedCode']}',
         style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 12),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Responsible next: $responsibleNext',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(switch (data['stage']) {
+              'ACTIVE' =>
+                'Onboarding is complete. The madrassa administrator manages daily school operations; IT handles technical support.',
+              'ACTIVATION_REVIEW_PENDING'
+                  when data['nextResponsibility'] == 'OFFICE_APPROVAL' =>
+                'The original requester cannot give final approval. Office approval does not replace IT preparation.',
+              'PROVISIONING_PENDING' =>
+                'IT prepares the inactive school after office approval. Creating it does not enable school access.',
+              'INVITATION_PENDING' ||
+              'INVITATION_EXPIRED' ||
+              'ACCEPTANCE_PENDING' =>
+                'An invitation record is not proof of delivery. Do not ask the administrator to share a password or invitation token.',
+              'ACTIVATION_REVIEW_PENDING' =>
+                'Wait for IT preparation before independent office approval. School access remains disabled.',
+              _ =>
+                'Ask IT to investigate the current state. Office users should not attempt technical repairs or bypass approval.',
+            }),
+            if (invitationDeliveryBlocked) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Delivery setup pending: email delivery is not connected. IT must complete the approved delivery workflow before asking the administrator to accept.',
+              ),
+            ],
+          ],
+        ),
       ),
       const SizedBox(height: 12),
       Text(switch (data['stage']) {

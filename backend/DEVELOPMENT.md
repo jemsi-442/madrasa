@@ -646,6 +646,17 @@ returned. These are point-in-time read-only indicators; activation rechecks its
 own authorization and receipt independently. A current IT review is not an
 automated security certification or an enabled activation action.
 
+The progress panel labels **Responsible next** for every stage. IT owns inactive
+school setup, invitation preparation, technical preparation and investigation;
+an independent office approver owns final business approval, never the original
+requester. After activation, the madrassa administrator owns daily school work.
+While email delivery is unconfigured (the current backend default), invitation
+stages explicitly remain with IT and show a delivery-setup warning rather than
+implying the administrator received an email. A configured delivery flag is not
+proof of actual delivery. Unknown stages direct users to IT, with no repair or
+activation controls. This guidance is read-only and reveals no technical evidence
+to office users.
+
 ### Self-Service Session Controls
 
 The IT console's My sessions view shows current/other active sessions, session ID,
@@ -960,7 +971,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 53 tests pass in headless Chromium, including sign-in through the form,
+Verified: 63 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,

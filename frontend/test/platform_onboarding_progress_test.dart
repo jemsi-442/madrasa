@@ -4,6 +4,73 @@ import 'package:mif_app/src/platform_onboarding_progress.dart';
 import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
+  for (final entry in [
+    ('PROVISIONING_PENDING', null, false, 'IT team'),
+    ('INVITATION_PENDING', null, false, 'IT team'),
+    ('INVITATION_EXPIRED', null, false, 'IT team'),
+    ('ACCEPTANCE_PENDING', null, false, 'IT team'),
+    ('ACCEPTANCE_PENDING', null, true, 'Invited madrassa administrator'),
+    ('ACTIVATION_REVIEW_PENDING', 'IT_REVIEW', false, 'IT team'),
+    (
+      'ACTIVATION_REVIEW_PENDING',
+      'OFFICE_APPROVAL',
+      false,
+      'Independent office approver',
+    ),
+    ('ACTIVE', null, false, 'Madrassa administrator'),
+    ('REVIEW_REQUIRED', null, false, 'IT team'),
+    ('UNKNOWN', null, false, 'IT team'),
+  ]) {
+    testWidgets('handoff owner for ${entry.$1} / ${entry.$2} / ${entry.$3}', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: PlatformOnboardingProgress(
+                  data: {
+                    'schoolName': 'School',
+                    'requestedCode': 'school',
+                    'stage': entry.$1,
+                    'nextResponsibility': entry.$2,
+                    'deliveryConfigured': entry.$3,
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Responsible next: ${entry.$4}'), findsOneWidget);
+      final blocked =
+          !entry.$3 &&
+          [
+            'INVITATION_PENDING',
+            'INVITATION_EXPIRED',
+            'ACCEPTANCE_PENDING',
+          ].contains(entry.$1);
+      expect(
+        find.textContaining('Delivery setup pending:'),
+        blocked ? findsOneWidget : findsNothing,
+      );
+      expect(find.text('IT technical readiness'), findsNothing);
+      expect(find.byType(FilledButton), findsNothing);
+      if (entry.$2 == 'OFFICE_APPROVAL') {
+        expect(
+          find.textContaining('original requester cannot give final approval'),
+          findsOneWidget,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('IT sees withdrawn sign-off as requiring a new review', (
     tester,
   ) async {
