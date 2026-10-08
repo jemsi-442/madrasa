@@ -14,6 +14,8 @@ const cookieOptions: CookieOptions = {
   path: "/api/auth/browser",
 };
 
+export const clearSchoolCookie = (res: Response) => { res.clearCookie(cookieName, cookieOptions); };
+
 export const allowedBrowserOrigin = (origin: string): boolean => {
   const configured = env.WEB_APP_ORIGINS.split(",").map((value) => value.trim()).filter(Boolean);
   if (configured.includes(origin) || origin === new URL(env.APP_BASE_URL).origin) return true;

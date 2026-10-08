@@ -16,6 +16,7 @@ export const platformLoginSchema = z.object({
 }).strict();
 
 export type PlatformLoginOptions = {
+  passwordOnly?: boolean;
   encryptionKey: string;
   consumeLimit: (email: string, ip: string) => Promise<void>;
 };

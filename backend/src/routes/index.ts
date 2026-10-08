@@ -36,6 +36,7 @@ export const apiRouter = Router();
 apiRouter.use("/school-invitations", createSchoolInvitationRouter(prisma));
 
 apiRouter.use("/platform", createPlatformRouter(prisma, env.PLATFORM_JWT_SECRET, [env.JWT_SECRET, env.JWT_REFRESH_SECRET], {
+  passwordOnly: true,
   encryptionKey: env.PLATFORM_MFA_ENCRYPTION_KEY,
   consumeLimit: createPlatformLoginLimiter(env.REDIS_URL, env.PLATFORM_JWT_SECRET),
 }, createPlatformHealthReader(prisma, env.REDIS_URL)));

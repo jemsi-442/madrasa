@@ -18,6 +18,7 @@ import { createSchoolInvitationRouter } from "../src/modules/platform/platform.i
 import { createSchoolInvitationLimiter } from "../src/modules/platform/platform.invitation-limit";
 import { createPlatformRouter } from "../src/modules/platform/platform.routes";
 import { errorHandler } from "../src/shared/middleware/error-handler";
+import { unifiedLogin } from "../src/modules/auth/unified-login";
 
 const enabled = process.env.PLATFORM_STAGING_RUN === "isolated";
 if (enabled && !/^mysql:\/\/root@127\.0\.0\.1:\d+\/afaq_platform_staging_[a-f0-9]+$/.test(process.env.DATABASE_URL ?? "")) {
@@ -35,6 +36,30 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
   const options = { encryptionKey: key, consumeLimit: createPlatformLoginLimiter(process.env.REDIS_URL!, signing) };
   const service = new PlatformGovernanceService(db);
   afterAll(async () => { await db.$disconnect(); });
+
+  it("persists password-only sessions through the unified HTTP boundary", async () => {
+    const account = await db.platformAccount.create({ data: {
+      email: 'password-it@example.test', fullName: 'Password IT', role: 'IT_SECURITY', status: 'ACTIVE',
+      passwordHash: await bcrypt.hash(password, 4),
+    } });
+    const app = express(); app.use(express.json());
+    app.post('/login', unifiedLogin(db, signing, createPlatformLoginLimiter(process.env.REDIS_URL!, signing)), (_req, res) => { res.sendStatus(401); });
+    app.use(errorHandler);
+    try {
+      const response = await request(app).post('/login').send({ login: account.email, password }).expect(200);
+      const actor = await verifyPlatformAccess(db, response.body.data.accessToken, signing);
+      const session = await db.platformSession.findUniqueOrThrow({ where: { id: actor.sessionId } });
+      expect(session.mfaVerifiedAt).toBeNull();
+      expect((await service.listOwnSessions(actor)).map(row => row.id)).toContain(actor.sessionId);
+      await expect(service.overview(actor)).rejects.toMatchObject({ statusCode: 403 });
+      await service.logout(actor);
+      await expect(verifyPlatformAccess(db, response.body.data.accessToken, signing)).rejects.toMatchObject({ statusCode: 401 });
+    } finally {
+      await db.platformAuditEvent.deleteMany({ where: { actorId: account.id } });
+      await db.platformSession.deleteMany({ where: { accountId: account.id } });
+      await db.platformAccount.delete({ where: { id: account.id } });
+    }
+  });
 
   it("bootstraps only two reviewers under concurrent requests", async () => {
     const attempt = (email: string, secret: Buffer) => bootstrapPlatformReviewer(db, { email, fullName: "Staging Reviewer", password, code: code(secret) }, secret, key);

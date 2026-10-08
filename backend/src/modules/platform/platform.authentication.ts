@@ -46,7 +46,7 @@ export async function verifyPlatformAccess(
   const now = Date.now();
   if (!session || session.accountId !== account.id || session.role !== account.role || session.revokedAt ||
       session.expiresAt.getTime() <= now || session.expiresAt.getTime() < claims.exp * 1000 ||
-      session.mfaVerifiedAt.getTime() > now || session.mfaVerifiedAt.getTime() < now - 900_000 ||
+      (session.mfaVerifiedAt ?? session.createdAt).getTime() > now || (session.mfaVerifiedAt ?? session.createdAt).getTime() < now - 900_000 ||
       Math.floor(session.createdAt.getTime() / 1000) !== claims.iat) {
     throw new HttpError(401, "Platform session is unavailable");
   }

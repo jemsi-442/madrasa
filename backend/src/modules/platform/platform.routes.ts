@@ -7,6 +7,7 @@ import { asyncHandler } from "../../shared/utils/async-handler";
 import { verifyPlatformAccess } from "./platform.authentication";
 import { PlatformGovernanceService, type PlatformContext } from "./platform.service";
 import { loginPlatform, type PlatformLoginOptions } from "./platform.login";
+import { loginPlatformPassword } from "./platform.password-login";
 import type { PlatformHealthReader } from "./platform.health";
 
 declare module "express-serve-static-core" {
@@ -26,6 +27,13 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
   if (login) router.post("/login", asyncHandler(async (req, res) => {
     if (schoolSecrets.includes(login.encryptionKey)) throw new HttpError(503, "Platform login is not configured");
     try {
+      if (login.passwordOnly) {
+        const input = z.object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1).max(72) }).strict().parse(req.body);
+        await login.consumeLimit(input.email, req.ip ?? req.socket.remoteAddress ?? "unknown");
+        const data = await loginPlatformPassword(db, secret, input);
+        res.json({ success: true, data });
+        return;
+      }
       const data = await loginPlatform(db, secret, login, req.body, req.ip ?? req.socket.remoteAddress ?? "unknown");
       res.json({ success: true, data });
     } catch (error) {

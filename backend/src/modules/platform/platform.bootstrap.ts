@@ -13,6 +13,27 @@ const inputSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 }).strict();
 
+// Current host-only bootstrap: password authentication, no MFA enrollment.
+export async function bootstrapPasswordReviewer(db: PrismaClient, input: unknown) {
+  const data = inputSchema.omit({ code: true }).parse(input);
+  const id = randomBytes(15).toString("hex");
+  const passwordHash = await bcrypt.hash(data.password, 12);
+  return db.$transaction(async (tx) => {
+    if (await tx.platformAccount.count({ where: { role: "SUPER_ADMIN" } }) >= 2) {
+      throw new HttpError(409, "Initial reviewers already exist; bootstrap is closed");
+    }
+    const account = await tx.platformAccount.create({ data: {
+      id, email: data.email, fullName: data.fullName, passwordHash,
+      role: "SUPER_ADMIN", status: "ACTIVE",
+    }, select: { id: true, fullName: true, role: true } });
+    await tx.platformAuditEvent.create({ data: {
+      actorId: id, actorRole: "SUPER_ADMIN", action: "platform.account.bootstrapped",
+      entityType: "PlatformAccount", entityId: id,
+    } });
+    return account;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 // Local operator tool only. Never expose this function through an HTTP route.
 export async function bootstrapPlatformReviewer(db: PrismaClient, input: unknown, mfaSecret: Buffer, encryptionKey: string) {
   const data = inputSchema.parse(input);

@@ -72,7 +72,7 @@ try {
     await writeFile(schemaPath, baseline);
     await writeFile(sqlPath, run(prisma, ["migrate", "diff", "--from-empty", "--to-schema-datamodel", schemaPath, "--script"], testEnv));
     run(prisma, ["db", "execute", "--schema", "prisma/schema.prisma", "--file", sqlPath], testEnv);
-    for (const migration of ["202610071200_add_platform_governance_foundation", "202610071300_add_platform_sessions", "202610071400_add_platform_mfa", "202610081200_add_pending_school_provisioning", "202610081300_add_school_admin_invitations"]) {
+    for (const migration of ["202610071200_add_platform_governance_foundation", "202610071300_add_platform_sessions", "202610071400_add_platform_mfa", "202610081200_add_pending_school_provisioning", "202610081300_add_school_admin_invitations", "202610091200_password_company_sessions"]) {
       run(prisma, ["db", "execute", "--schema", "prisma/schema.prisma", "--file", join(root, "prisma/migrations", migration, "migration.sql")], testEnv);
     }
   } else if (process.argv.includes("--fresh-install")) {

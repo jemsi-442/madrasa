@@ -326,7 +326,7 @@ export class PlatformGovernanceService {
       const now = new Date();
       const sessions = await tx.platformSession.findMany({
         where: { accountId: account.id, role: account.role, revokedAt: null, expiresAt: { gt: now },
-          mfaVerifiedAt: { gte: new Date(now.getTime() - 900_000), lte: now } },
+          createdAt: { gte: new Date(now.getTime() - 900_000), lte: now } },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * pageSize, take: pageSize,
         select: { id: true, createdAt: true, expiresAt: true, mfaVerifiedAt: true },
       });
