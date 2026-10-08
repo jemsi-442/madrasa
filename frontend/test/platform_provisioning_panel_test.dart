@@ -144,6 +144,7 @@ void main() {
     'replay',
     'blocked',
     'offline',
+    'denied',
     'expired',
   ]) {
     testWidgets('IT setup flow on mobile: $outcome', (tester) async {
@@ -152,8 +153,22 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       var writes = 0;
+      var progressReads = 0;
       var valid = true;
+      final histories = <String>[];
       Future<dynamic> call(String path, {Map<String, dynamic>? body}) async {
+        if (path.endsWith('/onboarding-progress')) {
+          expect(path, '/tenant-applications/application/onboarding-progress');
+          expect(body, isNull);
+          progressReads++;
+          if (progressReads == 1) throw Exception('private diagnostic');
+          return {
+            'schoolName': 'Approved School',
+            'requestedCode': 'approved-school',
+            'stage': 'INVITATION_PENDING',
+            'checkedAt': DateTime.now().toUtc().toIso8601String(),
+          };
+        }
         if (path.startsWith('/provisioning-queue')) {
           return [
             {
@@ -178,6 +193,7 @@ void main() {
         expect(body, isEmpty);
         writes++;
         if (outcome == 'offline') throw Exception('network failure');
+        if (outcome == 'denied') throw const ApiException('not allowed', 403);
         return {
           'created': outcome == 'created',
           'status': 'PENDING_ACTIVATION',
@@ -190,6 +206,7 @@ void main() {
             body: SingleChildScrollView(
               child: PlatformProvisioningPanel(
                 call: call,
+                onViewHistory: histories.add,
                 sessionIsCurrent: () => valid,
               ),
             ),
@@ -227,10 +244,38 @@ void main() {
           find.textContaining(switch (outcome) {
             'created' => 'Inactive madrassa created.',
             'replay' => 'No duplicate was created.',
+            'denied' => 'Creation could not proceed.',
             _ => 'We could not confirm whether',
           }),
           findsOneWidget,
         );
+        await tester.ensureVisible(find.text('View application history'));
+        await tester.tap(find.text('View application history'));
+        expect(histories, ['application']);
+        expect(writes, 1);
+        await tester.ensureVisible(find.text('Check current progress'));
+        await tester.tap(find.text('Check current progress'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Progress could not be loaded'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('private diagnostic'), findsNothing);
+        expect(find.text('Create inactive madrassa'), findsNothing);
+        await tester.tap(find.text('Check current progress'));
+        await tester.pumpAndSettle();
+        expect(progressReads, 2);
+        expect(writes, 1);
+        expect(
+          find.textContaining('Waiting for an admin invitation.'),
+          findsOneWidget,
+        );
+        await tester.ensureVisible(find.text('Back to queue'));
+        await tester.tap(find.text('Back to queue'));
+        await tester.pumpAndSettle();
+        expect(find.text('Review setup'), findsOneWidget);
+        expect(find.text('Check current progress'), findsNothing);
+        expect(writes, 1);
       }
       expect(tester.takeException(), isNull);
     });

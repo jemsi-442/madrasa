@@ -454,9 +454,18 @@ reasons. Super Admin retains the review directory rather than the execution queu
 IT runs preflight then explicitly confirms **Create inactive madrassa**. Cancel
 sends no write. Linked schools have no creation action. Confirmed writes and
 unconfirmed network failures have different messages; after either, the operator
-refreshes the queue rather than automatically resubmitting. Session-bound dialogs
+checks current progress or refreshes the queue rather than automatically resubmitting. Session-bound dialogs
 and callback checks prevent stale confirmations after logout/relogin. School
 creation remains separate from first-admin invitation and activation.
+
+After creation, replay, rejection or an uncertain write result, the setup panel
+retains the selected application's identity and offers **Check current progress**
+and **View application history**. An already-provisioned preflight offers the
+same read-only follow-up. Failed progress reads remain retryable without a new
+creation request; private error details are not displayed. **Back to queue**
+reloads the current page with its existing search/setup filters and removes the
+old follow-up state. Creation must go through fresh preflight and confirmation
+again; none of these follow-up links sends an invitation or activates a school.
 
 The queue accepts optional `q` (trimmed, at most 100 characters) to search school
 name or code only. Approval and IT permission filters always apply, and SQL LIKE
@@ -978,7 +987,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 65 tests pass in headless Chromium, including sign-in through the form,
+Verified: 66 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,

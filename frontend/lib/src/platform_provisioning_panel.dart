@@ -29,6 +29,7 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
   Map<String, dynamic>? selected;
   Map<String, dynamic>? progress;
   Map<String, dynamic>? progressRecord;
+  Map<String, dynamic>? followUpRecord;
   String? message;
   bool get current => mounted && widget.sessionIsCurrent();
 
@@ -52,6 +53,7 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
       selected = null;
       progress = null;
       progressRecord = null;
+      followUpRecord = null;
       message = null;
       page = target;
       if (query != null) search = query.trim();
@@ -131,8 +133,9 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
       if (result['alreadyProvisioned'] == true) {
         setState(() {
           records = [];
+          followUpRecord = record;
           message =
-              'This application already has a madrassa. Refresh to see its status.';
+              'This application already has a madrassa. Check current progress to see its status.';
         });
       } else if (result['prerequisitesPassed'] != true) {
         setState(() {
@@ -176,18 +179,20 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
       setState(() {
         records = [];
         selected = null;
+        followUpRecord = record;
         message = result['created'] == true
-            ? 'Inactive madrassa created. No admin invitation has been sent. Refresh to view its status.'
-            : 'This application was already provisioned. No duplicate was created. Refresh to view its status.';
+            ? 'Inactive madrassa created. No admin invitation has been sent. Check current progress for the next step.'
+            : 'This application was already provisioned. No duplicate was created. Check current progress for the next step.';
       });
     } catch (error) {
       if (!current) return;
       setState(() {
         selected = null;
         records = [];
+        followUpRecord = record;
         message = error is ApiException && error.statusCode < 500
-            ? 'Creation could not proceed. Refresh the queue and review the application before trying again.'
-            : 'We could not confirm whether the madrassa was created. Refresh the queue before trying again; do not create a new application.';
+            ? 'Creation could not proceed. Check current progress and review the application before trying again.'
+            : 'We could not confirm whether the madrassa was created. Check current progress before trying again; do not create a new application.';
       });
     } finally {
       if (mounted) {
@@ -239,10 +244,44 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
                   child: const Text('View application history'),
                 ),
               TextButton(
-                onPressed: () => setState(() {
-                  progress = null;
-                }),
+                onPressed: busy ? null : () => load(page),
                 child: const Text('Back to queue'),
+              ),
+            ] else if (followUpRecord != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                '${followUpRecord!['schoolName']} / ${followUpRecord!['requestedCode']}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Check the current application before taking another action. These links only read progress and history; they do not retry creation or send an invitation.',
+              ),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => viewProgress(followUpRecord!),
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: const Text('Check current progress'),
+                  ),
+                  if (widget.onViewHistory != null)
+                    TextButton(
+                      onPressed: busy || !current
+                          ? null
+                          : () => widget.onViewHistory!(
+                              followUpRecord!['id'] as String,
+                            ),
+                      child: const Text('View application history'),
+                    ),
+                  TextButton(
+                    onPressed: busy ? null : () => load(page),
+                    child: const Text('Back to queue'),
+                  ),
+                ],
               ),
             ] else if (selected != null) ...[
               const SizedBox(height: 16),
