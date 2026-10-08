@@ -747,15 +747,24 @@ npm run test:platform:staging -- --fresh-install
 
 The upgrade mode derives a pre-platform baseline from the current Prisma schema
 by removing only the platform models/enums. It creates that baseline in a fresh
-disposable database, then applies the three actual governance SQL migrations.
+disposable database, then applies the five actual governance/onboarding SQL migrations.
 This is NOT a replay of historical migrations or a copy of production data.
 
-Verified result: seven real-service integration tests pass, covering concurrent
+Verified result: 15 real-service integration tests pass, covering concurrent
 bootstrap limits, login/replay rejection, independent approval, audit/revocation,
 concurrent decision exclusivity, live database/Redis health checks, Redis throttling and database rollback when an
 injected audit trigger rejects a write. Both request creation and OTP/session
 creation roll back on audit failure. Test-only OTP watermark resets avoid waiting
 for an authenticator period; they are never used in application code.
+
+The HTTP onboarding journey creates disposable requester, reviewer and IT
+fixtures, then signs each in through the actual password/MFA login route. It
+checks requester self-approval rejection, approved-only IT visibility, separation
+of approval and provisioning, inactive creation/retry, sanitized read-only
+progress, role-specific readiness, and logout token invalidation. These requests
+use real MariaDB and Redis rather than mocks. No school admin or invitation is
+created by provisioning, and the public acceptance route remains disabled.
+This is HTTP-to-database coverage, not browser-to-backend end-to-end verification.
 
 **Historical-order limitation:** direct full historical replay still fails at
 `202605071410_add_parent_portal_tables` with MariaDB foreign-key error 1005/150.
@@ -792,7 +801,7 @@ is not a blanket `resolve --applied` shortcut for migrations that did not run.
 
 Verified on disposable MariaDB: 28 migrations up to date, subsequent normal
 `migrate deploy` reports no pending migrations, a repeat fresh installation is
-refused, and all 14 real-service governance tests pass. The same 14 tests also
+refused, and all 15 real-service governance tests pass. The same 15 tests also
 pass after upgrading a schema-derived pre-platform baseline (not a replay of
 historical migrations). Activation regressions cover missing provisioning
 timestamps, concurrent activation, audit-failure rollback and inconsistent

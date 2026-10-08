@@ -15,6 +15,7 @@ import express from "express";
 import request from "supertest";
 import { createSchoolInvitationRouter } from "../src/modules/platform/platform.invitation-routes";
 import { createSchoolInvitationLimiter } from "../src/modules/platform/platform.invitation-limit";
+import { createPlatformRouter } from "../src/modules/platform/platform.routes";
 import { errorHandler } from "../src/shared/middleware/error-handler";
 
 const enabled = process.env.PLATFORM_STAGING_RUN === "isolated";
@@ -313,6 +314,80 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     } finally {
       await db.organization.update({ where: { id: application.organizationId! }, data: { status: 'ACTIVE' } });
     }
+  }, 20_000);
+
+  it('runs the approved onboarding HTTP journey with real MFA sessions and storage', async () => {
+    const app = express(); app.use(express.json());
+    app.use('/api/platform', createPlatformRouter(db, signing, [], options));
+    app.use('/api/school-invitations', createSchoolInvitationRouter(db));
+    app.use(errorHandler);
+    const hash = await bcrypt.hash(password, 12);
+    const login = async (name: string, role: 'SUPER_ADMIN' | 'IT_SECURITY') => {
+      // Fixture identities exist only in the disposable database, never in production.
+      const id = randomBytes(15).toString('hex');
+      const secret = randomBytes(20);
+      const email = `${name}@example.test`;
+      await db.platformAccount.create({ data: {
+        id, email, fullName: name, role, status: 'ACTIVE', passwordHash: hash,
+        mfaSecretEncrypted: encryptMfaSecret(secret, id, key),
+      } });
+      const response = await request(app).post('/api/platform/login').send({ email, password, code: code(secret) });
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['set-cookie']).toBeUndefined();
+      expect(response.body.data.user).toMatchObject({ id, role });
+      expect(await db.platformSession.count({ where: { accountId: id, revokedAt: null } })).toBe(1);
+      return `Bearer ${response.body.data.accessToken}`;
+    };
+    const requester = await login('http-requester', 'SUPER_ADMIN');
+    const reviewer = await login('http-reviewer', 'SUPER_ADMIN');
+    const operator = await login('http-operator', 'IT_SECURITY');
+    const created = await request(app).post('/api/platform/tenant-applications').set('Authorization', requester).send({
+      schoolName: 'HTTP Journey School', requestedCode: 'http-journey-school', adminEmail: 'http-admin@example.test',
+    });
+    expect(created.status).toBe(201);
+    const id = created.body.data.id as string;
+    const url = `/api/platform/tenant-applications/${id}`;
+    const decision = { decision: 'APPROVED', reason: 'Disposable HTTP ownership evidence checked' };
+    expect((await request(app).post(`${url}/review`).set('Authorization', requester).send(decision)).status).toBe(403);
+    expect((await request(app).get(`${url}/onboarding-progress`).set('Authorization', operator)).status).toBe(404);
+    expect((await request(app).get('/api/platform/tenant-applications').set('Authorization', operator)).status).toBe(403);
+    expect((await request(app).post(`${url}/review`).set('Authorization', reviewer).send(decision)).status).toBe(200);
+    expect((await request(app).post(`${url}/provision`).set('Authorization', reviewer).send({})).status).toBe(403);
+    const preflight = await request(app).get(`${url}/provisioning-preflight`).set('Authorization', operator);
+    expect(preflight.status).toBe(200);
+    expect(preflight.body.data.prerequisitesPassed).toBe(true);
+    const provisioned = await request(app).post(`${url}/provision`).set('Authorization', operator).send({});
+    expect(provisioned.status).toBe(201);
+    expect(provisioned.body.data).toMatchObject({ status: 'PENDING_ACTIVATION', created: true });
+    expect(typeof provisioned.body.data.organizationId).toBe('string');
+    const replay = await request(app).post(`${url}/provision`).set('Authorization', operator).send({});
+    expect(replay.status).toBe(200);
+    expect(replay.body.data).toMatchObject({ organizationId: provisioned.body.data.organizationId, created: false });
+    const auditCount = await db.platformAuditEvent.count();
+    for (const authorization of [requester, reviewer, operator]) {
+      const response = await request(app).get(`${url}/onboarding-progress`).set('Authorization', authorization);
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body.data).toMatchObject({ stage: 'INVITATION_PENDING', deliveryConfigured: false });
+      expect(JSON.stringify(response.body)).not.toContain('http-admin@example.test');
+      expect(response.body.data).not.toHaveProperty('tokenHash');
+      if (authorization === operator) expect(response.body.data).not.toHaveProperty('activationReview');
+      else expect(response.body.data.activationReview).toMatchObject({ prerequisitesPassed: false, activationEnabled: false });
+    }
+    expect(await db.platformAuditEvent.count()).toBe(auditCount);
+    const list = await request(app).get('/api/platform/tenant-applications?status=APPROVED').set('Authorization', reviewer);
+    expect(list.status).toBe(200);
+    expect(list.body.data.find((row: { id: string }) => row.id === id)).toMatchObject({
+      organizationId: provisioned.body.data.organizationId,
+    });
+    expect((await request(app).post('/api/school-invitations/accept').send({})).status).toBe(503);
+    expect(await db.organization.count({ where: { code: 'http-journey-school' } })).toBe(1);
+    expect(await db.user.count({ where: { orgId: BigInt(provisioned.body.data.organizationId) } })).toBe(0);
+    expect(await db.schoolAdminInvitation.count({ where: { applicationId: id } })).toBe(0);
+    expect(await db.platformAuditEvent.count({ where: { entityId: id, action: 'tenant.school.provisioned' } })).toBe(1);
+    expect((await request(app).post('/api/platform/logout').set('Authorization', operator).send({})).status).toBe(200);
+    expect((await request(app).get(`${url}/onboarding-progress`).set('Authorization', operator)).status).toBe(401);
   }, 20_000);
 
   it('enforces invitation HTTP throttling with real Redis before acceptance', async () => {
