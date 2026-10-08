@@ -79,6 +79,20 @@ class _MifAppState extends State<MifApp> {
           );
         }
         final informationPage = path == '/terms' || path == '/privacy';
+        if (appState.companyApi != null && !informationPage) {
+          return PlatformConsole(
+            key: ObjectKey(appState.companyApi),
+            api: appState.companyApi,
+            onSignedOut: () async {
+              await appState.signOut();
+              if (context.mounted) {
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/login', (route) => false);
+              }
+            },
+          );
+        }
         if (appState.session != null && !informationPage) {
           final workspace = WorkspaceScreen(
             key: ValueKey(
@@ -218,7 +232,7 @@ class _MifAppState extends State<MifApp> {
         ),
       ),
       routes: {
-        '/platform': (_) => const PlatformConsole(),
+        '/platform': (context) => routePage(context, '/login'),
         '/school-invitation': (_) => const SchoolInvitationPage(),
         '/': (context) => routePage(context, '/'),
         '/login': (context) => routePage(context, '/login'),

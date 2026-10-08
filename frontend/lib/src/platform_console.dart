@@ -27,6 +27,21 @@ class PlatformApi {
   DateTime? expiresAt;
   int sessionVersion = 0;
 
+  void acceptSession(AuthSession session) {
+    if (session.scope != 'platform' ||
+        !['SUPER_ADMIN', 'IT_SECURITY'].contains(session.role)) {
+      throw const ApiException('Invalid account session.', 401);
+    }
+    clear();
+    _token = session.accessToken;
+    user = {
+      'id': session.userId,
+      'fullName': session.fullName,
+      'role': session.role,
+    };
+    expiresAt = DateTime.now().add(Duration(seconds: session.expiresIn));
+  }
+
   void clear() {
     sessionVersion++;
     _token = null;
@@ -264,8 +279,9 @@ class _AccountHistoryDialogState extends State<_AccountHistoryDialog> {
 }
 
 class PlatformConsole extends StatefulWidget {
-  const PlatformConsole({super.key, this.api});
+  const PlatformConsole({super.key, this.api, this.onSignedOut});
   final PlatformApi? api;
+  final VoidCallback? onSignedOut;
   @override
   State<PlatformConsole> createState() => _PlatformConsoleState();
 }
@@ -306,6 +322,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   void initState() {
     super.initState();
     scheduleExpiry();
+    if (widget.onSignedOut != null && api.user != null) {
+      audit = !isAdmin;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) run(load);
+      });
+    }
   }
 
   void closeSessionDialogs() {
@@ -873,7 +895,17 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    if (widget.onSignedOut != null && api.user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && api.user == null) widget.onSignedOut!();
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return _buildConsole(context);
+  }
+
+  Widget _buildConsole(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const Text('Afaq / Platform governance'),
       actions: [
@@ -1862,7 +1894,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                 const SizedBox(height: 12),
                 Text(
                   restore
-                      ? 'Only a different Super Admin can approve this restoration. Confirm the reason for suspension has been resolved. IT must sign in again with MFA; old sessions remain revoked.'
+                      ? 'Only a different Super Admin can approve this restoration. Confirm the reason for suspension has been resolved. IT must sign in again with email and password; old sessions remain revoked.'
                       : 'This blocks login and revokes all sessions. The account and audit history are kept. Restoration requires a different Super Admin.',
                 ),
                 const SizedBox(height: 12),
@@ -1929,7 +1961,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       }
       if (!mounted || api.user == null) return;
       confirmation = restore
-          ? 'IT access restored. Sign in again with password and MFA; old sessions remain revoked.'
+          ? 'IT access restored. Sign in again with email and password; old sessions remain revoked.'
           : 'IT account disabled. Login is blocked and its sessions are revoked.';
       records = [];
       try {
@@ -2285,7 +2317,7 @@ class _PlatformHealthPanelState extends State<PlatformHealthPanel> {
                     const Padding(
                       padding: EdgeInsets.only(bottom: 12),
                       child: Text(
-                        'Redis: verify the service and API connectivity. Protected login rate limiting may deny new sign-ins while Redis is unavailable. Do not bypass rate limits, MFA or session checks to restore access.',
+                        'Redis: verify the service and API connectivity. Protected login rate limiting may deny new sign-ins while Redis is unavailable. Do not bypass rate limits or session checks to restore access.',
                       ),
                     ),
                   const Text(

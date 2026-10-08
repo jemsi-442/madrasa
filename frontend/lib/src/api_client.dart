@@ -48,6 +48,8 @@ class AuthSession {
     required this.userId,
     required this.fullName,
     required this.role,
+    this.scope = 'school',
+    this.expiresIn = 900,
   });
 
   final String accessToken;
@@ -55,6 +57,8 @@ class AuthSession {
   final String userId;
   final String fullName;
   final String role;
+  final String scope;
+  final int expiresIn;
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>;
@@ -64,6 +68,8 @@ class AuthSession {
       userId: user['id'].toString(),
       fullName: user['fullName'] as String,
       role: user['role'] as String,
+      scope: json['scope'] as String? ?? 'school',
+      expiresIn: (json['expiresIn'] as num?)?.toInt() ?? 900,
     );
   }
 }

@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const EntryEyebrow('YOUR LEARNING STARTS HERE'),
+            const EntryEyebrow('WELCOME TO AFAQ'),
             const SizedBox(height: 12),
             const Text(
               'Welcome Back',
@@ -70,12 +70,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              'A little learning. A brighter tomorrow.\nSign in to continue your journey.',
+              'Sign in to your Afaq account to continue.',
               style: TextStyle(color: publicMuted, fontSize: 14, height: 1.5),
             ),
             const SizedBox(height: 28),
             LabeledField(
-              label: 'Phone number or email',
+              label: 'Email / Username',
               child: TextFormField(
                 key: const ValueKey('login-identifier'),
                 controller: loginController,
@@ -84,11 +84,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 textInputAction: TextInputAction.next,
                 autocorrect: false,
                 decoration: const InputDecoration(
-                  hintText: 'Your phone number or email',
+                  hintText: 'Enter your email or username',
                   prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
                 ),
                 validator: (value) => value?.trim().isEmpty ?? true
-                    ? 'Enter your phone number or email.'
+                    ? 'Enter your email or username.'
                     : null,
               ),
             ),

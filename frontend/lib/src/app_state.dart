@@ -2,12 +2,19 @@ import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
 import 'browser_state.dart';
+import 'platform_console.dart';
 
 class AppState extends ChangeNotifier {
-  AppState(this.api, {this.browserState = const BrowserState()});
+  AppState(
+    this.api, {
+    this.browserState = const BrowserState(),
+    this.companyApiFactory,
+  });
 
   final MifApiClient api;
   final BrowserState browserState;
+  final PlatformApi Function()? companyApiFactory;
+  PlatformApi? companyApi;
   bool restoring = false;
   bool _disposed = false;
   String? restorationError;
@@ -26,7 +33,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> restoreSession() async {
-    if (!api.browserAuth || session != null || restoring) return;
+    if (!api.browserAuth ||
+        session != null ||
+        companyApi != null ||
+        restoring) {
+      return;
+    }
     final version = _authVersion;
     restoring = true;
     restorationError = null;
@@ -54,6 +66,8 @@ class AppState extends ChangeNotifier {
   }
 
   void _acceptedSession(AuthSession value) {
+    companyApi?.close();
+    companyApi = null;
     session = value;
     restorationError = null;
     browserState.write(_signOutKey, null, shared: true);
@@ -74,13 +88,25 @@ class AppState extends ChangeNotifier {
       final signedIn = await api.login(login, password);
       if (_disposed || version != _authVersion) return false;
       _refreshing = null;
-      _acceptedSession(signedIn);
+      if (signedIn.scope == 'platform') {
+        final company =
+            (companyApiFactory?.call() ?? PlatformApi(baseUrl: api.baseUrl))
+              ..acceptSession(signedIn);
+        companyApi?.close();
+        companyApi = company;
+        session = null;
+        restorationError = null;
+        // Never silently restore a previous school cookie behind a company login.
+        browserState.write(_signOutKey, '1', shared: true);
+      } else {
+        _acceptedSession(signedIn);
+      }
       return true;
     } on ApiException catch (exception) {
       if (_disposed || version != _authVersion) return false;
       error = switch (exception.statusCode) {
-        0 => 'We could not reach the school. Please try again.',
-        401 => 'The phone number or email and password do not match.',
+        0 => 'We could not connect. Please try again.',
+        401 => 'The email or username and password do not match.',
         429 => 'Please wait a moment before trying again.',
         _ => 'We could not sign you in. Please try again later.',
       };
@@ -225,6 +251,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    final company = companyApi;
+    companyApi = null;
     _authVersion++;
     _refreshing = null;
     restoring = false;
@@ -236,6 +264,16 @@ class AppState extends ChangeNotifier {
     session = null;
     error = null;
     notifyListeners();
+    if (company != null) {
+      try {
+        if (company.user != null) await company.call('/logout', body: {});
+      } catch (_) {
+        /* Local logout still completes. */
+      }
+      company.close();
+      if (!_disposed) notifyListeners();
+      return;
+    }
     if (refreshToken == null && !api.browserAuth) return;
     try {
       await api.logout(refreshToken ?? '');
@@ -248,6 +286,7 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _authVersion++;
+    companyApi?.close();
     api.dispose();
     super.dispose();
   }

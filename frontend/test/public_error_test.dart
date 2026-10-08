@@ -20,7 +20,7 @@ void main() {
     );
     addTearDown(state.dispose);
     expect(await state.signIn('amina@example.com', 'wrong'), isFalse);
-    expect(state.error, 'The phone number or email and password do not match.');
+    expect(state.error, 'The email or username and password do not match.');
   });
 
   test(
