@@ -73,6 +73,8 @@ void main() {
       await tester.pumpAndSettle();
       if (role == 'SUPER_ADMIN') {
         expect(find.text('Failed login'), findsNothing);
+        expect(find.text('IT sign-off recorded'), findsNothing);
+        expect(find.text('IT sign-off withdrawn'), findsNothing);
         expect(find.text('Inactive madrassa created'), findsNothing);
         expect(find.text('System health'), findsNothing);
         expect(find.text('My sessions'), findsNothing);
@@ -192,6 +194,25 @@ void main() {
       await tester.tap(find.text('Event details'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Event ID: event-123'), findsOneWidget);
+      for (final entry in {
+        'IT sign-off recorded': 'tenant.technical-review.recorded',
+        'IT sign-off withdrawn': 'tenant.technical-review.withdrawn',
+      }.entries) {
+        await tester.ensureVisible(find.text('Failed login').first);
+        await tester.tap(find.text('Failed login').first);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text(entry.key).last);
+        await tester.tap(find.text(entry.key).last);
+        await tester.pumpAndSettle();
+        expect(requests.last.queryParameters['action'], entry.value);
+        expect(requests.last.queryParameters['page'], '1');
+        // Restore the selected filter for the next iteration.
+        await tester.ensureVisible(find.text(entry.key).first);
+        await tester.tap(find.text(entry.key).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Failed login').last);
+        await tester.pumpAndSettle();
+      }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       api.close();

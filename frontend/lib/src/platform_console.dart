@@ -1448,6 +1448,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                             {
                               '': 'All events',
                               if (!isAdmin)
+                                'tenant.technical-review.recorded':
+                                    'IT sign-off recorded',
+                              if (!isAdmin)
+                                'tenant.technical-review.withdrawn':
+                                    'IT sign-off withdrawn',
+                              if (!isAdmin)
                                 'platform.login.failed': 'Failed login',
                               if (!isAdmin)
                                 'platform.login.succeeded': 'Successful login',

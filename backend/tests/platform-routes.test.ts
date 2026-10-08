@@ -198,12 +198,18 @@ describe("platform HTTP boundary", () => {
     expect((await request(f.app).get("/api/platform/health")).status).toBe(401);
     expect(f.health).not.toHaveBeenCalled();
   });
-  it.each(['/health', '/tenant-applications/application/provisioning-preflight', '/audit-events?action=platform.login.failed', '/audit-events?actorId=operator'])('denies Super Admin technical access: %s', async (path) => {
+  it.each(['/health', '/tenant-applications/application/provisioning-preflight', '/audit-events?action=platform.login.failed', '/audit-events?action=tenant.technical-review.recorded', '/audit-events?action=tenant.technical-review.withdrawn', '/audit-events?actorId=operator'])('denies Super Admin technical access: %s', async (path) => {
     const f = fixture('SUPER_ADMIN');
     const response = await request(f.app).get(`/api/platform${path}`).set('Authorization', `Bearer ${f.token}`);
     expect(response.status).toBe(403);
     expect(f.health).not.toHaveBeenCalled();
     expect(f.db.platformAuditEvent.findMany).not.toHaveBeenCalled();
+  });
+  it.each(['tenant.technical-review.recorded', 'tenant.technical-review.withdrawn'])('accepts exact IT audit filter %s over HTTP', async (action) => {
+    const f = fixture('IT_SECURITY');
+    const response = await request(f.app).get('/api/platform/audit-events').query({ action }).set('Authorization', `Bearer ${f.token}`);
+    expect(response.status).toBe(200);
+    expect(f.db.platformAuditEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { action } }));
   });
   it.each(["", "too-short", schoolKey])("fails closed with an absent, weak or reused secret", async (secret) => {
     const f = fixture("SUPER_ADMIN", secret);

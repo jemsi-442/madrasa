@@ -701,6 +701,12 @@ scope remains active when event/role/period filters change; **Show all applicati
 and platform events** clears the scope and filters. New event options include
 inactive school creation, invitation recording and school activation. Invitation
 recording is not proof of email delivery. Opening history is read-only.
+IT's Event filter also includes **IT sign-off recorded** and **IT sign-off
+withdrawn**, using exact technical-review actions. Office history does not offer
+these options, and the backend rejects either action for Super Admin. Sign-off
+evidence, fingerprints and withdrawal reasons are not included in this audit
+listing. Withdrawal events reference a TechnicalReview receipt, so use the global
+IT audit view rather than the application-only scope to find them.
 **View actor activity** on an event opens an exact `actorId` scope for IT only,
 clears the application/action/role/period filters and resets page
 one. Refresh and subsequent filters retain this scope; opening application

@@ -4,6 +4,19 @@ import { PlatformGovernanceService, safePlatformAuditMetadata, officeHistoryActi
 import { platformAuditQuerySchema } from "../src/modules/platform/platform.schemas";
 
 describe("platform audit filters and privacy", () => {
+  it.each(['tenant.technical-review.recorded', 'tenant.technical-review.withdrawn'])('allows IT to filter %s without returning private evidence', async (action) => {
+    const tx = {
+      platformAccount: { findUnique: vi.fn().mockResolvedValue({ id: 'it', role: 'IT_SECURITY', status: 'ACTIVE' }) },
+      platformAuditEvent: { findMany: vi.fn().mockResolvedValue([{ id: 'event', action,
+        metadata: { reason: 'private incident', evidenceReference: 'private-evidence', fingerprint: 'private-hash', operatorAttestations: { accessControls: true } },
+      }]) },
+    };
+    const db = { $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient;
+    const result = await new PlatformGovernanceService(db).listAuditEvents({ scope: 'platform', accountId: 'it', sessionId: 'session' }, { action });
+    expect(tx.platformAuditEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { action } }));
+    expect(result[0]?.metadata).toEqual({});
+    expect(JSON.stringify(result)).not.toContain('private');
+  });
   it('always applies the office allowlist for Super Admin, including unfiltered requests', async () => {
     const tx = {
       platformAccount: { findUnique: vi.fn().mockResolvedValue({ id: 'office', role: 'SUPER_ADMIN', status: 'ACTIVE' }) },
@@ -17,7 +30,7 @@ describe("platform audit filters and privacy", () => {
     expect(officeHistoryActions).not.toContain('platform.login.failed');
     expect(officeHistoryActions).not.toContain('tenant.school.provisioned');
     expect(officeHistoryActions).not.toContain('platform.session.revoked');
-    for (const query of [{ actorId: 'it' }, { actorRole: 'IT_SECURITY' }, { action: 'platform.login.failed' }, { action: 'future.technical.event' }]) {
+    for (const query of [{ actorId: 'it' }, { actorRole: 'IT_SECURITY' }, { action: 'platform.login.failed' }, { action: 'future.technical.event' }, { action: 'tenant.technical-review.recorded' }, { action: 'tenant.technical-review.withdrawn' }]) {
       tx.platformAuditEvent.findMany.mockClear();
       await expect(service.listAuditEvents(actor, query)).rejects.toMatchObject({ statusCode: 403 });
       expect(tx.platformAuditEvent.findMany).not.toHaveBeenCalled();
