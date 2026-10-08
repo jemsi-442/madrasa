@@ -106,7 +106,7 @@ void main() {
       await tester.ensureVisible(find.text('Onboarding progress'));
       await tester.tap(find.text('Onboarding progress'));
       await tester.pumpAndSettle();
-      expect(find.text('Super Admin activation readiness'), findsOneWidget);
+      expect(find.text('IT technical readiness'), findsNothing);
       expect(
         find.text('Checked (UTC): 2026-10-08T10:00:01.000Z'),
         findsOneWidget,
@@ -114,7 +114,7 @@ void main() {
       await tester.ensureVisible(find.text('Refresh progress'));
       await tester.tap(find.text('Refresh progress'));
       await tester.pumpAndSettle();
-      expect(find.text('Super Admin activation readiness'), findsNothing);
+      expect(find.text('IT technical readiness'), findsNothing);
       expect(
         find.textContaining('Previous information has been hidden'),
         findsOneWidget,
@@ -126,7 +126,7 @@ void main() {
         find.text('Checked (UTC): 2026-10-08T10:00:03.000Z'),
         findsOneWidget,
       );
-      expect(find.text('Backup and recovery: review required'), findsOneWidget);
+      expect(find.text('Backup and recovery: review required'), findsNothing);
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);

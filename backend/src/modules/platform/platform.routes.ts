@@ -48,7 +48,6 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
     res.json({ success: true, data: account });
   }));
   router.get("/health", asyncHandler(async (req, res) => {
-    if (!health) throw new HttpError(503, "Platform health is not configured");
     res.json({ success: true, data: await service.health(req.platformContext!, health) });
   }));
   router.get("/overview", asyncHandler(async (req, res) => {

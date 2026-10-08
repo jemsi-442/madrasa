@@ -245,8 +245,9 @@ work. Existing school ADMIN accounts do not become Super Admins. The platform
 console UI is available in source at the Flutter route `/platform` (normally
 `/#/platform` on the existing web host). It is separate from the school login,
 uses memory-only bearer tokens, and requires reauthentication on refresh/expiry.
-Super Admin sees application intake/review, audit and system health; IT sees
-audit and system health. It does not activate approved schools.
+Super Admin sees office intake/review, company account administration and office
+decision history. IT alone sees technical audit, system health and setup checks.
+The console does not activate approved schools.
 The UI has not yet been verified against a migrated staging database.
 
 Implemented source:
@@ -254,7 +255,7 @@ Implemented source:
 - Separate `PlatformAccount`, `TenantApplication` and `PlatformAuditEvent`
   tables in additive migration `202610071200_add_platform_governance_foundation`.
   Platform accounts default to DISABLED; school users and roles are unchanged.
-- SUPER_ADMIN permissions for application intake, review and platform audit.
+- SUPER_ADMIN permissions for application intake, review and office history.
   IT_SECURITY may read platform audit and operational health. IT cannot read application contact
   information, approve schools, or perform school academic/financial operations.
 - Internal `PlatformGovernanceService`: normalized intake, bounded listings,
@@ -283,8 +284,8 @@ Guarded endpoints under `/api/platform`:
 | GET | /me | Active platform session; minimal account profile |
 | GET, POST | /tenant-applications | Super Admin only |
 | POST | /tenant-applications/:id/review | Different Super Admin from requester |
-| GET | /audit-events | Super Admin or IT/Security |
-| GET | /health | Super Admin or IT/Security; real database and Redis checks |
+| GET | /audit-events | IT technical audit; Super Admin office-event allowlist only |
+| GET | /health | IT/Security only; real database and Redis checks |
 | POST | /logout | Revoke current session |
 | POST | /logout-all | Revoke all sessions of the signed-in operator |
 | GET | /sessions | Paginated active sessions of the signed-in operator only |
@@ -401,15 +402,15 @@ operator-entered statements, not verified incident findings.
 ### Approved Application Setup Preflight
 
 `GET /api/platform/tenant-applications/:id/provisioning-preflight` is a read-only
-handoff check for active Super Admin and IT/Security accounts. Only APPROVED
+handoff check for active IT/Security accounts only (Super Admin receives 403). Only APPROVED
 applications are eligible; missing and unapproved IDs both return 404. IT does
 not gain access to the application directory, applicant email, decision reasons,
 or school content. The response checks a recorded independent review and whether
 the requested organization code is currently unused, exposing no existing school
 details. Database errors fail the request instead of reporting success.
 
-Super Admin can open **Check setup readiness** from an approved application in
-the console. The result is a timestamped snapshot, not a reservation or permission
+IT uses setup checks from the approved provisioning queue; Super Admin does not
+see this technical action. The result is a timestamped snapshot, not a reservation or permission
 to create a school. `provisioningEnabled` remains false even when checks pass.
 No organization, user, invitation or activation is written by this GET endpoint.
 `alreadyProvisioned` indicates a linked school; an occupied code must not be
@@ -586,18 +587,18 @@ hides the previous snapshot immediately and blocks duplicate requests while
 loading. A failed refresh shows a retry message rather than stale readiness;
 responses arriving after session change or after closing the view are ignored.
 
-For Super Admin only, the same response includes `activationReview`: seven
+For IT only, the same response includes `activationReview`: seven
 read-only prerequisite checks and five outstanding manual evidence reviews.
 The current requester cannot pass readiness even when another reviewer approved
 the application. Missing provisioning evidence, unmatched acceptance, changed
-access or a previous activation prevents readiness. IT responses omit this
+access or a previous activation prevents readiness. Super Admin responses omit this
 section entirely. `activationEnabled` remains false, including when recorded
 prerequisites pass; this is not an activation authorization or a substitute for
 operator evidence. No activation POST endpoint has been added.
 
 ### Self-Service Session Controls
 
-The console's My sessions view shows current/other active sessions, session ID,
+The IT console's My sessions view shows current/other active sessions, session ID,
 sign-in time and expiry (UTC). API listings are bounded and filter by the
 authenticated account, current role, unrevoked state, expiry and recent MFA.
 No client-selected account ID is accepted. No tokens, MFA secrets, IP addresses
@@ -629,6 +630,16 @@ data or clear the newer session; responses arriving after local expiry are rejec
 
 ### Audit Filters and Details
 
+Super Admin has no technical-audit permission. Its requests to this endpoint
+always use an office-event allowlist: application requests/approvals/rejections,
+school activation and company-account disable/restore decisions. Technical action,
+actor ID or actor-role filters return 403 before reading events. Unknown future
+events are excluded by default. The office UI hides health, sessions diagnostics,
+technical setup, actor investigation and technical readiness checklists. Normal
+sign-in, MFA and self sign-out remain available; these are account protection,
+not access to IT operations. IT retains technical audit/health/setup permissions,
+but does not gain office approvals or company-account administration.
+
 The audit endpoint accepts bounded `page`/`pageSize`, exact `action`, `actorRole`
 (SUPER_ADMIN or IT_SECURITY), exact `actorId`, and inclusive UTC ISO `from`/`to`
 timestamps. Invalid/reversed ranges and unknown query parameters return 422.
@@ -646,8 +657,8 @@ scope remains active when event/role/period filters change; **Show all applicati
 and platform events** clears the scope and filters. New event options include
 inactive school creation, invitation recording and school activation. Invitation
 recording is not proof of email delivery. Opening history is read-only.
-**View actor activity** on an event opens an exact `actorId` scope for either
-company role, clears the application/action/role/period filters and resets page
+**View actor activity** on an event opens an exact `actorId` scope for IT only,
+clears the application/action/role/period filters and resets page
 one. Refresh and subsequent filters retain this scope; opening application
 history or clearing all events removes it. Events without an actor ID do not
 offer this action. The scope follows the recorded actor, not the affected entity,
@@ -888,6 +899,14 @@ views, application/actor-scoped audit navigation, onboarding overview navigation
 main-list refresh failure/retry handling, service-specific health guidance,
 snapshot expiry and unverified check timestamps,
 and session-bound dialogs.
+Role-boundary regression checks additionally cover office-only history, hidden
+technical navigation and omitted IT readiness for Super Admin. Backend checks
+cover direct technical endpoint/filter denial and the office allowlist. Both
+isolated fresh-install and upgrade-baseline suites pass; the upgrade HTTP journey
+also verifies real database office history excludes provisioning events visible
+to IT. The internal activation service is still not exposed as an operator action;
+separate recorded IT technical sign-off and office activation approval remain a
+prerequisite before exposing that workflow.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data

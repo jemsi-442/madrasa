@@ -70,7 +70,7 @@ void main() {
       expect(find.text('Invitation record created'), findsOneWidget);
       expect(find.text('Pending'), findsOneWidget);
       expect(find.byType(FilledButton), findsNothing);
-      expect(find.text('Super Admin activation readiness'), findsOneWidget);
+      expect(find.text('IT technical readiness'), findsOneWidget);
       expect(
         find.text('You are not the original requester: Not met'),
         findsOneWidget,
@@ -134,7 +134,7 @@ void main() {
       find.textContaining('Email delivery is not connected'),
       findsOneWidget,
     );
-    expect(find.text('Super Admin activation readiness'), findsNothing);
+    expect(find.text('IT technical readiness'), findsNothing);
     await tester.tap(find.text('Refresh progress'));
     await tester.pumpAndSettle();
     expect(

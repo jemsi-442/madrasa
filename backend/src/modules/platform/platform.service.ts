@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
 import { HttpError } from "../../shared/errors/http-error";
-import { assertPlatformPermission, type PlatformPermission } from "./platform.permissions";
+import { assertPlatformPermission, hasPlatformPermission, type PlatformPermission } from "./platform.permissions";
 import { platformPageSchema, platformAuditQuerySchema, platformSessionIdSchema, tenantApplicationSchema, tenantDecisionSchema } from "./platform.schemas";
 import type { PlatformHealthReader } from "./platform.health";
 import { platformAccountIdSchema, platformDisableAccountSchema, platformAccountQuerySchema, platformRestoreAccountSchema, platformApplicationQuerySchema, platformProvisioningQuerySchema } from "./platform.schemas";
@@ -10,13 +10,18 @@ import { platformAccountIdSchema, platformDisableAccountSchema, platformAccountQ
 // Do not adapt a school req.authUser into it, even for a school ADMIN.
 export type PlatformContext = Readonly<{ scope: "platform"; accountId: string; sessionId: string }>;
 
+export const officeHistoryActions = [
+  "tenant.application.requested", "tenant.application.approved", "tenant.application.rejected",
+  "tenant.school.activated", "platform.account.disabled", "platform.account.restored",
+];
+
 export class PlatformGovernanceService {
   constructor(private readonly db: PrismaClient) {}
 
   async onboardingProgress(actor: PlatformContext, input: unknown) {
     const id = platformAccountIdSchema.parse(input);
     return this.db.$transaction(async (tx) => {
-      const account = await this.authorize(tx, actor, "tenant.provisioning.inspect");
+      const account = await this.authorize(tx, actor, "tenant.onboarding.read");
       const application = await tx.tenantApplication.findFirst({
         where: { id, status: "APPROVED" },
         select: { id: true, schoolName: true, requestedCode: true, adminEmail: true,
@@ -61,7 +66,7 @@ export class PlatformGovernanceService {
         ],
         invitationExpiresAt: invitation?.expiresAt ?? null,
         deliveryConfigured: false,
-        ...(account.role === "SUPER_ADMIN" ? {
+        ...(account.role === "IT_SECURITY" ? {
           activationReview: {
             activationEnabled: false,
             prerequisitesPassed: stage === "ACTIVATION_REVIEW_PENDING" && account.id !== application.requestedById,
@@ -290,7 +295,7 @@ export class PlatformGovernanceService {
   async listOwnSessions(actor: PlatformContext, input: unknown = {}) {
     const { page, pageSize } = platformPageSchema.parse(input);
     return this.db.$transaction(async (tx) => {
-      const account = await this.authorize(tx, actor, "platform.audit.read");
+      const account = await this.authorize(tx, actor, "platform.session.self");
       const now = new Date();
       const sessions = await tx.platformSession.findMany({
         where: { accountId: account.id, role: account.role, revokedAt: null, expiresAt: { gt: now },
@@ -305,7 +310,7 @@ export class PlatformGovernanceService {
   async revokeOwnSession(actor: PlatformContext, input: unknown) {
     const id = platformSessionIdSchema.parse(input);
     return this.db.$transaction(async (tx) => {
-      const account = await this.authorize(tx, actor, "platform.audit.read");
+      const account = await this.authorize(tx, actor, "platform.session.self");
       const owned = await tx.platformSession.findFirst({ where: { id, accountId: account.id }, select: { id: true } });
       if (!owned) throw new HttpError(404, "Session not found");
       const changed = await tx.platformSession.updateMany({
@@ -319,14 +324,15 @@ export class PlatformGovernanceService {
     });
   }
 
-  async health(actor: PlatformContext, readHealth: PlatformHealthReader) {
+  async health(actor: PlatformContext, readHealth?: PlatformHealthReader) {
     await this.db.$transaction(async (tx) => this.authorize(tx, actor, "platform.health.read"));
+    if (!readHealth) throw new HttpError(503, "Platform health is not configured");
     return readHealth();
   }
 
   async logout(actor: PlatformContext, allSessions = false) {
     return this.db.$transaction(async (tx) => {
-      const account = await this.authorize(tx, actor, "platform.audit.read");
+      const account = await this.authorize(tx, actor, "platform.session.self");
       const changed = await tx.platformSession.updateMany({
         where: { accountId: account.id, ...(allSessions ? {} : { id: actor.sessionId }), revokedAt: null },
         data: { revokedAt: new Date() },
@@ -343,7 +349,7 @@ export class PlatformGovernanceService {
     });
   }
 
-  private async authorize(tx: Prisma.TransactionClient, actor: PlatformContext, permission: PlatformPermission) {
+  private async authorize(tx: Prisma.TransactionClient, actor: PlatformContext, permission?: PlatformPermission) {
     if (actor.scope !== "platform" || !actor.accountId) {
       throw new HttpError(401, "Platform authentication required");
     }
@@ -354,7 +360,7 @@ export class PlatformGovernanceService {
     if (!account || account.status !== "ACTIVE") {
       throw new HttpError(403, "Platform account is not active");
     }
-    assertPlatformPermission(account.role, permission);
+    if (permission) assertPlatformPermission(account.role, permission);
     return account;
   }
 
@@ -437,10 +443,18 @@ export class PlatformGovernanceService {
   async listAuditEvents(actor: PlatformContext, input: unknown = {}) {
     const { page, pageSize, action, actorRole, actorId, applicationId, from, to } = platformAuditQuerySchema.parse(input);
     return this.db.$transaction(async (tx) => {
-      await this.authorize(tx, actor, "platform.audit.read");
+      const account = await this.authorize(tx, actor);
+      const technical = hasPlatformPermission(account.role, "platform.audit.read");
+      if (!technical) {
+        assertPlatformPermission(account.role, "platform.office-history.read");
+        if (actorId || actorRole || (action && !officeHistoryActions.includes(action))) {
+          throw new HttpError(403, "Technical audit is restricted to IT");
+        }
+      }
       const events = await tx.platformAuditEvent.findMany({
         where: {
           ...(action ? { action } : {}), ...(actorRole ? { actorRole } : {}), ...(actorId ? { actorId } : {}),
+          ...(!technical ? { action: action ?? { in: officeHistoryActions } } : {}),
           ...(applicationId ? { entityType: "TenantApplication", entityId: applicationId } : {}),
           ...((from || to) ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {}),
         },

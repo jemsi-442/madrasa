@@ -54,7 +54,7 @@ describe("platform HTTP boundary", () => {
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body.data.stage).toBe('PROVISIONING_PENDING');
     expect(JSON.stringify(response.body)).not.toContain('private@example.test');
-    if (role === 'SUPER_ADMIN') {
+    if (role === 'IT_SECURITY') {
       expect(response.body.data.activationReview).toMatchObject({ prerequisitesPassed: false, activationEnabled: false });
     } else {
       expect(response.body.data).not.toHaveProperty('activationReview');
@@ -82,7 +82,7 @@ describe("platform HTTP boundary", () => {
     const operator = fixture('IT_SECURITY');
     expect((await request(operator.app).post(url).set('Authorization', `Bearer ${operator.token}`).send({ status: 'ACTIVE', organizationId: '1' })).status).toBe(422);
   });
-  it.each(['SUPER_ADMIN', 'IT_SECURITY'])('allows %s to inspect only approved provisioning handoffs', async (role) => {
+  it.each(['IT_SECURITY'])('allows %s to inspect only approved provisioning handoffs', async (role) => {
     const f = fixture(role);
     const url = '/api/platform/tenant-applications/application/provisioning-preflight';
     expect((await request(f.app).get(url)).status).toBe(401);
@@ -185,7 +185,7 @@ describe("platform HTTP boundary", () => {
     expect((await request(f.app).post(`/api/platform/sessions/${sid}/revoke`).set("Authorization", `Bearer ${f.token}`).send({})).status).toBe(404);
     expect(f.db.platformSession.updateMany).not.toHaveBeenCalled();
   });
-  it.each(["SUPER_ADMIN", "IT_SECURITY"])("permits %s to inspect platform health", async (role) => {
+  it.each(["IT_SECURITY"])("permits %s to inspect platform health", async (role) => {
     const f = fixture(role);
     const res = await request(f.app).get("/api/platform/health").set("Authorization", `Bearer ${f.token}`);
     expect(res.status).toBe(200);
@@ -197,6 +197,13 @@ describe("platform HTTP boundary", () => {
     const f = fixture();
     expect((await request(f.app).get("/api/platform/health")).status).toBe(401);
     expect(f.health).not.toHaveBeenCalled();
+  });
+  it.each(['/health', '/tenant-applications/application/provisioning-preflight', '/audit-events?action=platform.login.failed', '/audit-events?actorId=operator'])('denies Super Admin technical access: %s', async (path) => {
+    const f = fixture('SUPER_ADMIN');
+    const response = await request(f.app).get(`/api/platform${path}`).set('Authorization', `Bearer ${f.token}`);
+    expect(response.status).toBe(403);
+    expect(f.health).not.toHaveBeenCalled();
+    expect(f.db.platformAuditEvent.findMany).not.toHaveBeenCalled();
   });
   it.each(["", "too-short", schoolKey])("fails closed with an absent, weak or reused secret", async (secret) => {
     const f = fixture("SUPER_ADMIN", secret);

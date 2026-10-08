@@ -54,8 +54,8 @@ void main() {
       'role': 'IT_SECURITY',
       'status': 'DISABLED',
     });
-    await tester.ensureVisible(find.text('Audit trail'));
-    await tester.tap(find.text('Audit trail'));
+    await tester.ensureVisible(find.text('Office history'));
+    await tester.tap(find.text('Office history'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Company accounts'));
     await tester.pumpAndSettle();
@@ -178,8 +178,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
       await tester.pumpAndSettle();
       if (role == 'SUPER_ADMIN') {
-        await tester.ensureVisible(find.text('Audit trail'));
-        await tester.tap(find.text('Audit trail'));
+        await tester.ensureVisible(find.text('Office history'));
+        await tester.tap(find.text('Office history'));
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Company accounts'));
         await tester.tap(find.text('Company accounts'));
@@ -188,8 +188,9 @@ void main() {
         expect(find.text('Company Reviewer'), findsOneWidget);
         expect(find.text('Your account'), findsOneWidget);
         expect(find.text('Request madrassa'), findsNothing);
-        await tester.ensureVisible(find.text('My sessions'));
-        await tester.tap(find.text('My sessions'));
+        expect(find.text('My sessions'), findsNothing);
+        await tester.ensureVisible(find.text('Office history'));
+        await tester.tap(find.text('Office history'));
         await tester.pumpAndSettle();
         expect(find.text('Company Reviewer'), findsNothing);
       } else {

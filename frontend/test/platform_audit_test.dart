@@ -37,7 +37,7 @@ void main() {
               : [
                   {
                     'id': 'event',
-                    'action': 'tenant.school.provisioned',
+                    'action': 'tenant.application.approved',
                     'actorRole': 'IT_SECURITY',
                     'actorId': 'operator',
                     'entityType': 'TenantApplication',
@@ -71,13 +71,19 @@ void main() {
       await tester.ensureVisible(find.text('All events'));
       await tester.tap(find.text('All events'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Inactive madrassa created').last);
-      await tester.tap(find.text('Inactive madrassa created').last);
+      if (role == 'SUPER_ADMIN') {
+        expect(find.text('Failed login'), findsNothing);
+        expect(find.text('Inactive madrassa created'), findsNothing);
+        expect(find.text('System health'), findsNothing);
+        expect(find.text('My sessions'), findsNothing);
+      }
+      await tester.ensureVisible(find.text('Madrassa approved').last);
+      await tester.tap(find.text('Madrassa approved').last);
       await tester.pumpAndSettle();
       expect(requests.last.queryParameters['applicationId'], 'application');
       expect(
         requests.last.queryParameters['action'],
-        'tenant.school.provisioned',
+        'tenant.application.approved',
       );
       await tester.ensureVisible(
         find.text('Show all application and platform events'),
@@ -90,35 +96,40 @@ void main() {
       );
       expect(requests.last.queryParameters.containsKey('action'), isFalse);
       expect(find.text('Application history: application'), findsNothing);
-      await tester.ensureVisible(find.text('View actor activity'));
-      await tester.tap(find.text('View actor activity'));
-      await tester.pumpAndSettle();
-      expect(requests.last.queryParameters['actorId'], 'operator');
-      expect(requests.last.queryParameters['page'], '1');
-      expect(
-        requests.last.queryParameters.containsKey('applicationId'),
-        isFalse,
-      );
-      expect(find.text('Activity by account: operator'), findsOneWidget);
-      await tester.ensureVisible(find.text('Refresh'));
-      await tester.tap(find.text('Refresh'));
-      await tester.pumpAndSettle();
-      expect(requests.last.queryParameters['actorId'], 'operator');
-      await tester.ensureVisible(find.text('View application history'));
-      await tester.tap(find.text('View application history'));
-      await tester.pumpAndSettle();
-      expect(requests.last.queryParameters['applicationId'], 'application');
-      expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
-      await tester.ensureVisible(find.text('View actor activity'));
-      await tester.tap(find.text('View actor activity'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(
-        find.text('Show all application and platform events'),
-      );
-      await tester.tap(find.text('Show all application and platform events'));
-      await tester.pumpAndSettle();
-      expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
-      expect(find.text('Activity by account: operator'), findsNothing);
+      if (role == 'IT_SECURITY') {
+        await tester.ensureVisible(find.text('View actor activity'));
+        await tester.tap(find.text('View actor activity'));
+        await tester.pumpAndSettle();
+        expect(requests.last.queryParameters['actorId'], 'operator');
+        expect(requests.last.queryParameters['page'], '1');
+        expect(
+          requests.last.queryParameters.containsKey('applicationId'),
+          isFalse,
+        );
+        expect(find.text('Activity by account: operator'), findsOneWidget);
+        await tester.ensureVisible(find.text('Refresh'));
+        await tester.tap(find.text('Refresh'));
+        await tester.pumpAndSettle();
+        expect(requests.last.queryParameters['actorId'], 'operator');
+        await tester.ensureVisible(find.text('View application history'));
+        await tester.tap(find.text('View application history'));
+        await tester.pumpAndSettle();
+        expect(requests.last.queryParameters['applicationId'], 'application');
+        expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
+        await tester.ensureVisible(find.text('View actor activity'));
+        await tester.tap(find.text('View actor activity'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.text('Show all application and platform events'),
+        );
+        await tester.tap(find.text('Show all application and platform events'));
+        await tester.pumpAndSettle();
+        expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
+        expect(find.text('Activity by account: operator'), findsNothing);
+      } else {
+        expect(find.text('View actor activity'), findsNothing);
+        expect(find.text('Office history'), findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       api.close();

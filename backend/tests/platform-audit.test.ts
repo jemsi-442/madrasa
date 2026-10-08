@@ -1,9 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@prisma/client";
-import { PlatformGovernanceService, safePlatformAuditMetadata } from "../src/modules/platform/platform.service";
+import { PlatformGovernanceService, safePlatformAuditMetadata, officeHistoryActions } from "../src/modules/platform/platform.service";
 import { platformAuditQuerySchema } from "../src/modules/platform/platform.schemas";
 
 describe("platform audit filters and privacy", () => {
+  it('always applies the office allowlist for Super Admin, including unfiltered requests', async () => {
+    const tx = {
+      platformAccount: { findUnique: vi.fn().mockResolvedValue({ id: 'office', role: 'SUPER_ADMIN', status: 'ACTIVE' }) },
+      platformAuditEvent: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const db = { $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient;
+    const service = new PlatformGovernanceService(db);
+    const actor = { scope: 'platform' as const, accountId: 'office', sessionId: 'session' };
+    await service.listAuditEvents(actor);
+    expect(tx.platformAuditEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { action: { in: officeHistoryActions } } }));
+    expect(officeHistoryActions).not.toContain('platform.login.failed');
+    expect(officeHistoryActions).not.toContain('tenant.school.provisioned');
+    expect(officeHistoryActions).not.toContain('platform.session.revoked');
+    for (const query of [{ actorId: 'it' }, { actorRole: 'IT_SECURITY' }, { action: 'platform.login.failed' }, { action: 'future.technical.event' }]) {
+      tx.platformAuditEvent.findMany.mockClear();
+      await expect(service.listAuditEvents(actor, query)).rejects.toMatchObject({ statusCode: 403 });
+      expect(tx.platformAuditEvent.findMany).not.toHaveBeenCalled();
+    }
+  });
   it.each(['', 'a'.repeat(31), ['application'], { id: 'application' }])('rejects invalid application scope', (applicationId) => {
     expect(() => platformAuditQuerySchema.parse({ applicationId })).toThrow();
   });
@@ -17,10 +36,10 @@ describe("platform audit filters and privacy", () => {
     };
     const db = { $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient;
     const result = await new PlatformGovernanceService(db).listAuditEvents({ scope: 'platform', accountId: 'operator', sessionId: 'session' }, {
-      applicationId: 'application', action: 'tenant.school.provisioned', page: 2, pageSize: 10,
+      applicationId: 'application', action: 'tenant.application.approved', page: 2, pageSize: 10,
     });
     expect(tx.platformAuditEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { entityType: 'TenantApplication', entityId: 'application', action: 'tenant.school.provisioned' }, skip: 10, take: 10,
+      where: { entityType: 'TenantApplication', entityId: 'application', action: 'tenant.application.approved' }, skip: 10, take: 10,
     }));
     expect(result[0]?.metadata).toEqual({ status: 'PENDING_ACTIVATION' });
   });

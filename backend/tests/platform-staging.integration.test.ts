@@ -127,13 +127,19 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
   });
 
   it("checks real MariaDB and Redis without exposing connection configuration", async () => {
-    const account = await db.platformAccount.findFirstOrThrow();
-    const result = await service.health({ scope: "platform", accountId: account.id, sessionId: "internal-health-test" },
-      createPlatformHealthReader(db, process.env.REDIS_URL!));
-    expect(result.status).toBe("healthy");
-    expect(result.checks).toHaveLength(2);
-    expect(result.checks.every((check) => check.status === "available")).toBe(true);
-    expect(JSON.stringify(result)).not.toContain("127.0.0.1");
+    const office = await db.platformAccount.findFirstOrThrow({ where: { role: 'SUPER_ADMIN' } });
+    const reader = createPlatformHealthReader(db, process.env.REDIS_URL!);
+    await expect(service.health({ scope: 'platform', accountId: office.id, sessionId: 'office-health' }, reader)).rejects.toMatchObject({ statusCode: 403 });
+    const account = await db.platformAccount.create({ data: {
+      email: 'health-it@example.test', fullName: 'Health operator', passwordHash: 'test-only', role: 'IT_SECURITY', status: 'ACTIVE',
+    } });
+    try {
+      const result = await service.health({ scope: "platform", accountId: account.id, sessionId: "internal-health-test" }, reader);
+      expect(result.status).toBe("healthy");
+      expect(result.checks).toHaveLength(2);
+      expect(result.checks.every((check) => check.status === "available")).toBe(true);
+      expect(JSON.stringify(result)).not.toContain("127.0.0.1");
+    } finally { await db.platformAccount.delete({ where: { id: account.id } }); }
   });
 
   it("allows only one concurrent decision and one decision audit", async () => {
@@ -402,8 +408,8 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
       expect(response.body.data).toMatchObject({ stage: 'INVITATION_PENDING', deliveryConfigured: false });
       expect(JSON.stringify(response.body)).not.toContain('http-admin@example.test');
       expect(response.body.data).not.toHaveProperty('tokenHash');
-      if (authorization === operator) expect(response.body.data).not.toHaveProperty('activationReview');
-      else expect(response.body.data.activationReview).toMatchObject({ prerequisitesPassed: false, activationEnabled: false });
+      if (authorization === operator) expect(response.body.data.activationReview).toMatchObject({ prerequisitesPassed: false, activationEnabled: false });
+      else expect(response.body.data).not.toHaveProperty('activationReview');
     }
     expect(await db.platformAuditEvent.count()).toBe(auditCount);
     const history = await request(app).get('/api/platform/audit-events').query({ applicationId: id }).set('Authorization', operator);
@@ -414,6 +420,14 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     expect(history.body.data.map((event: { action: string }) => event.action).sort()).toEqual([
       'tenant.application.approved', 'tenant.application.requested', 'tenant.school.provisioned',
     ]);
+    const officeHistory = await request(app).get('/api/platform/audit-events').query({ applicationId: id }).set('Authorization', reviewer);
+    expect(officeHistory.status).toBe(200);
+    expect(officeHistory.body.data.map((event: { action: string }) => event.action).sort()).toEqual([
+      'tenant.application.approved', 'tenant.application.requested',
+    ]);
+    for (const path of ['/health', '/audit-events?action=platform.login.failed', `${url.replace('/api/platform', '')}/provisioning-preflight`]) {
+      expect((await request(app).get(`/api/platform${path}`).set('Authorization', reviewer)).status).toBe(403);
+    }
     const absentHistory = await request(app).get('/api/platform/audit-events').query({ applicationId: 'missing-application' }).set('Authorization', operator);
     expect(absentHistory.status).toBe(200);
     expect(absentHistory.body.data).toEqual([]);

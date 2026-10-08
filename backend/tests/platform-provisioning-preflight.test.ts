@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PlatformGovernanceService } from '../src/modules/platform/platform.service';
 
 const actor = { scope: 'platform' as const, accountId: 'operator', sessionId: 'session' };
-function fixture(role = 'SUPER_ADMIN', status = 'ACTIVE') {
+function fixture(role = 'IT_SECURITY', status = 'ACTIVE') {
   const application = { id: 'application', requestedCode: 'afaq-school', requestedById: 'requester', reviewedById: 'reviewer', reviewedAt: new Date() };
   const tx = {
     platformAccount: { findUnique: vi.fn().mockResolvedValue({ id: 'operator', role, status }) },
@@ -14,7 +14,7 @@ function fixture(role = 'SUPER_ADMIN', status = 'ACTIVE') {
   return { tx, application, service: new PlatformGovernanceService({ $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient) };
 }
 describe('approved madrassa provisioning preflight', () => {
-  it.each(['SUPER_ADMIN', 'IT_SECURITY'])('allows %s to inspect without creating or activating a school', async (role) => {
+  it.each(['IT_SECURITY'])('allows %s to inspect without creating or activating a school', async (role) => {
     const f = fixture(role);
     const result = await f.service.provisioningPreflight(actor, 'application');
     expect(result).toMatchObject({ prerequisitesPassed: true, provisioningEnabled: false, checks: { independentReview: true, schoolCodeAvailable: true } });
@@ -46,7 +46,7 @@ describe('approved madrassa provisioning preflight', () => {
     await expect(f.service.provisioningPreflight(actor, 'application')).rejects.toMatchObject({ statusCode: 404 });
     expect(f.tx.organization.findUnique).not.toHaveBeenCalled();
   });
-  it.each(['ADMIN', 'TEACHER', 'PARENT'])('denies school role %s before reading applications', async (role) => {
+  it.each(['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'PARENT'])('denies non-IT role %s before reading applications', async (role) => {
     const f = fixture(role);
     await expect(f.service.provisioningPreflight(actor, 'application')).rejects.toMatchObject({ statusCode: 403 });
     expect(f.tx.tenantApplication.findFirst).not.toHaveBeenCalled();

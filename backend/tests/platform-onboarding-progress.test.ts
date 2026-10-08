@@ -2,7 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PlatformGovernanceService } from '../src/modules/platform/platform.service';
 const actor = { scope: 'platform' as const, accountId: 'operator', sessionId: 'session' };
-function fixture(role = 'SUPER_ADMIN') {
+function fixture(role = 'IT_SECURITY') {
   const application = { id: 'application', schoolName: 'School', requestedCode: 'school', adminEmail: 'private@example.test',
     requestedById: 'requester', reviewedById: 'reviewer', reviewedAt: new Date(), provisionedAt: new Date(),
     organization: { id: 7n, status: 'PENDING_ACTIVATION' },
@@ -24,7 +24,7 @@ describe('onboarding progress snapshots', () => {
     expect(result.deliveryConfigured).toBe(false);
     expect(JSON.stringify(result)).not.toContain('private@example.test');
     expect(result).not.toHaveProperty('acceptedUser');
-    if (role === 'SUPER_ADMIN') {
+    if (role === 'IT_SECURITY') {
       expect(result.activationReview).toMatchObject({ prerequisitesPassed: true, activationEnabled: false });
       expect(result.activationReview?.checks.every((check) => check.passed)).toBe(true);
       expect(result.activationReview?.manualReviews).toHaveLength(5);

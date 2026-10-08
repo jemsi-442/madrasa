@@ -153,7 +153,7 @@ class PlatformOnboardingProgress extends StatelessWidget {
       if (data['activationReview'] is Map) ...[
         const Divider(),
         Text(
-          'Super Admin activation readiness',
+          'IT technical readiness',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),

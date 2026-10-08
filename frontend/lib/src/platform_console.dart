@@ -507,10 +507,16 @@ class _PlatformConsoleState extends State<PlatformConsole> {
 
   Future<void> showOnboardingProgress(Map<String, dynamic> record) async {
     if (busy) return;
+    Map<String, dynamic> visibleProgress(dynamic raw) {
+      final data = Map<String, dynamic>.from(raw as Map);
+      if (isAdmin) data.remove('activationReview');
+      return data;
+    }
+
     final version = api.sessionVersion;
     Map<String, dynamic>? result;
     await run(() async {
-      result = Map<String, dynamic>.from(
+      result = visibleProgress(
         await api.call(
               '/tenant-applications/${Uri.encodeComponent(record['id'] as String)}/onboarding-progress',
             )
@@ -535,7 +541,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               initialData: data,
               sessionIsCurrent: () =>
                   api.user != null && api.sessionVersion == version,
-              load: () async => Map<String, dynamic>.from(
+              load: () async => visibleProgress(
                 await api.call(
                       '/tenant-applications/${Uri.encodeComponent(record['id'] as String)}/onboarding-progress',
                     )
@@ -663,8 +669,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       if (api.sessionVersion != version && api.user != null) rethrow;
       throw ApiException(
         all
-            ? 'Signed out on this device. We could not confirm sign-out on all sessions. Sign in again and use My sessions to review access.'
-            : 'Signed out on this device. Server sign-out could not be confirmed. Sign in again and use My sessions to review access.',
+            ? 'Signed out on this device. We could not confirm sign-out on all sessions. Contact your company IT team if you need help confirming access.'
+            : 'Signed out on this device. Server sign-out could not be confirmed. Contact your company IT team if you need help confirming access.',
         503,
       );
     } finally {
@@ -1178,7 +1184,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                 }),
                         ),
                       ChoiceChip(
-                        label: const Text('Audit trail'),
+                        label: Text(isAdmin ? 'Office history' : 'Audit trail'),
                         selected:
                             audit &&
                             !healthView &&
@@ -1231,38 +1237,40 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                           icon: const Icon(Icons.domain_add_outlined),
                           label: const Text('Madrassa setup'),
                         ),
-                      ChoiceChip(
-                        label: const Text('System health'),
-                        selected: healthView,
-                        onSelected: busy
-                            ? null
-                            : (_) => run(() async {
-                                healthView = true;
-                                sessionsView = false;
-                                accountsView = false;
-                                records = [];
-                                await load();
-                              }),
-                      ),
+                      if (!isAdmin)
+                        ChoiceChip(
+                          label: const Text('System health'),
+                          selected: healthView,
+                          onSelected: busy
+                              ? null
+                              : (_) => run(() async {
+                                  healthView = true;
+                                  sessionsView = false;
+                                  accountsView = false;
+                                  records = [];
+                                  await load();
+                                }),
+                        ),
                       OutlinedButton.icon(
                         onPressed: busy ? null : () => run(load),
                         icon: const Icon(Icons.refresh),
                         label: const Text('Refresh'),
                       ),
-                      ChoiceChip(
-                        label: const Text('My sessions'),
-                        selected: sessionsView,
-                        onSelected: busy
-                            ? null
-                            : (_) => run(() async {
-                                sessionsView = true;
-                                accountsView = false;
-                                healthView = false;
-                                page = 1;
-                                records = [];
-                                await load();
-                              }),
-                      ),
+                      if (!isAdmin)
+                        ChoiceChip(
+                          label: const Text('My sessions'),
+                          selected: sessionsView,
+                          onSelected: busy
+                              ? null
+                              : (_) => run(() async {
+                                  sessionsView = true;
+                                  accountsView = false;
+                                  healthView = false;
+                                  page = 1;
+                                  records = [];
+                                  await load();
+                                }),
+                        ),
                       if (isAdmin)
                         ChoiceChip(
                           label: const Text('Company accounts'),
@@ -1437,26 +1445,33 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                           auditFilter(
                             'Event',
                             auditAction,
-                            const {
+                            {
                               '': 'All events',
-                              'platform.login.failed': 'Failed login',
-                              'platform.login.succeeded': 'Successful login',
+                              if (!isAdmin)
+                                'platform.login.failed': 'Failed login',
+                              if (!isAdmin)
+                                'platform.login.succeeded': 'Successful login',
                               'tenant.application.requested':
                                   'Madrassa requested',
                               'tenant.application.approved':
                                   'Madrassa approved',
                               'tenant.application.rejected':
                                   'Madrassa rejected',
-                              'tenant.school.provisioned':
-                                  'Inactive madrassa created',
-                              'tenant.admin.invitation.issued':
-                                  'Admin invitation recorded',
+                              if (!isAdmin)
+                                'tenant.school.provisioned':
+                                    'Inactive madrassa created',
+                              if (!isAdmin)
+                                'tenant.admin.invitation.issued':
+                                    'Admin invitation recorded',
                               'tenant.school.activated': 'Madrassa activated',
-                              'platform.session.revoked': 'Session revoked',
-                              'platform.sessions.revoked':
-                                  'All sessions revoked',
-                              'platform.account.bootstrapped':
-                                  'Reviewer created',
+                              if (!isAdmin)
+                                'platform.session.revoked': 'Session revoked',
+                              if (!isAdmin)
+                                'platform.sessions.revoked':
+                                    'All sessions revoked',
+                              if (!isAdmin)
+                                'platform.account.bootstrapped':
+                                    'Reviewer created',
                               'platform.account.disabled':
                                   'IT account disabled',
                               'platform.account.restored':
@@ -1466,18 +1481,19 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                               auditAction = value;
                             },
                           ),
-                          auditFilter(
-                            'Role',
-                            auditRole,
-                            const {
-                              '': 'All roles',
-                              'SUPER_ADMIN': 'Super Admin',
-                              'IT_SECURITY': 'IT / Security',
-                            },
-                            (value) {
-                              auditRole = value;
-                            },
-                          ),
+                          if (!isAdmin)
+                            auditFilter(
+                              'Role',
+                              auditRole,
+                              const {
+                                '': 'All roles',
+                                'SUPER_ADMIN': 'Super Admin',
+                                'IT_SECURITY': 'IT / Security',
+                              },
+                              (value) {
+                                auditRole = value;
+                              },
+                            ),
                           auditFilter(
                             'Period',
                             auditPeriod,
@@ -1498,10 +1514,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                           ),
                         ],
                       ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
-                          'Times are UTC. Failed login events identify the account targeted, not a verified person. Filters do not grant school-data access.',
+                          isAdmin
+                              ? 'Office decisions and account administration. Times are UTC. Technical and security logs are managed by IT.'
+                              : 'Times are UTC. Failed login events identify the account targeted, not a verified person. Filters do not grant school-data access.',
                         ),
                       ),
                     ],
@@ -1555,6 +1573,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                 if (!audit && record['decisionReason'] != null)
                                   Text('Decision: ${record['decisionReason']}'),
                                 if (audit &&
+                                    !isAdmin &&
                                     record['actorId'] is String &&
                                     (record['actorId'] as String).isNotEmpty)
                                   TextButton(
@@ -1603,7 +1622,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                       ),
                                       label: const Text('Onboarding progress'),
                                     ),
-                                  if (record['status'] == 'APPROVED')
+                                  if (!isAdmin &&
+                                      record['status'] == 'APPROVED')
                                     OutlinedButton.icon(
                                       onPressed: busy
                                           ? null

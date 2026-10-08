@@ -10,7 +10,7 @@ import 'package:mif_app/src/platform_console.dart';
 void main() {
   for (final view in [
     'Madrassa applications',
-    'Audit trail',
+    'Office history',
     'Company accounts',
     'My sessions',
   ]) {
@@ -32,7 +32,9 @@ void main() {
                     'user': {
                       'id': 'admin',
                       'fullName': 'Reviewer',
-                      'role': 'SUPER_ADMIN',
+                      'role': view == 'My sessions'
+                          ? 'IT_SECURITY'
+                          : 'SUPER_ADMIN',
                     },
                   },
                 }),
