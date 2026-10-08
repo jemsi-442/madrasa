@@ -6,6 +6,79 @@ import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
 
 void main() {
+  for (final fromProgress in [false, true]) {
+    testWidgets('IT opens scoped history from setup progress=$fromProgress', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final auditReads = <Uri>[];
+      final writes = <String>[];
+      final api = PlatformApi(
+        client: MockClient((request) async {
+          final path = request.url.path;
+          if (request.method != 'GET') writes.add(path);
+          dynamic data;
+          if (path.endsWith('/login')) {
+            data = {
+              'accessToken': 'token',
+              'expiresIn': 900,
+              'user': {'id': 'it', 'fullName': 'IT', 'role': 'IT_SECURITY'},
+            };
+          } else if (path.endsWith('/provisioning-queue')) {
+            data = [
+              {
+                'id': 'application',
+                'schoolName': 'School',
+                'requestedCode': 'school',
+                'organization': {'status': 'PENDING_ACTIVATION'},
+              },
+            ];
+          } else if (path.endsWith('/onboarding-progress')) {
+            data = {
+              'schoolName': 'School',
+              'requestedCode': 'school',
+              'stage': 'INVITATION_PENDING',
+              'checkedAt': DateTime.now().toUtc().toIso8601String(),
+            };
+          } else if (path.endsWith('/audit-events')) {
+            auditReads.add(request.url);
+            data = [];
+          } else {
+            fail('Unexpected request: $path');
+          }
+          return http.Response(jsonEncode({'data': data}), 200);
+        }),
+      );
+      await api.login('it@example.test', 'password', '123456');
+      await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
+      await tester.ensureVisible(find.text('Madrassa setup'));
+      await tester.tap(find.text('Madrassa setup'));
+      await tester.pumpAndSettle();
+      if (fromProgress) {
+        await tester.ensureVisible(find.text('Onboarding progress'));
+        await tester.tap(find.text('Onboarding progress'));
+        await tester.pumpAndSettle();
+      }
+      await tester.ensureVisible(find.text('View application history'));
+      await tester.tap(find.text('View application history'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(auditReads.single.queryParameters['applicationId'], 'application');
+      expect(auditReads.single.queryParameters['page'], '1');
+      expect(find.text('Application history: application'), findsOneWidget);
+      await tester.ensureVisible(find.text('Refresh'));
+      await tester.tap(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      expect(auditReads.last.queryParameters['applicationId'], 'application');
+      expect(writes, ['/api/platform/login']);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      api.close();
+    });
+  }
   for (final withdrawn in [false, true]) {
     testWidgets('IT follows sign-off history from withdrawn=$withdrawn', (
       tester,

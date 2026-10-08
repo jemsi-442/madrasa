@@ -541,7 +541,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         data == null) {
       return;
     }
-    await sessionDialog<void>(
+    final viewHistory = await sessionDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Onboarding progress'),
@@ -563,12 +563,24 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         ),
         actions: [
           TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              isAdmin ? 'View office history' : 'View application history',
+            ),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
           ),
         ],
       ),
     );
+    if (viewHistory == true &&
+        mounted &&
+        api.user != null &&
+        api.sessionVersion == version) {
+      await openApplicationAudit(record['id'] as String);
+    }
   }
 
   Future<void> inspectProvisioning(Map<String, dynamic> record) async {
@@ -1219,7 +1231,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                               ? null
                               : () async {
                                   final version = api.sessionVersion;
-                                  await sessionDialog<void>(
+                                  final historyId = await sessionDialog<String>(
                                     context: context,
                                     builder: (context) => AlertDialog(
                                       title: const Text('Madrassa setup'),
@@ -1228,6 +1240,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                         child: SingleChildScrollView(
                                           child: PlatformProvisioningPanel(
                                             call: api.call,
+                                            onViewHistory: (id) =>
+                                                Navigator.pop(context, id),
                                             sessionIsCurrent: () =>
                                                 api.user != null &&
                                                 api.sessionVersion == version,
@@ -1243,7 +1257,15 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                       ],
                                     ),
                                   );
-                                  if (mounted) setState(() {});
+                                  if (mounted &&
+                                      api.user != null &&
+                                      api.sessionVersion == version) {
+                                    if (historyId != null) {
+                                      await openApplicationAudit(historyId);
+                                    } else {
+                                      setState(() {});
+                                    }
+                                  }
                                 },
                           icon: const Icon(Icons.domain_add_outlined),
                           label: const Text('Madrassa setup'),

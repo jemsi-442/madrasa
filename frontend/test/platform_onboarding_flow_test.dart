@@ -17,6 +17,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       var progressReads = 0;
       var checkedAt = '';
+      final auditReads = <Uri>[];
       final writes = <String>[];
       final api = PlatformApi(
         baseUrl: 'https://platform.example.test',
@@ -65,6 +66,9 @@ void main() {
                   'manualReviews': ['Tenant isolation', 'Backup and recovery'],
                 },
               };
+            } else if (path.endsWith('/audit-events')) {
+              auditReads.add(request.url);
+              data = [];
             } else if (path.endsWith('/tenant-applications')) {
               data = [
                 {
@@ -109,10 +113,7 @@ void main() {
       await tester.tap(find.text('Onboarding progress'));
       await tester.pumpAndSettle();
       expect(find.text('IT technical readiness'), findsNothing);
-      expect(
-        find.text('Checked (UTC): $checkedAt'),
-        findsOneWidget,
-      );
+      expect(find.text('Checked (UTC): $checkedAt'), findsOneWidget);
       await tester.ensureVisible(find.text('Refresh progress'));
       await tester.tap(find.text('Refresh progress'));
       await tester.pumpAndSettle();
@@ -124,14 +125,16 @@ void main() {
       expect(find.textContaining('private diagnostic'), findsNothing);
       await tester.tap(find.text('Refresh progress'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('Checked (UTC): $checkedAt'),
-        findsOneWidget,
-      );
+      expect(find.text('Checked (UTC): $checkedAt'), findsOneWidget);
       expect(find.text('Backup and recovery: review required'), findsNothing);
-      await tester.tap(find.text('Close'));
+      await tester.ensureVisible(find.text('View office history'));
+      await tester.tap(find.text('View office history'));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
+      expect(auditReads.single.queryParameters['applicationId'], 'application');
+      expect(auditReads.single.queryParameters['page'], '1');
+      expect(find.text('Application history: application'), findsOneWidget);
+      expect(find.text('Audit trail'), findsNothing);
       expect(writes, ['/api/platform/login']);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

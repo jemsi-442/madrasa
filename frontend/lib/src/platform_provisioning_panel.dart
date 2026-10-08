@@ -8,9 +8,11 @@ class PlatformProvisioningPanel extends StatefulWidget {
     super.key,
     required this.call,
     required this.sessionIsCurrent,
+    this.onViewHistory,
   });
   final Future<dynamic> Function(String, {Map<String, dynamic>? body}) call;
   final bool Function() sessionIsCurrent;
+  final ValueChanged<String>? onViewHistory;
 
   @override
   State<PlatformProvisioningPanel> createState() =>
@@ -227,6 +229,15 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
                       as Map,
                 ),
               ),
+              if (widget.onViewHistory != null)
+                TextButton(
+                  onPressed: busy || !current
+                      ? null
+                      : () => widget.onViewHistory!(
+                          progressRecord!['id'] as String,
+                        ),
+                  child: const Text('View application history'),
+                ),
               TextButton(
                 onPressed: () => setState(() {
                   progress = null;
@@ -349,6 +360,15 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
                           onPressed: busy ? null : () => viewProgress(record),
                           child: const Text('Onboarding progress'),
                         ),
+                        if (widget.onViewHistory != null)
+                          TextButton(
+                            onPressed: busy || !current
+                                ? null
+                                : () => widget.onViewHistory!(
+                                    record['id'] as String,
+                                  ),
+                            child: const Text('View application history'),
+                          ),
                         if (record['organization'] != null)
                           Text(
                             'School status: ${record['organization']['status']}',

@@ -719,6 +719,13 @@ scope remains active when event/role/period filters change; **Show all applicati
 and platform events** clears the scope and filters. New event options include
 inactive school creation, invitation recording and school activation. Invitation
 recording is not proof of email delivery. Opening history is read-only.
+The onboarding dialog also offers **View office history** to Super Admin (only
+office-allowed events) and **View application history** to IT. IT can open that
+same scope directly from a setup-queue card or its progress panel. Navigation
+closes the dialog, verifies the original session is still current, clears prior
+audit scopes/filters and opens page one for the selected application. Refresh
+retains this scope. It sends only audit reads, never provisioning, invitation or
+activation writes, and does not expand either role's permissions.
 IT's Event filter also includes **IT sign-off recorded** and **IT sign-off
 withdrawn**, using exact technical-review actions. Office history does not offer
 these options, and the backend rejects either action for Super Admin. Sign-off
@@ -971,7 +978,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 63 tests pass in headless Chromium, including sign-in through the form,
+Verified: 65 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,
