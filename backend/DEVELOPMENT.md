@@ -239,12 +239,21 @@ any history rewrite needs a separately agreed procedure.
 
 ## Afaq Platform Governance: Foundation (7 October 2026)
 
-Status: backend foundation, password/MFA login and guarded HTTP routes are in
-source, not deployed. No platform accounts have been created by the development
-work. Existing school ADMIN accounts do not become Super Admins. The platform
-console UI is available in source at the Flutter route `/platform` (normally
-`/#/platform` on the existing web host). It is separate from the school login,
-uses memory-only bearer tokens, and requires reauthentication on refresh/expiry.
+Current sign-in policy (9 October 2026): one `/login` page uses email/username
+and password for school and company roles, with no MFA prompt. `/platform` is
+now a compatibility alias to that same entry page, not a separate login.
+`/api/auth/login` and `/api/auth/browser/login` resolve the identity once; they
+reject cross-directory or multiple-school matches with a generic credential
+error rather than guessing a role. Wrong/disabled company credentials never
+fall back to a school account. Redis limits apply before identity lookup.
+Company sessions remain memory-only, separately signed/authorized, and expire
+after 15 minutes without school-cookie refresh. Browser company login clears
+the old school cookie; logout/expiry returns to the common login page.
+Migration `202610091200_password_company_sessions` makes the historic MFA
+verification timestamp nullable; password-only sessions record null, not a fake
+MFA success. Session freshness uses creation time for these sessions. Existing
+school ADMIN accounts do not become Super Admins. Source changes and isolated
+demo accounts are local only; the existing school database has not been upgraded.
 Super Admin sees office intake/review, company account administration and office
 decision history. IT alone sees technical audit, system health and setup checks.
 The console does not activate approved schools.
@@ -826,30 +835,34 @@ This creates a new private `/tmp/afaq-local-demo-*` MariaDB data directory and
 Redis instance on loopback ports, installs the schema there, and binds a
 platform-only API to `127.0.0.1:4087`. It does not use the configured school
 database or import its records. Two Super Admins and one IT account get random
-passwords and MFA secrets; credentials are written to the printed private JSON
+passwords; credentials are written to the printed private JSON
 file (mode 600 in a mode-700 directory), never to project files. These seeded
 identities are demo fixtures, not production bootstrap or an IT invitation flow.
 
 Build Flutter web with `--dart-define=API_BASE_URL=http://127.0.0.1:4087` and serve
-it at `http://127.0.0.1:8087`; open `/#/platform`. Other browser origins are not
-allowed by this demo API. Use the credentials file's authenticator setup key in
-an authenticator, or obtain local demo codes with:
-
-```bash
-npm run platform:demo -- --codes /tmp/afaq-local-demo-REPLACE/credentials.json
-```
-
-Codes retain the normal 30-second/replay checks and login rate limits. Never
+it at `http://127.0.0.1:8087`; open `/#/login`. Other browser origins are not
+allowed by this demo API. No authenticator or MFA code is required. An optional
+`--reuse-demo-passwords /tmp/afaq-local-demo-REPLACE/credentials.json` after
+`--start` preserves passwords from a previous local demo when creating fresh
+demo accounts; it does not copy school records or modify the previous database.
+The normal login rate limits and role authorization remain active. Never
 publish this file or reuse these credentials outside the demo. Ctrl+C stops
 the demo API and its services; temporary data remains private until removed or
 the OS cleans `/tmp`. Each new start creates new accounts and a new directory,
 not a resume or password reset. It refuses `NODE_ENV=production` and requires
 explicit `--start`; no existing database is migrated or overwritten.
 
-Login JSON: `email`, `password`, `code` (six digits, kept as a string). The
-response contains a 15-minute access token and minimal profile, not a refresh
-token. Reauthenticate after expiry. Future browser UI must keep the bearer token
-in memory, not localStorage; production requires HTTPS at the trusted ingress.
+Unified login JSON is `login`, `password`; company responses include
+`scope: platform`, a 15-minute access token and minimal profile, not a refresh
+token. School browser responses retain their existing HttpOnly cookie flow.
+The compatibility platform endpoint accepts `email`, `password` in the running
+application. Role selectors and verification codes are not part of these inputs.
+Production requires HTTPS at the trusted ingress. Registration-number issuance
+and parent/child selection are a subsequent feature, not implemented by this login change.
+
+The legacy MFA login helpers are retained for compatibility/testing; they do
+not govern the new application login. The controlled bootstrap CLI now creates
+password-only reviewers without enrolling MFA.
 
 TOTP uses SHA-1 and 30-second time steps, allowing one adjacent step for clock
 drift. The implementation is checked against the SHA-1 vectors in
@@ -864,11 +877,13 @@ plaintext email/IP. Redis failure blocks login with 503; exhausted limits return
 proxy handling deliberately before deployment; never trust arbitrary forwarded
 IP headers. Deployments sharing Redis must use the same platform keys and clocks.
 
-`PLATFORM_MFA_ENCRYPTION_KEY` must be an independent random 32-byte key encoded
+For legacy encrypted MFA records, `PLATFORM_MFA_ENCRYPTION_KEY` must be an independent random 32-byte key encoded
 as 64 hex characters, distinct from all JWT secrets. Back it up securely outside
 the repository: losing it prevents MFA login. Key rotation requires re-encrypting
 existing secrets; do not simply replace the key. No automated MFA recovery,
 password reset, key rotation or IT-account invitation exists in this phase.
+This encryption key is not required for the password-only bootstrap or login;
+retain existing keys securely rather than deleting historic secrets.
 
 After backup, staging migration tests and secure key configuration, an authorized
 host operator can run the following in a private, non-recorded interactive terminal:
@@ -877,12 +892,12 @@ host operator can run the following in a private, non-recorded interactive termi
 ALLOW_PLATFORM_BOOTSTRAP=true npm run platform:bootstrap
 ```
 
-The command asks for name/email, a hidden password twice, then displays a private
-authenticator setup key. Enter it into an authenticator and confirm the generated
-code. The account is created only after confirmation, with an audit event. Do not
-share or capture the setup key. Wait for the next authenticator code before login.
-Repeat for a second trusted reviewer, then remove the bootstrap environment flag.
-There are no default passwords and no generated keys are written to project files.
+The command requires a distinct platform signing key and asks for authorized
+setup confirmation, name/email and a hidden password twice. It creates the
+account and audit event atomically, without an authenticator setup or code.
+Sign in through the common login page with email and password. Repeat for a
+second trusted reviewer, then remove the bootstrap environment flag.
+There are no default passwords and no credentials are written to project files.
 
 Bootstrap creates at most two SUPER_ADMIN accounts, counts disabled reviewers
 toward that limit, refuses duplicate email rather than overwriting credentials,
@@ -1025,7 +1040,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 71 tests pass in headless Chromium, including sign-in through the form,
+Verified: 80 tests pass in headless Chromium, including shared password-only login,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,

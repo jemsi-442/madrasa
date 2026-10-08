@@ -9,7 +9,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import express from "express";
 import cors from "cors";
-import { base32Secret, encryptMfaSecret, totpCode } from "../src/modules/platform/platform.mfa";
+import { unifiedLogin } from "../src/modules/auth/unified-login";
 import { createPlatformRouter } from "../src/modules/platform/platform.routes";
 import { createPlatformLoginLimiter } from "../src/modules/platform/platform.login-limit";
 import { createPlatformHealthReader } from "../src/modules/platform/platform.health";
@@ -25,19 +25,15 @@ async function freePort() {
 }
 
 async function main() {
-  if (process.argv[2] === "--codes") {
-    const file = resolve(process.argv[3] ?? "");
-    if (!file.startsWith(join(tmpdir(), "afaq-local-demo-")) || !file.endsWith("/credentials.json")) {
-      throw new Error("Use the credentials.json path printed by the local demo.");
-    }
-    const accounts = JSON.parse(await readFile(file, "utf8")) as Array<{ email: string; mfaHex: string }>;
-    const step = BigInt(Math.floor(Date.now() / 30_000));
-    for (const account of accounts) console.log(`${account.email}: ${totpCode(Buffer.from(account.mfaHex, "hex"), step)}`);
-    console.log("Codes change every 30 seconds. A successfully used code cannot be reused.");
-    return;
-  }
   if (process.argv[2] !== "--start" || process.env.NODE_ENV === "production") {
     throw new Error("Use --start for a disposable local demo, never production.");
+  }
+  let previousCredentials: Array<{ email: string; password: string }> = [];
+  if (process.argv[3] === "--reuse-demo-passwords") {
+    const file = resolve(process.argv[4] ?? "");
+    if (!file.startsWith(join(tmpdir(), "afaq-local-demo-")) || !file.endsWith("/credentials.json")) throw new Error("Only a previous private demo credentials file is allowed.");
+    previousCredentials = JSON.parse(await readFile(file, "utf8"));
+    if (!Array.isArray(previousCredentials) || previousCredentials.some(row => typeof row.email !== 'string' || typeof row.password !== 'string' || row.password.length < 12 || row.password.length > 72)) throw new Error("Invalid demo credentials file.");
   }
   const directory = await mkdtemp(join(tmpdir(), "afaq-local-demo-"));
   const mysqlPort = await freePort();
@@ -95,20 +91,27 @@ async function main() {
       ["Demo IT Officer", "it@afaq.test", "IT_SECURITY"],
     ] as const) {
       const id = randomBytes(15).toString("hex");
-      const secret = randomBytes(20);
-      const accountPassword = `Afaq!${randomBytes(15).toString("base64url")}`;
+      const accountPassword = previousCredentials.find(row => row.email === email)?.password ?? `Afaq!${randomBytes(15).toString("base64url")}`;
       await db.$transaction(async (tx) => {
-        await tx.platformAccount.create({ data: { id, email, fullName: name, role, status: "ACTIVE", passwordHash: await bcrypt.hash(accountPassword, 12), mfaSecretEncrypted: encryptMfaSecret(secret, id, encryptionKey) } });
+        await tx.platformAccount.create({ data: { id, email, fullName: name, role, status: "ACTIVE", passwordHash: await bcrypt.hash(accountPassword, 12) } });
         await tx.platformAuditEvent.create({ data: { actorId: id, actorRole: role, action: "platform.account.demo-created", entityType: "PlatformAccount", entityId: id } });
       });
-      credentials.push({ email, role, password: accountPassword, authenticatorSetupKey: base32Secret(secret), mfaHex: secret.toString("hex") });
+      credentials.push({ email, role, password: accountPassword });
     }
     const credentialFile = join(directory, "credentials.json");
     await writeFile(credentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
     const app = express();
     app.use(cors({ origin: "http://127.0.0.1:8087" }));
     app.use(express.json());
-    app.use("/api/platform", createPlatformRouter(db, signingKey, [], { encryptionKey, consumeLimit: createPlatformLoginLimiter(redisUrl, signingKey) }, createPlatformHealthReader(db, redisUrl)));
+    const limit = createPlatformLoginLimiter(redisUrl, signingKey);
+    app.use("/api/auth/browser", (req, res, next) => {
+      if (req.get("Origin") !== "http://127.0.0.1:8087" || req.get("X-MIF-Browser") !== "1") { res.sendStatus(403); return; }
+      next();
+    });
+    app.post(["/api/auth/login", "/api/auth/browser/login"], unifiedLogin(db, signingKey, limit), (_req, res) => { res.status(401).json({ success: false, message: "Invalid credentials" }); });
+    app.post("/api/auth/browser/refresh", (_req, res) => { res.status(401).json({ success: false, message: "Please sign in" }); });
+    app.post("/api/auth/browser/logout", (_req, res) => { res.json({ success: true }); });
+    app.use("/api/platform", createPlatformRouter(db, signingKey, [], { encryptionKey, passwordOnly: true, consumeLimit: limit }, createPlatformHealthReader(db, redisUrl)));
     app.use(errorHandler);
     const server = await new Promise<ReturnType<typeof app.listen>>((ok, fail) => {
       const listener = app.listen(4087, "127.0.0.1", () => ok(listener));
