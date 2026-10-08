@@ -1,0 +1,352 @@
+import { randomBytes } from "node:crypto";
+import { PrismaClient } from "@prisma/client";
+import { afterAll, describe, expect, it } from "vitest";
+import { bootstrapPlatformReviewer } from "../src/modules/platform/platform.bootstrap";
+import { loginPlatform } from "../src/modules/platform/platform.login";
+import { encryptMfaSecret, totpCode } from "../src/modules/platform/platform.mfa";
+import { verifyPlatformAccess } from "../src/modules/platform/platform.authentication";
+import { createPlatformLoginLimiter } from "../src/modules/platform/platform.login-limit";
+import { PlatformGovernanceService } from "../src/modules/platform/platform.service";
+import { createPlatformHealthReader } from "../src/modules/platform/platform.health";
+import { issueSchoolAdminInvitation, acceptSchoolAdminInvitation } from "../src/modules/platform/platform.school-invitation";
+import bcrypt from "bcryptjs";
+import { activateSchool } from "../src/modules/platform/platform.activation";
+import express from "express";
+import request from "supertest";
+import { createSchoolInvitationRouter } from "../src/modules/platform/platform.invitation-routes";
+import { createSchoolInvitationLimiter } from "../src/modules/platform/platform.invitation-limit";
+import { errorHandler } from "../src/shared/middleware/error-handler";
+
+const enabled = process.env.PLATFORM_STAGING_RUN === "isolated";
+if (enabled && !/^mysql:\/\/root@127\.0\.0\.1:\d+\/afaq_platform_staging_[a-f0-9]+$/.test(process.env.DATABASE_URL ?? "")) {
+  throw new Error("Refusing staging tests outside the isolated runner database");
+}
+
+describe.skipIf(!enabled)("real isolated platform staging", () => {
+  const db = new PrismaClient({ log: [] });
+  const key = randomBytes(32).toString("hex");
+  const signing = randomBytes(32).toString("hex");
+  const password = randomBytes(20).toString("hex");
+  const firstSecret = randomBytes(20);
+  const secondSecret = randomBytes(20);
+  const code = (secret: Buffer) => totpCode(secret, BigInt(Math.floor(Date.now() / 30_000)));
+  const options = { encryptionKey: key, consumeLimit: createPlatformLoginLimiter(process.env.REDIS_URL!, signing) };
+  const service = new PlatformGovernanceService(db);
+  afterAll(async () => { await db.$disconnect(); });
+
+  it("bootstraps only two reviewers under concurrent requests", async () => {
+    const attempt = (email: string, secret: Buffer) => bootstrapPlatformReviewer(db, { email, fullName: "Staging Reviewer", password, code: code(secret) }, secret, key);
+    await attempt("first@example.test", firstSecret);
+    const results = await Promise.allSettled([
+      attempt("second@example.test", secondSecret), attempt("third@example.test", secondSecret),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await db.platformAccount.count()).toBe(2);
+    expect(await db.platformAuditEvent.count({ where: { action: "platform.account.bootstrapped" } })).toBe(2);
+  }, 20_000);
+
+  it("logs in, blocks replay, independently approves, audits and revokes sessions", async () => {
+    // Enrollment consumed the current code; simulate arrival of a new time step in this disposable DB only.
+    await db.platformAccount.updateMany({ data: { lastMfaStep: -1 } });
+    const first = await loginPlatform(db, signing, options, { email: "first@example.test", password, code: code(firstSecret) }, "staging-client");
+    const requester = await verifyPlatformAccess(db, first.accessToken, signing);
+    await expect(loginPlatform(db, signing, options, { email: "first@example.test", password, code: code(firstSecret) }, "staging-client"))
+      .rejects.toMatchObject({ statusCode: 401 });
+    const secondAccount = await db.platformAccount.findFirstOrThrow({ where: { email: { not: "first@example.test" } } });
+    const second = await loginPlatform(db, signing, options, { email: secondAccount.email, password, code: code(secondSecret) }, "staging-client");
+    const reviewer = await verifyPlatformAccess(db, second.accessToken, signing);
+    const application = await service.createApplication(requester, { schoolName: "Staging School", requestedCode: "staging-school", adminEmail: "school@example.test" });
+    await expect(service.reviewApplication(requester, application.id, { decision: "APPROVED", reason: "Verified ownership evidence" }))
+      .rejects.toMatchObject({ statusCode: 403 });
+    await service.reviewApplication(reviewer, application.id, { decision: "APPROVED", reason: "Verified ownership evidence" });
+    expect(await db.organization.count()).toBe(0);
+    expect(await db.platformAuditEvent.count({ where: { action: "tenant.application.approved" } })).toBe(1);
+    await service.logout(requester);
+    await expect(verifyPlatformAccess(db, first.accessToken, signing)).rejects.toMatchObject({ statusCode: 401 });
+  }, 20_000);
+
+  it("isolates owned sessions and atomically audits selected-session revocation", async () => {
+    const loginFirst = async () => {
+      // Advance the replay watermark only in the disposable staging database.
+      await db.platformAccount.updateMany({ where: { email: "first@example.test" }, data: { lastMfaStep: -1 } });
+      return loginPlatform(db, signing, options, { email: "first@example.test", password, code: code(firstSecret) }, "staging-sessions");
+    };
+    const first = await loginFirst();
+    const actor = await verifyPlatformAccess(db, first.accessToken, signing);
+    const other = await loginFirst();
+    const otherActor = await verifyPlatformAccess(db, other.accessToken, signing);
+    const foreign = await db.platformSession.findFirstOrThrow({ where: { accountId: { not: actor.accountId }, revokedAt: null } });
+    const listed = await service.listOwnSessions(actor);
+    expect(listed.map((session) => session.id).sort()).toEqual([actor.sessionId, otherActor.sessionId].sort());
+    expect(listed.filter((session) => session.current).map((session) => session.id)).toEqual([actor.sessionId]);
+    await expect(service.revokeOwnSession(actor, foreign.id)).rejects.toMatchObject({ statusCode: 404 });
+    expect((await db.platformSession.findUniqueOrThrow({ where: { id: foreign.id } })).revokedAt).toBeNull();
+
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_session_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected staging audit failure'");
+    try {
+      await expect(service.revokeOwnSession(actor, otherActor.sessionId)).rejects.toThrow();
+      expect((await db.platformSession.findUniqueOrThrow({ where: { id: otherActor.sessionId } })).revokedAt).toBeNull();
+      await expect(verifyPlatformAccess(db, other.accessToken, signing)).resolves.toMatchObject({ accountId: actor.accountId });
+    } finally { await db.$executeRawUnsafe("DROP TRIGGER staging_fail_session_audit"); }
+
+    expect(await service.revokeOwnSession(actor, otherActor.sessionId)).toEqual({ revoked: 1, current: false });
+    await expect(verifyPlatformAccess(db, other.accessToken, signing)).rejects.toMatchObject({ statusCode: 401 });
+    expect(await service.revokeOwnSession(actor, otherActor.sessionId)).toEqual({ revoked: 0, current: false });
+    expect(await db.platformAuditEvent.count({ where: { action: "platform.session.revoked", entityId: otherActor.sessionId } })).toBe(1);
+    expect(await service.revokeOwnSession(actor, actor.sessionId)).toEqual({ revoked: 1, current: true });
+    await expect(verifyPlatformAccess(db, first.accessToken, signing)).rejects.toMatchObject({ statusCode: 401 });
+  }, 20_000);
+
+  it("projects only public directory fields from real platform accounts", async () => {
+    const account = await db.platformAccount.findFirstOrThrow();
+    const records = await service.listAccounts({ scope: "platform", accountId: account.id, sessionId: "internal-directory-test" });
+    expect(records).toHaveLength(2);
+    for (const record of records) {
+      expect(Object.keys(record).sort()).toEqual(['id', 'fullName', 'email', 'role', 'status', 'createdAt'].sort());
+      expect(record.role).toBe('SUPER_ADMIN');
+    }
+    expect(await service.listAccounts({ scope: "platform", accountId: account.id, sessionId: "internal-directory-test" }, { page: 2, pageSize: 2 })).toEqual([]);
+  });
+
+  it("rolls back intake if the audit insert fails", async () => {
+    const account = await db.platformAccount.findFirstOrThrow();
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected staging audit failure'");
+    try {
+      await expect(service.createApplication({ scope: "platform", accountId: account.id, sessionId: "internal-rollback-test" }, {
+        schoolName: "Rollback School", requestedCode: "rollback-school", adminEmail: "rollback@example.test",
+      })).rejects.toThrow();
+      expect(await db.tenantApplication.count({ where: { requestedCode: "rollback-school" } })).toBe(0);
+    } finally { await db.$executeRawUnsafe("DROP TRIGGER staging_fail_audit"); }
+  });
+
+  it("enforces the actual Redis account limit", async () => {
+    const limit = createPlatformLoginLimiter(process.env.REDIS_URL!, randomBytes(32).toString("hex"));
+    for (let i = 0; i < 10; i++) await limit("limit@example.test", "limit-client");
+    await expect(limit("limit@example.test", "limit-client")).rejects.toMatchObject({ statusCode: 429 });
+  });
+
+  it("checks real MariaDB and Redis without exposing connection configuration", async () => {
+    const account = await db.platformAccount.findFirstOrThrow();
+    const result = await service.health({ scope: "platform", accountId: account.id, sessionId: "internal-health-test" },
+      createPlatformHealthReader(db, process.env.REDIS_URL!));
+    expect(result.status).toBe("healthy");
+    expect(result.checks).toHaveLength(2);
+    expect(result.checks.every((check) => check.status === "available")).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("127.0.0.1");
+  });
+
+  it("allows only one concurrent decision and one decision audit", async () => {
+    const accounts = await db.platformAccount.findMany({ orderBy: { id: "asc" } });
+    const requester = { scope: "platform" as const, accountId: accounts[0]!.id, sessionId: "internal-concurrency-test" };
+    const reviewer = { ...requester, accountId: accounts[1]!.id };
+    const application = await service.createApplication(requester, {
+      schoolName: "Concurrent School", requestedCode: "concurrent-school", adminEmail: "concurrent@example.test",
+    });
+    const results = await Promise.allSettled([
+      service.reviewApplication(reviewer, application.id, { decision: "APPROVED", reason: "Ownership evidence verified" }),
+      service.reviewApplication(reviewer, application.id, { decision: "REJECTED", reason: "Ownership evidence insufficient" }),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await db.platformAuditEvent.count({ where: { entityId: application.id, action: { in: ["tenant.application.approved", "tenant.application.rejected"] } } })).toBe(1);
+  });
+
+  it("disables IT atomically, blocks its token, and preserves Super Admin access", async () => {
+    const admin = await db.platformAccount.findFirstOrThrow({ where: { role: 'SUPER_ADMIN' } });
+    const actor = { scope: 'platform' as const, accountId: admin.id, sessionId: 'internal-disable-test' };
+    const id = randomBytes(15).toString('hex');
+    const mfa = randomBytes(20);
+    await db.platformAccount.create({ data: {
+      id, email: 'security@example.test', fullName: 'Staging IT', passwordHash: admin.passwordHash,
+      role: 'IT_SECURITY', status: 'ACTIVE', mfaSecretEncrypted: encryptMfaSecret(mfa, id, key),
+    } });
+    const login = await loginPlatform(db, signing, options, { email: 'security@example.test', password, code: code(mfa) }, 'staging-disable');
+    const it = await verifyPlatformAccess(db, login.accessToken, signing);
+    const input = { reason: 'Staging operator access removed' };
+    await expect(service.disableItAccount(it, admin.id, input)).rejects.toMatchObject({ statusCode: 403 });
+    await expect(service.disableItAccount(actor, admin.id, input)).rejects.toMatchObject({ statusCode: 403 });
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_disable_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected staging audit failure'");
+    try {
+      await expect(service.disableItAccount(actor, id, input)).rejects.toThrow();
+      expect((await db.platformAccount.findUniqueOrThrow({ where: { id } })).status).toBe('ACTIVE');
+      await expect(verifyPlatformAccess(db, login.accessToken, signing)).resolves.toMatchObject({ accountId: id });
+    } finally { await db.$executeRawUnsafe('DROP TRIGGER staging_fail_disable_audit'); }
+    const results = await Promise.allSettled([service.disableItAccount(actor, id, input), service.disableItAccount(actor, id, input)]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect((await db.platformAccount.findUniqueOrThrow({ where: { id } })).status).toBe('DISABLED');
+    expect(await db.platformSession.count({ where: { accountId: id, revokedAt: null } })).toBe(0);
+    expect(await db.platformAuditEvent.count({ where: { entityId: id, action: 'platform.account.disabled' } })).toBe(1);
+    await expect(verifyPlatformAccess(db, login.accessToken, signing)).rejects.toMatchObject({ statusCode: 401 });
+    await expect(loginPlatform(db, signing, options, { email: 'security@example.test', password, code: code(mfa) }, 'staging-disable')).rejects.toMatchObject({ statusCode: 401 });
+    expect((await db.platformAccount.findUniqueOrThrow({ where: { id: admin.id } })).status).toBe('ACTIVE');
+    const reviewer = await db.platformAccount.findFirstOrThrow({ where: { role: 'SUPER_ADMIN', id: { not: admin.id } } });
+    const reviewActor = { ...actor, accountId: reviewer.id };
+    const history = await service.accountAccessHistory(reviewActor, id, { pageSize: 1 });
+    const restoreInput = { ...input, suspensionEventId: history[0]!.id };
+    await expect(service.restoreItAccount(reviewActor, id, { ...restoreInput, suspensionEventId: 'stale-event' })).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.restoreItAccount(actor, id, restoreInput)).rejects.toMatchObject({ statusCode: 403 });
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_restore_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected staging audit failure'");
+    try {
+      await expect(service.restoreItAccount(reviewActor, id, restoreInput)).rejects.toThrow();
+      expect((await db.platformAccount.findUniqueOrThrow({ where: { id } })).status).toBe('DISABLED');
+    } finally { await db.$executeRawUnsafe('DROP TRIGGER staging_fail_restore_audit'); }
+    expect((await service.restoreItAccount(reviewActor, id, restoreInput)).status).toBe('ACTIVE');
+    await expect(service.restoreItAccount(reviewActor, id, restoreInput)).rejects.toMatchObject({ statusCode: 409 });
+    await expect(verifyPlatformAccess(db, login.accessToken, signing)).rejects.toMatchObject({ statusCode: 401 });
+    expect(await db.platformAuditEvent.count({ where: { entityId: id, action: 'platform.account.restored' } })).toBe(1);
+    // Simulate the next OTP step in this disposable database, never reset it in production.
+    await db.platformAccount.update({ where: { id }, data: { lastMfaStep: -1 } });
+    const fresh = await loginPlatform(db, signing, options, { email: 'security@example.test', password, code: code(mfa) }, 'staging-restore');
+    await expect(verifyPlatformAccess(db, fresh.accessToken, signing)).resolves.toMatchObject({ accountId: id });
+  }, 20_000);
+
+  it('provisions an inactive school once and rolls back all writes if audit fails', async () => {
+    const admins = await db.platformAccount.findMany({ where: { role: 'SUPER_ADMIN' }, take: 2 });
+    const itAccount = await db.platformAccount.create({ data: {
+      email: 'provisioner@example.test', fullName: 'Provisioning Operator', role: 'IT_SECURITY',
+      status: 'ACTIVE', passwordHash: 'not-a-login-credential',
+    } });
+    const context = (accountId: string) => ({ scope: 'platform' as const, accountId, sessionId: 'isolated-service-test' });
+    const application = await service.createApplication(context(admins[0]!.id), {
+      schoolName: 'Pending School', requestedCode: 'pending-school', adminEmail: 'pending@example.test',
+    });
+    await service.reviewApplication(context(admins[1]!.id), application.id, { decision: 'APPROVED', reason: 'Independent evidence checked' });
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_provision_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected audit failure'");
+    try {
+      await expect(service.provisionPendingSchool(context(itAccount.id), application.id)).rejects.toThrow();
+      expect(await db.organization.findUnique({ where: { code: 'pending-school' } })).toBeNull();
+      expect((await db.tenantApplication.findUniqueOrThrow({ where: { id: application.id } })).organizationId).toBeNull();
+    } finally { await db.$executeRawUnsafe('DROP TRIGGER staging_fail_provision_audit'); }
+    const results = await Promise.allSettled([
+      service.provisionPendingSchool(context(itAccount.id), application.id),
+      service.provisionPendingSchool(context(itAccount.id), application.id),
+    ]);
+    expect(results.some((result) => result.status === 'fulfilled')).toBe(true);
+    const replay = await service.provisionPendingSchool(context(itAccount.id), application.id);
+    expect(replay).toMatchObject({ status: 'PENDING_ACTIVATION', created: false });
+    expect(await db.organization.count({ where: { code: 'pending-school' } })).toBe(1);
+    expect(await db.user.count({ where: { orgId: BigInt(replay.organizationId) } })).toBe(0);
+    expect(await db.platformAuditEvent.count({ where: { entityId: application.id, action: 'tenant.school.provisioned' } })).toBe(1);
+  }, 20_000);
+
+  it('issues hashed, expiring invitations and accepts once without activating school or admin', async () => {
+    const application = await db.tenantApplication.findUniqueOrThrow({ where: { requestedCode: 'pending-school' } });
+    const operator = await db.platformAccount.findUniqueOrThrow({ where: { email: 'provisioner@example.test' } });
+    const actor = { scope: 'platform' as const, accountId: operator.id, sessionId: 'isolated-invitation-test' };
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_invitation_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected invitation audit failure'");
+    try {
+      await expect(issueSchoolAdminInvitation(db, actor, application.id)).rejects.toThrow();
+      expect(await db.schoolAdminInvitation.count({ where: { applicationId: application.id } })).toBe(0);
+    } finally { await db.$executeRawUnsafe('DROP TRIGGER staging_fail_invitation_audit'); }
+    const first = await issueSchoolAdminInvitation(db, actor, application.id);
+    const stored = await db.schoolAdminInvitation.findUniqueOrThrow({ where: { applicationId: application.id } });
+    expect(stored.tokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(stored)).not.toContain(first.token);
+    expect(first.email).toBe(application.adminEmail);
+    expect(first.expiresAt.getTime() - Date.now()).toBeGreaterThan(23 * 60 * 60 * 1000);
+    const input = { token: first.token, fullName: 'First School Admin', password: 'staging-admin-password-only' };
+    await db.schoolAdminInvitation.update({ where: { id: stored.id }, data: { expiresAt: new Date(0) } });
+    await expect(acceptSchoolAdminInvitation(db, input)).rejects.toMatchObject({ statusCode: 410 });
+    const fresh = await issueSchoolAdminInvitation(db, actor, application.id);
+    await expect(acceptSchoolAdminInvitation(db, input)).rejects.toMatchObject({ statusCode: 410 });
+    input.token = fresh.token;
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_acceptance BEFORE UPDATE ON school_admin_invitations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected acceptance failure'");
+    try {
+      await expect(acceptSchoolAdminInvitation(db, input)).rejects.toThrow();
+      expect(await db.user.count({ where: { orgId: application.organizationId! } })).toBe(0);
+      expect((await db.schoolAdminInvitation.findUniqueOrThrow({ where: { id: stored.id } })).acceptedAt).toBeNull();
+    } finally { await db.$executeRawUnsafe('DROP TRIGGER staging_fail_acceptance'); }
+    const results = await Promise.allSettled([acceptSchoolAdminInvitation(db, input), acceptSchoolAdminInvitation(db, input)]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    await expect(acceptSchoolAdminInvitation(db, input)).rejects.toMatchObject({ statusCode: 410 });
+    await expect(issueSchoolAdminInvitation(db, actor, application.id)).rejects.toMatchObject({ statusCode: 409 });
+    const users = await db.user.findMany({ where: { orgId: application.organizationId! } });
+    expect(users).toHaveLength(1);
+    expect(users[0]).toMatchObject({ role: 'ADMIN', status: 'DISABLED', email: application.adminEmail });
+    expect(await bcrypt.compare(input.password, users[0]!.passwordHash)).toBe(true);
+    expect((await db.organization.findUniqueOrThrow({ where: { id: application.organizationId! } })).status).toBe('PENDING_ACTIVATION');
+    const receipt = await db.schoolAdminInvitation.findUniqueOrThrow({ where: { id: stored.id } });
+    expect(receipt.acceptedAt).not.toBeNull();
+    expect(receipt.acceptedUserId).toBe(users[0]!.id);
+    expect(await db.refreshToken.count({ where: { userId: users[0]!.id } })).toBe(0);
+  }, 20_000);
+
+  it('activates school and accepted admin atomically, with safe concurrency and replay', async () => {
+    const application = await db.tenantApplication.findUniqueOrThrow({ where: { requestedCode: 'pending-school' }, include: { adminInvitation: true } });
+    const actor = { scope: 'platform' as const, accountId: application.reviewedById!, sessionId: 'isolated-activation-test' };
+    const input = { invitationId: application.adminInvitation!.id, evidenceReference: 'isolated-staging-attestation-not-production-evidence', checks: {
+      tenantIsolation: true, accessControls: true, auditTrail: true, backupRecovery: true, supportEscalation: true,
+    } };
+    await db.tenantApplication.update({ where: { id: application.id }, data: { provisionedAt: null } });
+    try {
+      await expect(activateSchool(db, actor, application.id, input)).rejects.toMatchObject({ statusCode: 409 });
+      expect((await db.organization.findUniqueOrThrow({ where: { id: application.organizationId! } })).status).toBe('PENDING_ACTIVATION');
+      expect((await db.user.findUniqueOrThrow({ where: { id: application.adminInvitation!.acceptedUserId! } })).status).toBe('DISABLED');
+      expect(await db.platformAuditEvent.count({ where: { entityId: application.id, action: 'tenant.school.activated' } })).toBe(0);
+    } finally {
+      await db.tenantApplication.update({ where: { id: application.id }, data: { provisionedAt: application.provisionedAt } });
+    }
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_activation_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected activation audit failure'");
+    try {
+      await expect(activateSchool(db, actor, application.id, input)).rejects.toThrow();
+      expect((await db.organization.findUniqueOrThrow({ where: { id: application.organizationId! } })).status).toBe('PENDING_ACTIVATION');
+      expect((await db.user.findUniqueOrThrow({ where: { id: application.adminInvitation!.acceptedUserId! } })).status).toBe('DISABLED');
+    } finally { await db.$executeRawUnsafe('DROP TRIGGER staging_fail_activation_audit'); }
+    const results = await Promise.allSettled([activateSchool(db, actor, application.id, input), activateSchool(db, actor, application.id, input)]);
+    expect(results.some((result) => result.status === 'fulfilled')).toBe(true);
+    expect((await activateSchool(db, actor, application.id, input)).activated).toBe(false);
+    expect((await db.organization.findUniqueOrThrow({ where: { id: application.organizationId! } })).status).toBe('ACTIVE');
+    expect((await db.user.findUniqueOrThrow({ where: { id: application.adminInvitation!.acceptedUserId! } })).status).toBe('ACTIVE');
+    expect(await db.platformAuditEvent.count({ where: { entityId: application.id, action: 'tenant.school.activated' } })).toBe(1);
+    await db.user.update({ where: { id: application.adminInvitation!.acceptedUserId! }, data: { status: 'DISABLED' } });
+    await expect(activateSchool(db, actor, application.id, input)).rejects.toMatchObject({ statusCode: 409 });
+    expect((await db.user.findUniqueOrThrow({ where: { id: application.adminInvitation!.acceptedUserId! } })).status).toBe('DISABLED');
+    // Simulate inconsistent state after a recorded activation, never repair it via onboarding.
+    try {
+      for (const status of ['PENDING_ACTIVATION', 'SUSPENDED', 'TRIAL'] as const) {
+        await db.organization.update({ where: { id: application.organizationId! }, data: { status } });
+        await expect(activateSchool(db, actor, application.id, input)).rejects.toMatchObject({ statusCode: 409 });
+        expect((await db.organization.findUniqueOrThrow({ where: { id: application.organizationId! } })).status).toBe(status);
+        expect((await db.user.findUniqueOrThrow({ where: { id: application.adminInvitation!.acceptedUserId! } })).status).toBe('DISABLED');
+        expect(await db.platformAuditEvent.count({ where: { entityId: application.id, action: 'tenant.school.activated' } })).toBe(1);
+        expect((await service.onboardingProgress(actor, application.id)).stage).toBe('REVIEW_REQUIRED');
+      }
+    } finally {
+      await db.organization.update({ where: { id: application.organizationId! }, data: { status: 'ACTIVE' } });
+    }
+  }, 20_000);
+
+  it('enforces invitation HTTP throttling with real Redis before acceptance', async () => {
+    const app = express(); app.use(express.json());
+    app.use('/school-invitations', createSchoolInvitationRouter(db, {
+      enabled: true, consumeLimit: createSchoolInvitationLimiter(process.env.REDIS_URL!, signing),
+    }));
+    app.use(errorHandler);
+    const body = { token: randomBytes(32).toString('base64url'), fullName: 'Not An Invite', password: 'staging-not-a-credential' };
+    const before = await db.user.count();
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const response = await request(app).post('/school-invitations/accept').send(body);
+      expect(response.status).toBe(410);
+      expect(response.headers['cache-control']).toBe('no-store');
+    }
+    const denied = await request(app).post('/school-invitations/accept').send(body);
+    expect(denied.status).toBe(429);
+    expect(denied.headers['retry-after']).toBe('900');
+    expect(await db.user.count()).toBe(before);
+    // Rotating tokens cannot evade the shared IP limit.
+    for (let attempt = 0; attempt < 19; attempt++) {
+      expect((await request(app).post('/school-invitations/accept').send({ ...body, token: randomBytes(32).toString('base64url') })).status).toBe(410);
+    }
+    expect((await request(app).post('/school-invitations/accept').send({ ...body, token: randomBytes(32).toString('base64url') })).status).toBe(429);
+  }, 20_000);
+
+  it("rolls back OTP consumption and session creation when login audit fails", async () => {
+    await db.platformAccount.updateMany({ where: { email: "first@example.test" }, data: { lastMfaStep: -1 } });
+    const before = await db.platformSession.count();
+    await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_login_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected staging audit failure'");
+    try {
+      await expect(loginPlatform(db, signing, options, { email: "first@example.test", password, code: code(firstSecret) }, "staging-client")).rejects.toThrow();
+      expect(await db.platformSession.count()).toBe(before);
+      expect((await db.platformAccount.findUniqueOrThrow({ where: { email: "first@example.test" } })).lastMfaStep).toBe(-1n);
+    } finally { await db.$executeRawUnsafe("DROP TRIGGER staging_fail_login_audit"); }
+  });
+});
