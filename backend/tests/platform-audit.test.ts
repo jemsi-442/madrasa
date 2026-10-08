@@ -30,7 +30,7 @@ describe("platform audit filters and privacy", () => {
     expect(officeHistoryActions).not.toContain('platform.login.failed');
     expect(officeHistoryActions).not.toContain('tenant.school.provisioned');
     expect(officeHistoryActions).not.toContain('platform.session.revoked');
-    for (const query of [{ actorId: 'it' }, { actorRole: 'IT_SECURITY' }, { action: 'platform.login.failed' }, { action: 'future.technical.event' }, { action: 'tenant.technical-review.recorded' }, { action: 'tenant.technical-review.withdrawn' }]) {
+    for (const query of [{ technicalReviewId: 'review' }, { actorId: 'it' }, { actorRole: 'IT_SECURITY' }, { action: 'platform.login.failed' }, { action: 'future.technical.event' }, { action: 'tenant.technical-review.recorded' }, { action: 'tenant.technical-review.withdrawn' }]) {
       tx.platformAuditEvent.findMany.mockClear();
       await expect(service.listAuditEvents(actor, query)).rejects.toMatchObject({ statusCode: 403 });
       expect(tx.platformAuditEvent.findMany).not.toHaveBeenCalled();

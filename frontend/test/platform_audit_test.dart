@@ -6,6 +6,73 @@ import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
 
 void main() {
+  for (final withdrawn in [false, true]) {
+    testWidgets('IT follows sign-off history from withdrawn=$withdrawn', (
+      tester,
+    ) async {
+      final requests = <Uri>[];
+      final api = PlatformApi(
+        client: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(
+            jsonEncode({
+              'data': request.url.path.endsWith('/login')
+                  ? {
+                      'accessToken': 'token',
+                      'expiresIn': 900,
+                      'user': {
+                        'id': 'it',
+                        'fullName': 'IT',
+                        'role': 'IT_SECURITY',
+                      },
+                    }
+                  : [
+                      {
+                        'id': withdrawn ? 'withdrawal' : 'review',
+                        'entityType': withdrawn
+                            ? 'TechnicalReview'
+                            : 'TenantApplication',
+                        'entityId': withdrawn ? 'review' : 'application',
+                        'action': withdrawn
+                            ? 'tenant.technical-review.withdrawn'
+                            : 'tenant.technical-review.recorded',
+                      },
+                    ],
+            }),
+            200,
+          );
+        }),
+      );
+      await api.login('it@example.test', 'password', '123456');
+      await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
+      await tester.ensureVisible(find.text('Audit trail'));
+      await tester.tap(find.text('Audit trail'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('View sign-off history'));
+      await tester.tap(find.text('View sign-off history'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['technicalReviewId'], 'review');
+      expect(requests.last.queryParameters['page'], '1');
+      expect(find.text('Sign-off history: review'), findsOneWidget);
+      await tester.ensureVisible(find.text('Refresh'));
+      await tester.tap(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['technicalReviewId'], 'review');
+      await tester.ensureVisible(
+        find.text('Show all application and platform events'),
+      );
+      await tester.tap(find.text('Show all application and platform events'));
+      await tester.pumpAndSettle();
+      expect(
+        requests.last.queryParameters.containsKey('technicalReviewId'),
+        isFalse,
+      );
+      expect(find.text('Sign-off history: review'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      api.close();
+    });
+  }
   for (final role in ['SUPER_ADMIN', 'IT_SECURITY']) {
     testWidgets('$role opens application-scoped audit and clears scope', (
       tester,

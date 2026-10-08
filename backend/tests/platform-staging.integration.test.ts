@@ -309,6 +309,11 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     expect(await withdrawTechnicalReview(db, itActor, application.id, withdrawalInput)).toEqual({ withdrawn: false });
     const scopedWithdrawals = await service.listAuditEvents(itActor, { applicationId: application.id, action: 'tenant.technical-review.withdrawn' });
     expect(scopedWithdrawals).toHaveLength(1);
+    const reviewHistory = await service.listAuditEvents(itActor, { technicalReviewId: withdrawalInput.technicalReviewId });
+    expect(reviewHistory.map((event) => event.action).sort()).toEqual(['tenant.technical-review.recorded', 'tenant.technical-review.withdrawn']);
+    expect(await service.listAuditEvents(itActor, { technicalReviewId: withdrawalInput.technicalReviewId, applicationId: 'unrelated-application' })).toEqual([]);
+    expect(await service.listAuditEvents(itActor, { technicalReviewId: 'missing-review' })).toEqual([]);
+    await expect(service.listAuditEvents(actor, { technicalReviewId: withdrawalInput.technicalReviewId })).rejects.toMatchObject({ statusCode: 403 });
     expect(scopedWithdrawals[0]).toMatchObject({ entityType: 'TechnicalReview', entityId: withdrawalInput.technicalReviewId, metadata: {} });
     expect(JSON.stringify(scopedWithdrawals)).not.toContain(withdrawalInput.reason);
     expect(await service.listAuditEvents(itActor, { applicationId: 'unrelated-application', action: 'tenant.technical-review.withdrawn' })).toEqual([]);

@@ -468,13 +468,13 @@ export class PlatformGovernanceService {
   }
 
   async listAuditEvents(actor: PlatformContext, input: unknown = {}) {
-    const { page, pageSize, action, actorRole, actorId, applicationId, from, to } = platformAuditQuerySchema.parse(input);
+    const { page, pageSize, action, actorRole, actorId, applicationId, technicalReviewId, from, to } = platformAuditQuerySchema.parse(input);
     return this.db.$transaction(async (tx) => {
       const account = await this.authorize(tx, actor);
       const technical = hasPlatformPermission(account.role, "platform.audit.read");
       if (!technical) {
         assertPlatformPermission(account.role, "platform.office-history.read");
-        if (actorId || actorRole || (action && !officeHistoryActions.includes(action))) {
+        if (technicalReviewId || actorId || actorRole || (action && !officeHistoryActions.includes(action))) {
           throw new HttpError(403, "Technical audit is restricted to IT");
         }
       }
@@ -482,6 +482,10 @@ export class PlatformGovernanceService {
         where: {
           ...(action ? { action } : {}), ...(actorRole ? { actorRole } : {}), ...(actorId ? { actorId } : {}),
           ...(!technical ? { action: action ?? { in: officeHistoryActions } } : {}),
+          ...(technicalReviewId ? { AND: [{ OR: [
+            { id: technicalReviewId, entityType: "TenantApplication", action: "tenant.technical-review.recorded" },
+            { entityType: "TechnicalReview", entityId: technicalReviewId, action: "tenant.technical-review.withdrawn" },
+          ] }] } : {}),
           ...(applicationId ? technical ? {
             OR: [
               { entityType: "TenantApplication", entityId: applicationId },

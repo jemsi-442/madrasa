@@ -712,6 +712,13 @@ application, so both recorded and withdrawn sign-offs can be traced in one scope
 Action, actor and time filters still apply to both kinds of event, before bounded
 pagination. Office history continues to use only its office-event allowlist and
 does not include TechnicalReview events or withdrawal reasons.
+IT can choose **View sign-off history** on a recorded review or its withdrawal.
+The exact `technicalReviewId` audit filter includes only the original recorded
+review (by event ID) and withdrawals referencing that receipt. It combines with
+application/action/actor/time filters rather than replacing them. Missing IDs
+return an empty list. Super Admin receives 403 for this filter. Opening the view
+clears prior scopes and resets pagination; Refresh retains the review scope and
+Show all clears it. No private evidence, reasons or new write action is exposed.
 **View actor activity** on an event opens an exact `actorId` scope for IT only,
 clears the application/action/role/period filters and resets page
 one. Refresh and subsequent filters retain this scope; opening application
@@ -947,7 +954,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 47 tests pass in headless Chromium, including sign-in through the form,
+Verified: 49 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,

@@ -284,6 +284,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   String auditAction = '';
   String? auditApplicationId;
   String? auditActorId;
+  String? auditTechnicalReviewId;
   String auditRole = '';
   String auditPeriod = '';
   DateTime? auditSince;
@@ -430,6 +431,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           'applicationId': auditApplicationId!,
         if (audit && !sessionsView && !accountsView && auditActorId != null)
           'actorId': auditActorId!,
+        if (audit &&
+            !sessionsView &&
+            !accountsView &&
+            auditTechnicalReviewId != null)
+          'technicalReviewId': auditTechnicalReviewId!,
         if (audit && !sessionsView && !accountsView && auditRole.isNotEmpty)
           'actorRole': auditRole,
         if (audit && !sessionsView && !accountsView && auditSince != null)
@@ -472,6 +478,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       audit = !isAdmin;
       auditApplicationId = null;
       auditActorId = null;
+      auditTechnicalReviewId = null;
       healthView = false;
       sessionsView = false;
       accountsView = false;
@@ -487,23 +494,27 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     });
   }
 
-  Future<void> openApplicationAudit(String? id, {String? actorId}) =>
-      run(() async {
-        audit = true;
-        healthView = false;
-        sessionsView = false;
-        accountsView = false;
-        overview = null;
-        auditApplicationId = id;
-        auditActorId = actorId;
-        auditAction = '';
-        auditRole = '';
-        auditPeriod = '';
-        auditSince = null;
-        page = 1;
-        records = [];
-        await load();
-      });
+  Future<void> openApplicationAudit(
+    String? id, {
+    String? actorId,
+    String? technicalReviewId,
+  }) => run(() async {
+    audit = true;
+    healthView = false;
+    sessionsView = false;
+    accountsView = false;
+    overview = null;
+    auditApplicationId = id;
+    auditActorId = actorId;
+    auditTechnicalReviewId = technicalReviewId;
+    auditAction = '';
+    auditRole = '';
+    auditPeriod = '';
+    auditSince = null;
+    page = 1;
+    records = [];
+    await load();
+  });
 
   Future<void> showOnboardingProgress(Map<String, dynamic> record) async {
     if (busy) return;
@@ -1418,10 +1429,13 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                       const SizedBox(height: 12),
                     ],
                     if (audit && !sessionsView && !accountsView) ...[
-                      if (auditApplicationId != null ||
+                      if (auditTechnicalReviewId != null ||
+                          auditApplicationId != null ||
                           auditActorId != null) ...[
                         Text(
-                          auditActorId != null
+                          auditTechnicalReviewId != null
+                              ? 'Sign-off history: $auditTechnicalReviewId'
+                              : auditActorId != null
                               ? 'Activity by account: $auditActorId'
                               : 'Application history: $auditApplicationId',
                         ),
@@ -1578,6 +1592,32 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                   ),
                                 if (!audit && record['decisionReason'] != null)
                                   Text('Decision: ${record['decisionReason']}'),
+                                if (audit &&
+                                    !isAdmin &&
+                                    ((record['action'] ==
+                                                'tenant.technical-review.recorded' &&
+                                            record['entityType'] ==
+                                                'TenantApplication' &&
+                                            record['id'] is String) ||
+                                        (record['action'] ==
+                                                'tenant.technical-review.withdrawn' &&
+                                            record['entityType'] ==
+                                                'TechnicalReview' &&
+                                            record['entityId'] is String)))
+                                  TextButton(
+                                    onPressed: busy
+                                        ? null
+                                        : () => openApplicationAudit(
+                                            null,
+                                            technicalReviewId:
+                                                record[record['entityType'] ==
+                                                            'TechnicalReview'
+                                                        ? 'entityId'
+                                                        : 'id']
+                                                    as String,
+                                          ),
+                                    child: const Text('View sign-off history'),
+                                  ),
                                 if (audit &&
                                     !isAdmin &&
                                     record['actorId'] is String &&
