@@ -687,8 +687,9 @@ but does not gain office approvals or company-account administration.
 The audit endpoint accepts bounded `page`/`pageSize`, exact `action`, `actorRole`
 (SUPER_ADMIN or IT_SECURITY), exact `actorId`, and inclusive UTC ISO `from`/`to`
 timestamps. Invalid/reversed ranges and unknown query parameters return 422.
-Optional `applicationId` restricts results to that exact TenantApplication entity,
-without requiring or exposing its school contents or nominated admin contacts.
+Optional `applicationId` restricts results to that exact application's events
+(including linked TechnicalReview withdrawals for IT only), without requiring or
+exposing its school contents or nominated admin contacts.
 Missing application IDs return an empty event list, not an application lookup.
 Ordering remains newest first, with event ID as the tie-breaker. These filters
 never grant tenant-data access or enable free-text searches of sensitive payloads.
@@ -705,8 +706,12 @@ IT's Event filter also includes **IT sign-off recorded** and **IT sign-off
 withdrawn**, using exact technical-review actions. Office history does not offer
 these options, and the backend rejects either action for Super Admin. Sign-off
 evidence, fingerprints and withdrawal reasons are not included in this audit
-listing. Withdrawal events reference a TechnicalReview receipt, so use the global
-IT audit view rather than the application-only scope to find them.
+listing. Withdrawal events reference a TechnicalReview receipt. IT's application
+history also includes withdrawals whose internal metadata links exactly to that
+application, so both recorded and withdrawn sign-offs can be traced in one scope.
+Action, actor and time filters still apply to both kinds of event, before bounded
+pagination. Office history continues to use only its office-event allowlist and
+does not include TechnicalReview events or withdrawal reasons.
 **View actor activity** on an event opens an exact `actorId` scope for IT only,
 clears the application/action/role/period filters and resets page
 one. Refresh and subsequent filters retain this scope; opening application

@@ -52,7 +52,10 @@ describe("platform audit filters and privacy", () => {
       applicationId: 'application', action: 'tenant.application.approved', page: 2, pageSize: 10,
     });
     expect(tx.platformAuditEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { entityType: 'TenantApplication', entityId: 'application', action: 'tenant.application.approved' }, skip: 10, take: 10,
+      where: { ...(role === 'IT_SECURITY' ? { OR: [
+        { entityType: 'TenantApplication', entityId: 'application' },
+        { entityType: 'TechnicalReview', action: 'tenant.technical-review.withdrawn', metadata: { path: '$.applicationId', equals: 'application' } },
+      ] } : { entityType: 'TenantApplication', entityId: 'application' }), action: 'tenant.application.approved' }, skip: 10, take: 10,
     }));
     expect(result[0]?.metadata).toEqual({ status: 'PENDING_ACTIVATION' });
   });

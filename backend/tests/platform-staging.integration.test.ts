@@ -307,6 +307,12 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     await expect(withdrawTechnicalReview(db, actor, application.id, withdrawalInput)).rejects.toMatchObject({ statusCode: 403 });
     expect(await withdrawTechnicalReview(db, itActor, application.id, withdrawalInput)).toEqual({ withdrawn: true });
     expect(await withdrawTechnicalReview(db, itActor, application.id, withdrawalInput)).toEqual({ withdrawn: false });
+    const scopedWithdrawals = await service.listAuditEvents(itActor, { applicationId: application.id, action: 'tenant.technical-review.withdrawn' });
+    expect(scopedWithdrawals).toHaveLength(1);
+    expect(scopedWithdrawals[0]).toMatchObject({ entityType: 'TechnicalReview', entityId: withdrawalInput.technicalReviewId, metadata: {} });
+    expect(JSON.stringify(scopedWithdrawals)).not.toContain(withdrawalInput.reason);
+    expect(await service.listAuditEvents(itActor, { applicationId: 'unrelated-application', action: 'tenant.technical-review.withdrawn' })).toEqual([]);
+    expect((await service.listAuditEvents(actor, { applicationId: application.id })).some((event) => event.action === 'tenant.technical-review.withdrawn')).toBe(false);
     expect((await service.onboardingProgress(actor, application.id)).nextResponsibility).toBe('IT_REVIEW');
     expect((await service.onboardingProgress(itActor, application.id)).activationReview?.signOffStatus).toBe('WITHDRAWN');
     await expect(activateSchool(db, actor, application.id, input)).rejects.toMatchObject({ statusCode: 409 });

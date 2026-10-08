@@ -482,7 +482,13 @@ export class PlatformGovernanceService {
         where: {
           ...(action ? { action } : {}), ...(actorRole ? { actorRole } : {}), ...(actorId ? { actorId } : {}),
           ...(!technical ? { action: action ?? { in: officeHistoryActions } } : {}),
-          ...(applicationId ? { entityType: "TenantApplication", entityId: applicationId } : {}),
+          ...(applicationId ? technical ? {
+            OR: [
+              { entityType: "TenantApplication", entityId: applicationId },
+              { entityType: "TechnicalReview", action: "tenant.technical-review.withdrawn",
+                metadata: { path: "$.applicationId", equals: applicationId } },
+            ],
+          } : { entityType: "TenantApplication", entityId: applicationId } : {}),
           ...((from || to) ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {}),
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
