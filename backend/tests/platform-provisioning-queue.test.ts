@@ -31,6 +31,28 @@ describe('IT provisioning queue', () => {
     await expect(f.service.listProvisioningQueue(actor, { status: 'REQUESTED' })).rejects.toThrow();
     expect(f.tx.tenantApplication.findMany).not.toHaveBeenCalled();
   });
+  it('searches only school names and codes while retaining approved scope and pagination', async () => {
+    const f = fixture();
+    await f.service.listProvisioningQueue(actor, { q: '  Afaq  ', page: 2, pageSize: 20 });
+    expect(f.tx.tenantApplication.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { status: 'APPROVED', OR: [{ schoolName: { contains: 'Afaq' } }, { requestedCode: { contains: 'Afaq' } }] },
+      skip: 20, take: 20,
+    }));
+  });
+  it('escapes wildcard characters and accepts whitespace as an unfiltered query', async () => {
+    const f = fixture();
+    await f.service.listProvisioningQueue(actor, { q: '%_\\' });
+    expect(f.tx.tenantApplication.findMany).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: { status: 'APPROVED', OR: [{ schoolName: { contains: '\\%\\_\\\\' } }, { requestedCode: { contains: '\\%\\_\\\\' } }] },
+    }));
+    await f.service.listProvisioningQueue(actor, { q: '  ' });
+    expect(f.tx.tenantApplication.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { status: 'APPROVED' } }));
+  });
+  it.each(['x'.repeat(101), ['school'], { contains: 'school' }])('rejects invalid search input', async (q) => {
+    const f = fixture();
+    await expect(f.service.listProvisioningQueue(actor, { q })).rejects.toThrow();
+    expect(f.tx.tenantApplication.findMany).not.toHaveBeenCalled();
+  });
   it('serializes the linked ID in the Super Admin application list', async () => {
     const f = fixture('SUPER_ADMIN');
     f.tx.tenantApplication.findMany.mockResolvedValue([{ id: 'application', organizationId: 45n }]);

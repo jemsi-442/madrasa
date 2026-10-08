@@ -447,6 +447,13 @@ refreshes the queue rather than automatically resubmitting. Session-bound dialog
 and callback checks prevent stale confirmations after logout/relogin. School
 creation remains separate from first-admin invitation and activation.
 
+The queue accepts optional `q` (trimmed, at most 100 characters) to search school
+name or code only. Approval and IT permission filters always apply, and SQL LIKE
+wildcards are treated as literal text. The UI submits search explicitly, resets
+to page one for a new query, retains the applied query during refresh/pagination,
+and offers **Clear search**. Empty results do not reveal unapproved applications
+or nominated administrator emails.
+
 ### First Admin Invitation Foundation
 
 Migration `202610081300_add_school_admin_invitations` and internal lifecycle
@@ -828,9 +835,9 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 23 tests pass in headless Chromium, including sign-in through the form,
+Verified: 24 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
-successful retry, IT provisioning/progress views, and session-bound dialogs.
+successful retry, IT queue search/pagination, provisioning/progress views, and session-bound dialogs.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data

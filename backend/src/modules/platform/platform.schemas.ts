@@ -25,6 +25,10 @@ export const platformPageSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 }).strict();
 
+export const platformProvisioningQuerySchema = platformPageSchema.extend({
+  q: z.string().trim().max(100).optional(),
+});
+
 export const platformAuditQuerySchema = platformPageSchema.extend({
   action: z.string().trim().min(1).max(100).regex(/^[a-z][a-z0-9.]*$/).optional(),
   actorRole: z.enum(["SUPER_ADMIN", "IT_SECURITY"]).optional(),

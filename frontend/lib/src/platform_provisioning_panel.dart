@@ -20,6 +20,8 @@ class PlatformProvisioningPanel extends StatefulWidget {
 class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
   bool busy = false;
   int page = 1;
+  final searchController = TextEditingController();
+  String search = '';
   List<Map<String, dynamic>> records = [];
   Map<String, dynamic>? selected;
   Map<String, dynamic>? progress;
@@ -33,7 +35,13 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
     load(1);
   }
 
-  Future<void> load(int target) async {
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> load(int target, {String? query}) async {
     if (busy || !current) return;
     setState(() {
       busy = true;
@@ -43,10 +51,11 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
       progressRecord = null;
       message = null;
       page = target;
+      if (query != null) search = query.trim();
     });
     try {
       final data = await widget.call(
-        '/provisioning-queue?page=$target&pageSize=20',
+        '/provisioning-queue?page=$target&pageSize=20${search.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(search)}'}',
       );
       if (!current) return;
       setState(() {
@@ -255,6 +264,38 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
                 ],
               ),
             ] else ...[
+              TextField(
+                controller: searchController,
+                enabled: !busy,
+                maxLength: 100,
+                textInputAction: TextInputAction.search,
+                decoration: const InputDecoration(
+                  labelText: 'Search madrassa name or code',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onSubmitted: (value) => load(1, query: value),
+              ),
+              Wrap(
+                spacing: 12,
+                children: [
+                  TextButton(
+                    onPressed: busy
+                        ? null
+                        : () => load(1, query: searchController.text),
+                    child: const Text('Search madrassas'),
+                  ),
+                  TextButton(
+                    onPressed: busy
+                        ? null
+                        : () {
+                            searchController.clear();
+                            load(1, query: '');
+                          },
+                    child: const Text('Clear search'),
+                  ),
+                ],
+              ),
+              if (search.isNotEmpty) Text('Results for "$search"'),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -264,7 +305,11 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
                 ),
               ),
               if (!busy && records.isEmpty && message == null)
-                const Text('No approved applications on this page.'),
+                Text(
+                  search.isEmpty
+                      ? 'No approved applications on this page.'
+                      : 'No approved madrassas match this search on this page.',
+                ),
               for (final record in records)
                 Card(
                   child: Padding(

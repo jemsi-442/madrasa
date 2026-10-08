@@ -4,7 +4,7 @@ import { HttpError } from "../../shared/errors/http-error";
 import { assertPlatformPermission, type PlatformPermission } from "./platform.permissions";
 import { platformPageSchema, platformAuditQuerySchema, platformSessionIdSchema, tenantApplicationSchema, tenantDecisionSchema } from "./platform.schemas";
 import type { PlatformHealthReader } from "./platform.health";
-import { platformAccountIdSchema, platformDisableAccountSchema, platformAccountQuerySchema, platformRestoreAccountSchema, platformApplicationQuerySchema } from "./platform.schemas";
+import { platformAccountIdSchema, platformDisableAccountSchema, platformAccountQuerySchema, platformRestoreAccountSchema, platformApplicationQuerySchema, platformProvisioningQuerySchema } from "./platform.schemas";
 
 // Only a future verified platform session may construct this context.
 // Do not adapt a school req.authUser into it, even for a school ADMIN.
@@ -82,11 +82,15 @@ export class PlatformGovernanceService {
   }
 
   async listProvisioningQueue(actor: PlatformContext, input: unknown = {}) {
-    const { page, pageSize } = platformPageSchema.parse(input);
+    const { page, pageSize, q } = platformProvisioningQuerySchema.parse(input);
+    // Treat SQL LIKE metacharacters as literal search text, not wildcards.
+    const search = q?.replace(/[\\%_]/g, "\\$&");
     return this.db.$transaction(async (tx) => {
       await this.authorize(tx, actor, "tenant.provisioning.create");
       const applications = await tx.tenantApplication.findMany({
-        where: { status: "APPROVED" },
+        where: { status: "APPROVED", ...(search ? { OR: [
+          { schoolName: { contains: search } }, { requestedCode: { contains: search } },
+        ] } : {}) },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * pageSize, take: pageSize,
         select: { id: true, schoolName: true, requestedCode: true, reviewedAt: true,

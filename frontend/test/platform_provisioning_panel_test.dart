@@ -4,6 +4,71 @@ import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
+  testWidgets(
+    'queue search resets pagination and survives refresh until cleared',
+    (tester) async {
+      final paths = <Uri>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PlatformProvisioningPanel(
+                sessionIsCurrent: () => true,
+                call: (path, {body}) async {
+                  expect(body, isNull);
+                  final uri = Uri.parse(path);
+                  paths.add(uri);
+                  if (uri.queryParameters.containsKey('q')) return [];
+                  return List.generate(
+                    20,
+                    (index) => {
+                      'id': 'application-$index',
+                      'schoolName': 'School $index',
+                      'requestedCode': 'school-$index',
+                      'organization': {'status': 'PENDING_ACTIVATION'},
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Next page'));
+      await tester.tap(find.text('Next page'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters['page'], '2');
+      final search = find.widgetWithText(
+        TextField,
+        'Search madrassa name or code',
+      );
+      await tester.ensureVisible(search);
+      await tester.enterText(search, '  Afaq & School  ');
+      await tester.ensureVisible(find.text('Search madrassas'));
+      await tester.tap(find.text('Search madrassas'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters, {
+        'page': '1',
+        'pageSize': '20',
+        'q': 'Afaq & School',
+      });
+      expect(
+        find.text('No approved madrassas match this search on this page.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Refresh queue'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters['q'], 'Afaq & School');
+      await tester.tap(find.text('Clear search'));
+      await tester.pumpAndSettle();
+      expect(paths.last.queryParameters, {'page': '1', 'pageSize': '20'});
+      expect(find.text('School 0'), findsOneWidget);
+      expect(tester.widget<TextField>(search).controller!.text, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final outcome in [
     'created',
     'replay',

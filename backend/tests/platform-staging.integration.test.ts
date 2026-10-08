@@ -351,8 +351,21 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     const decision = { decision: 'APPROVED', reason: 'Disposable HTTP ownership evidence checked' };
     expect((await request(app).post(`${url}/review`).set('Authorization', requester).send(decision)).status).toBe(403);
     expect((await request(app).get(`${url}/onboarding-progress`).set('Authorization', operator)).status).toBe(404);
+    const queue = '/api/platform/provisioning-queue';
+    expect((await request(app).get(queue).query({ q: 'http-journey' }).set('Authorization', operator)).body.data).toEqual([]);
     expect((await request(app).get('/api/platform/tenant-applications').set('Authorization', operator)).status).toBe(403);
     expect((await request(app).post(`${url}/review`).set('Authorization', reviewer).send(decision)).status).toBe(200);
+    for (const q of ['http-journey', 'HTTP Journey']) {
+      const matches = await request(app).get(queue).query({ q }).set('Authorization', operator);
+      expect(matches.status).toBe(200);
+      expect(matches.body.data.map((row: { id: string }) => row.id)).toEqual([id]);
+    }
+    for (const q of ['%', '_', '\\', 'http-admin@example.test']) {
+      const matches = await request(app).get(queue).query({ q }).set('Authorization', operator);
+      expect(matches.status).toBe(200);
+      expect(matches.body.data).toEqual([]);
+    }
+    expect((await request(app).get(queue).query({ q: 'x'.repeat(101) }).set('Authorization', operator)).status).toBe(422);
     expect((await request(app).post(`${url}/provision`).set('Authorization', reviewer).send({})).status).toBe(403);
     const preflight = await request(app).get(`${url}/provisioning-preflight`).set('Authorization', operator);
     expect(preflight.status).toBe(200);
