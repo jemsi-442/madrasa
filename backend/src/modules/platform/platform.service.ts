@@ -5,7 +5,7 @@ import { assertPlatformPermission, hasPlatformPermission, type PlatformPermissio
 import { platformPageSchema, platformAuditQuerySchema, platformSessionIdSchema, tenantApplicationSchema, tenantDecisionSchema } from "./platform.schemas";
 import type { PlatformHealthReader } from "./platform.health";
 import { platformAccountIdSchema, platformDisableAccountSchema, platformAccountQuerySchema, platformRestoreAccountSchema, platformApplicationQuerySchema, platformProvisioningQuerySchema } from "./platform.schemas";
-import { technicalReviewFingerprint } from "./platform.technical-review";
+import { technicalReviewFingerprint, reviewWithdrawalWhere } from "./platform.technical-review";
 
 // Only a future verified platform session may construct this context.
 // Do not adapt a school req.authUser into it, even for a school ADMIN.
@@ -60,13 +60,15 @@ export class PlatformGovernanceService {
         const review = await tx.platformAuditEvent.findFirst({
           where: { entityType: "TenantApplication", entityId: id, action: "tenant.technical-review.recorded", actorRole: "IT_SECURITY" },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          select: { actorId: true, createdAt: true, metadata: true },
+          select: { id: true, actorId: true, createdAt: true, metadata: true },
         });
         signOffStatus = "MISSING";
         if (review) {
+          const withdrawn = await tx.platformAuditEvent.findFirst({ where: reviewWithdrawalWhere(review.id), select: { id: true } });
           const age = now.getTime() - review.createdAt.getTime();
           const metadata = review.metadata;
-          if (age < 0 || age >= 86_400_000) signOffStatus = "EXPIRED";
+          if (withdrawn) signOffStatus = "WITHDRAWN";
+          else if (age < 0 || age >= 86_400_000) signOffStatus = "EXPIRED";
           else if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)
             || metadata.fingerprint !== technicalReviewFingerprint(application)) signOffStatus = "STATE_CHANGED";
           else {

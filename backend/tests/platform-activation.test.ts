@@ -25,6 +25,14 @@ function fixture(role = 'SUPER_ADMIN') {
   return { application, tx, db: { $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient };
 }
 describe('guarded school activation foundation', () => {
+  it('rejects a withdrawn review before changing access', async () => {
+    const f = fixture();
+    const original = f.tx.platformAuditEvent.findFirst.getMockImplementation()!;
+    f.tx.platformAuditEvent.findFirst.mockImplementation(async (query) => query.where.action === 'tenant.technical-review.withdrawn' ? { id: 'withdrawal' } : original(query));
+    await expect(activateSchool(f.db, actor, 'application', input)).rejects.toMatchObject({ statusCode: 409 });
+    expect(f.tx.organization.updateMany).not.toHaveBeenCalled();
+    expect(f.tx.user.updateMany).not.toHaveBeenCalled();
+  });
   it('rejects a superseded receipt even if the latest review is valid', async () => {
     const f = fixture();
     await expect(activateSchool(f.db, actor, 'application', { ...input, technicalReviewId: 'older-review' })).rejects.toMatchObject({ statusCode: 409 });

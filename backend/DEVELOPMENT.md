@@ -565,6 +565,22 @@ Office activation input is now only `invitationId`, `technicalReviewId` and
 `approvalReason`; technical checklist/evidence fields are rejected. IT cannot
 provide the final office approval. No sign-off or activation HTTP route is exposed.
 
+`withdrawTechnicalReview` is also internal-only and requires an active IT account,
+the latest review ID and a reason (10-500 characters). Any authorized IT operator
+may withdraw the latest sign-off before activation, including another operator's
+review. The immutable `tenant.technical-review.withdrawn` event is linked directly
+to that `TechnicalReview` ID; it does not delete evidence or change school/admin
+access. Repeating the same withdrawal returns `withdrawn: false` without another
+audit write. Stale review IDs, non-pending schools and previously activated schools
+are rejected. Serialization conflicts require an explicit refresh/review, not an
+automatic write retry. This is not a school suspension or incident response API.
+
+Activation and onboarding check for that withdrawal independently of timestamp
+ordering. The withdrawn receipt cannot authorize activation again. A new IT
+review is required; its separate receipt is unaffected by the previous withdrawal.
+Super Admin sees only that preparation is waiting on IT. The withdrawal reason
+and evidence remain outside office history and the progress response.
+
 A serializable transaction changes only the pending school and accepted disabled
 admin to ACTIVE, then records `tenant.school.activated` with the IT receipt ID and
 office approval reason, not a copied technical checklist.
@@ -618,7 +634,7 @@ exists, then `OFFICE_APPROVAL`. The latest receipt is checked against the exact
 onboarding fingerprint, its 24-hour lifetime and the signer's current active IT
 role. Super Admin receives only that next-step summary, not receipt details or
 technical failure reasons. IT's `activationReview.signOffStatus` distinguishes
-`MISSING`, `CURRENT`, `EXPIRED`, `STATE_CHANGED`, `OPERATOR_UNAVAILABLE` and
+`MISSING`, `CURRENT`, `WITHDRAWN`, `EXPIRED`, `STATE_CHANGED`, `OPERATOR_UNAVAILABLE` and
 `NOT_READY`. Fingerprints, evidence references and signer identity are never
 returned. These are point-in-time read-only indicators; activation rechecks its
 own authorization and receipt independently. A current IT review is not an
@@ -920,7 +936,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 46 tests pass in headless Chromium, including sign-in through the form,
+Verified: 47 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,

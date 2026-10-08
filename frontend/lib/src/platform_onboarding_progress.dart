@@ -160,6 +160,8 @@ class PlatformOnboardingProgress extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(switch (data['activationReview']['signOffStatus']) {
+          'WITHDRAWN' =>
+            'IT sign-off was withdrawn. A new technical review is required before office approval.',
           'CURRENT' =>
             'IT sign-off is current for this snapshot. Office approval is still required.',
           'EXPIRED' =>

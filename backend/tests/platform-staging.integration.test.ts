@@ -11,7 +11,7 @@ import { createPlatformHealthReader } from "../src/modules/platform/platform.hea
 import { issueSchoolAdminInvitation, acceptSchoolAdminInvitation } from "../src/modules/platform/platform.school-invitation";
 import bcrypt from "bcryptjs";
 import { activateSchool } from "../src/modules/platform/platform.activation";
-import { recordTechnicalReview } from "../src/modules/platform/platform.technical-review";
+import { recordTechnicalReview, withdrawTechnicalReview } from "../src/modules/platform/platform.technical-review";
 import express from "express";
 import request from "supertest";
 import { createSchoolInvitationRouter } from "../src/modules/platform/platform.invitation-routes";
@@ -303,6 +303,15 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     await expect(activateSchool(db, actor, application.id, { ...input, technicalReviewId: supersededId })).rejects.toMatchObject({ statusCode: 409 });
     expect((await db.organization.findUniqueOrThrow({ where: { id: application.organizationId! } })).status).toBe('PENDING_ACTIVATION');
     expect((await db.user.findUniqueOrThrow({ where: { id: application.adminInvitation!.acceptedUserId! } })).status).toBe('DISABLED');
+    const withdrawalInput = { technicalReviewId: input.technicalReviewId, reason: 'Staging technical issue requires a fresh review' };
+    await expect(withdrawTechnicalReview(db, actor, application.id, withdrawalInput)).rejects.toMatchObject({ statusCode: 403 });
+    expect(await withdrawTechnicalReview(db, itActor, application.id, withdrawalInput)).toEqual({ withdrawn: true });
+    expect(await withdrawTechnicalReview(db, itActor, application.id, withdrawalInput)).toEqual({ withdrawn: false });
+    expect((await service.onboardingProgress(actor, application.id)).nextResponsibility).toBe('IT_REVIEW');
+    expect((await service.onboardingProgress(itActor, application.id)).activationReview?.signOffStatus).toBe('WITHDRAWN');
+    await expect(activateSchool(db, actor, application.id, input)).rejects.toMatchObject({ statusCode: 409 });
+    input.technicalReviewId = (await recordTechnicalReview(db, itActor, application.id, technicalInput)).reviewId;
+    expect((await service.onboardingProgress(actor, application.id)).nextResponsibility).toBe('OFFICE_APPROVAL');
     await expect(activateSchool(db, itActor, application.id, input)).rejects.toMatchObject({ statusCode: 403 });
     await expect(activateSchool(db, actor, application.id, { ...input, technicalReviewId: 'missing-review' })).rejects.toMatchObject({ statusCode: 409 });
     const officeEvents = await service.listAuditEvents(actor, { applicationId: application.id });

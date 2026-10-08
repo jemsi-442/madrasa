@@ -16,6 +16,16 @@ export const technicalReviewSchema = z.object({
   }).strict(),
 }).strict();
 
+const withdrawalSchema = z.object({
+  technicalReviewId: platformAccountIdSchema,
+  reason: z.string().trim().min(10).max(500),
+}).strict();
+
+// A separate immutable receipt invalidates this review, not future IT reviews.
+export function reviewWithdrawalWhere(reviewId: string) {
+  return { entityType: "TechnicalReview", entityId: reviewId, action: "tenant.technical-review.withdrawn" };
+}
+
 export const activationApplicationSelect = {
   status: true, requestedById: true, reviewedById: true, reviewedAt: true,
   provisionedAt: true, adminEmail: true,
@@ -70,6 +80,42 @@ export async function recordTechnicalReview(db: PrismaClient, actor: PlatformCon
           evidenceReference: data.evidenceReference, operatorAttestations: data.checks },
       }, select: { id: true, createdAt: true } });
       return { reviewId: receipt.id, expiresAt: new Date(receipt.createdAt.getTime() + 86_400_000).toISOString() };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      throw new HttpError(409, "Onboarding changed; refresh and review again");
+    }
+    throw error;
+  }
+}
+
+export async function withdrawTechnicalReview(db: PrismaClient, actor: PlatformContext, applicationId: unknown, input: unknown) {
+  const id = platformAccountIdSchema.parse(applicationId);
+  const data = withdrawalSchema.parse(input);
+  if (actor.scope !== "platform") throw new HttpError(401, "Platform authentication required");
+  try {
+    return await db.$transaction(async (tx) => {
+      const account = await tx.platformAccount.findUnique({ where: { id: actor.accountId }, select: { id: true, role: true, status: true } });
+      if (!account || account.status !== "ACTIVE") throw new HttpError(403, "Active platform account required");
+      assertPlatformPermission(account.role, "tenant.technical-review.create");
+      const application = await tx.tenantApplication.findUnique({ where: { id }, select: { status: true, organization: { select: { status: true } } } });
+      if (application?.status !== "APPROVED" || application.organization?.status !== "PENDING_ACTIVATION") {
+        throw new HttpError(409, "Only pending onboarding reviews can be withdrawn");
+      }
+      const activated = await tx.platformAuditEvent.findFirst({ where: { entityType: "TenantApplication", entityId: id, action: "tenant.school.activated" }, select: { id: true } });
+      if (activated) throw new HttpError(409, "Activated schools require separate incident handling");
+      const review = await tx.platformAuditEvent.findFirst({
+        where: { entityType: "TenantApplication", entityId: id, action: "tenant.technical-review.recorded", actorRole: "IT_SECURITY" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true },
+      });
+      if (!review || review.id !== data.technicalReviewId) throw new HttpError(409, "Refresh and select the latest IT review");
+      const withdrawn = await tx.platformAuditEvent.findFirst({ where: reviewWithdrawalWhere(review.id), select: { id: true } });
+      if (withdrawn) return { withdrawn: false };
+      await tx.platformAuditEvent.create({ data: {
+        ...reviewWithdrawalWhere(review.id), actorId: account.id, actorRole: account.role,
+        metadata: { applicationId: id, reason: data.reason },
+      } });
+      return { withdrawn: true };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {

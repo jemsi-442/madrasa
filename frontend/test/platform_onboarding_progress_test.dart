@@ -4,6 +4,37 @@ import 'package:mif_app/src/platform_onboarding_progress.dart';
 import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
+  testWidgets('IT sees withdrawn sign-off as requiring a new review', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: PlatformOnboardingProgress(
+              data: {
+                'schoolName': 'School',
+                'requestedCode': 'school',
+                'stage': 'ACTIVATION_REVIEW_PENDING',
+                'nextResponsibility': 'IT_REVIEW',
+                'activationReview': {
+                  'signOffStatus': 'WITHDRAWN',
+                  'prerequisitesPassed': true,
+                  'manualReviews': ['Access controls'],
+                },
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('IT sign-off was withdrawn'), findsOneWidget);
+    expect(find.text('Access controls: review required'), findsOneWidget);
+    expect(
+      find.textContaining('Waiting for independent office approval'),
+      findsNothing,
+    );
+  });
   for (final ready in [false, true]) {
     testWidgets('office sees only next responsibility ready=$ready', (
       tester,

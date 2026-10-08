@@ -4,7 +4,7 @@ import { HttpError } from "../../shared/errors/http-error";
 import { assertPlatformPermission } from "./platform.permissions";
 import { platformAccountIdSchema } from "./platform.schemas";
 import type { PlatformContext } from "./platform.service";
-import { activationApplicationSelect, technicalReviewFingerprint } from "./platform.technical-review";
+import { activationApplicationSelect, technicalReviewFingerprint, reviewWithdrawalWhere } from "./platform.technical-review";
 
 const activationSchema = z.object({
   invitationId: platformAccountIdSchema,
@@ -71,6 +71,8 @@ export async function activateSchool(db: PrismaClient, actor: PlatformContext, a
       if (operator?.role !== "IT_SECURITY" || operator.status !== "ACTIVE") {
         throw new HttpError(409, "IT sign-off operator is no longer authorized");
       }
+      const withdrawn = await tx.platformAuditEvent.findFirst({ where: reviewWithdrawalWhere(review.id), select: { id: true } });
+      if (withdrawn) throw new HttpError(409, "IT sign-off was withdrawn; a new review is required");
       const changed = await tx.organization.updateMany({
         where: { id: organization.id, status: "PENDING_ACTIVATION" }, data: { status: "ACTIVE" },
       });
