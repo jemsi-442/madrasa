@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 class RefreshableOnboardingProgress extends StatefulWidget {
@@ -6,11 +8,13 @@ class RefreshableOnboardingProgress extends StatefulWidget {
     required this.initialData,
     required this.load,
     required this.sessionIsCurrent,
+    this.now,
   });
 
   final Map<String, dynamic> initialData;
   final Future<Map<String, dynamic>> Function() load;
   final bool Function() sessionIsCurrent;
+  final DateTime Function()? now;
 
   @override
   State<RefreshableOnboardingProgress> createState() =>
@@ -22,11 +26,29 @@ class _RefreshableOnboardingProgressState
   Map<String, dynamic>? data;
   bool busy = false;
   bool failed = false;
+  Timer? freshnessTimer;
+
+  bool get snapshotIsCurrent {
+    final value = data?['checkedAt'];
+    final checkedAt = value is String ? DateTime.tryParse(value) : null;
+    if (checkedAt == null) return false;
+    final age = (widget.now?.call() ?? DateTime.now()).difference(checkedAt);
+    return !age.isNegative && age < const Duration(minutes: 1);
+  }
 
   @override
   void initState() {
     super.initState();
     data = widget.initialData;
+    freshnessTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    freshnessTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> refresh() async {
@@ -74,7 +96,16 @@ class _RefreshableOnboardingProgressState
               'Progress could not be refreshed. Previous information has been hidden. Use Refresh progress to try again; no onboarding state was changed.',
             ),
           ),
-        if (data != null) PlatformOnboardingProgress(data: data!),
+        if (data != null)
+          if (snapshotIsCurrent)
+            PlatformOnboardingProgress(data: data!)
+          else
+            Semantics(
+              liveRegion: true,
+              child: const Text(
+                'Progress is outdated or its check time cannot be verified. Use Refresh progress to check the current handoff. No onboarding state was changed.',
+              ),
+            ),
       ],
     );
   }

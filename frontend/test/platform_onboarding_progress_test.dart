@@ -199,6 +199,7 @@ void main() {
                 expect(body, isNull);
                 if (path.endsWith('/onboarding-progress')) {
                   return {
+                    'checkedAt': DateTime.now().toUtc().toIso8601String(),
                     'schoolName': 'School',
                     'requestedCode': 'school',
                     'stage': 'INVITATION_PENDING',

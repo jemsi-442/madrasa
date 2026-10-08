@@ -16,6 +16,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       var progressReads = 0;
+      var checkedAt = '';
       final writes = <String>[];
       final api = PlatformApi(
         baseUrl: 'https://platform.example.test',
@@ -45,11 +46,12 @@ void main() {
               if (progressReads == 2) {
                 return http.Response('private diagnostic', 503);
               }
+              checkedAt = DateTime.now().toUtc().toIso8601String();
               data = {
                 'schoolName': 'Afaq School',
                 'requestedCode': 'afaq-school',
                 'stage': 'ACTIVATION_REVIEW_PENDING',
-                'checkedAt': '2026-10-08T10:00:0${progressReads}Z',
+                'checkedAt': checkedAt,
                 'steps': [],
                 'activationReview': {
                   'activationEnabled': false,
@@ -108,7 +110,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('IT technical readiness'), findsNothing);
       expect(
-        find.text('Checked (UTC): 2026-10-08T10:00:01.000Z'),
+        find.text('Checked (UTC): $checkedAt'),
         findsOneWidget,
       );
       await tester.ensureVisible(find.text('Refresh progress'));
@@ -123,7 +125,7 @@ void main() {
       await tester.tap(find.text('Refresh progress'));
       await tester.pumpAndSettle();
       expect(
-        find.text('Checked (UTC): 2026-10-08T10:00:03.000Z'),
+        find.text('Checked (UTC): $checkedAt'),
         findsOneWidget,
       );
       expect(find.text('Backup and recovery: review required'), findsNothing);

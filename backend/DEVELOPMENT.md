@@ -618,6 +618,12 @@ Both company views offer **Refresh progress** without reopening the view. Refres
 hides the previous snapshot immediately and blocks duplicate requests while
 loading. A failed refresh shows a retry message rather than stale readiness;
 responses arriving after session change or after closing the view are ignored.
+The open view checks snapshot age locally every 15 seconds. Once `checkedAt`
+is at least one minute old, missing, invalid or in the future, progress and
+readiness claims are hidden until a successful refresh returns a current check
+time. This timer makes no network requests or writes and is disposed with the
+view. It is a freshness warning, not a replacement for server-side authorization
+or activation checks; clock skew can also require a refreshed, verified time.
 
 For IT only, the same response includes `activationReview`: seven
 read-only prerequisite checks and five outstanding manual evidence reviews.
@@ -954,7 +960,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 49 tests pass in headless Chromium, including sign-in through the form,
+Verified: 53 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,
