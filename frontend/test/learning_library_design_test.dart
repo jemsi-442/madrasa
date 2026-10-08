@@ -45,6 +45,37 @@ Finder key(String value) => find.byKey(ValueKey(value));
 void main() {
   for (final width in [320.0, 1440.0]) {
     testWidgets(
+      'course search keeps typing focus when resume changes at $width',
+      (t) async {
+        final f = DesignFixture();
+        await host(t, f.page(builder: f.surface), width: width);
+        final search = find.widgetWithText(
+          TextField,
+          'Search subjects or courses',
+        );
+        await t.ensureVisible(search);
+        await t.showKeyboard(search);
+        final editable = find.descendant(
+          of: search,
+          matching: find.byType(EditableText),
+        );
+        final controller = t.widget<EditableText>(editable).controller;
+        for (final query in ['f', 'fi', 'fiq', 'fiqh', 'no-such-course', '']) {
+          t.testTextInput.enterText(query);
+          await t.pumpAndSettle();
+          final field = t.widget<EditableText>(editable);
+          expect(field.controller, same(controller));
+          expect(field.controller.text, query);
+          expect(field.focusNode.hasFocus, isTrue);
+        }
+        expect(find.text('Resume lesson'), findsOneWidget);
+        expect(find.byType(CourseCover), findsNWidgets(2));
+        expect(f.paths, ['/api/learner/courses']);
+        expect(f.writes, isEmpty);
+      },
+    );
+
+    testWidgets(
       'course search filters content, not dashboard pages, at $width',
       (t) async {
         final f = DesignFixture();

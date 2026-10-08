@@ -278,6 +278,8 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
             const SizedBox(height: 22),
           ],
           SurfacePanel(
+            // Keep input state when filtering inserts or removes the resume card.
+            key: const ValueKey('learner-course-filters'),
             child: Wrap(
               spacing: 14,
               runSpacing: 14,
