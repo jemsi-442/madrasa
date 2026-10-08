@@ -2024,17 +2024,47 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   );
 }
 
-class PlatformHealthPanel extends StatelessWidget {
+class PlatformHealthPanel extends StatefulWidget {
   const PlatformHealthPanel({
     super.key,
     required this.snapshot,
     required this.loading,
+    this.now,
   });
   final Map<String, dynamic>? snapshot;
   final bool loading;
+  final DateTime Function()? now;
+
+  @override
+  State<PlatformHealthPanel> createState() => _PlatformHealthPanelState();
+}
+
+class _PlatformHealthPanelState extends State<PlatformHealthPanel> {
+  Timer? freshnessTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    freshnessTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted && widget.snapshot != null) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    freshnessTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final snapshot = widget.snapshot;
+    final loading = widget.loading;
+    final checkedAt = DateTime.tryParse('${snapshot?['checkedAt']}');
+    final now = (widget.now ?? DateTime.now)().toUtc();
+    final age = checkedAt == null ? null : now.difference(checkedAt.toUtc());
+    final timeUnknown = age == null || age.isNegative;
+    final stale = !timeUnknown && age >= const Duration(seconds: 60);
     final healthy = snapshot?['status'] == 'healthy';
     final checks = (snapshot?['checks'] as List?) ?? [];
     final databaseUnavailable = checks.any(
@@ -2057,6 +2087,10 @@ class PlatformHealthPanel extends StatelessWidget {
                       ? (loading
                             ? 'Checking services...'
                             : 'No health result available')
+                      : timeUnknown
+                      ? 'Health check time cannot be verified'
+                      : stale
+                      ? 'Health results need refreshing'
                       : healthy
                       ? 'Core services available'
                       : 'Service attention needed',
@@ -2071,8 +2105,15 @@ class PlatformHealthPanel extends StatelessWidget {
                 ),
                 if (snapshot != null) ...[
                   const SizedBox(height: 8),
+                  if (timeUnknown || stale)
+                    Text(
+                      timeUnknown
+                          ? 'The check timestamp is missing, invalid or ahead of this device clock. Verify the clock and use Refresh; current service availability is unknown.'
+                          : 'This snapshot is at least 60 seconds old. Current service availability is unknown. Use Refresh for a new check.',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   Text(
-                    'Checked: ${snapshot!['checkedAt']} (UTC). Results may be cached for 5 seconds.',
+                    'Checked: ${snapshot['checkedAt']} (UTC). Results may be cached for 5 seconds.',
                   ),
                 ],
               ],

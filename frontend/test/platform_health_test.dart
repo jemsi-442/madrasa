@@ -5,9 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
 
-const snapshot = <String, dynamic>{
+Map<String, dynamic> get snapshot => <String, dynamic>{
   'status': 'degraded',
-  'checkedAt': '2026-10-08T00:00:00.000Z',
+  'checkedAt': DateTime.now().toUtc().toIso8601String(),
   'checks': [
     {'name': 'database', 'status': 'available', 'latencyMs': 4},
     {'name': 'redis', 'status': 'unavailable', 'latencyMs': null},
@@ -15,13 +15,73 @@ const snapshot = <String, dynamic>{
 };
 
 void main() {
+  testWidgets(
+    'fresh results expire without fetching and recover on new snapshot',
+    (tester) async {
+      var now = DateTime.utc(2026, 10, 8);
+      final data = <String, dynamic>{
+        'status': 'healthy',
+        'checkedAt': now.toIso8601String(),
+        'checks': <dynamic>[],
+      };
+      Widget panel() => MaterialApp(
+        home: Scaffold(
+          body: PlatformHealthPanel(
+            snapshot: data,
+            loading: false,
+            now: () => now,
+          ),
+        ),
+      );
+      await tester.pumpWidget(panel());
+      expect(find.text('Core services available'), findsOneWidget);
+      now = now.add(const Duration(seconds: 60));
+      await tester.pump(const Duration(seconds: 15));
+      expect(find.text('Health results need refreshing'), findsOneWidget);
+      expect(find.text('Core services available'), findsNothing);
+      data['checkedAt'] = now.toIso8601String();
+      await tester.pumpWidget(panel());
+      expect(find.text('Core services available'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 30));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final timestamp in [null, 'invalid', '2099-01-01T00:00:00Z']) {
+    testWidgets(
+      'unverified timestamp never claims current health: $timestamp',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: PlatformHealthPanel(
+                  snapshot: {'status': 'healthy', 'checkedAt': timestamp},
+                  loading: false,
+                  now: () => DateTime.utc(2026, 10, 8),
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(
+          find.text('Health check time cannot be verified'),
+          findsOneWidget,
+        );
+        expect(find.text('Core services available'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
   testWidgets('degraded health has clear text and fits mobile', (tester) async {
     tester.view.physicalSize = const Size(390, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
             child: PlatformHealthPanel(snapshot: snapshot, loading: false),
@@ -68,7 +128,7 @@ void main() {
                 child: PlatformHealthPanel(
                   snapshot: {
                     'status': unavailable ? 'degraded' : 'healthy',
-                    'checkedAt': '2026-10-08T00:00:00.000Z',
+                    'checkedAt': DateTime.now().toUtc().toIso8601String(),
                     'checks': [
                       {
                         'name': 'database',

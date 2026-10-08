@@ -673,6 +673,12 @@ The response deadline is not general-purpose cancellation of an underlying
 database connection attempt. There is no background polling or persistent health
 history. UI Refresh clears the prior snapshot before a new request so failures
 cannot leave an old green result displayed as current.
+The health panel also reevaluates snapshot age locally every 15 seconds. At
+60 seconds old, its heading requires refresh rather than claiming current
+availability. Missing, invalid or future check timestamps show an unverified-time
+warning (including possible device clock skew). A fresh successful response
+restores the normal heading. This is a UI freshness threshold, not an SLA or a
+background health probe; it sends no network requests and stops on disposal.
 
 Unavailable services show contextual, read-only operator guidance: database
 connectivity checks and verification of uncertain writes, or Redis connectivity
@@ -869,11 +875,12 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 39 tests pass in headless Chromium, including sign-in through the form,
+Verified: 43 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application-scoped audit navigation, onboarding overview navigation,
 main-list refresh failure/retry handling, service-specific health guidance,
+snapshot expiry and unverified check timestamps,
 and session-bound dialogs.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
