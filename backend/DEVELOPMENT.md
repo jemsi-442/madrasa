@@ -816,6 +816,36 @@ permissions or tenant-data access have been expanded by these probes.
 
 ### Login and Controlled Bootstrap
 
+For a disposable, local-only company-console demonstration, run from `backend`:
+
+```bash
+npm run platform:demo -- --start
+```
+
+This creates a new private `/tmp/afaq-local-demo-*` MariaDB data directory and
+Redis instance on loopback ports, installs the schema there, and binds a
+platform-only API to `127.0.0.1:4087`. It does not use the configured school
+database or import its records. Two Super Admins and one IT account get random
+passwords and MFA secrets; credentials are written to the printed private JSON
+file (mode 600 in a mode-700 directory), never to project files. These seeded
+identities are demo fixtures, not production bootstrap or an IT invitation flow.
+
+Build Flutter web with `--dart-define=API_BASE_URL=http://127.0.0.1:4087` and serve
+it at `http://127.0.0.1:8087`; open `/#/platform`. Other browser origins are not
+allowed by this demo API. Use the credentials file's authenticator setup key in
+an authenticator, or obtain local demo codes with:
+
+```bash
+npm run platform:demo -- --codes /tmp/afaq-local-demo-REPLACE/credentials.json
+```
+
+Codes retain the normal 30-second/replay checks and login rate limits. Never
+publish this file or reuse these credentials outside the demo. Ctrl+C stops
+the demo API and its services; temporary data remains private until removed or
+the OS cleans `/tmp`. Each new start creates new accounts and a new directory,
+not a resume or password reset. It refuses `NODE_ENV=production` and requires
+explicit `--start`; no existing database is migrated or overwritten.
+
 Login JSON: `email`, `password`, `code` (six digits, kept as a string). The
 response contains a 15-minute access token and minimal profile, not a refresh
 token. Reauthenticate after expiry. Future browser UI must keep the bearer token

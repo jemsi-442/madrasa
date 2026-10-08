@@ -16,6 +16,7 @@
     "prisma:studio": "prisma studio --schema prisma/schema.prisma",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "platform:bootstrap": "tsx scripts/bootstrap-platform.ts",
+    "platform:demo": "tsx scripts/platform-local-demo.ts",
     "test:platform:staging": "tsx scripts/test-platform-staging.ts",
     "db:install:fresh": "tsx scripts/install-empty-database.ts",
     "seed:e2e-roles": "tsx scripts/seed-e2e-roles.ts",
