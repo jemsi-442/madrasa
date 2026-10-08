@@ -56,12 +56,13 @@ export async function activateSchool(db: PrismaClient, actor: PlatformContext, a
         throw new HttpError(409, "School or administrator is not awaiting activation");
       }
       const review = await tx.platformAuditEvent.findFirst({ where: {
-        id: data.technicalReviewId, entityType: "TenantApplication", entityId: id,
+        entityType: "TenantApplication", entityId: id,
         action: "tenant.technical-review.recorded", actorRole: "IT_SECURITY",
-      }, select: { id: true, actorId: true, createdAt: true, metadata: true } });
+      }, orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { id: true, actorId: true, createdAt: true, metadata: true } });
       const metadata = review?.metadata;
       const age = review ? Date.now() - review.createdAt.getTime() : -1;
-      if (!review || review.actorId === account.id || age < 0 || age >= 86_400_000
+      if (!review || review.id !== data.technicalReviewId || review.actorId === account.id || age < 0 || age >= 86_400_000
         || !metadata || typeof metadata !== "object" || Array.isArray(metadata)
         || metadata.fingerprint !== technicalReviewFingerprint(application)) {
         throw new HttpError(409, "Current independent IT sign-off required");

@@ -557,6 +557,10 @@ school, invitation and accepted administrator state using a SHA-256 fingerprint.
 It is valid for less than 24 hours (an internal freshness policy), and the IT signer
 must still be active with IT_SECURITY role at activation. Missing, stale, future,
 foreign-application or mismatched-state receipts fail closed before access changes.
+Only the latest IT receipt for that application (ordered by creation time, then
+event ID) can authorize a first activation. A submitted older receipt is rejected
+even if it has not expired; this matches the onboarding status view and prevents
+bypassing a newer review. Recorded activation replays still perform no writes.
 Office activation input is now only `invitationId`, `technicalReviewId` and
 `approvalReason`; technical checklist/evidence fields are rejected. IT cannot
 provide the final office approval. No sign-off or activation HTTP route is exposed.

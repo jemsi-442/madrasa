@@ -21,8 +21,9 @@ describe('onboarding progress snapshots', () => {
   it.each(['CURRENT', 'MISSING', 'EXPIRED', 'STATE_CHANGED', 'OPERATOR_UNAVAILABLE'])('reports %s without exposing IT evidence to the office', async (status) => {
     for (const role of ['SUPER_ADMIN', 'IT_SECURITY']) {
       const f = fixture(role);
+      const recordedAt = new Date(Date.now() - (status === 'EXPIRED' ? 86_400_000 : 1_000));
       f.tx.platformAuditEvent.findFirst.mockImplementation(async ({ where }) => where.action !== 'tenant.technical-review.recorded' || status === 'MISSING' ? null : {
-        actorId: 'signer', createdAt: new Date(Date.now() - (status === 'EXPIRED' ? 86_400_000 : 0)),
+        actorId: 'signer', createdAt: recordedAt,
         metadata: { fingerprint: status === 'STATE_CHANGED' ? 'old' : technicalReviewFingerprint(f.application as Parameters<typeof technicalReviewFingerprint>[0]), evidenceReference: 'private-evidence' },
       });
       f.tx.platformAccount.findUnique.mockImplementation(async ({ where }) => where.id === 'signer'

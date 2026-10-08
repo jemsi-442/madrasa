@@ -25,6 +25,18 @@ function fixture(role = 'SUPER_ADMIN') {
   return { application, tx, db: { $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient };
 }
 describe('guarded school activation foundation', () => {
+  it('rejects a superseded receipt even if the latest review is valid', async () => {
+    const f = fixture();
+    await expect(activateSchool(f.db, actor, 'application', { ...input, technicalReviewId: 'older-review' })).rejects.toMatchObject({ statusCode: 409 });
+    expect(f.tx.platformAuditEvent.findFirst).toHaveBeenCalledWith({
+      where: { entityType: 'TenantApplication', entityId: 'application', action: 'tenant.technical-review.recorded', actorRole: 'IT_SECURITY' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true, actorId: true, createdAt: true, metadata: true },
+    });
+    expect(f.tx.organization.updateMany).not.toHaveBeenCalled();
+    expect(f.tx.user.updateMany).not.toHaveBeenCalled();
+    expect(f.tx.platformAuditEvent.create).not.toHaveBeenCalled();
+  });
   it.each(['missing', 'expired', 'future', 'changed', 'same-actor', 'disabled-operator'])('blocks %s technical sign-off before enabling access', async (kind) => {
     const f = fixture();
     const review = { id: 'technical-review', actorId: kind === 'same-actor' ? actor.accountId : 'it',

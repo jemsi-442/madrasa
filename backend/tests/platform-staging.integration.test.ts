@@ -293,7 +293,16 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     expect(officeProgress.nextResponsibility).toBe('OFFICE_APPROVAL');
     expect(officeProgress).not.toHaveProperty('activationReview');
     expect((await service.onboardingProgress(itActor, application.id)).activationReview?.signOffStatus).toBe('CURRENT');
-    const input = { invitationId: application.adminInvitation!.id, technicalReviewId: review.reviewId, approvalReason: 'Office onboarding requirements approved' };
+    const replacement = await recordTechnicalReview(db, itActor, application.id, technicalInput);
+    const latest = await db.platformAuditEvent.findFirstOrThrow({
+      where: { entityId: application.id, entityType: 'TenantApplication', action: 'tenant.technical-review.recorded', actorRole: 'IT_SECURITY' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    const supersededId = latest.id === replacement.reviewId ? review.reviewId : replacement.reviewId;
+    const input = { invitationId: application.adminInvitation!.id, technicalReviewId: latest.id, approvalReason: 'Office onboarding requirements approved' };
+    await expect(activateSchool(db, actor, application.id, { ...input, technicalReviewId: supersededId })).rejects.toMatchObject({ statusCode: 409 });
+    expect((await db.organization.findUniqueOrThrow({ where: { id: application.organizationId! } })).status).toBe('PENDING_ACTIVATION');
+    expect((await db.user.findUniqueOrThrow({ where: { id: application.adminInvitation!.acceptedUserId! } })).status).toBe('DISABLED');
     await expect(activateSchool(db, itActor, application.id, input)).rejects.toMatchObject({ statusCode: 403 });
     await expect(activateSchool(db, actor, application.id, { ...input, technicalReviewId: 'missing-review' })).rejects.toMatchObject({ statusCode: 409 });
     const officeEvents = await service.listAuditEvents(actor, { applicationId: application.id });
