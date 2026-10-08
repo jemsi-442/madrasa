@@ -184,11 +184,16 @@ export class PlatformGovernanceService {
       const applications = await tx.tenantApplication.groupBy({ by: ["status"], _count: { _all: true } });
       const accounts = await tx.platformAccount.groupBy({ by: ["role", "status"], _count: { _all: true } });
       const awaitingYourReview = await tx.tenantApplication.count({ where: { status: "REQUESTED", requestedById: { not: actor.accountId } } });
+      const awaitingSetup = await tx.tenantApplication.count({ where: { status: "APPROVED", organizationId: null } });
+      const pendingActivation = await tx.tenantApplication.count({ where: {
+        status: "APPROVED", organization: { is: { status: "PENDING_ACTIVATION" } },
+      } });
       const applicationCounts = { REQUESTED: 0, APPROVED: 0, REJECTED: 0 };
       for (const row of applications) applicationCounts[row.status] = row._count._all;
       const accountCounts = { SUPER_ADMIN: { ACTIVE: 0, DISABLED: 0 }, IT_SECURITY: { ACTIVE: 0, DISABLED: 0 } };
       for (const row of accounts) accountCounts[row.role][row.status] = row._count._all;
-      return { checkedAt: new Date().toISOString(), applications: applicationCounts, awaitingYourReview, accounts: accountCounts };
+      return { checkedAt: new Date().toISOString(), applications: applicationCounts, awaitingYourReview, accounts: accountCounts,
+        onboarding: { awaitingSetup, pendingActivation } };
     });
   }
 

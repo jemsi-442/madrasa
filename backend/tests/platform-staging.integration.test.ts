@@ -370,6 +370,8 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     const preflight = await request(app).get(`${url}/provisioning-preflight`).set('Authorization', operator);
     expect(preflight.status).toBe(200);
     expect(preflight.body.data.prerequisitesPassed).toBe(true);
+    const beforeSetup = await request(app).get('/api/platform/overview').set('Authorization', reviewer);
+    expect(beforeSetup.status).toBe(200);
     const filtered = (setup: string) => request(app).get(queue).query({ q: 'http-journey', setup }).set('Authorization', operator);
     expect((await filtered('pending')).body.data.map((row: { id: string }) => row.id)).toEqual([id]);
     expect((await filtered('created')).body.data).toEqual([]);
@@ -377,6 +379,12 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     expect(provisioned.status).toBe(201);
     expect(provisioned.body.data).toMatchObject({ status: 'PENDING_ACTIVATION', created: true });
     expect(typeof provisioned.body.data.organizationId).toBe('string');
+    const afterSetup = await request(app).get('/api/platform/overview').set('Authorization', reviewer);
+    expect(afterSetup.status).toBe(200);
+    expect(afterSetup.body.data.onboarding).toEqual({
+      awaitingSetup: beforeSetup.body.data.onboarding.awaitingSetup - 1,
+      pendingActivation: beforeSetup.body.data.onboarding.pendingActivation + 1,
+    });
     expect((await filtered('pending')).body.data).toEqual([]);
     const createdQueue = await filtered('created');
     expect(createdQueue.status).toBe(200);

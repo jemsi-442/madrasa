@@ -304,7 +304,13 @@ application counts by status, requests awaiting that administrator's independent
 review (excluding their own), and company account counts by role/status. These
 are platform aggregates only, not school records or activated-tenant counts.
 IT Security cannot access this endpoint. A failed refresh clears the displayed
-snapshot rather than substituting zeros. Counts are timestamped, not live.
+snapshot. The `onboarding` summary separately counts approved applications with
+no linked school (`awaitingSetup`) and approved applications linked to a school
+marked PENDING_ACTIVATION (`pendingActivation`). These counts are not activation
+readiness checks and do not imply invitation delivery or administrator acceptance.
+**View approved onboarding** opens the approved application list at page one,
+clearing the previous application scope. A count-query failure rejects the whole
+snapshot rather than presenting invented zeros. Counts are timestamped, not live.
 
 Review pending applications opens the application list with `scope=reviewable`
 and `status=REQUESTED`. The backend derives the reviewer from the authenticated
@@ -851,10 +857,10 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 28 tests pass in headless Chromium, including sign-in through the form,
+Verified: 30 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
-views, application-scoped audit navigation, and session-bound dialogs.
+views, application-scoped audit navigation, onboarding overview navigation, and session-bound dialogs.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data

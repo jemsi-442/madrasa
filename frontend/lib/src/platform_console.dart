@@ -1066,6 +1066,16 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                     'Rejected applications',
                                     overview!['applications']['REJECTED'],
                                   ),
+                                  if (overview!['onboarding'] is Map) ...[
+                                    overviewMetric(
+                                      'Approved, awaiting setup',
+                                      overview!['onboarding']['awaitingSetup'],
+                                    ),
+                                    overviewMetric(
+                                      'Created, awaiting activation',
+                                      overview!['onboarding']['pendingActivation'],
+                                    ),
+                                  ],
                                   overviewMetric(
                                     'Active IT accounts',
                                     overview!['accounts']['IT_SECURITY']['ACTIVE'],
@@ -1082,13 +1092,31 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                'Approved applications are not activated madrassas. IT can create an inactive school; invitations and activation are still pending. Counts are a snapshot; refresh before making decisions.',
+                                'Approval is not activation. Awaiting activation counts linked schools marked pending, not verified readiness. Review each application before taking action. Email delivery and activation controls remain unavailable here. Counts are a snapshot; refresh before making decisions.',
                               ),
                               TextButton(
                                 onPressed: () => setState(() {
                                   overview = null;
                                 }),
                                 child: const Text('Hide overview'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: busy
+                                    ? null
+                                    : () => run(() async {
+                                        audit = false;
+                                        healthView = false;
+                                        sessionsView = false;
+                                        accountsView = false;
+                                        applicationStatus = 'APPROVED';
+                                        applicationScope = '';
+                                        page = 1;
+                                        records = [];
+                                        overview = null;
+                                        await load();
+                                      }),
+                                icon: const Icon(Icons.checklist_outlined),
+                                label: const Text('View approved onboarding'),
                               ),
                               FilledButton.icon(
                                 onPressed: busy

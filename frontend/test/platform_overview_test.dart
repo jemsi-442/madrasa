@@ -17,6 +17,7 @@ void main() {
       var fail = false;
       var reads = 0;
       var reviewQueueOpened = false;
+      var approvedQueueOpened = false;
       final api = PlatformApi(
         client: MockClient((req) async {
           dynamic data = [];
@@ -32,12 +33,22 @@ void main() {
             data = {
               'checkedAt': '2026-10-08T00:00:00Z',
               'awaitingYourReview': 1,
+              'onboarding': {'awaitingSetup': 2, 'pendingActivation': 1},
               'applications': {'REQUESTED': 2, 'APPROVED': 3, 'REJECTED': 0},
               'accounts': {
                 'SUPER_ADMIN': {'ACTIVE': 2, 'DISABLED': 0},
                 'IT_SECURITY': {'ACTIVE': 1, 'DISABLED': 4},
               },
             };
+          }
+          if (req.url.path.endsWith('/tenant-applications') &&
+              req.url.queryParameters['status'] == 'APPROVED') {
+            expect(req.url.queryParameters, {
+              'page': '1',
+              'pageSize': '20',
+              'status': 'APPROVED',
+            });
+            approvedQueueOpened = true;
           }
           if (req.url.path.endsWith('/tenant-applications') &&
               req.url.queryParameters['scope'] == 'reviewable') {
@@ -61,6 +72,15 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Platform snapshot'), findsOneWidget);
         expect(find.text('Disabled IT accounts'), findsOneWidget);
+        expect(find.text('Approved, awaiting setup'), findsOneWidget);
+        expect(find.text('Created, awaiting activation'), findsOneWidget);
+        await tester.ensureVisible(find.text('View approved onboarding'));
+        await tester.tap(find.text('View approved onboarding'));
+        await tester.pumpAndSettle();
+        expect(approvedQueueOpened, isTrue);
+        await tester.ensureVisible(find.text('Governance overview'));
+        await tester.tap(find.text('Governance overview'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Review pending applications'));
         await tester.tap(find.text('Review pending applications'));
         await tester.pumpAndSettle();
@@ -75,7 +95,7 @@ void main() {
         await tester.tap(find.text('Governance overview'));
         await tester.pumpAndSettle();
         expect(find.text('Platform snapshot'), findsNothing);
-        expect(reads, 3);
+        expect(reads, 4);
       } else {
         expect(find.text('Governance overview'), findsNothing);
         expect(reads, 0);

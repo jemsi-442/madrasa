@@ -17,6 +17,9 @@ describe('platform governance overview', () => {
       accounts: { SUPER_ADMIN: { ACTIVE: 0, DISABLED: 0 }, IT_SECURITY: { ACTIVE: 0, DISABLED: 2 } } });
     expect(f.tx.tenantApplication.count).toHaveBeenCalledWith({ where: { status: 'REQUESTED', requestedById: { not: 'admin' } } });
     expect(f.tx.platformAccount.groupBy).toHaveBeenCalledWith({ by: ['role', 'status'], _count: { _all: true } });
+    expect(result.onboarding).toEqual({ awaitingSetup: 1, pendingActivation: 1 });
+    expect(f.tx.tenantApplication.count).toHaveBeenCalledWith({ where: { status: 'APPROVED', organizationId: null } });
+    expect(f.tx.tenantApplication.count).toHaveBeenCalledWith({ where: { status: 'APPROVED', organization: { is: { status: 'PENDING_ACTIVATION' } } } });
     expect(Number.isNaN(Date.parse(result.checkedAt))).toBe(false);
   });
   it.each(['IT_SECURITY', 'ADMIN'])('denies %s without reading aggregates', async (role) => {
@@ -27,5 +30,10 @@ describe('platform governance overview', () => {
   it('does not return fabricated zeros on database failure', async () => {
     const f = fixture(); f.tx.tenantApplication.groupBy.mockRejectedValue(new Error('database unavailable'));
     await expect(f.service.overview(actor)).rejects.toThrow('database unavailable');
+  });
+  it('fails the whole snapshot if onboarding counts are unavailable', async () => {
+    const f = fixture();
+    f.tx.tenantApplication.count.mockResolvedValueOnce(1).mockRejectedValueOnce(new Error('onboarding unavailable'));
+    await expect(f.service.overview(actor)).rejects.toThrow('onboarding unavailable');
   });
 });
