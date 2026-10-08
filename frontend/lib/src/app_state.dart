@@ -106,7 +106,7 @@ class AppState extends ChangeNotifier {
       if (_disposed || version != _authVersion) return false;
       error = switch (exception.statusCode) {
         0 => 'We could not connect. Please try again.',
-        401 => 'The email or username and password do not match.',
+        401 => 'Invalid credentials',
         429 => 'Please wait a moment before trying again.',
         _ => 'We could not sign you in. Please try again later.',
       };

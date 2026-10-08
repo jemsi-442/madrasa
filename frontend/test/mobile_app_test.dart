@@ -257,7 +257,7 @@ void main() {
       );
       await _tap(tester, find.widgetWithText(FilledButton, 'Login'));
       expect(
-        find.text('The email or username and password do not match.'),
+        find.text('Invalid credentials'),
         findsOneWidget,
       );
       expect(state.session, isNull);

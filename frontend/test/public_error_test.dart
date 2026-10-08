@@ -7,21 +7,29 @@ import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/app_state.dart';
 
 void main() {
-  test('sign in does not display the server error verbatim', () async {
-    final state = AppState(
-      MifApiClient(
-        client: MockClient(
-          (_) async => http.Response(
-            jsonEncode({'message': 'Invalid credentials'}),
-            401,
+  for (final serverMessage in [
+    'Invalid credentials',
+    'Account not found',
+    'Password is incorrect',
+    'Account is disabled',
+    'Account belongs to a different role',
+  ]) {
+    test('sign in hides authentication detail: $serverMessage', () async {
+      final state = AppState(
+        MifApiClient(
+          client: MockClient(
+            (_) async =>
+                http.Response(jsonEncode({'message': serverMessage}), 401),
           ),
         ),
-      ),
-    );
-    addTearDown(state.dispose);
-    expect(await state.signIn('amina@example.com', 'wrong'), isFalse);
-    expect(state.error, 'The email or username and password do not match.');
-  });
+      );
+      addTearDown(state.dispose);
+      expect(await state.signIn('amina@example.com', 'wrong'), isFalse);
+      expect(state.error, 'Invalid credentials');
+      expect(state.session, isNull);
+      expect(state.companyApi, isNull);
+    });
+  }
 
   test(
     'registration hides internal errors and explains duplicate accounts',
