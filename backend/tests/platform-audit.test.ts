@@ -4,6 +4,26 @@ import { PlatformGovernanceService, safePlatformAuditMetadata } from "../src/mod
 import { platformAuditQuerySchema } from "../src/modules/platform/platform.schemas";
 
 describe("platform audit filters and privacy", () => {
+  it.each(['', 'a'.repeat(31), ['application'], { id: 'application' }])('rejects invalid application scope', (applicationId) => {
+    expect(() => platformAuditQuerySchema.parse({ applicationId })).toThrow();
+  });
+  it.each(['SUPER_ADMIN', 'IT_SECURITY'])('scopes %s history to one application without exposing invitation or activation evidence', async (role) => {
+    const tx = {
+      platformAccount: { findUnique: vi.fn().mockResolvedValue({ id: 'operator', role, status: 'ACTIVE' }) },
+      platformAuditEvent: { findMany: vi.fn().mockResolvedValue([{ id: 'event', metadata: {
+        status: 'PENDING_ACTIVATION', token: 'secret', tokenHash: 'private', email: 'private@example.test',
+        evidenceReference: 'private-review-record', operatorAttestations: { tenantIsolation: true },
+      } }]) },
+    };
+    const db = { $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient;
+    const result = await new PlatformGovernanceService(db).listAuditEvents({ scope: 'platform', accountId: 'operator', sessionId: 'session' }, {
+      applicationId: 'application', action: 'tenant.school.provisioned', page: 2, pageSize: 10,
+    });
+    expect(tx.platformAuditEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { entityType: 'TenantApplication', entityId: 'application', action: 'tenant.school.provisioned' }, skip: 10, take: 10,
+    }));
+    expect(result[0]?.metadata).toEqual({ status: 'PENDING_ACTIVATION' });
+  });
   it.each([{ actorRole: "ADMIN" }, { from: "yesterday" }, { from: "2026-10-08T00:00:00Z", to: "2026-10-01T00:00:00Z" }, { pageSize: 101 }, { search: "secret" }])("rejects invalid query %j", (query) => {
     expect(() => platformAuditQuerySchema.parse(query)).toThrow();
   });

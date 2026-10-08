@@ -282,6 +282,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   String? confirmation;
   bool audit = false;
   String auditAction = '';
+  String? auditApplicationId;
   String auditRole = '';
   String auditPeriod = '';
   DateTime? auditSince;
@@ -418,6 +419,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         if (accountsView && accountStatus.isNotEmpty) 'status': accountStatus,
         if (audit && !sessionsView && !accountsView && auditAction.isNotEmpty)
           'action': auditAction,
+        if (audit &&
+            !sessionsView &&
+            !accountsView &&
+            auditApplicationId != null)
+          'applicationId': auditApplicationId!,
         if (audit && !sessionsView && !accountsView && auditRole.isNotEmpty)
           'actorRole': auditRole,
         if (audit && !sessionsView && !accountsView && auditSince != null)
@@ -458,6 +464,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         return;
       }
       audit = !isAdmin;
+      auditApplicationId = null;
       healthView = false;
       sessionsView = false;
       accountsView = false;
@@ -472,6 +479,22 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       await load();
     });
   }
+
+  Future<void> openApplicationAudit(String? id) => run(() async {
+    audit = true;
+    healthView = false;
+    sessionsView = false;
+    accountsView = false;
+    overview = null;
+    auditApplicationId = id;
+    auditAction = '';
+    auditRole = '';
+    auditPeriod = '';
+    auditSince = null;
+    page = 1;
+    records = [];
+    await load();
+  });
 
   Future<void> showOnboardingProgress(Map<String, dynamic> record) async {
     if (busy) return;
@@ -1350,6 +1373,17 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                       const SizedBox(height: 12),
                     ],
                     if (audit && !sessionsView && !accountsView) ...[
+                      if (auditApplicationId != null) ...[
+                        Text('Application history: $auditApplicationId'),
+                        TextButton(
+                          onPressed: busy
+                              ? null
+                              : () => openApplicationAudit(null),
+                          child: const Text(
+                            'Show all application and platform events',
+                          ),
+                        ),
+                      ],
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
@@ -1367,6 +1401,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                   'Madrassa approved',
                               'tenant.application.rejected':
                                   'Madrassa rejected',
+                              'tenant.school.provisioned':
+                                  'Inactive madrassa created',
+                              'tenant.admin.invitation.issued':
+                                  'Admin invitation recorded',
+                              'tenant.school.activated': 'Madrassa activated',
                               'platform.session.revoked': 'Session revoked',
                               'platform.sessions.revoked':
                                   'All sessions revoked',
@@ -1469,7 +1508,31 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                   ),
                                 if (!audit && record['decisionReason'] != null)
                                   Text('Decision: ${record['decisionReason']}'),
+                                if (audit &&
+                                    record['entityType'] ==
+                                        'TenantApplication' &&
+                                    record['entityId'] is String)
+                                  TextButton(
+                                    onPressed: busy
+                                        ? null
+                                        : () => openApplicationAudit(
+                                            record['entityId'] as String,
+                                          ),
+                                    child: const Text(
+                                      'View application history',
+                                    ),
+                                  ),
                                 if (!audit) ...[
+                                  TextButton(
+                                    onPressed: busy
+                                        ? null
+                                        : () => openApplicationAudit(
+                                            record['id'] as String,
+                                          ),
+                                    child: const Text(
+                                      'View application history',
+                                    ),
+                                  ),
                                   if (record['status'] == 'APPROVED')
                                     TextButton.icon(
                                       onPressed: busy

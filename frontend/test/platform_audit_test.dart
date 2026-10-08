@@ -6,6 +6,95 @@ import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
 
 void main() {
+  for (final role in ['SUPER_ADMIN', 'IT_SECURITY']) {
+    testWidgets('$role opens application-scoped audit and clears scope', (
+      tester,
+    ) async {
+      final requests = <Uri>[];
+      final api = PlatformApi(
+        client: MockClient((req) async {
+          requests.add(req.url);
+          final dynamic data = req.url.path.endsWith('/login')
+              ? {
+                  'accessToken': 'token',
+                  'expiresIn': 900,
+                  'user': {
+                    'id': 'operator',
+                    'fullName': 'Operator',
+                    'role': role,
+                  },
+                }
+              : req.url.path.endsWith('/tenant-applications')
+              ? [
+                  {
+                    'id': 'application',
+                    'schoolName': 'School',
+                    'requestedCode': 'school',
+                    'status': 'APPROVED',
+                    'adminEmail': 'admin@example.test',
+                  },
+                ]
+              : [
+                  {
+                    'id': 'event',
+                    'action': 'tenant.school.provisioned',
+                    'actorRole': 'IT_SECURITY',
+                    'entityType': 'TenantApplication',
+                    'entityId': 'application',
+                    'metadata': {'status': 'PENDING_ACTIVATION'},
+                  },
+                ];
+          return http.Response(jsonEncode({'data': data}), 200);
+        }),
+      );
+      await api.login('operator@example.test', 'password', '123456');
+      await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
+      await tester.ensureVisible(
+        find.text(
+          role == 'SUPER_ADMIN' ? 'Madrassa applications' : 'Audit trail',
+        ),
+      );
+      await tester.tap(
+        find.text(
+          role == 'SUPER_ADMIN' ? 'Madrassa applications' : 'Audit trail',
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('View application history'));
+      await tester.tap(find.text('View application history'));
+      await tester.pumpAndSettle();
+      expect(requests.last.path, '/api/platform/audit-events');
+      expect(requests.last.queryParameters['applicationId'], 'application');
+      expect(requests.last.queryParameters['page'], '1');
+      expect(find.text('Application history: application'), findsOneWidget);
+      await tester.ensureVisible(find.text('All events'));
+      await tester.tap(find.text('All events'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Inactive madrassa created').last);
+      await tester.tap(find.text('Inactive madrassa created').last);
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['applicationId'], 'application');
+      expect(
+        requests.last.queryParameters['action'],
+        'tenant.school.provisioned',
+      );
+      await tester.ensureVisible(
+        find.text('Show all application and platform events'),
+      );
+      await tester.tap(find.text('Show all application and platform events'));
+      await tester.pumpAndSettle();
+      expect(
+        requests.last.queryParameters.containsKey('applicationId'),
+        isFalse,
+      );
+      expect(requests.last.queryParameters.containsKey('action'), isFalse);
+      expect(find.text('Application history: application'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      api.close();
+    });
+  }
+
   testWidgets(
     'audit filter sends exact query and opens event details on mobile',
     (tester) async {

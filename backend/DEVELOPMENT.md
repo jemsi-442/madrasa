@@ -622,11 +622,20 @@ data or clear the newer session; responses arriving after local expiry are rejec
 The audit endpoint accepts bounded `page`/`pageSize`, exact `action`, `actorRole`
 (SUPER_ADMIN or IT_SECURITY), exact `actorId`, and inclusive UTC ISO `from`/`to`
 timestamps. Invalid/reversed ranges and unknown query parameters return 422.
+Optional `applicationId` restricts results to that exact TenantApplication entity,
+without requiring or exposing its school contents or nominated admin contacts.
+Missing application IDs return an empty event list, not an application lookup.
 Ordering remains newest first, with event ID as the tie-breaker. These filters
 never grant tenant-data access or enable free-text searches of sensitive payloads.
 
 The console offers event, role and time-period filters, resets pagination when
 filters change, and expands event/account/entity identifiers for investigation.
+**View application history** opens a scoped audit from a Super Admin application
+card or a TenantApplication audit event visible to either company role. The
+scope remains active when event/role/period filters change; **Show all application
+and platform events** clears the scope and filters. New event options include
+inactive school creation, invitation recording and school activation. Invitation
+recording is not proof of email delivery. Opening history is read-only.
 A failed-login event's account ID identifies the target, not a verified attacker.
 This is not a complete threat feed: unknown-account and throttled requests do
 not currently create platform audit rows.
@@ -842,9 +851,10 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 25 tests pass in headless Chromium, including sign-in through the form,
+Verified: 28 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
-successful retry, IT queue search/setup filters/pagination, provisioning/progress views, and session-bound dialogs.
+successful retry, IT queue search/setup filters/pagination, provisioning/progress
+views, application-scoped audit navigation, and session-bound dialogs.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data

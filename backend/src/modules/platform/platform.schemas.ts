@@ -31,6 +31,7 @@ export const platformProvisioningQuerySchema = platformPageSchema.extend({
 });
 
 export const platformAuditQuerySchema = platformPageSchema.extend({
+  applicationId: platformAccountIdSchema.optional(),
   action: z.string().trim().min(1).max(100).regex(/^[a-z][a-z0-9.]*$/).optional(),
   actorRole: z.enum(["SUPER_ADMIN", "IT_SECURITY"]).optional(),
   actorId: z.string().trim().min(1).max(30).optional(),

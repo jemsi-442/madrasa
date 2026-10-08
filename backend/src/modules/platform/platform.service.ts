@@ -430,12 +430,13 @@ export class PlatformGovernanceService {
   }
 
   async listAuditEvents(actor: PlatformContext, input: unknown = {}) {
-    const { page, pageSize, action, actorRole, actorId, from, to } = platformAuditQuerySchema.parse(input);
+    const { page, pageSize, action, actorRole, actorId, applicationId, from, to } = platformAuditQuerySchema.parse(input);
     return this.db.$transaction(async (tx) => {
       await this.authorize(tx, actor, "platform.audit.read");
       const events = await tx.platformAuditEvent.findMany({
         where: {
           ...(action ? { action } : {}), ...(actorRole ? { actorRole } : {}), ...(actorId ? { actorId } : {}),
+          ...(applicationId ? { entityType: "TenantApplication", entityId: applicationId } : {}),
           ...((from || to) ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {}),
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],

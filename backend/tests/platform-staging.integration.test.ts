@@ -398,6 +398,17 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
       else expect(response.body.data.activationReview).toMatchObject({ prerequisitesPassed: false, activationEnabled: false });
     }
     expect(await db.platformAuditEvent.count()).toBe(auditCount);
+    const history = await request(app).get('/api/platform/audit-events').query({ applicationId: id }).set('Authorization', operator);
+    expect(history.status).toBe(200);
+    expect(history.headers['cache-control']).toBe('no-store');
+    expect(history.body.data).toHaveLength(3);
+    expect(history.body.data.every((event: { entityId: string; entityType: string }) => event.entityId === id && event.entityType === 'TenantApplication')).toBe(true);
+    expect(history.body.data.map((event: { action: string }) => event.action).sort()).toEqual([
+      'tenant.application.approved', 'tenant.application.requested', 'tenant.school.provisioned',
+    ]);
+    const absentHistory = await request(app).get('/api/platform/audit-events').query({ applicationId: 'missing-application' }).set('Authorization', operator);
+    expect(absentHistory.status).toBe(200);
+    expect(absentHistory.body.data).toEqual([]);
     const list = await request(app).get('/api/platform/tenant-applications?status=APPROVED').set('Authorization', reviewer);
     expect(list.status).toBe(200);
     expect(list.body.data.find((row: { id: string }) => row.id === id)).toMatchObject({
