@@ -12,6 +12,8 @@ import 'registration_page.dart';
 import 'workspace.dart';
 import 'admin_theme.dart';
 import 'keyboard_scrolling.dart';
+import 'platform_console.dart';
+import 'school_invitation_page.dart';
 
 class MifApp extends StatefulWidget {
   const MifApp({super.key, this.state, this.layout});
@@ -216,6 +218,8 @@ class _MifAppState extends State<MifApp> {
         ),
       ),
       routes: {
+        '/platform': (_) => const PlatformConsole(),
+        '/school-invitation': (_) => const SchoolInvitationPage(),
         '/': (context) => routePage(context, '/'),
         '/login': (context) => routePage(context, '/login'),
         '/register': (context) => routePage(context, '/register'),
