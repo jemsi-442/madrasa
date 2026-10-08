@@ -391,6 +391,9 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   }
 
   Future<void> load() async {
+    if (!mounted) return;
+    // Never present a previous access/audit snapshot as a successful refresh.
+    setState(() => records = []);
     if (healthView) {
       health = null;
       final data = await api.call('/health');
@@ -1487,7 +1490,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                         ),
                       ),
                     ],
-                    if (records.isEmpty && !busy)
+                    if (records.isEmpty && !busy && error == null)
                       const Card(
                         child: Padding(
                           padding: EdgeInsets.all(28),

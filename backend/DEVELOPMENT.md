@@ -335,6 +335,10 @@ IT disable/restore actions also distinguish a confirmed save from a subsequent
 list refresh failure. Unknown write outcomes clear actionable stale cards and
 direct the reviewer to refresh Company accounts and inspect Access history.
 Refresh performs reads only, never an automatic retry of the access mutation.
+Main application, audit, company-account and session lists clear their previous
+snapshot when a read starts. A failed read shows an error, not stale records or
+the successful-empty message. An explicit successful retry can show an empty
+list; duplicate refresh clicks during loading do not issue additional requests.
 Restoration does not change the password; it requires a fresh password/MFA login.
 Platform confirmation dialogs are bound to the local authenticated session
 generation that opened them. Expiry dismisses those dialogs and removes loaded
@@ -857,10 +861,11 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 30 tests pass in headless Chromium, including sign-in through the form,
+Verified: 34 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
-views, application-scoped audit navigation, onboarding overview navigation, and session-bound dialogs.
+views, application-scoped audit navigation, onboarding overview navigation,
+main-list refresh failure/retry handling, and session-bound dialogs.
 The sign-in/onboarding flow is checked at 390px and 1280px widths. These are
 browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data
