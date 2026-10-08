@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_SMOKE="${RUN_SMOKE:-0}"
+RUN_PLATFORM_WEB="${RUN_PLATFORM_WEB:-0}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:4000}"
 WEB_API_BASE_URL="${WEB_API_BASE_URL:-https://example.invalid}"
 FLUTTER_BIN="${FLUTTER_BIN:-flutter}"
@@ -66,6 +67,11 @@ step "Flutter Tests"
   cd "$ROOT_DIR/frontend"
   "$FLUTTER_BIN" test
 )
+
+if [[ "$RUN_PLATFORM_WEB" == "1" ]]; then
+  step "Platform Browser Tests (Mock API)"
+  FLUTTER_BIN="$FLUTTER_BIN" bash "$ROOT_DIR/scripts/test-platform-web.sh"
+fi
 
 step "Flutter Web Build"
 (

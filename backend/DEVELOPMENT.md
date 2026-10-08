@@ -827,6 +827,19 @@ browser-executed Flutter tests with mocked HTTP responses, not proof of live
 MFA, delivery or browser-to-backend integration. They do not modify school data
 or activate real accounts.
 
+CI runs this browser suite after the standard Flutter tests. A separate
+`platform-staging` matrix runs both fresh installation and schema-baseline
+upgrade checks using disposable MariaDB and Redis, without deployment secrets.
+The main backend CI job initializes its empty service database using the guarded
+fresh installer rather than replaying migrations in the known-invalid historical
+order. These workflow changes still require an actual GitHub Actions run to
+verify the hosted runner environment.
+
+For a local release gate with browser checks, set `RUN_PLATFORM_WEB=1` when
+running `bash scripts/release-gate.sh`. This opt-in requires an installed browser;
+it does not enable live API smoke tests or deploy anything. The release gate's
+existing backend tests still need their normal test environment.
+
 Next implementation gates, in order:
 
 1. Use the tested guarded installer for new empty databases. Historical-order

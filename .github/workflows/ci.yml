@@ -7,6 +7,9 @@ on:
       - master
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -95,9 +98,11 @@ jobs:
         working-directory: backend
         run: npm run prisma:generate
 
-      - name: Prisma migrate deploy
+      - name: Install empty CI database safely
         working-directory: backend
-        run: npm run prisma:migrate:deploy
+        env:
+          FRESH_DATABASE_URL: mysql://mms_user:mms_password@127.0.0.1:3306/mms?connection_limit=10
+        run: npm run db:install:fresh -- --confirm-empty-database
 
       - name: Seed admin
         working-directory: backend
@@ -155,6 +160,34 @@ jobs:
             kill "$(cat /tmp/mms-backend.pid)" || true
           fi
 
+  platform-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        installation: [fresh-install, upgrade-baseline]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install disposable staging prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server mariadb-client redis-server
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npm run prisma:generate
+      - name: Verify isolated governance lifecycle
+        working-directory: backend
+        run: npm run test:platform:staging -- --${{ matrix.installation }}
+
   frontend:
     runs-on: ubuntu-latest
 
@@ -186,6 +219,10 @@ jobs:
       - name: Flutter tests
         working-directory: frontend
         run: flutter test
+
+      - name: Platform browser regression tests (mock API)
+        timeout-minutes: 10
+        run: bash scripts/test-platform-web.sh
 
       - name: Flutter web build
         working-directory: frontend
