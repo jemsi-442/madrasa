@@ -283,6 +283,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool audit = false;
   String auditAction = '';
   String? auditApplicationId;
+  String? auditActorId;
   String auditRole = '';
   String auditPeriod = '';
   DateTime? auditSince;
@@ -427,6 +428,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             !accountsView &&
             auditApplicationId != null)
           'applicationId': auditApplicationId!,
+        if (audit && !sessionsView && !accountsView && auditActorId != null)
+          'actorId': auditActorId!,
         if (audit && !sessionsView && !accountsView && auditRole.isNotEmpty)
           'actorRole': auditRole,
         if (audit && !sessionsView && !accountsView && auditSince != null)
@@ -468,6 +471,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       }
       audit = !isAdmin;
       auditApplicationId = null;
+      auditActorId = null;
       healthView = false;
       sessionsView = false;
       accountsView = false;
@@ -483,21 +487,23 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     });
   }
 
-  Future<void> openApplicationAudit(String? id) => run(() async {
-    audit = true;
-    healthView = false;
-    sessionsView = false;
-    accountsView = false;
-    overview = null;
-    auditApplicationId = id;
-    auditAction = '';
-    auditRole = '';
-    auditPeriod = '';
-    auditSince = null;
-    page = 1;
-    records = [];
-    await load();
-  });
+  Future<void> openApplicationAudit(String? id, {String? actorId}) =>
+      run(() async {
+        audit = true;
+        healthView = false;
+        sessionsView = false;
+        accountsView = false;
+        overview = null;
+        auditApplicationId = id;
+        auditActorId = actorId;
+        auditAction = '';
+        auditRole = '';
+        auditPeriod = '';
+        auditSince = null;
+        page = 1;
+        records = [];
+        await load();
+      });
 
   Future<void> showOnboardingProgress(Map<String, dynamic> record) async {
     if (busy) return;
@@ -1404,8 +1410,17 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                       const SizedBox(height: 12),
                     ],
                     if (audit && !sessionsView && !accountsView) ...[
-                      if (auditApplicationId != null) ...[
-                        Text('Application history: $auditApplicationId'),
+                      if (auditApplicationId != null ||
+                          auditActorId != null) ...[
+                        Text(
+                          auditActorId != null
+                              ? 'Activity by account: $auditActorId'
+                              : 'Application history: $auditApplicationId',
+                        ),
+                        if (auditActorId != null)
+                          const Text(
+                            'Filtered by the recorded actor ID, not the affected entity. For failed logins, this ID identifies the target account, not a verified person.',
+                          ),
                         TextButton(
                           onPressed: busy
                               ? null
@@ -1539,6 +1554,19 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                   ),
                                 if (!audit && record['decisionReason'] != null)
                                   Text('Decision: ${record['decisionReason']}'),
+                                if (audit &&
+                                    record['actorId'] is String &&
+                                    (record['actorId'] as String).isNotEmpty)
+                                  TextButton(
+                                    onPressed: busy
+                                        ? null
+                                        : () => openApplicationAudit(
+                                            null,
+                                            actorId:
+                                                record['actorId'] as String,
+                                          ),
+                                    child: const Text('View actor activity'),
+                                  ),
                                 if (audit &&
                                     record['entityType'] ==
                                         'TenantApplication' &&

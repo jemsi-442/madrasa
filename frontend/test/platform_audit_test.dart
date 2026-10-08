@@ -39,6 +39,7 @@ void main() {
                     'id': 'event',
                     'action': 'tenant.school.provisioned',
                     'actorRole': 'IT_SECURITY',
+                    'actorId': 'operator',
                     'entityType': 'TenantApplication',
                     'entityId': 'application',
                     'metadata': {'status': 'PENDING_ACTIVATION'},
@@ -89,6 +90,35 @@ void main() {
       );
       expect(requests.last.queryParameters.containsKey('action'), isFalse);
       expect(find.text('Application history: application'), findsNothing);
+      await tester.ensureVisible(find.text('View actor activity'));
+      await tester.tap(find.text('View actor activity'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['actorId'], 'operator');
+      expect(requests.last.queryParameters['page'], '1');
+      expect(
+        requests.last.queryParameters.containsKey('applicationId'),
+        isFalse,
+      );
+      expect(find.text('Activity by account: operator'), findsOneWidget);
+      await tester.ensureVisible(find.text('Refresh'));
+      await tester.tap(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['actorId'], 'operator');
+      await tester.ensureVisible(find.text('View application history'));
+      await tester.tap(find.text('View application history'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['applicationId'], 'application');
+      expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
+      await tester.ensureVisible(find.text('View actor activity'));
+      await tester.tap(find.text('View actor activity'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.text('Show all application and platform events'),
+      );
+      await tester.tap(find.text('Show all application and platform events'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
+      expect(find.text('Activity by account: operator'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       api.close();

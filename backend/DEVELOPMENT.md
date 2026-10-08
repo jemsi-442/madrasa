@@ -646,6 +646,12 @@ scope remains active when event/role/period filters change; **Show all applicati
 and platform events** clears the scope and filters. New event options include
 inactive school creation, invitation recording and school activation. Invitation
 recording is not proof of email delivery. Opening history is read-only.
+**View actor activity** on an event opens an exact `actorId` scope for either
+company role, clears the application/action/role/period filters and resets page
+one. Refresh and subsequent filters retain this scope; opening application
+history or clearing all events removes it. Events without an actor ID do not
+offer this action. The scope follows the recorded actor, not the affected entity,
+and the UI explicitly warns that failed-login IDs are targets, not verified people.
 A failed-login event's account ID identifies the target, not a verified attacker.
 This is not a complete threat feed: unknown-account and throttled requests do
 not currently create platform audit rows.
@@ -878,7 +884,7 @@ already be installed; the runner uses `--no-pub`.
 Verified: 43 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
-views, application-scoped audit navigation, onboarding overview navigation,
+views, application/actor-scoped audit navigation, onboarding overview navigation,
 main-list refresh failure/retry handling, service-specific health guidance,
 snapshot expiry and unverified check timestamps,
 and session-bound dialogs.
