@@ -14,6 +14,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_REFRESH_SECRET: z.string().min(1, "JWT_REFRESH_SECRET is required"),
+  PLATFORM_JWT_SECRET: z.string().default(""),
+  PLATFORM_MFA_ENCRYPTION_KEY: z.string().default(""),
   SNIPPE_BASE_URL: z.string().url().default("https://api.snippe.sh"),
   SNIPPE_API_KEY: z.string().optional(),
   SNIPPE_WEBHOOK_SECRET: z.string().optional(),
