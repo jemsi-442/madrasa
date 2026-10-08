@@ -5,6 +5,7 @@ import { assertPlatformPermission, hasPlatformPermission, type PlatformPermissio
 import { platformPageSchema, platformAuditQuerySchema, platformSessionIdSchema, tenantApplicationSchema, tenantDecisionSchema } from "./platform.schemas";
 import type { PlatformHealthReader } from "./platform.health";
 import { platformAccountIdSchema, platformDisableAccountSchema, platformAccountQuerySchema, platformRestoreAccountSchema, platformApplicationQuerySchema, platformProvisioningQuerySchema } from "./platform.schemas";
+import { technicalReviewFingerprint } from "./platform.technical-review";
 
 // Only a future verified platform session may construct this context.
 // Do not adapt a school req.authUser into it, even for a school ADMIN.
@@ -24,11 +25,11 @@ export class PlatformGovernanceService {
       const account = await this.authorize(tx, actor, "tenant.onboarding.read");
       const application = await tx.tenantApplication.findFirst({
         where: { id, status: "APPROVED" },
-        select: { id: true, schoolName: true, requestedCode: true, adminEmail: true,
+        select: { id: true, status: true, schoolName: true, requestedCode: true, adminEmail: true,
           requestedById: true, reviewedById: true, reviewedAt: true, provisionedAt: true,
           organization: { select: { id: true, status: true } },
-          adminInvitation: { select: { email: true, createdAt: true, expiresAt: true, acceptedAt: true,
-            acceptedUser: { select: { orgId: true, email: true, role: true, status: true } } } },
+          adminInvitation: { select: { id: true, email: true, createdAt: true, expiresAt: true, acceptedAt: true,
+            acceptedUser: { select: { id: true, orgId: true, email: true, role: true, status: true } } } },
         },
       });
       if (!application) throw new HttpError(404, "Approved application not found");
@@ -54,9 +55,32 @@ export class PlatformGovernanceService {
       else if (user && !invitation.acceptedAt) stage = "REVIEW_REQUIRED";
       else if (invitation.acceptedAt) stage = accepted && user?.status === "DISABLED" ? "ACTIVATION_REVIEW_PENDING" : "REVIEW_REQUIRED";
       else stage = invitation.expiresAt <= now ? "INVITATION_EXPIRED" : "ACCEPTANCE_PENDING";
+      let signOffStatus = "NOT_READY";
+      if (stage === "ACTIVATION_REVIEW_PENDING") {
+        const review = await tx.platformAuditEvent.findFirst({
+          where: { entityType: "TenantApplication", entityId: id, action: "tenant.technical-review.recorded", actorRole: "IT_SECURITY" },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: { actorId: true, createdAt: true, metadata: true },
+        });
+        signOffStatus = "MISSING";
+        if (review) {
+          const age = now.getTime() - review.createdAt.getTime();
+          const metadata = review.metadata;
+          if (age < 0 || age >= 86_400_000) signOffStatus = "EXPIRED";
+          else if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)
+            || metadata.fingerprint !== technicalReviewFingerprint(application)) signOffStatus = "STATE_CHANGED";
+          else {
+            const operator = await tx.platformAccount.findUnique({ where: { id: review.actorId }, select: { role: true, status: true } });
+            signOffStatus = operator?.role === "IT_SECURITY" && operator.status === "ACTIVE" ? "CURRENT" : "OPERATOR_UNAVAILABLE";
+          }
+        }
+      }
       return {
         applicationId: id, schoolName: application.schoolName, requestedCode: application.requestedCode,
         stage, checkedAt: now.toISOString(),
+        ...(stage === "ACTIVATION_REVIEW_PENDING" ? {
+          nextResponsibility: signOffStatus === "CURRENT" ? "OFFICE_APPROVAL" : "IT_REVIEW",
+        } : {}),
         steps: [
           { label: "Independent approval", completed: approved, at: application.reviewedAt },
           { label: "Inactive school created", completed: Boolean(organization), at: application.provisionedAt },
@@ -68,6 +92,7 @@ export class PlatformGovernanceService {
         deliveryConfigured: false,
         ...(account.role === "IT_SECURITY" ? {
           activationReview: {
+            signOffStatus,
             activationEnabled: false,
             prerequisitesPassed: stage === "ACTIVATION_REVIEW_PENDING" && account.id !== application.requestedById,
             checks: [

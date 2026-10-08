@@ -608,6 +608,18 @@ section entirely. `activationEnabled` remains false, including when recorded
 prerequisites pass; this is not an activation authorization or a substitute for
 operator evidence. No activation POST endpoint has been added.
 
+When acceptance is complete and activation review is pending, the snapshot now
+includes `nextResponsibility`: `IT_REVIEW` until a current matching IT receipt
+exists, then `OFFICE_APPROVAL`. The latest receipt is checked against the exact
+onboarding fingerprint, its 24-hour lifetime and the signer's current active IT
+role. Super Admin receives only that next-step summary, not receipt details or
+technical failure reasons. IT's `activationReview.signOffStatus` distinguishes
+`MISSING`, `CURRENT`, `EXPIRED`, `STATE_CHANGED`, `OPERATOR_UNAVAILABLE` and
+`NOT_READY`. Fingerprints, evidence references and signer identity are never
+returned. These are point-in-time read-only indicators; activation rechecks its
+own authorization and receipt independently. A current IT review is not an
+automated security certification or an enabled activation action.
+
 ### Self-Service Session Controls
 
 The IT console's My sessions view shows current/other active sessions, session ID,
@@ -904,12 +916,12 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 43 tests pass in headless Chromium, including sign-in through the form,
+Verified: 46 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,
 main-list refresh failure/retry handling, service-specific health guidance,
-snapshot expiry and unverified check timestamps,
+snapshot expiry, unverified check timestamps and office/IT next-step guidance,
 and session-bound dialogs.
 Role-boundary regression checks additionally cover office-only history, hidden
 technical navigation and omitted IT readiness for Super Admin. Backend checks

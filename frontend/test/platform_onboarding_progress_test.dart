@@ -4,6 +4,68 @@ import 'package:mif_app/src/platform_onboarding_progress.dart';
 import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
+  for (final ready in [false, true]) {
+    testWidgets('office sees only next responsibility ready=$ready', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformOnboardingProgress(
+              data: {
+                'schoolName': 'School',
+                'requestedCode': 'school',
+                'stage': 'ACTIVATION_REVIEW_PENDING',
+                'nextResponsibility': ready ? 'OFFICE_APPROVAL' : 'IT_REVIEW',
+              },
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.textContaining(
+          ready
+              ? 'Waiting for independent office approval'
+              : 'Waiting for IT to complete preparation',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('IT technical readiness'), findsNothing);
+      expect(find.textContaining('fingerprint'), findsNothing);
+    });
+  }
+  testWidgets(
+    'IT current sign-off does not ask to repeat completed manual review',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PlatformOnboardingProgress(
+                data: {
+                  'schoolName': 'School',
+                  'requestedCode': 'school',
+                  'stage': 'ACTIVATION_REVIEW_PENDING',
+                  'nextResponsibility': 'OFFICE_APPROVAL',
+                  'activationReview': {
+                    'signOffStatus': 'CURRENT',
+                    'prerequisitesPassed': true,
+                    'manualReviews': ['Backup and recovery'],
+                  },
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.textContaining('IT sign-off is current'), findsOneWidget);
+      expect(find.text('Backup and recovery: review required'), findsNothing);
+      expect(
+        find.textContaining('not an automated security certification'),
+        findsOneWidget,
+      );
+    },
+  );
   for (final stage in [
     'INVITATION_PENDING',
     'INVITATION_EXPIRED',

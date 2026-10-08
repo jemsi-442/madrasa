@@ -1,13 +1,14 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PlatformGovernanceService } from '../src/modules/platform/platform.service';
+import { technicalReviewFingerprint } from '../src/modules/platform/platform.technical-review';
 const actor = { scope: 'platform' as const, accountId: 'operator', sessionId: 'session' };
 function fixture(role = 'IT_SECURITY') {
-  const application = { id: 'application', schoolName: 'School', requestedCode: 'school', adminEmail: 'private@example.test',
+  const application = { id: 'application', status: 'APPROVED', schoolName: 'School', requestedCode: 'school', adminEmail: 'private@example.test',
     requestedById: 'requester', reviewedById: 'reviewer', reviewedAt: new Date(), provisionedAt: new Date(),
     organization: { id: 7n, status: 'PENDING_ACTIVATION' },
-    adminInvitation: { email: 'private@example.test', createdAt: new Date(), expiresAt: new Date(Date.now() + 100000), acceptedAt: new Date(),
-      acceptedUser: { orgId: 7n, email: 'private@example.test', role: 'ADMIN', status: 'DISABLED' } },
+    adminInvitation: { id: 'invite', email: 'private@example.test', createdAt: new Date(), expiresAt: new Date(Date.now() + 100000), acceptedAt: new Date(),
+      acceptedUser: { id: 9n, orgId: 7n, email: 'private@example.test', role: 'ADMIN', status: 'DISABLED' } },
   };
   const tx = {
     platformAccount: { findUnique: vi.fn().mockResolvedValue({ id: 'operator', role, status: 'ACTIVE' }) },
@@ -17,6 +18,25 @@ function fixture(role = 'IT_SECURITY') {
   return { application, tx, service: new PlatformGovernanceService({ $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient) };
 }
 describe('onboarding progress snapshots', () => {
+  it.each(['CURRENT', 'MISSING', 'EXPIRED', 'STATE_CHANGED', 'OPERATOR_UNAVAILABLE'])('reports %s without exposing IT evidence to the office', async (status) => {
+    for (const role of ['SUPER_ADMIN', 'IT_SECURITY']) {
+      const f = fixture(role);
+      f.tx.platformAuditEvent.findFirst.mockImplementation(async ({ where }) => where.action !== 'tenant.technical-review.recorded' || status === 'MISSING' ? null : {
+        actorId: 'signer', createdAt: new Date(Date.now() - (status === 'EXPIRED' ? 86_400_000 : 0)),
+        metadata: { fingerprint: status === 'STATE_CHANGED' ? 'old' : technicalReviewFingerprint(f.application as Parameters<typeof technicalReviewFingerprint>[0]), evidenceReference: 'private-evidence' },
+      });
+      f.tx.platformAccount.findUnique.mockImplementation(async ({ where }) => where.id === 'signer'
+        ? { id: 'signer', role: 'IT_SECURITY', status: status === 'OPERATOR_UNAVAILABLE' ? 'DISABLED' : 'ACTIVE' }
+        : { id: 'operator', role, status: 'ACTIVE' });
+      const result = await f.service.onboardingProgress(actor, 'application');
+      expect(result.nextResponsibility).toBe(status === 'CURRENT' ? 'OFFICE_APPROVAL' : 'IT_REVIEW');
+      if (role === 'IT_SECURITY') expect(result.activationReview?.signOffStatus).toBe(status);
+      else expect(result).not.toHaveProperty('activationReview');
+      expect(JSON.stringify(result)).not.toContain('private-evidence');
+      expect(JSON.stringify(result)).not.toContain('fingerprint');
+      expect(JSON.stringify(result)).not.toContain('signer');
+    }
+  });
   it.each(['SUPER_ADMIN', 'IT_SECURITY'])('allows %s a safe approved-only snapshot', async (role) => {
     const f = fixture(role);
     const result = await f.service.onboardingProgress(actor, 'application');

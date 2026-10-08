@@ -107,7 +107,9 @@ class PlatformOnboardingProgress extends StatelessWidget {
         'ACCEPTANCE_PENDING' =>
           'Waiting for admin acceptance. An invitation record does not confirm email delivery.',
         'ACTIVATION_REVIEW_PENDING' =>
-          'Acceptance recorded. Super Admin activation review is still required.',
+          data['nextResponsibility'] == 'OFFICE_APPROVAL'
+              ? 'Preparation is complete. Waiting for independent office approval. Activation is not available in this screen.'
+              : 'Acceptance recorded. Waiting for IT to complete preparation before office approval.',
         'ACTIVE' =>
           'Activation is recorded and the first administrator is active.',
         _ =>
@@ -157,9 +159,24 @@ class PlatformOnboardingProgress extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
+        Text(switch (data['activationReview']['signOffStatus']) {
+          'CURRENT' =>
+            'IT sign-off is current for this snapshot. Office approval is still required.',
+          'EXPIRED' =>
+            'IT sign-off is expired or its timestamp cannot be verified. A new review is required.',
+          'STATE_CHANGED' =>
+            'Onboarding changed after IT sign-off. Review the current state again.',
+          'OPERATOR_UNAVAILABLE' =>
+            'The IT signer is no longer authorized. An authorized IT operator must review again.',
+          'MISSING' => 'No IT sign-off has been recorded.',
+          _ => 'IT sign-off cannot be confirmed at this stage.',
+        }),
+        const SizedBox(height: 8),
         Text(
           data['activationReview']['prerequisitesPassed'] == true
-              ? 'Recorded prerequisites pass. Manual evidence review is still required.'
+              ? data['activationReview']['signOffStatus'] == 'CURRENT'
+                    ? 'IT has recorded a manual evidence review. This is not an automated security certification.'
+                    : 'Recorded prerequisites pass. Manual evidence review is still required.'
               : 'Activation prerequisites are not met. Resolve the items below before proceeding.',
         ),
         const SizedBox(height: 12),
@@ -186,15 +203,17 @@ class PlatformOnboardingProgress extends StatelessWidget {
               ],
             ),
           ),
-        const Text(
-          'Manual evidence still needed (not automatically verified):',
-        ),
-        for (final review
-            in (data['activationReview']['manualReviews'] as List? ?? []))
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text('$review: review required'),
+        if (data['activationReview']['signOffStatus'] != 'CURRENT') ...[
+          const Text(
+            'Manual evidence still needed (not automatically verified):',
           ),
+          for (final review
+              in (data['activationReview']['manualReviews'] as List? ?? []))
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('$review: review required'),
+            ),
+        ],
         const SizedBox(height: 12),
         const Text(
           'Activation is not available here. Email delivery and the live invitation acceptance workflow are not connected. Passing these checks does not grant school access.',

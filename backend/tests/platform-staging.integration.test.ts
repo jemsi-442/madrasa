@@ -287,7 +287,12 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     await expect(recordTechnicalReview(db, actor, application.id, technicalInput)).rejects.toMatchObject({ statusCode: 403 });
     const operator = await db.platformAccount.findFirstOrThrow({ where: { role: 'IT_SECURITY', status: 'ACTIVE' } });
     const itActor = { ...actor, accountId: operator.id };
+    expect((await service.onboardingProgress(actor, application.id)).nextResponsibility).toBe('IT_REVIEW');
     const review = await recordTechnicalReview(db, itActor, application.id, technicalInput);
+    const officeProgress = await service.onboardingProgress(actor, application.id);
+    expect(officeProgress.nextResponsibility).toBe('OFFICE_APPROVAL');
+    expect(officeProgress).not.toHaveProperty('activationReview');
+    expect((await service.onboardingProgress(itActor, application.id)).activationReview?.signOffStatus).toBe('CURRENT');
     const input = { invitationId: application.adminInvitation!.id, technicalReviewId: review.reviewId, approvalReason: 'Office onboarding requirements approved' };
     await expect(activateSchool(db, itActor, application.id, input)).rejects.toMatchObject({ statusCode: 403 });
     await expect(activateSchool(db, actor, application.id, { ...input, technicalReviewId: 'missing-review' })).rejects.toMatchObject({ statusCode: 409 });
