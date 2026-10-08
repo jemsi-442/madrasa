@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Afaq Foundation | System User Handbook</title>
+  <meta name="author" content="Afaq Foundation">
+  <meta name="description" content="A practical English user handbook for Afaq Foundation school administrators, finance officers, teachers, parents and learners.">
+  <meta name="keywords" content="Afaq Foundation, user handbook, school system, finance, teaching, parent portal, learner courses">
   <style>
     @page { size: A4; margin: 0; }
     :root { --navy:#092542; --deep:#061b32; --gold:#c39435; --gold-soft:#f6efdf; --ink:#163149; --muted:#61758d; --line:#dce4e9; --paper:#fffefa; --green:#247954; --blue:#3371ad; --red:#a94343; }
@@ -75,12 +78,38 @@
     .small { color:var(--muted); font-size:8.3pt; }
     .tight li { margin-bottom:3px; }
     .contents { display:grid; grid-template-columns:1fr 1fr; gap:7px 15px; margin-top:10px; }
-    .contents div { display:flex; gap:9px; padding:8px 0; border-bottom:1px solid var(--line); }
+    .contents div { display:flex; gap:9px; padding:5px 0; border-bottom:1px solid var(--line); }
+    #governance-roles .card { font-size:9pt; }
     .contents b { min-width:22px; color:var(--gold); }
+    .contents a { color:var(--blue); text-decoration:underline; text-decoration-color:#b4cbe0; text-underline-offset:2px; }
+    .footer a { color:var(--blue); text-decoration:none; }
+    .contents a:hover,.footer a:hover { color:var(--blue); text-decoration:underline; }
+    .footer a { margin-left:auto; color:var(--blue); font-size:7pt; }
     .check { color:var(--green); font-weight:800; }
     .rule { height:1px; margin:13px 0; background:var(--line); }
     .mini-label { margin-bottom:4px; color:var(--gold); font-size:7pt; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; }
     .avoid-break { break-inside:avoid; }
+    #role-checklists .deck { margin-bottom:11px; }
+    #role-checklists .grid-2 { gap:7px; }
+    #role-checklists .card { padding:8px 10px; }
+    #role-checklists .card h3 { margin-bottom:3px; }
+    #role-checklists .card ol { margin:3px 0 5px; padding-left:17px; }
+    #role-checklists .card li { margin-bottom:2px; line-height:1.35; }
+    #role-checklists .card p { margin-bottom:0; }
+    #role-checklists .callout { padding:7px 10px; margin-top:9px !important; }
+    #tenant-onboarding .deck { margin-bottom:10px; }
+    #tenant-onboarding .flow { gap:3px; margin:6px 0 8px; }
+    #tenant-onboarding .flow .node { min-height:38px; padding:5px; font-size:7.2pt; }
+    #tenant-onboarding .grid-2 { gap:7px; }
+    #tenant-onboarding .grid-2 .card { padding:7px 9px; }
+    #tenant-onboarding .grid-2 h3 { margin-bottom:3px; font-size:10pt; }
+    #tenant-onboarding .grid-2 ul { margin:3px 0 0; padding-left:15px; }
+    #tenant-onboarding .grid-2 li { margin-bottom:2px; font-size:8.2pt; line-height:1.3; }
+    #tenant-onboarding > h3 { margin-top:9px !important; margin-bottom:6px; }
+    #tenant-onboarding .grid-3 { gap:6px; }
+    #tenant-onboarding .grid-3 .card { padding:7px 8px; }
+    #tenant-onboarding .callout { padding:7px 9px; margin-top:8px !important; font-size:8.5pt; }
+    #tenant-onboarding > .small { margin-top:5px; font-size:7.4pt; }
     @media print { body { background:white; } .page { margin:0; } }
   </style>
 </head>
@@ -97,10 +126,10 @@
       <div class="cover-rule"></div>
       <div class="cover-meta"><span>Administration</span><span>Finance</span><span>Teaching</span><span>Families &amp; Learners</span></div>
     </div>
-    <div class="cover-bottom"><div class="motto">KNOWLEDGE&nbsp; • &nbsp;CHARACTER&nbsp; • &nbsp;BRIGHTER LIVES</div><div>English edition &nbsp;|&nbsp; October 2026</div></div>
+    <div class="cover-bottom"><div class="motto">KNOWLEDGE&nbsp; • &nbsp;CHARACTER&nbsp; • &nbsp;BRIGHTER LIVES</div><div>Edition 1.4 &nbsp;|&nbsp; Reviewed 8 October 2026</div></div>
   </section>
 
-  <section class="page">
+  <section class="page" id="contents">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">START HERE</div></header>
     <div class="kicker">Welcome</div><h2>One school. Connected workspaces.</h2>
     <p class="deck">Afaq brings school records and daily work into one system. Each person signs in to a workspace shaped around their responsibilities.</p>
@@ -110,17 +139,104 @@
     </div>
     <h3 style="margin-top:18px">In this handbook</h3>
     <div class="contents">
-      <div><b>03</b><span>Sign in and move around</span></div><div><b>04</b><span>Administrator: school setup</span></div>
-      <div><b>05</b><span>Administrator: review and publish</span></div><div><b>06</b><span>Finance Officer: invoices and payments</span></div>
-      <div><b>07</b><span>Finance Officer: fees and reporting</span></div><div><b>08</b><span>Teacher: classes and daily records</span></div>
-      <div><b>09</b><span>Parent: follow a child's school journey</span></div><div><b>10</b><span>Learner: courses and progress</span></div>
-      <div><b>11</b><span>Learning content and media</span></div><div><b>12</b><span>Good practice and help</span></div>
+      <div><b>03</b><a href="#connected-workflows">How work connects</a></div><div><b>04</b><a href="#governance-roles">Governance roles and boundaries</a></div>
+      <div><b>05</b><a href="#tenant-onboarding">Create and onboard a madrassa</a></div><div><b>06</b><a href="#it-operations">IT security operations and rollout</a></div>
+      <div><b>07</b><a href="#getting-started">Sign in and move around</a></div><div><b>08</b><a href="#admin-setup">Administrator: school setup</a></div>
+      <div><b>09</b><a href="#admin-review">Administrator: review and publish</a></div><div><b>10</b><a href="#finance-payments">Finance Officer: invoices and payments</a></div>
+      <div><b>11</b><a href="#finance-records">Finance Officer: fees and reporting</a></div><div><b>12</b><a href="#teacher">Teacher: classes and daily records</a></div>
+      <div><b>13</b><a href="#parent">Parent: follow a child's school journey</a></div><div><b>14</b><a href="#learner">Learner: courses and progress</a></div>
+      <div><b>15</b><a href="#learning-content">Learning content and media</a></div><div><b>16</b><a href="#troubleshooting">Troubleshooting common issues</a></div>
+      <div><b>17</b><a href="#role-checklists">Role quick-start checklists</a></div><div><b>18</b><a href="#glossary">Key terms at a glance</a></div>
+      <div><b>19</b><a href="#good-practice">Good practice and help</a></div>
+      <div><b>20</b><a href="#platform-console-guide">Platform console: current capabilities</a></div>
+      <div><b>21</b><a href="#company-access-guide">Company access: suspend and restore</a></div>
     </div>
-    <div class="callout blue" style="margin-top:17px"><p><strong>Keep records trustworthy.</strong> Enter information only when you have checked it. A screen that opens does not automatically save, send, approve or publish a record.</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; SYSTEM USER HANDBOOK</span><b>02</b></footer>
+    <div class="callout blue" style="margin-top:12px"><p><strong>Availability note.</strong> Features can differ by app version and school setup. Some workflows in this guide may still be under development; use the actions available in your deployed app or confirm availability with the school administrator.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; SYSTEM USER HANDBOOK</span><a href="#contents">CONTENTS ↑</a><b>02</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="connected-workflows">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">SYSTEM FLOW</div></header>
+    <div class="kicker">From records to outcomes</div><h2>How work connects across Afaq.</h2>
+    <p class="deck">Afaq connects school staff, families and learners through shared records. Each role completes its part; review and access rules control what happens next.</p>
+    <div class="card avoid-break">
+      <div class="mini-label">01 · Student learning record</div>
+      <div class="flow"><div class="node">Admin sets up class and access</div><div class="arrow">›</div><div class="node">Teacher records attendance and learning</div><div class="arrow">›</div><div class="node">Admin reviews and publishes</div><div class="arrow">›</div><div class="node">Parent views the result</div></div>
+      <p class="small">An assessment or report starts as teacher work in progress. Families see the approved version after administrator publication.</p>
+    </div>
+    <div class="card avoid-break" style="margin-top:11px">
+      <div class="mini-label">02 · Fees and payment trail</div>
+      <div class="flow"><div class="node">Finance checks fee and invoice</div><div class="arrow">›</div><div class="node">Payment is submitted through configured channel</div><div class="arrow">›</div><div class="node">Finance verifies recorded status</div><div class="arrow">›</div><div class="node">Parent checks invoice or receipt</div></div>
+      <p class="small">A fee structure is a rate, not an invoice. A payment is confirmed only when its recorded status says so; a pending attempt is not proof of collection.</p>
+    </div>
+    <div class="card avoid-break" style="margin-top:11px">
+      <div class="mini-label">03 · Online course and learner access</div>
+      <div class="flow"><div class="node">School prepares course and lessons</div><div class="arrow">›</div><div class="node">Access rules make lessons available</div><div class="arrow">›</div><div class="node">Learner studies and marks completion</div></div>
+      <p class="small">For paid access, the learner may request access and follow the course invoice. Office approval or confirmed payment can grant access, according to the school's configured flow.</p>
+    </div>
+    <div class="callout blue" style="margin-top:13px"><p><strong>Status changes matter.</strong> Saved, submitted, under review, published and confirmed describe different stages. Check the status on the record before telling a family that something is final.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; SYSTEM FLOW</span><a href="#contents">CONTENTS ↑</a><b>03</b></footer>
+  </section>
+
+  <section class="page" id="governance-roles">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">PROPOSED GOVERNANCE</div></header>
+    <div class="kicker">Target operating model · partly implemented</div><h2>Three responsibilities. Clear boundaries.</h2>
+    <p class="deck">Keep platform operation, school administration and security operations separate. A role should receive only the access needed for its duties.</p>
+    <div class="grid-3">
+      <div class="card navy"><div class="mini-label" style="color:#e5c46c">PLATFORM</div><h3>Super Admin</h3><p>Governs the Afaq service across madrassas: tenant onboarding, platform-wide configuration, service plans, platform-level incidents and aggregate service health.</p></div>
+      <div class="card gold"><div class="mini-label">SCHOOL TENANT</div><h3>Madrassa Admin</h3><p>Governs one madrassa's people and operations: local users, classes, assignments, school records, approvals and school-level policies.</p></div>
+      <div class="card"><div class="mini-label">COMPANY OPERATIONS</div><h3>IT / Security Operator</h3><p>Protects and operates the technical service: logs, monitoring, alerts, vulnerabilities, backups, incident response and security evidence.</p></div>
+    </div>
+    <h3 style="margin-top:14px">Target authority and limits</h3>
+    <div class="grid-2">
+      <div class="card"><h3>Super Admin</h3><ul class="tight"><li>Create, configure, suspend or restore madrassa tenants under approved policy.</li><li>Manage platform-wide settings, service status and escalation.</li><li>View aggregate tenant/service health; tenant-content access is not part of routine oversight.</li><li>Approve exceptional cross-tenant support access only when necessary, scoped, time-limited and audited.</li></ul></div>
+      <div class="card"><h3>Madrassa Admin</h3><ul class="tight"><li>Manage users and records inside their own madrassa only.</li><li>Assign staff roles and class/branch scope using least privilege.</li><li>Review and publish school records; manage local settings and respond to school requests.</li><li>Cannot create other tenants, change platform security settings or inspect another madrassa.</li></ul></div>
+      <div class="card"><h3>IT / Security Operator</h3><ul class="tight"><li>Operate infrastructure, monitoring, access controls, backups and security tooling.</li><li>Review technical metadata and security logs for service protection.</li><li>Cannot approve school reports, change grades, post payments or administer school records.</li><li>Production data access requires an incident/ticket, approval, minimum scope, expiry and audit trail.</li></ul></div>
+      <div class="card"><h3>Existing school roles remain</h3><p><strong>Accountant, Teacher, Parent and Learner</strong> keep their current tenant-scoped duties. Platform or IT titles must not silently inherit these business permissions.</p><p class="small">A Super Admin is not an all-purpose school user; IT is not a substitute school administrator.</p></div>
+    </div>
+    <p class="small" style="margin-top:10px">The cards describe the target model, not a list of live permissions. See <a href="#platform-console-guide">page 20</a> for implemented capabilities and deployment limits.</p>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; GOVERNANCE MODEL</span><a href="#contents">CONTENTS ↑</a><b>04</b></footer>
+  </section>
+
+  <section class="page" id="tenant-onboarding">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">PROPOSED TENANT LIFECYCLE</div></header>
+    <div class="kicker">Who creates a madrassa?</div><h2>Approve first. Provision second. Activate last.</h2>
+    <p class="deck">Current foundation: independent approval, IT creation of an inactive madrassa, and a read-only progress view. Invitation acceptance and activation logic are tested internally; email delivery is not connected.</p>
+    <div class="flow"><div class="node">School requests onboarding</div><div class="arrow">›</div><div class="node">Super Admin verifies and approves</div><div class="arrow">›</div><div class="node">IT provisions tenant safely</div><div class="arrow">›</div><div class="node">First Admin accepts invite</div><div class="arrow">›</div><div class="node">Tenant activated</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>1 · Request and approve · Console</h3><ul class="tight"><li>Super Admin records the school name, unique code and nominated admin email.</li><li>A different Super Admin reviews and approves or rejects with a reason.</li><li>Approval does not create a school or grant access. Verify ownership outside the form.</li></ul></div>
+      <div class="card"><h3>2 · Create inactive school · Console</h3><ul class="tight"><li>IT opens <strong>Madrassa setup</strong>, then <strong>Review setup</strong>.</li><li>After checks pass, confirm <strong>Create inactive madrassa</strong>. Super Admin cannot execute this IT action.</li><li>Status stays <strong>PENDING_ACTIVATION</strong>. A retry of the same application does not create a duplicate.</li></ul></div>
+      <div class="card"><h3>3 · First Admin · Internal foundation</h3><ul class="tight"><li>A private, one-use invitation expires after 24 hours; only its hash is stored.</li><li>Acceptance creates a <strong>DISABLED</strong> school Admin, not a login session.</li><li>The <strong>/school-invitation</strong> page is for testing. The acceptance API remains disabled; no email is sent.</li></ul></div>
+      <div class="card"><h3>4 · Activation · Internal foundation</h3><ul class="tight"><li>A Super Admin other than the requester checks the matching acceptance receipt.</li><li>Record evidence and attest to isolation, access controls, audit, recovery and support checks.</li><li>School and Admin activate together with audit. These are operator attestations, not automatic verification; no activation UI is connected.</li></ul></div>
+    </div>
+    <h3 style="margin-top:12px">Read the current onboarding status</h3>
+    <div class="grid-3"><div class="card"><span class="pill">ONBOARDING PROGRESS</span><p style="margin-top:7px">Super Admin and IT can inspect completed milestones and the next pending stage.</p></div><div class="card"><span class="pill gold">INVITATION EXPIRED</span><p style="margin-top:7px">A replacement is needed through the approved delivery workflow, not a shared token.</p></div><div class="card"><span class="pill">REVIEW REQUIRED</span><p style="margin-top:7px">Investigate inconsistent or suspended access; do not bypass the checks.</p></div></div>
+    <div class="callout red" style="margin-top:10px"><p><strong>Approval is not activation.</strong> An invitation record is not proof of email delivery. If creation times out, refresh the queue before retrying the same application. No live deployment or real invitation sending is implied by this handbook.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; PROPOSED TENANT LIFECYCLE</span><a href="#contents">CONTENTS ↑</a><b>05</b></footer>
+  </section>
+
+  <section class="page" id="it-operations">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">PROPOSED GOVERNANCE</div></header>
+    <div class="kicker">Company IT / Security Operator</div><h2>Protect the service. Prove what happened.</h2>
+    <p class="deck">The IT function owns technical safeguards and response, not the madrassas' academic or financial decisions.</p>
+    <div class="grid-2">
+      <div class="card"><h3>1 · Health and reliability</h3><ul class="tight"><li>Monitor API, database, queue, storage, media and payment integration health.</li><li>Track availability, latency, error rates, capacity and backup completion.</li><li>Test restore procedures; report outages and recovery status to stakeholders.</li></ul></div>
+      <div class="card"><h3>2 · Logs and audit</h3><ul class="tight"><li>Centralise authentication, privilege changes, admin actions, finance events and security alerts.</li><li>Protect logs from alteration; restrict access and define retention and deletion schedules.</li><li>Do not log passwords, tokens, payment secrets or unnecessary student/parent content.</li></ul></div>
+      <div class="card"><h3>3 · Threats and vulnerabilities</h3><ul class="tight"><li>Triage suspicious sign-ins, abuse, malware indicators and unusual cross-tenant access.</li><li>Track dependencies, patches, secrets rotation and remediation deadlines.</li><li>Escalate confirmed or suspected incidents through a documented severity process.</li></ul></div>
+      <div class="card"><h3>4 · Identity and change control</h3><ul class="tight"><li>Require strong authentication for privileged accounts and review access regularly.</li><li>Use named accounts; prohibit shared Super Admin or operator credentials.</li><li>Record production changes, approvals, rollback plans and maintenance windows.</li></ul></div>
+    </div>
+    <h3 style="margin-top:12px">Incident response and delivery plan</h3>
+    <div class="flow"><div class="node">Detect and preserve evidence</div><div class="arrow">›</div><div class="node">Triage and contain</div><div class="arrow">›</div><div class="node">Notify owners and investigate</div><div class="arrow">›</div><div class="node">Recover and review</div></div>
+    <div class="grid-3">
+      <div class="card"><div class="mini-label">PHASE 1 · GOVERN</div><p>Name role owners, tenant boundaries, approval rules, incident severity and data-retention policy.</p></div>
+      <div class="card"><div class="mini-label">PHASE 2 · ENFORCE</div><p>Add platform roles, scoped permissions, MFA, immutable audit events and tested tenant-isolation checks.</p></div>
+      <div class="card"><div class="mini-label">PHASE 3 · OPERATE</div><p>Connect monitoring and alerts, rehearse incident/restore workflows, review metrics and improve controls.</p></div>
+    </div>
+    <div class="callout blue" style="margin-top:10px"><p><strong>Current boundary:</strong> the console reads platform audit events and database/Redis health. Threat detection, backup verification, incident workflows and emergency tenant access are not connected. Tested source code is not evidence of a production deployment; see <a href="#platform-console-guide">page 20</a>.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; IT / SECURITY OPERATIONS</span><a href="#contents">CONTENTS ↑</a><b>06</b></footer>
+  </section>
+
+  <section class="page" id="getting-started">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">START HERE</div></header>
     <div class="kicker">01 · Getting started</div><h2>Sign in, then follow the page trail.</h2>
     <p class="deck">Open Afaq in the app or on the school website and sign in with the account details issued to you.</p>
@@ -128,16 +244,17 @@
     <div class="grid-2">
       <div class="card"><h3>Move between pages</h3><ol class="tight"><li>Use the left menu on a wide screen.</li><li>On a phone, use the bottom tabs or tap <strong>More</strong> to open the menu.</li><li>Use <strong>Back</strong> to return to the previous page and <strong>Home</strong> to return to your role overview.</li><li>Use <strong>Refresh</strong> if a page needs to reload.</li></ol></div>
       <div class="card"><h3>Find learning content</h3><p>Learners can search subjects and courses inside <strong>My courses</strong>. Record pages may also have their own search and filters, such as invoices or students.</p><p class="small">The workspace menu opens pages directly. It does not search for dashboard pages.</p></div>
+      <div class="card gold"><h3>Scroll with a keyboard</h3><p>On web or desktop, use <strong>Up / Down</strong> for small steps and <strong>Page Up / Page Down</strong> for larger steps. <strong>Space</strong> moves down a page; <strong>Shift + Space</strong> moves up. <strong>Home</strong> and <strong>End</strong> jump to the top or bottom.</p><p class="small">Keep focus on the page, not inside a text field. A focused button or control may use the same key for its own action.</p></div>
     </div>
     <h3 style="margin-top:16px">If sign-in does not work</h3>
     <div class="step"><span class="num">1</span><div><strong>Check the account details.</strong><br><span class="small">Use the school-issued phone number or email and password. Check for extra spaces.</span></div></div>
     <div class="step"><span class="num">2</span><div><strong>Check the connection.</strong><br><span class="small">The app must reach the school's Afaq service. Reconnect to the internet or the configured school network, then retry.</span></div></div>
     <div class="step"><span class="num">3</span><div><strong>Ask the school office.</strong><br><span class="small">Staff accounts and parent-child links are managed by the school. Public learner registration is only available if the school has enabled it.</span></div></div>
     <div class="callout"><p><strong>Protect your account.</strong> Do not share a password or leave a signed-in account open on a shared device. Sign out from the account menu when you finish.</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; GETTING STARTED</span><b>03</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; GETTING STARTED</span><a href="#contents">CONTENTS ↑</a><b>07</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="admin-setup">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">ADMINISTRATOR</div></header>
     <div class="role-head"><div class="role-icon">01</div><div><h2>Set up the school workspace</h2><p>Administrator · School records and day-to-day oversight</p></div></div>
     <p class="deck">Begin with the school's core structure. Accurate classes, staff and subjects make later registers and reports easier to use.</p>
@@ -154,10 +271,10 @@
     <div class="step"><span class="num">3</span><div><strong>Review access.</strong> Confirm that staff see their assigned classes and that families are linked to the correct students.</div></div>
     <div class="step"><span class="num">4</span><div><strong>Check the overview.</strong> Use real counts and activity to spot missing setup before a new term begins.</div></div>
     <div class="callout blue"><p><strong>Access is scoped.</strong> A user's role, school and branch assignments determine which records can be opened. If a record is missing, check the assignment with the office instead of sharing another person's login.</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; ADMINISTRATOR WORKSPACE</span><b>04</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; ADMINISTRATOR WORKSPACE</span><a href="#contents">CONTENTS ↑</a><b>08</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="admin-review">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">ADMINISTRATOR</div></header>
     <div class="role-head"><div class="role-icon">02</div><div><h2>Review, approve and publish</h2><p>Administrator · Academic oversight</p></div></div>
     <p class="deck">Teaching records move through review steps so families see approved information and school reports reflect their source records.</p>
@@ -177,10 +294,10 @@
     </ul>
     <div class="callout red"><p><strong>Published reports are snapshots.</strong> Later source changes do not silently rewrite an already published report. Follow the school's correction process if an issued report needs attention.</p></div>
     <div class="callout"><p><strong>Separate roles, separate duties.</strong> Qur'an session recording belongs to assigned teachers. Administrators review academic work but should not enter teaching observations on behalf of a teacher.</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; ADMINISTRATOR WORKSPACE</span><b>05</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; ADMINISTRATOR WORKSPACE</span><a href="#contents">CONTENTS ↑</a><b>09</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="finance-payments">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">FINANCE OFFICER</div></header>
     <div class="role-head"><div class="role-icon">01</div><div><h2>Follow invoices and payments</h2><p>Finance Officer · Collections workflow</p></div></div>
     <p class="deck">Use the finance home to spot follow-up work, then open the relevant record to check its current details.</p>
@@ -198,10 +315,10 @@
     <div class="step"><span class="num">4</span><div>Return to the list; filters remain in place for continued work.</div></div>
     <div class="callout red"><p><strong>If a save or network request times out, check the register before trying again.</strong> An uncertain result could already have been recorded.</p></div>
     <p class="small">The finance workspace records and displays transactions. It does not initiate a charge, edit financial history or reconcile a payment provider.</p>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; FINANCE WORKSPACE</span><b>06</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; FINANCE WORKSPACE</span><a href="#contents">CONTENTS ↑</a><b>10</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="finance-records">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">FINANCE OFFICER</div></header>
     <div class="role-head"><div class="role-icon">02</div><div><h2>Maintain fees and finance records</h2><p>Finance Officer · Finance tools</p></div></div>
     <div class="grid-2">
@@ -216,10 +333,10 @@
     <h3>Read financial totals carefully</h3>
     <ul class="tight"><li>Summary totals reflect what the API reports for the selected period.</li><li>Invoiced minus collected is a period difference, not necessarily today's debtor balance.</li><li>Individual entries display their recorded currency. Do not add mixed currencies without conversion.</li><li>CSV exports contain financial information. Choose an appropriate folder and recipient.</li></ul>
     <div class="callout"><p><strong>Maintain an audit trail.</strong> Use the official register and school procedures to investigate discrepancies. Do not treat an inquiry status as proof that a message was sent or a payment was received.</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; FINANCE WORKSPACE</span><b>07</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; FINANCE WORKSPACE</span><a href="#contents">CONTENTS ↑</a><b>11</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="teacher">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">TEACHER</div></header>
     <div class="role-head"><div class="role-icon">01</div><div><h2>Teach from your assigned workspace</h2><p>Teacher · Class-based workflow</p></div></div>
     <p class="deck">Start from your Dashboard or My Classes. Class context follows you into the records used for that class.</p>
@@ -235,10 +352,10 @@
     <div class="callout green" style="margin-top:14px"><p><strong>Keep the class context visible.</strong> If you change classes, confirm the new class before creating or reviewing records. Choosing a learner also narrows the work to that learner.</p></div>
     <div class="callout"><p><strong>Recording is not publishing.</strong> An assessment or report draft becomes visible to families only after it passes the school's review and publication process.</p></div>
     <p class="small">Teachers cannot enrol students, change staff assignments or edit the approved subject catalogue. Contact the school administrator if setup is missing.</p>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; TEACHER WORKSPACE</span><b>08</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; TEACHER WORKSPACE</span><a href="#contents">CONTENTS ↑</a><b>12</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="parent">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">PARENT</div></header>
     <div class="role-head"><div class="role-icon">01</div><div><h2>Follow your child's school journey</h2><p>Parent · Family workspace</p></div></div>
     <p class="deck">Use the Dashboard for an overview, then open your child's records for detail. On pages that support more than one child, select the child before reviewing information.</p>
@@ -254,10 +371,10 @@
     <h3 style="margin-top:17px">Ask the right question</h3>
     <ul class="tight"><li><strong>Missing child or wrong class:</strong> contact the school office to check the family link or enrolment.</li><li><strong>Attendance or learning record:</strong> message the assigned teacher with the relevant date or subject.</li><li><strong>Invoice or payment:</strong> contact the finance office and include the invoice or payment reference.</li><li><strong>Report not available:</strong> ask whether the reporting period has been reviewed and published.</li></ul>
     <div class="callout blue"><p><strong>Privacy follows your family link.</strong> The parent workspace shows records for children linked to your account. The school office manages those links.</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; PARENT WORKSPACE</span><b>09</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; PARENT WORKSPACE</span><a href="#contents">CONTENTS ↑</a><b>13</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="learner">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">LEARNER</div></header>
     <div class="role-head"><div class="role-icon">01</div><div><h2>Find a course and keep learning</h2><p>Learner · Personal learning workspace</p></div></div>
     <p class="deck">Use Home for your learning overview or open My courses to find a subject, search the course library and choose a lesson.</p>
@@ -272,10 +389,10 @@
     <div class="grid-3"><div class="card"><span class="pill green">Available</span><p style="margin-top:8px">Open the lesson and study.</p></div><div class="card"><span class="pill gold">Preview</span><p style="margin-top:8px">Open the lesson labelled as a preview.</p></div><div class="card"><span class="pill">Access required</span><p style="margin-top:8px">Follow the payment or school approval instructions shown.</p></div></div>
     <div class="callout" style="margin-top:15px"><p><strong>Learning progress is specific.</strong> A lesson is complete only after a successful completion save. Teacher-recorded scores and Qur'an memorisation are shown separately from course progress.</p></div>
     <p class="small">If a course or lesson is missing, check the access label or ask your school. Do not use someone else's account to open restricted content.</p>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; LEARNER WORKSPACE</span><b>10</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; LEARNER WORKSPACE</span><a href="#contents">CONTENTS ↑</a><b>14</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="learning-content">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">LEARNING CONTENT</div></header>
     <div class="kicker">Courses, lessons and media</div><h2>Keep the lesson in one learning space.</h2>
     <p class="deck">The course reader keeps lesson notes, resources and playback together so learners can move through a published curriculum.</p>
@@ -290,10 +407,56 @@
     <ul class="tight"><li>Real lesson media is checked against your course access before it opens.</li><li>Playback does not automatically start or mark a lesson complete.</li><li>A sample video or audio is practice material, not the teacher's lesson recording.</li><li>If playback fails, retry or contact the school with the course and lesson title.</li></ul>
     <div class="callout blue"><p><strong>Resume means continue with an available unfinished lesson.</strong> It does not restore an exact video timestamp. Use the player timeline to seek within a recording during the current session.</p></div>
     <div class="card navy"><h3>Teacher workflow around online courses</h3><p>Teachers open <strong>My courses</strong> to work with their assigned online courses. School curriculum assignments and learner access are managed by the appropriate school role.</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; LEARNING CONTENT</span><b>11</b></footer>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; LEARNING CONTENT</span><a href="#contents">CONTENTS ↑</a><b>15</b></footer>
   </section>
 
-  <section class="page">
+  <section class="page" id="troubleshooting">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">TROUBLESHOOTING</div></header>
+    <div class="kicker">When something does not look right</div><h2>Check the record before you retry.</h2>
+    <p class="deck">A quick, safe sequence for the issues users most often encounter. Your role determines which records and actions are available.</p>
+    <div class="grid-2">
+      <div class="card"><h3>Cannot sign in</h3><ol class="tight"><li>Check the school-issued email or phone number and remove accidental spaces.</li><li>Confirm your internet or configured school network is working.</li><li>Retry once. If it still fails, ask the school office to check the account.</li></ol></div>
+      <div class="card"><h3>A child, class or record is missing</h3><ol class="tight"><li>Check the selected child, class, date, period and filters.</li><li>Refresh the page once and confirm the connection.</li><li>Ask the school to verify the family link, class assignment or publication status.</li></ol></div>
+      <div class="card"><h3>Payment is pending or unclear</h3><ol class="tight"><li>Open the invoice and inspect its linked payment status and reference.</li><li>Do not submit another payment just because the first screen timed out.</li><li>Share the invoice or transaction reference with the finance office for verification.</li></ol></div>
+      <div class="card"><h3>Course or lesson is locked</h3><ol class="tight"><li>Read the access label: available, preview, access required or locked.</li><li>For paid content, check the related request and invoice status.</li><li>Ask the school office to review access if payment or approval is already confirmed.</li></ol></div>
+      <div class="card"><h3>Video, audio or document will not open</h3><ol class="tight"><li>Check your connection and try the lesson resource again.</li><li>Confirm the selected lesson has published content and that your access allows it.</li><li>Send support the course, lesson and resource name; never send your password.</li></ol></div>
+      <div class="card"><h3>My change or completion is not showing</h3><ol class="tight"><li>Look for a saved or submitted confirmation before leaving the page.</li><li>Refresh and inspect the record status before entering it again.</li><li>For reports or assessments, check whether administrator review is still pending.</li></ol></div>
+    </div>
+    <div class="callout red" style="margin-top:14px"><p><strong>When contacting support:</strong> include your role, page name, approximate time and a safe record reference. Do not send passwords, full payment card details or another user's private information.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; TROUBLESHOOTING</span><a href="#contents">CONTENTS ↑</a><b>16</b></footer>
+  </section>
+
+  <section class="page" id="role-checklists">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">QUICK START</div></header>
+    <div class="kicker">A first-session checklist</div><h2>Start well in your workspace.</h2>
+    <p class="deck">Use the checklist for your role to confirm you are in the right place and know the next useful action.</p>
+    <div class="grid-2">
+      <div class="card"><h3>Administrator</h3><ol class="tight"><li>Open <strong>Overview</strong> and check the school context.</li><li>Review <strong>Students</strong>, <strong>Classes</strong> and <strong>Teachers</strong>.</li><li>Confirm class and subject assignments are current.</li><li>Check pending assessments or reports before publishing.</li></ol><p class="small"><strong>Confirm:</strong> the correct school and reporting period are selected.</p></div>
+      <div class="card"><h3>Finance Officer</h3><ol class="tight"><li>Open <strong>Home</strong> and review the current summary.</li><li>Use <strong>Invoices</strong> to find the record needing follow-up.</li><li>Open linked <strong>Payments</strong> and verify the saved status.</li><li>Use <strong>Fee structures</strong>, <strong>Expenses</strong> and reports as needed.</li></ol><p class="small"><strong>Confirm:</strong> period, currency, invoice and payment reference.</p></div>
+      <div class="card"><h3>Teacher</h3><ol class="tight"><li>Open <strong>Dashboard</strong> and review today's work.</li><li>Choose the assigned class in <strong>My Classes</strong>.</li><li>Record attendance or learning against the right learner and date.</li><li>Submit assessments or reports for review when ready.</li></ol><p class="small"><strong>Confirm:</strong> class context and saved/submitted status.</p></div>
+      <div class="card"><h3>Parent</h3><ol class="tight"><li>Open <strong>Dashboard</strong> and select the right child.</li><li>Review attendance, Qur'an and academic progress.</li><li>Open published reports or invoice details as needed.</li><li>Message the assigned teacher or school office for help.</li></ol><p class="small"><strong>Confirm:</strong> child identity and report publication status.</p></div>
+      <div class="card"><h3>Learner</h3><ol class="tight"><li>Open <strong>Home</strong> or <strong>My courses</strong>.</li><li>Search by subject or course and check its access label.</li><li>Open a lesson and study its available materials.</li><li>Mark it complete and check that progress has saved.</li></ol><p class="small"><strong>Confirm:</strong> lesson access and completion status.</p></div>
+    </div>
+    <div class="callout blue" style="margin-top:13px"><p><strong>Role mismatch or missing page?</strong> Sign out and use your own school-issued account. Ask the school administrator to check your role and assignments; do not share another person's login.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; QUICK START</span><a href="#contents">CONTENTS ↑</a><b>17</b></footer>
+  </section>
+
+  <section class="page" id="glossary">
+    <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">QUICK REFERENCE</div></header>
+    <div class="kicker">Shared language</div><h2>Key terms at a glance.</h2>
+    <p class="deck">These terms help staff, families and learners understand what a record represents and what its status means.</p>
+    <div class="grid-2">
+      <div class="card"><h3>Learning content</h3><p><strong>Subject</strong> is a learning area, such as Qur'an or Mathematics. A <strong>course</strong> organises online learning for a subject. A <strong>lesson</strong> is an individual study unit inside a course.</p></div>
+      <div class="card"><h3>Finance records</h3><p>A <strong>fee structure</strong> defines a rate. An <strong>invoice</strong> records an amount due. A <strong>payment</strong> records an attempt or collection, depending on its status. A <strong>receipt</strong> is evidence available for a completed payment.</p></div>
+      <div class="card"><h3>Work stages</h3><p><strong>Draft</strong> is being prepared. <strong>Submitted</strong> is waiting for review. <strong>Under review</strong> means a reviewer is checking it. <strong>Published</strong> is released to the intended audience.</p></div>
+      <div class="card"><h3>Access and progress</h3><p><strong>Available</strong> can be opened. <strong>Preview</strong> is a limited sample. <strong>Access required</strong> needs payment or approval. <strong>Locked</strong> is not currently open to the learner.</p></div>
+    </div>
+    <div class="callout blue" style="margin-top:14px"><p><strong>Keep progress types separate.</strong> Course lesson completion, teacher-recorded assessment results, attendance and Qur'an learning records are different measures and may update at different times.</p></div>
+    <div class="callout" style="margin-top:10px"><p><strong>Use the record's current status.</strong> A term may be displayed differently by a school or workflow. When in doubt, open the record details or ask the responsible office.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; QUICK REFERENCE</span><a href="#contents">CONTENTS ↑</a><b>18</b></footer>
+  </section>
+
+  <section class="page" id="good-practice">
     <header class="topline"><div class="brand"><svg viewBox="0 0 64 64"><path fill="#dcae34" d="M32 3 49 20 32 37 15 20z"/><path fill="#092542" d="M13 24 28 39 13 57 2 57V40zM51 24 36 39 51 57h11V40z"/><path fill="#dcae34" d="M25 43 32 36 39 43 32 54z"/></svg><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">GOOD PRACTICE</div></header>
     <div class="kicker">Everyday use</div><h2>Keep work clear and secure.</h2>
     <div class="grid-2">
@@ -305,8 +468,42 @@
     <h3 style="margin-top:17px">Common status labels</h3>
     <div class="grid-3"><div class="card"><span class="pill">Draft</span><p style="margin-top:7px">Saved for preparation; not yet final.</p></div><div class="card"><span class="pill gold">Under review</span><p style="margin-top:7px">Waiting for the responsible reviewer.</p></div><div class="card"><span class="pill green">Published / Confirmed</span><p style="margin-top:7px">Available or recorded as the status indicates.</p></div></div>
     <div class="callout red" style="margin-top:15px"><p><strong>Need help?</strong> Contact the school using its official support route. Afaq does not display staff passwords or ask you to share them in a support request.</p></div>
-    <div style="position:absolute;right:18mm;bottom:31mm;left:18mm;padding:13px 15px;border-radius:12px;background:linear-gradient(110deg,#f6efdf,#fffefa)"><div class="mini-label">Afaq Foundation</div><h3 style="font-size:16pt">Knowledge. Character. Brighter lives.</h3><p class="small" style="margin-bottom:0">Afaq System User Handbook · English edition · October 2026</p></div>
-    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; SYSTEM USER HANDBOOK</span><b>12</b></footer>
+    <div style="position:absolute;right:18mm;bottom:31mm;left:18mm;padding:13px 15px;border-radius:12px;background:linear-gradient(110deg,#f6efdf,#fffefa)"><div class="mini-label">Afaq Foundation</div><h3 style="font-size:16pt">Knowledge. Character. Brighter lives.</h3><p class="small" style="margin-bottom:0">Afaq System User Handbook · Edition 1.4 · Reviewed 8 October 2026</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; SYSTEM USER HANDBOOK</span><a href="#contents">CONTENTS ↑</a><b>19</b></footer>
+  </section>
+  <section class="page" id="platform-console-guide">
+    <header class="topline"><div class="brand"><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">PLATFORM OPERATIONS</div></header>
+    <div class="kicker">Implementation snapshot · 8 October 2026</div>
+    <h2>A separate workspace for company operations.</h2>
+    <p class="deck">Super Admin and IT Security use platform identities. Madrassa Admin, Accountant, Teacher, Parent and Learner remain school identities; school credentials do not grant platform access.</p>
+    <div class="callout blue"><p><strong>Built and tested, not deployed by this update.</strong> Ask the deployment administrator for the configured platform address. The app route is <strong>/platform</strong> (commonly <strong>/#/platform</strong> on web). No default platform password or public account registration is provided.</p></div>
+    <div class="grid-2">
+      <div class="card"><h3>1 · Sign in securely</h3><p>Use your named company account, password and six-digit authenticator code. The session lasts 15 minutes; sign in again when it expires. Never share passwords, setup keys or authenticator codes.</p></div>
+      <div class="card"><h3>2 · Check your workspace</h3><p><strong>Super Admin:</strong> overview, applications, company accounts, audit, health and own sessions.</p><p><strong>IT Security:</strong> Madrassa setup, approved onboarding progress, audit, health and own sessions. No school business permissions.</p></div>
+      <div class="card"><h3>3 · Review madrassa applications</h3><p>A Super Admin records the request. A different Super Admin approves or rejects it with a reason. A reviewed decision cannot be overwritten. Approval alone creates no school and sends no invitation.</p></div>
+      <div class="card"><h3>4 · Inspect audit and health</h3><p><strong>Audit trail:</strong> filter by event, role and period, then open event details.</p><p><strong>System health:</strong> inspect database and Redis availability. An unavailable response is not proof that services are healthy.</p></div>
+    </div>
+    <h3 style="margin-top:14px">My sessions: close access you no longer need</h3>
+    <ol><li>Open <strong>My sessions</strong>, select your current or another session, and confirm revocation.</li><li><strong>Sign out all sessions</strong> requires confirmation and affects your company account only.</li><li>If server sign-out cannot be confirmed, local sign-out still completes after the attempt. Other sessions may remain active; sign in and review them.</li></ol>
+    <div class="callout"><p><strong>Still pending:</strong> email delivery, live invitation acceptance, activation review UI, company invitations, password/MFA recovery, threat detection and backup verification. See <a href="#tenant-onboarding">page 5</a> for the implemented onboarding stages. No tokens or staff passwords should be shared through support.</p></div>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; IMPLEMENTED FOUNDATION</span><a href="#contents">CONTENTS ↑</a><b>20</b></footer>
+  </section>
+  <section class="page" id="company-access-guide">
+    <header class="topline"><div class="brand"><div><div class="brand-name">Afaq</div><div class="brand-sub">Foundation</div></div></div><div class="chapter">COMPANY ACCESS CONTROL</div></header>
+    <div class="kicker">Super Admin workflow</div><h2>Suspend deliberately. Restore independently.</h2>
+    <p class="deck">These controls apply to IT Security company accounts only. They do not suspend madrassas, delete accounts or change school staff permissions.</p>
+    <div class="flow"><div class="node">Find company account</div><div class="arrow">›</div><div class="node">Review access history</div><div class="arrow">›</div><div class="node">Record reason and confirm</div><div class="arrow">›</div><div class="node">Verify refreshed status</div></div>
+    <div class="grid-2">
+      <div class="card"><h3>Find the right account</h3><p>Open <strong>Company accounts</strong>. Filter by <strong>Account role</strong> and <strong>Account status</strong>, or choose <strong>Clear account filters</strong>. Verify name, email and account ID before acting. A filter change returns to page one.</p></div>
+      <div class="card"><h3>Review the evidence</h3><p>Open <strong>Access history</strong> to read who disabled or restored access, when and why. Use <strong>Older / Newer</strong> for groups of 20 records and <strong>Retry</strong> after a failed request. Times are UTC; reasons are operator statements, not independently verified findings.</p></div>
+      <div class="card gold"><h3>Disable IT access</h3><ol class="tight"><li>Select an active IT account.</li><li>Choose <strong>Disable IT account</strong>.</li><li>Enter a 10–500 character reason, without secrets.</li><li>Choose <strong>Confirm disable</strong>.</li></ol><p>Login is blocked and all its sessions are revoked. Status, revocation and audit commit together; an audit failure rolls the change back.</p></div>
+      <div class="card"><h3>Restore IT access</h3><ol class="tight"><li>A different Super Admin reviews the suspension and its resolution.</li><li>Choose <strong>Review restoration</strong>.</li><li>Record the review reason and choose <strong>Confirm restore</strong>.</li></ol><p>The account must have enrolled MFA and a recorded suspension. Old sessions stay revoked; IT signs in again with password and MFA.</p></div>
+    </div>
+    <div class="callout red" style="margin-top:14px"><p><strong>Protected boundaries.</strong> You cannot disable yourself or a Super Admin here. The suspending administrator cannot approve restoration. IT cannot list company accounts or read reason-bearing access history. Shared audit views omit these reasons.</p></div>
+    <h3>When an action does not complete</h3>
+    <p>Refresh and check the latest status before retrying. A changed record may reject the request; a denied restoration requires another authorised reviewer. Never treat a connection failure as confirmation of success.</p>
+    <p class="small">History pages may shift when new events arrive; this is not a fixed forensic export. The history window closes at session expiry. Requests already in flight may finish after access is disabled. Do not use restoration as a substitute for investigating a suspected compromise.</p>
+    <footer class="footer"><span>AFAQ FOUNDATION &nbsp;·&nbsp; REVIEWED 8 OCTOBER 2026</span><a href="#contents">CONTENTS ↑</a><b>21</b></footer>
   </section>
 </body>
 </html>

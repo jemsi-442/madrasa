@@ -21,6 +21,15 @@ frontend/  Flutter client for web, Android, and iOS
 scripts/   Local helper scripts
 ```
 
+## Afaq User Handbook
+
+The English, Afaq-branded handbook explains the main user journeys for administrators, finance officers, teachers, parents, and learners. Edition 1.4 also documents platform, madrassa and company IT/security governance, distinguishing the implemented onboarding foundation from pending email delivery and live activation workflows. Feature availability can vary by app version and school setup; this guide does not imply that every described workflow is deployed everywhere.
+
+- [Download the PDF handbook](docs/Afaq_System_User_Handbook.pdf)
+- [View or edit the HTML source](docs/afaq-system-handbook.html)
+
+After editing the HTML source, regenerate and validate the tagged A4 PDF with `bash scripts/build-afaq-handbook.sh` (requires WeasyPrint and Poppler `pdfinfo`). Run `bash scripts/test-afaq-handbook-build.sh` to check broken-link rejection and safe output replacement.
+
 ## Current Backend Scope
 
 Implemented backend modules include:
@@ -104,13 +113,27 @@ cp backend/.env.example backend/.env
 docker compose up -d
 ```
 
-3. Run migrations:
+3. Install dependencies and generate the database client:
 
 ```bash
 cd backend
 npm install
-npm run prisma:migrate:deploy
+npm run prisma:generate
 ```
+
+For a **new empty database**, set `FRESH_DATABASE_URL` securely to the intended
+new database, then run `npm run db:install:fresh -- --confirm-empty-database`.
+The installer handles historical prerequisite ordering and refuses non-empty
+targets. Do not use it to reset or upgrade an existing school database.
+
+For an **existing initialized database**, back up and test the upgrade before
+running `npm run prisma:migrate:deploy` with its configured `DATABASE_URL`.
+Direct historical replay on an empty database has an ordering limitation;
+see the [safe installation guide](backend/DEVELOPMENT.md#safe-fresh-installation).
+
+To verify a fresh installation without touching school data, run
+`npm run test:platform:staging -- --fresh-install` (requires local MariaDB and Redis
+binaries). This creates and removes disposable services and runs governance tests.
 
 4. Seed admin:
 
