@@ -139,8 +139,20 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
         });
       } else if (result['prerequisitesPassed'] != true) {
         setState(() {
-          message =
-              'Setup is blocked: independent approval or school code availability needs review. Contact Super Admin.';
+          final checks = result['checks'];
+          final approvalMissing =
+              checks is Map && checks['independentReview'] == false;
+          final codeUnavailable =
+              checks is Map && checks['schoolCodeAvailable'] == false;
+          message = [
+            'Setup is blocked. No creation request was sent.',
+            if (approvalMissing)
+              'Office action: ask an independent Super Admin to review the approval record. IT must not bypass office approval.',
+            if (codeUnavailable)
+              'IT action: investigate the school code conflict and check application history. Do not delete an existing madrassa or create a duplicate.',
+            if (!approvalMissing && !codeUnavailable)
+              'IT action: the setup result could not be verified. Refresh the queue and run setup checks again; do not bypass the checks.',
+          ].join(' ');
         });
       } else {
         setState(() {

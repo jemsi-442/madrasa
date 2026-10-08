@@ -4,6 +4,81 @@ import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
+  for (final checks in <Map<String, dynamic>?>[
+    {'independentReview': false, 'schoolCodeAvailable': true},
+    {'independentReview': true, 'schoolCodeAvailable': false},
+    {'independentReview': false, 'schoolCodeAvailable': false},
+    null,
+    {'independentReview': true, 'schoolCodeAvailable': true},
+  ]) {
+    testWidgets('blocked setup routes responsibility safely: $checks', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final paths = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PlatformProvisioningPanel(
+                sessionIsCurrent: () => true,
+                call: (path, {body}) async {
+                  expect(body, isNull);
+                  paths.add(path);
+                  if (path.endsWith('/provisioning-preflight')) {
+                    return {
+                      'prerequisitesPassed': false,
+                      'alreadyProvisioned': false,
+                      'checks': checks,
+                    };
+                  }
+                  return [
+                    {
+                      'id': 'application',
+                      'schoolName': 'School',
+                      'requestedCode': 'school',
+                    },
+                  ];
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Review setup'));
+      await tester.tap(find.text('Review setup'));
+      await tester.pumpAndSettle();
+      final missingApproval = checks?['independentReview'] == false;
+      final codeConflict = checks?['schoolCodeAvailable'] == false;
+      expect(
+        find.textContaining('Office action:'),
+        missingApproval ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.textContaining('Super Admin'),
+        missingApproval ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.textContaining('IT action:'),
+        codeConflict || !missingApproval ? findsOneWidget : findsNothing,
+      );
+      if (!missingApproval && !codeConflict) {
+        expect(find.textContaining('could not be verified'), findsOneWidget);
+      }
+      expect(find.text('Create inactive madrassa'), findsNothing);
+      expect(paths.length, 2);
+      expect(
+        paths.last,
+        '/tenant-applications/application/provisioning-preflight',
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   testWidgets(
     'setup filters combine with search and preserve inactive status',
     (tester) async {

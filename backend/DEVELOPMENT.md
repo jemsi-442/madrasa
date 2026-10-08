@@ -458,6 +458,14 @@ checks current progress or refreshes the queue rather than automatically resubmi
 and callback checks prevent stale confirmations after logout/relogin. School
 creation remains separate from first-admin invitation and activation.
 
+Blocked setup guidance distinguishes responsibilities: a failed independent
+approval check asks an independent Super Admin to review the office approval;
+a school-code conflict asks IT to investigate application history without deleting
+an existing school or creating a duplicate. If both fail, both responsibilities
+are shown. Missing or inconclusive check details remain an IT verification task,
+not a blanket escalation to Super Admin. This changes guidance only: failed
+preflight still offers no creation confirmation and sends no creation request.
+
 After creation, replay, rejection or an uncertain write result, the setup panel
 retains the selected application's identity and offers **Check current progress**
 and **View application history**. An already-provisioned preflight offers the
@@ -987,7 +995,7 @@ From the repository root, run `bash scripts/test-platform-web.sh`. Set
 Chromium cannot be discovered automatically. Existing Flutter dependencies must
 already be installed; the runner uses `--no-pub`.
 
-Verified: 66 tests pass in headless Chromium, including sign-in through the form,
+Verified: 71 tests pass in headless Chromium, including sign-in through the form,
 opening Super Admin onboarding readiness, failed refresh hiding stale results,
 successful retry, IT queue search/setup filters/pagination, provisioning/progress
 views, application/actor-scoped audit navigation, onboarding overview navigation,
