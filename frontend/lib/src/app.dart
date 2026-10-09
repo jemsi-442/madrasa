@@ -14,6 +14,7 @@ import 'admin_theme.dart';
 import 'keyboard_scrolling.dart';
 import 'platform_console.dart';
 import 'school_invitation_page.dart';
+import 'page_selection.dart';
 
 class MifApp extends StatefulWidget {
   const MifApp({super.key, this.state, this.layout});
@@ -160,7 +161,7 @@ class _MifAppState extends State<MifApp> {
       actions: pageKeyboardActions,
       builder: (context, child) => AppLayoutScope(
         layout: widget.layout ?? resolveAppLayout(),
-        child: child!,
+        child: PageSelection(child: child!),
       ),
       theme: ThemeData(
         useMaterial3: true,
