@@ -101,7 +101,8 @@ async function main() {
     const credentialFile = join(directory, "credentials.json");
     await writeFile(credentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
     const app = express();
-    app.use(cors({ origin: "http://127.0.0.1:8087" }));
+    // The shared browser client includes credentials, even for company login.
+    app.use(cors({ origin: "http://127.0.0.1:8087", credentials: true }));
     app.use(express.json());
     const limit = createPlatformLoginLimiter(redisUrl, signingKey);
     app.use("/api/auth/browser", (req, res, next) => {
