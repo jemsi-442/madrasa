@@ -161,7 +161,7 @@ class _MifAppState extends State<MifApp> {
       actions: pageKeyboardActions,
       builder: (context, child) => AppLayoutScope(
         layout: widget.layout ?? resolveAppLayout(),
-        child: PageSelection(child: child!),
+        child: child!,
       ),
       theme: ThemeData(
         useMaterial3: true,
@@ -232,18 +232,25 @@ class _MifAppState extends State<MifApp> {
           ),
         ),
       ),
-      routes: {
-        '/platform': (context) => routePage(context, '/login'),
-        '/school-invitation': (_) => const SchoolInvitationPage(),
-        '/': (context) => routePage(context, '/'),
-        '/login': (context) => routePage(context, '/login'),
-        '/register': (context) => routePage(context, '/register'),
-        '/terms': (context) => routePage(context, '/terms'),
-        '/privacy': (context) => routePage(context, '/privacy'),
-        '/contact': (context) => routePage(context, '/contact'),
-        '/forgot-password': (context) => routePage(context, '/forgot-password'),
-        '/parent-access': (context) => routePage(context, '/parent-access'),
-      },
+      routes:
+          <String, WidgetBuilder>{
+            '/platform': (context) => routePage(context, '/login'),
+            '/school-invitation': (_) => const SchoolInvitationPage(),
+            '/': (context) => routePage(context, '/'),
+            '/login': (context) => routePage(context, '/login'),
+            '/register': (context) => routePage(context, '/register'),
+            '/terms': (context) => routePage(context, '/terms'),
+            '/privacy': (context) => routePage(context, '/privacy'),
+            '/contact': (context) => routePage(context, '/contact'),
+            '/forgot-password': (context) =>
+                routePage(context, '/forgot-password'),
+            '/parent-access': (context) => routePage(context, '/parent-access'),
+          }.map(
+            (path, builder) => MapEntry(
+              path,
+              (context) => PageSelection(child: builder(context)),
+            ),
+          ),
     );
   }
 }

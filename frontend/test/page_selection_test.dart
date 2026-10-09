@@ -31,6 +31,15 @@ void main() {
       );
       await tester.pumpWidget(const MifApp(layout: AppLayout.website));
       await tester.pumpAndSettle();
+      // On web, putting the native selection platform view above Navigator
+      // intercepts page gestures even though simulated widget gestures pass.
+      expect(
+        find.ancestor(
+          of: find.byType(Navigator).first,
+          matching: find.byType(SelectionArea),
+        ),
+        findsNothing,
+      );
       await tester.tap(find.byKey(const ValueKey('header-login')));
       await tester.pumpAndSettle();
       final heading = find.text('Welcome Back');
