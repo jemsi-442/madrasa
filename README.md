@@ -202,6 +202,28 @@ flutter pub get
 flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:4000
 ```
 
+For automatic Dart updates while developing, run from the repository root:
+
+```bash
+node scripts/dev-web.mjs
+```
+
+Open `http://127.0.0.1:8087/#/login`. The initial compilation is slower;
+subsequent saves under `frontend/lib` trigger debounced incremental hot reload,
+not a release rebuild or browser refresh. Keep the terminal running. Requires
+a Flutter SDK with web hot reload (the project's installed SDK supports it).
+Do not use this debug server for production or performance benchmarks.
+Set `FLUTTER_BIN` if Flutter is not on PATH, and `API_BASE_URL` to choose a backend
+(use `http://127.0.0.1:4087` for the isolated company demo). Stop any other server
+on port 8087 first. `WEB_PORT` can override the port; backend CORS must allow it.
+Dependencies, assets and web-shell changes require restarting the command.
+Rejected reloads leave the existing app running; no automatic full restart is
+requested. The web renderer is served locally instead of depending on a CDN.
+When switching from an older release preview, use a hard refresh once to fetch
+the new bootstrap; it retires this app's old Flutter service worker. Subsequent
+Dart edits do not require a browser refresh. Automatic updates apply only while
+this development command is running, not to production deployments.
+
 Installed Android/iOS builds open a dedicated mobile welcome and account flow, with app-bar/back navigation and a role-specific bottom navigation after login. The website keeps its public homepage, including when opened in a phone browser. See the frontend guide for USB development and native session limitations.
 
 Native local builds default to `http://127.0.0.1:4000`. For a USB-connected Android phone, keep the backend running, execute `adb reverse tcp:4000 tcp:4000`, then `flutter run` (select the phone if prompted). Repeat port reversal after reconnecting USB. For an Android emulator without port reversal, explicitly pass `--dart-define=API_BASE_URL=http://10.0.2.2:4000`; this emulator-only address does not work on a physical phone. Outside local development, supply a reachable HTTPS API URL with `--dart-define=API_BASE_URL=https://your-api.example`. Stop and rerun Flutter when changing this define. Native sessions are held only in memory, so users sign in again after a full app restart. Browser sessions can be restored through the server after a page reload.
