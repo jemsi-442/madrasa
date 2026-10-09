@@ -72,7 +72,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: publicInk,
-                  fontSize: 28,
+                  fontSize: 32,
                   fontWeight: FontWeight.w700,
                   height: 1.2,
                 ),
@@ -81,7 +81,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               const Text(
                 'Your next chapter of learning starts here.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: publicMuted, fontSize: 14),
+                style: TextStyle(color: publicMuted, fontSize: 16),
               ),
               const SizedBox(height: 30),
               LayoutBuilder(
@@ -256,7 +256,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   Expanded(
                     child: Text(
                       'An account for your online courses.',
-                      style: TextStyle(fontSize: 13, color: publicMuted),
+                      style: TextStyle(fontSize: 15, color: publicMuted),
                     ),
                   ),
                 ],
@@ -278,7 +278,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 children: [
                   const Text(
                     'Already have an account?',
-                    style: TextStyle(fontSize: 13, color: publicInk),
+                    style: TextStyle(fontSize: 15, color: publicInk),
                   ),
                   TextButton(
                     onPressed: () => widget.onNavigate('/login'),

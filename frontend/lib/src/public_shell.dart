@@ -29,10 +29,10 @@ ThemeData publicTheme(BuildContext context) => Theme.of(context).copyWith(
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: Colors.white,
-    hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF8A97A9)),
+    hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF8A97A9)),
     prefixIconColor: publicInk,
     suffixIconColor: publicMuted,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: publicBorder),
@@ -253,7 +253,7 @@ class GoldAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     width: fullWidth ? double.infinity : null,
-    height: 52,
+    height: 58,
     child: FilledButton(
       onPressed: busy ? null : onPressed,
       style: FilledButton.styleFrom(
@@ -265,7 +265,7 @@ class GoldAction extends StatelessWidget {
         textStyle: const TextStyle(
           fontFamily: 'NotoSansDisplay',
           fontWeight: FontWeight.w700,
-          fontSize: 14,
+          fontSize: 16,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -306,7 +306,7 @@ class LabeledField extends StatelessWidget {
         label,
         style: const TextStyle(
           color: publicInk,
-          fontSize: 13,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -554,18 +554,18 @@ class AuthFrame extends StatelessWidget {
                                             child: ConstrainedBox(
                                               constraints: BoxConstraints(
                                                 maxWidth: registration
-                                                    ? 690
-                                                    : 460,
+                                                    ? 760
+                                                    : 520,
                                               ),
                                               child: Container(
                                                 width: double.infinity,
                                                 padding: EdgeInsets.all(
-                                                  wide ? 36 : 24,
+                                                  wide ? 40 : 24,
                                                 ),
                                                 decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius:
-                                                      BorderRadius.circular(16),
+                                                      BorderRadius.circular(22),
                                                   border: Border.all(
                                                     color: const Color(
                                                       0xFFE8EBEE,

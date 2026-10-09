@@ -118,7 +118,7 @@ class _OfficeHelpScreenState extends State<OfficeHelpScreen> {
                 style: TextStyle(
                   color: publicInk,
                   fontWeight: FontWeight.w700,
-                  fontSize: 25,
+                  fontSize: 29,
                 ),
               ),
               const SizedBox(height: 12),
@@ -144,7 +144,7 @@ class _OfficeHelpScreenState extends State<OfficeHelpScreen> {
                   title,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 26,
+                    fontSize: 30,
                     color: publicInk,
                     fontWeight: FontWeight.w700,
                   ),

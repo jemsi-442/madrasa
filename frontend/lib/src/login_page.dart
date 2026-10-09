@@ -63,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(
                 fontFamily: 'NotoSerifDisplay',
                 color: publicInk,
-                fontSize: 32,
+                fontSize: 36,
                 fontWeight: FontWeight.w700,
                 height: 1.2,
               ),
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 10),
             const Text(
               'Sign in to your Afaq account to continue.',
-              style: TextStyle(color: publicMuted, fontSize: 14, height: 1.5),
+              style: TextStyle(color: publicMuted, fontSize: 16, height: 1.5),
             ),
             const SizedBox(height: 28),
             LabeledField(
@@ -135,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: const Text(
                   'Forgot password?',
-                  style: TextStyle(fontSize: 13),
+                  style: TextStyle(fontSize: 15),
                 ),
               ),
             ),
@@ -159,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Text(
                   "Don't have an account?",
-                  style: TextStyle(color: publicMuted, fontSize: 13),
+                  style: TextStyle(color: publicMuted, fontSize: 15),
                 ),
                 TextButton(
                   onPressed: widget.state.busy
@@ -170,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: const Text(
                     'Register here',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],

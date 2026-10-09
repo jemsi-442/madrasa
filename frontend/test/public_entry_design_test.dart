@@ -60,6 +60,11 @@ void main() {
       await tester.tap(login);
       await tester.pumpAndSettle();
       expect(find.byType(TextFormField), findsNWidgets(2));
+      expect(tester.widget<Text>(find.text('Welcome Back')).style?.fontSize, 36);
+      expect(
+        tester.getSize(find.widgetWithText(FilledButton, 'Login')).height,
+        greaterThanOrEqualTo(58),
+      );
       expect(tester.takeException(), isNull);
       if (_previews) {
         await expectLater(
