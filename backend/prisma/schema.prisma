@@ -178,6 +178,7 @@ model CurriculumLessonObjective {
 }
 
 model CurriculumAssignment {
+  adoptions ClassCurriculum[]
   id String @id @default(cuid()) @db.VarChar(30)
   versionId String @db.VarChar(30)
   organizationId BigInt
@@ -186,7 +187,24 @@ model CurriculumAssignment {
   version CurriculumVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   @@unique([versionId, organizationId])
+  @@unique([organizationId, id])
   @@map("curriculum_assignments")
+}
+
+model ClassCurriculum {
+  id String @id @default(cuid()) @db.VarChar(30)
+  orgId BigInt
+  classId BigInt
+  subjectId BigInt
+  assignmentId String @db.VarChar(30)
+  adoptedBy BigInt
+  createdAt DateTime @default(now())
+  class Class @relation(fields: [orgId, classId], references: [orgId, id], onDelete: Restrict)
+  subject Subject @relation(fields: [orgId, subjectId], references: [orgId, id], onDelete: Restrict)
+  assignment CurriculumAssignment @relation(fields: [orgId, assignmentId], references: [organizationId, id], onDelete: Restrict)
+  @@unique([classId, subjectId])
+  @@index([orgId, assignmentId])
+  @@map("class_curricula")
 }
 
 model CurriculumReview {
@@ -639,6 +657,7 @@ model StudentGuardian {
 }
 
 model Class {
+  curricula ClassCurriculum[]
   studentReports StudentReport[]
   assessments Assessment[]
   timetable ClassTimetableSlot[]
@@ -668,6 +687,7 @@ model Class {
 }
 
 model Subject {
+  curricula ClassCurriculum[]
   assessments Assessment[]
   @@unique([orgId, id], map: "uniq_subjects_org_id")
   id           BigInt       @id @default(autoincrement())

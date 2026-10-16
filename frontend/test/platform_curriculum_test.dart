@@ -34,6 +34,7 @@ void main() {
             ],
           },
       ];
+      rows.add({...rows.first, 'id': 'fiqh', 'subject': 'Fiqh'});
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -42,7 +43,7 @@ void main() {
               onSessionExpired: () {},
               call: (path, {body}) async => {
                 'items': path.contains('&id=') ? [rows.first] : rows,
-                'total': path.contains('&id=') ? 1 : 2,
+                'total': path.contains('&id=') ? 1 : rows.length,
                 'madrasaCount': 2,
               },
             ),
@@ -51,8 +52,21 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Arabic'), findsNWidgets(3));
-      expect(find.textContaining('Level: Level 1'), findsOneWidget);
+      expect(find.textContaining('Level: Level 1'), findsNWidgets(2));
       expect(find.textContaining('Level: Level 2'), findsOneWidget);
+      final arabic = tester.getRect(
+        find.byKey(const ValueKey('subject-group-Arabic')),
+      );
+      final fiqh = tester.getRect(
+        find.byKey(const ValueKey('subject-group-Fiqh')),
+      );
+      if (width > 1000) {
+        expect(fiqh.top, arabic.top);
+        expect(fiqh.left - arabic.right, closeTo(20, 0.1));
+      } else {
+        expect(fiqh.left, arabic.left);
+        expect(fiqh.top - arabic.bottom, closeTo(24, 0.1));
+      }
       await tester.ensureVisible(find.text('Open framework').first);
       await tester.tap(find.text('Open framework').first);
       await tester.pumpAndSettle();

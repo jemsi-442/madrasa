@@ -1526,3 +1526,24 @@ Tests: `npx vitest run tests/platform-curriculum.test.ts`. For the isolated loca
 demo only, `node_modules/.bin/tsx scripts/test-curriculum-demo.ts <database-pid>`
 checks draft, review, publication and assignment against the real database and
 rolls back every test record.
+
+### Class curriculum adoption
+
+Migration `202610162000_class_curriculum` adds an explicit link between an
+existing class, school subject and published madrasa curriculum assignment.
+`GET /api/school-curriculum` exposes assigned frameworks to madrasa admins;
+teachers only see versions adopted by their own classes. Branch scope is enforced.
+`POST /api/school-curriculum/adoptions` accepts `assignmentId`, `classId` and
+`subjectId` from madrasa admins only. Tenant and actor IDs come from authentication.
+Repeated adoption is idempotent. A different version for an already-linked class
+subject is rejected rather than silently replacing history. An explicit version
+transition workflow is not implemented yet.
+
+The school workspace Curriculum page shows topics, measurable objectives and
+shared lesson plans. These plans are read-only references, not teacher delivery
+records. Adoption does not create learner achievements, assessments or attendance.
+Teacher-specific planning, delivery tracking and assessment linkage remain future
+work. No production migration has been applied by the local demo workflow.
+
+Tests: `npm test -- tests/school-curriculum.test.ts` and the isolated rollback
+script `scripts/test-curriculum-demo.ts` cover adoption and teacher visibility.

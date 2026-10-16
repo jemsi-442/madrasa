@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { PlatformCurriculumService } from '../src/modules/platform/platform.curriculum';
+import { SchoolCurriculumService } from '../src/modules/learning/school-curriculum';
 
 // All test writes are rolled back. Accept only a surviving disposable demo DB.
 async function main() {
@@ -71,6 +72,35 @@ async function main() {
       assert(copiedLessons.every(lesson => lesson.objectives[0]?.objectiveId === newObjectiveId));
       assert.equal(await tx.curriculumAssignment.count({ where: { versionId: draft.id } }), 1);
       await assert.rejects(service.clone(actor, draft.id, { version: '1.1', reason: 'Duplicate version test' }));
+      const branch = await tx.branch.findFirstOrThrow({ where: { orgId: school.id } });
+      const schoolUser = (role: 'ADMIN' | 'TEACHER', suffix: string) => tx.user.create({ data: {
+        orgId: school.id, branchId: branch.id, fullName: `Synthetic curriculum ${suffix}`,
+        email: `curriculum-${suffix}-${Date.now()}@example.invalid`, passwordHash: 'unusable-test-hash', role, status: 'ACTIVE',
+      } });
+      const admin = await schoolUser('ADMIN', 'admin');
+      const teacher = await schoolUser('TEACHER', 'teacher');
+      const other = await schoolUser('TEACHER', 'other');
+      const classroom = await tx.class.create({ data: { orgId: school.id, branchId: branch.id, teacherId: teacher.id,
+        name: 'Synthetic curriculum class', level: 'Level 1', academicYear: '2026' } });
+      const subject = await tx.subject.create({ data: { orgId: school.id, code: `TEST-${Date.now()}`, name: 'Synthetic reading' } });
+      const schoolService = new SchoolCurriculumService({ $transaction: (fn: (client: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient);
+      const context = (user: typeof admin) => ({ userId: user.id.toString(), orgId: school.id.toString(), branchId: branch.id.toString(), role: user.role });
+      const assignment = await tx.curriculumAssignment.findFirstOrThrow({ where: { versionId: draft.id, organizationId: school.id } });
+      assert.equal((await schoolService.list(context(teacher))).assignments.length, 0);
+      const adoptionInput = { assignmentId: assignment.id, classId: classroom.id.toString(), subjectId: subject.id.toString() };
+      const adoption = await schoolService.adopt(context(admin), adoptionInput);
+      assert.equal((await schoolService.adopt(context(admin), adoptionInput)).id, adoption.id);
+      const teaching = await schoolService.list(context(teacher));
+      assert.equal(teaching.assignments.length, 1);
+      assert.equal(teaching.assignments[0].version.lessons.length, 2);
+      assert.equal(teaching.assignments[0].adoptions[0].class.id, classroom.id.toString());
+      assert.equal((await schoolService.list(context(other))).assignments.length, 0);
+      await assert.rejects(schoolService.adopt(context(teacher), adoptionInput));
+      await service.transition(actor, copy.id, { action: 'publish' });
+      await service.assign(actor, copy.id, { organizationId: school.id.toString() });
+      const newer = await tx.curriculumAssignment.findFirstOrThrow({ where: { versionId: copy.id, organizationId: school.id } });
+      await assert.rejects(schoolService.adopt(context(admin), { ...adoptionInput, assignmentId: newer.id }));
+      assert.equal(await tx.auditLog.count({ where: { entityId: adoption.id, action: 'curriculum.class.adopted' } }), 1);
       throw rollback;
     }, { timeout: 20000 });
   } catch (error) { if (error !== rollback) throw error; }

@@ -20,6 +20,7 @@ import 'attendance_page.dart';
 import 'attendance_register_page.dart';
 import 'admin_academic_pages.dart';
 import 'family_accounts_page.dart';
+import 'school_curriculum_page.dart';
 import 'school_password_dialog.dart';
 import 'admin_overview.dart';
 import 'donations_page.dart';
@@ -122,6 +123,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/users?role=PARENT',
       Icons.family_restroom_outlined,
       'Manage family sign-in numbers for linked parent accounts.',
+    ),
+    SectionSpec(
+      'Curriculum',
+      '/api/school-curriculum',
+      Icons.menu_book_outlined,
+      'Adopt published frameworks for your classes.',
     ),
   ],
   'ACCOUNTANT' => const [
@@ -234,6 +241,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/student-reports',
       Icons.description_outlined,
       'Review each learner\'s progress and prepare reports for administrator review.',
+    ),
+    SectionSpec(
+      'Curriculum',
+      '/api/school-curriculum',
+      Icons.menu_book_outlined,
+      'Read curriculum adopted by your assigned classes.',
     ),
   ],
   'PARENT' => const [
@@ -427,6 +440,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         'Attendance',
         'Teachers',
         'Family accounts',
+        'Curriculum',
         'Subjects',
         'Donations',
       ].contains(sections[selectedIndex].title);
@@ -775,6 +789,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       );
     }
     switch (section.title) {
+      case 'Curriculum':
+        return SchoolCurriculumPage(
+          load: widget.state.load,
+          submit: widget.state.submit,
+          isAdmin: session.role == 'ADMIN',
+          refreshToken: refreshToken,
+        );
       case 'Family accounts':
         return FamilyAccountsPage(
           load: widget.state.load,

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { schoolCurriculumRouter } from '../modules/learning/school-curriculum.routes';
 import { env } from "../config/env";
 import { prisma } from "../shared/db/prisma";
 import { createPlatformRouter } from "../modules/platform/platform.routes";
@@ -54,6 +55,7 @@ apiRouter.use("/auth", authRouter);
 apiRouter.use("/organizations", organizationsRouter);
 apiRouter.use("/learner", learnerRouter);
 apiRouter.use("/subjects", subjectsRouter);
+apiRouter.use('/school-curriculum', schoolCurriculumRouter);
 apiRouter.use("/courses", coursesRouter);
 apiRouter.use("/teaching/courses", teachingCoursesRouter);
 apiRouter.use("/hifdh-progress", hifdhRouter);

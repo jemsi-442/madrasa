@@ -1004,28 +1004,35 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                         'Grouped by subject. Levels and versions below are from this page; use pagination to see more.',
                       ),
                       const SizedBox(height: 16),
-                      for (final group in groups.entries) ...[
-                        Text(
-                          group.key,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 18,
-                          runSpacing: 18,
-                          children: [
-                            for (final row in group.value)
-                              SizedBox(
-                                width: two ? (c.maxWidth - 18) / 2 : c.maxWidth,
-                                child: card(row),
+                      Wrap(
+                        spacing: 20,
+                        runSpacing: 24,
+                        children: [
+                          for (final group in groups.entries)
+                            SizedBox(
+                              key: ValueKey('subject-group-${group.key}'),
+                              width: two ? (c.maxWidth - 20) / 2 : c.maxWidth,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    group.key,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  for (final row in group.value) ...[
+                                    card(row),
+                                    if (row != group.value.last)
+                                      const SizedBox(height: 12),
+                                  ],
+                                ],
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                            ),
+                        ],
+                      ),
                     ],
                   );
                 }
@@ -1258,9 +1265,9 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 2, child: library),
+                  Expanded(child: library),
                   const SizedBox(width: 24),
-                  Expanded(child: release),
+                  SizedBox(width: 300, child: release),
                 ],
               ),
           ],

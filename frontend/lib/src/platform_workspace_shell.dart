@@ -258,7 +258,7 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
       (PlatformPage.staff, 'Users & Permissions', Icons.people_outline),
       (
         PlatformPage.curriculum,
-        'Curriculum & Subjects',
+        'Curriculum &',
         Icons.menu_book_outlined,
       ),
       (PlatformPage.accounts, 'Company accounts', Icons.badge_outlined),
