@@ -140,7 +140,7 @@ void main() {
           matching: find.text('Payments'),
         ),
       );
-      await tap(tester, find.byTooltip('Open navigation menu'));
+      await tap(tester, find.byTooltip('Open navigation'));
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.byType(Drawer), findsNothing);
@@ -196,7 +196,7 @@ void main() {
     );
     expect(
       DefaultTextStyle.of(tester.element(label)).style.fontFamily,
-      'NotoSansDisplay',
+      'Lato',
     );
   });
 
@@ -352,7 +352,10 @@ void main() {
           expect(find.textContaining('Find a page'), findsNothing);
           expect(find.byTooltip('Find a page'), findsNothing);
           if (mobile) {
-            await tap(tester, find.byTooltip('Open navigation menu'));
+            await tap(tester, find.byTooltip('Open navigation'));
+            await tap(tester, find.byTooltip('Close navigation'));
+            expect(find.byType(Drawer), findsNothing);
+            await tap(tester, find.byTooltip('Open navigation'));
           }
           final sidebar = tester.widget<WorkspaceSidebar>(
             find.byType(WorkspaceSidebar),
@@ -428,7 +431,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(find.byTooltip('Find a page'), findsNothing);
-      await tap(tester, find.byTooltip('Open navigation menu'));
+      await tap(tester, find.byTooltip('Open navigation'));
       expect(tester.takeException(), isNull);
     },
   );

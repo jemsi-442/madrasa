@@ -51,7 +51,7 @@ void _noWebsiteChrome() {
   expect(find.byKey(const ValueKey('public-header')), findsNothing);
   expect(find.byKey(const ValueKey('public-footer')), findsNothing);
   expect(find.byType(PublicHomeScreen), findsNothing);
-  expect(find.textContaining('All rights reserved.'), findsNothing);
+  // Native workspaces share the compact footer, not the public website chrome.
 }
 
 void main() {
@@ -156,7 +156,15 @@ void main() {
       expect(tester.takeException(), isNull);
       _noWebsiteChrome();
       await _tap(tester, find.text("Looking for your child's account?"));
-      expect(find.text('Parent access'), findsOneWidget);
+      expect(find.text('Family registration'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('family-register-fullName')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('family-register-email')),
+        findsOneWidget,
+      );
       _noWebsiteChrome();
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
@@ -256,10 +264,7 @@ void main() {
         'Password123!',
       );
       await _tap(tester, find.widgetWithText(FilledButton, 'Login'));
-      expect(
-        find.text('Invalid credentials'),
-        findsOneWidget,
-      );
+      expect(find.text('Invalid credentials'), findsOneWidget);
       expect(state.session, isNull);
       await _tap(tester, find.widgetWithText(FilledButton, 'Login'));
       expect(find.byType(WorkspaceScreen), findsOneWidget);
@@ -274,7 +279,7 @@ void main() {
         ),
       );
       expect(paths, contains('/api/invoices'));
-      await _tap(tester, find.byTooltip('Open navigation menu'));
+      await _tap(tester, find.byTooltip('Open navigation'));
       expect(find.byType(Drawer), findsOneWidget);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'design_theme.dart';
 
 import 'api_client.dart';
 import 'app_layout.dart';
 import 'mobile_welcome_page.dart';
 import 'app_state.dart';
-import 'foundation_ui.dart';
 import 'public_pages.dart';
 import 'office_help_page.dart';
 import 'public_information_page.dart';
@@ -15,6 +15,7 @@ import 'keyboard_scrolling.dart';
 import 'platform_console.dart';
 import 'school_invitation_page.dart';
 import 'page_selection.dart';
+import 'family_registration_page.dart';
 
 class MifApp extends StatefulWidget {
   const MifApp({super.key, this.state, this.layout});
@@ -134,9 +135,11 @@ class _MifAppState extends State<MifApp> {
             onRegistered: () =>
                 Navigator.of(context).popUntil((route) => route.isFirst),
           ),
-          '/contact' ||
-          '/forgot-password' ||
-          '/parent-access' => OfficeHelpScreen(
+          '/parent-access' => FamilyRegistrationScreen(
+            api: appState.api,
+            onNavigate: navigate,
+          ),
+          '/contact' || '/forgot-password' => OfficeHelpScreen(
             api: appState.api,
             onNavigate: navigate,
             path: path,
@@ -163,75 +166,7 @@ class _MifAppState extends State<MifApp> {
         layout: widget.layout ?? resolveAppLayout(),
         child: child!,
       ),
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'NotoSansDisplay',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: ink,
-          primary: ink,
-          secondary: gold,
-          surface: Colors.white,
-        ),
-        scaffoldBackgroundColor: paper,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: ink,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-        ),
-        textTheme: const TextTheme(
-          headlineLarge: TextStyle(
-            fontFamily: 'NotoSerifDisplay',
-            fontSize: 49,
-            fontWeight: FontWeight.w700,
-            color: ink,
-            height: 1.12,
-          ),
-          headlineMedium: TextStyle(
-            fontFamily: 'NotoSerifDisplay',
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-            color: ink,
-            height: 1.16,
-          ),
-          titleLarge: TextStyle(
-            fontFamily: 'NotoSansDisplay',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: ink,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          hintStyle: const TextStyle(color: muted),
-          labelStyle: const TextStyle(color: muted),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: line),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: line),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: gold, width: 1.7),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 18,
-            vertical: 18,
-          ),
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: line),
-          ),
-        ),
-      ),
+      theme: buildAfaqTheme(),
       routes:
           <String, WidgetBuilder>{
             '/platform': (context) => routePage(context, '/login'),

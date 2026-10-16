@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'design_tokens.dart';
 
 import 'keyboard_scrolling.dart';
 import 'api_client.dart';
@@ -18,6 +19,8 @@ import 'classes_page.dart';
 import 'attendance_page.dart';
 import 'attendance_register_page.dart';
 import 'admin_academic_pages.dart';
+import 'family_accounts_page.dart';
+import 'school_password_dialog.dart';
 import 'admin_overview.dart';
 import 'donations_page.dart';
 import 'teacher_teaching_pages.dart';
@@ -113,6 +116,12 @@ List<SectionSpec> sectionsForRole(String role) => switch (role) {
       '/api/student-reports',
       Icons.description_outlined,
       'Set reporting periods, review and publish student learning reports.',
+    ),
+    SectionSpec(
+      'Family accounts',
+      '/api/users?role=PARENT',
+      Icons.family_restroom_outlined,
+      'Manage family sign-in numbers for linked parent accounts.',
     ),
   ],
   'ACCOUNTANT' => const [
@@ -417,6 +426,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         'My classes',
         'Attendance',
         'Teachers',
+        'Family accounts',
         'Subjects',
         'Donations',
       ].contains(sections[selectedIndex].title);
@@ -589,6 +599,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     await widget.state.signOut();
   }
 
+  void changePassword() async {
+    if (!await leaveTeacherDraft() || !mounted) return;
+    final changed = await showSchoolPasswordDialog(
+      context,
+      widget.state.submit,
+    );
+    if (changed) await widget.state.signOut();
+  }
+
   void refresh() async {
     if (!await leaveTeacherDraft() || !mounted) return;
     quranKey.currentState?.refreshPage();
@@ -756,6 +775,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       );
     }
     switch (section.title) {
+      case 'Family accounts':
+        return FamilyAccountsPage(
+          load: widget.state.load,
+          submit: widget.state.submit,
+          refreshToken: refreshToken,
+        );
       case 'Teachers':
         return TeachersPage(
           load: widget.state.load,
@@ -830,7 +855,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       );
     }
     final mobile = AppLayoutScope.isMobile(context);
-    final narrow = mobile || MediaQuery.sizeOf(context).width < 1000;
+    final narrow =
+        mobile ||
+        MediaQuery.sizeOf(context).width < AfaqDesign.desktopBreakpoint;
     final section = sections[selectedIndex];
     final firstName = session.role == 'TEACHER'
         ? session.fullName.trim()
@@ -849,6 +876,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           roleLabel: _roleLabel(session.role),
           collapsed: rail,
           primary: primary,
+          onClose: primary
+              ? () => scaffoldKey.currentState?.closeDrawer()
+              : null,
           groups: workspaceGroups(session.role),
         );
 
@@ -865,6 +895,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           : null,
       appBar: narrow
           ? AppBar(
+              leading: WorkspaceSidebarToggle(
+                control: SidebarControl.open,
+                onPressed: () => scaffoldKey.currentState?.openDrawer(),
+              ),
               toolbarHeight: 64,
               title: !mobile && session.role == 'ADMIN'
                   ? const BrandMark(compact: true)
@@ -878,28 +912,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       ),
                     ),
               actions: [
-                IconButton(
-                  tooltip: 'Refresh page',
-                  onPressed: refresh,
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-                PopupMenuButton<String>(
-                  tooltip: 'Account menu',
-                  onSelected: (value) {
-                    if (value == 'media-preview') {
-                      openMediaPlayerPreview(context);
-                    } else if (value == 'sign-out') {
-                      requestSignOut();
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: 'media-preview',
-                      child: Text('Try media player'),
-                    ),
-                    PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
-                  ],
-                  icon: const Icon(Icons.account_circle_outlined),
+                WorkspaceRefreshButton(onRefresh: refresh),
+                WorkspaceAccountMenu(
+                  fullName: session.fullName,
+                  roleLabel: _roleLabel(session.role),
+                  compact: true,
+                  onSignOut: requestSignOut,
+                  onChangePassword: changePassword,
+                  onMediaPreview: () => openMediaPlayerPreview(context),
                 ),
               ],
             )
@@ -937,8 +957,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         child: Row(
           children: [
             if (!narrow)
-              SizedBox(
-                width: collapsed ? 84 : 250,
+              WorkspaceDesktopSidebar(
+                collapsed: collapsed,
                 child: sidebar(rail: collapsed),
               ),
             Expanded(
@@ -956,6 +976,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       onToggle: () => setState(() => collapsed = !collapsed),
                       onRefresh: refresh,
                       onSignOut: requestSignOut,
+                      onChangePassword: changePassword,
                     ),
                   WorkspaceTrail(
                     homeTitle: sections.first.title,
@@ -1031,7 +1052,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                                           : 'Assalamu alaikum, $firstName'
                                                     : section.title,
                                                 style: TextStyle(
-                                                  fontFamily: 'NotoSansDisplay',
+                                                  fontFamily:
+                                                      AfaqDesign.bodyFont,
                                                   fontSize: narrow ? 26 : 30,
                                                   fontWeight: FontWeight.w700,
                                                   height: 1.2,
@@ -1124,19 +1146,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                       ],
                                       onSelect: openRelated,
                                     ),
-                                    if (!mobile) ...[
-                                      const SizedBox(height: 28),
-                                      const Divider(color: line),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        '\u00a9 ${DateTime.now().year} Modern Islamic Foundation. All rights reserved.',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: muted,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
                                   ],
                                 ),
                               ),
@@ -1146,6 +1155,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       ),
                     ),
                   ),
+                  const WorkspaceFooter(),
                 ],
               ),
             ),
