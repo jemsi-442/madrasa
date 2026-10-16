@@ -4,6 +4,10 @@
   "private": true,
   "description": "Backend foundation for the Madrasa Management System",
   "scripts": {
+    "email:preview": "tsx scripts/preview-family-email.ts",
+    "email:capture": "tsx scripts/capture-family-email.ts",
+    "email:check-smtp": "tsx scripts/check-smtp.ts",
+    "deployment:check": "tsx scripts/check-production.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
@@ -17,6 +21,7 @@
     "seed:admin": "tsx scripts/seed-admin.ts",
     "platform:bootstrap": "tsx scripts/bootstrap-platform.ts",
     "platform:demo": "tsx scripts/platform-local-demo.ts",
+    "smoke:demo": "tsx scripts/smoke-local-demo.ts",
     "test:platform:staging": "tsx scripts/test-platform-staging.ts",
     "db:install:fresh": "tsx scripts/install-empty-database.ts",
     "seed:e2e-roles": "tsx scripts/seed-e2e-roles.ts",
@@ -31,11 +36,12 @@
     "bullmq": "^5.53.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^4.21.2",
+    "express": "^4.22.3",
     "helmet": "^8.1.0",
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
+    "morgan": "^1.12.1",
+    "nodemailer": "10.0.16",
     "pdfkit": "^0.20.2",
     "zod": "^3.25.28"
   },
@@ -45,13 +51,19 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/morgan": "^1.9.10",
     "@types/node": "^22.15.30",
+    "@types/nodemailer": "8.0.2",
     "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.2.0",
     "prisma": "^6.8.0",
     "supertest": "^7.2.2",
-    "tsx": "^4.20.3",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2"
+    }
   },
   "engines": {
     "node": ">=20.0.0"

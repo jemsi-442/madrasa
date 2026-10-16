@@ -58,6 +58,10 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Audit backend dependencies
+        working-directory: backend
+        run: npm audit --audit-level=high
+
       - name: Write backend env
         working-directory: backend
         run: |
