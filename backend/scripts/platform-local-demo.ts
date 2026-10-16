@@ -7,13 +7,6 @@ import { join, resolve } from "node:path";
 import { createServer } from "node:net";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import express from "express";
-import cors from "cors";
-import { unifiedLogin } from "../src/modules/auth/unified-login";
-import { createPlatformRouter } from "../src/modules/platform/platform.routes";
-import { createPlatformLoginLimiter } from "../src/modules/platform/platform.login-limit";
-import { createPlatformHealthReader } from "../src/modules/platform/platform.health";
-import { errorHandler } from "../src/shared/middleware/error-handler";
 
 const root = resolve(__dirname, "..");
 async function freePort() {
@@ -45,7 +38,15 @@ async function main() {
   const dbUrl = `mysql://root:${password}@127.0.0.1:${mysqlPort}/afaq_local_demo`;
   const redisUrl = `redis://127.0.0.1:${redisPort}`;
   const children: ChildProcess[] = [];
-  const childEnv = { ...process.env, NODE_ENV: "development", DATABASE_URL: dbUrl, FRESH_DATABASE_URL: dbUrl };
+  const childEnv = {
+    ...process.env, NODE_ENV: "development", DOTENV_CONFIG_PATH: "/dev/null",
+    DATABASE_URL: dbUrl, FRESH_DATABASE_URL: dbUrl, REDIS_URL: redisUrl,
+    JWT_SECRET: randomBytes(32).toString("hex"), JWT_REFRESH_SECRET: randomBytes(32).toString("hex"),
+    PLATFORM_JWT_SECRET: signingKey, PLATFORM_MFA_ENCRYPTION_KEY: encryptionKey,
+    APP_BASE_URL: "http://127.0.0.1:4087", WEB_APP_ORIGINS: "http://127.0.0.1:8087",
+    PUBLIC_SITE_ORG_CODE: "demo-madrasa", SNIPPE_MOCK_MODE: "true",
+    SNIPPE_API_KEY: "", SNIPPE_WEBHOOK_SECRET: "",
+  };
   function run(command: string, args: string[], env = childEnv) {
     const result = spawnSync(command, args, { cwd: root, env, encoding: "utf8", timeout: 180_000 });
     if (result.status !== 0) throw new Error(`Local demo command failed: ${command}. No existing database was modified.`);
@@ -98,32 +99,46 @@ async function main() {
       });
       credentials.push({ email, role, password: accountPassword });
     }
+    const org = await db.organization.create({ data: { name: "Afaq Demo Madrasa", code: "demo-madrasa" } });
+    const branch = await db.branch.create({ data: { orgId: org.id, name: "Demo Campus", isMain: true } });
+    for (const [fullName, email, role] of [
+      ["Demo School Admin", "schooladmin@afaq.test", "ADMIN"],
+      ["Demo Family Parent", "parent@afaq.test", "PARENT"],
+    ] as const) {
+      const accountPassword = previousCredentials.find(row => row.email === email)?.password ?? `Afaq!${randomBytes(15).toString("base64url")}`;
+      const user = await db.user.create({ data: {
+        orgId: org.id, branchId: branch.id, fullName, email, role,
+        passwordHash: await bcrypt.hash(accountPassword, 12),
+      } });
+      if (role === "PARENT") {
+        const guardian = await db.guardian.create({ data: { orgId: org.id, userId: user.id, fullName, email, phone: "255700000100" } });
+        for (const [index, name] of ["Ahmad Demo", "Ayesha Demo"].entries()) {
+          const student = await db.student.create({ data: {
+            orgId: org.id, branchId: branch.id, fullName: name,
+            admissionNo: `DEMO-CHILD-${index + 1}`, primaryGuardianId: guardian.id,
+          } });
+          await db.studentGuardian.create({ data: { orgId: org.id, studentId: student.id, guardianId: guardian.id, isPrimary: true } });
+        }
+      }
+      credentials.push({ email, role, password: accountPassword });
+    }
+    const pendingGuardian = await db.guardian.create({ data: {
+      orgId: org.id, fullName: "Salma Demo", phone: "255700000200",
+    } });
+    const pendingChild = await db.student.create({ data: {
+      orgId: org.id, branchId: branch.id, fullName: "Yusuf Demo", admissionNo: "DEMO-PENDING-CHILD",
+      primaryGuardianId: pendingGuardian.id,
+    } });
+    await db.studentGuardian.create({ data: { orgId: org.id, studentId: pendingChild.id, guardianId: pendingGuardian.id, isPrimary: true } });
     const credentialFile = join(directory, "credentials.json");
     await writeFile(credentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
-    const app = express();
-    // The shared browser client includes credentials, even for company login.
-    app.use(cors({ origin: "http://127.0.0.1:8087", credentials: true }));
-    app.use(express.json());
-    const limit = createPlatformLoginLimiter(redisUrl, signingKey);
-    app.use("/api/auth/browser", (req, res, next) => {
-      if (req.get("Origin") !== "http://127.0.0.1:8087" || req.get("X-MIF-Browser") !== "1") { res.sendStatus(403); return; }
-      next();
-    });
-    app.post(["/api/auth/login", "/api/auth/browser/login"], unifiedLogin(db, signingKey, limit), (_req, res) => { res.status(401).json({ success: false, message: "Invalid credentials" }); });
-    app.post("/api/auth/browser/refresh", (_req, res) => { res.status(401).json({ success: false, message: "Please sign in" }); });
-    app.post("/api/auth/browser/logout", (_req, res) => { res.json({ success: true }); });
-    app.use("/api/platform", createPlatformRouter(db, signingKey, [], { encryptionKey, passwordOnly: true, consumeLimit: limit }, createPlatformHealthReader(db, redisUrl)));
-    app.use(errorHandler);
-    const server = await new Promise<ReturnType<typeof app.listen>>((ok, fail) => {
-      const listener = app.listen(4087, "127.0.0.1", () => ok(listener));
-      listener.once("error", fail);
-    });
+    const api = start(join(root, "node_modules/.bin/tsx"), ["scripts/local-demo-api.ts"]);
+    await ready(() => run("curl", ["--fail", "--silent", "--max-time", "2", "http://127.0.0.1:4087/api/health"]), api);
     console.log(`Demo API: http://127.0.0.1:4087\nPrivate demo credentials: ${credentialFile}\nLocal-only disposable accounts; no school data was copied. Stop with Ctrl+C.`);
     await new Promise<void>((ok) => {
       process.once("SIGINT", ok);
       process.once("SIGTERM", ok);
     });
-    server.close();
   } finally { await cleanup(); }
 }
 main().then(() => process.exit(0)).catch(() => {

@@ -58,6 +58,7 @@ try {
     ...env, DATABASE_URL: `mysql://root@127.0.0.1:${mysqlPort}/${name}`,
     REDIS_URL: `redis://127.0.0.1:${redisPort}`, PLATFORM_STAGING_RUN: "isolated",
     JWT_SECRET: randomBytes(32).toString("hex"), JWT_REFRESH_SECRET: randomBytes(32).toString("hex"),
+    PLATFORM_JWT_SECRET: randomBytes(32).toString("hex"),
   };
   const prisma = join(root, "node_modules/.bin/prisma");
   if (process.argv.includes("--upgrade-baseline")) {
@@ -100,7 +101,12 @@ try {
     console.log("Applying complete migration history to disposable MariaDB...");
     console.log(run(prisma, ["migrate", "deploy"], testEnv));
   }
-  console.log(run(join(root, "node_modules/.bin/vitest"), ["run", "tests/platform-staging.integration.test.ts"], testEnv));
+  const testFile = process.argv.includes("--family-registration")
+    ? "tests/family-registration.integration.test.ts"
+    : "tests/platform-staging.integration.test.ts";
+  // Family rollback tests install a database-wide failure trigger temporarily.
+  console.log(run(join(root, "node_modules/.bin/vitest"), ["run", "--no-file-parallelism", testFile,
+    ...(process.argv.includes("--family-registration") ? ["tests/family-onboarding.integration.test.ts"] : [])], testEnv));
 } finally {
   // Some environments disallow kill(2) even for owned children; use private sockets first.
   try { run("redis-cli", ["-s", redisSocket, "shutdown", "nosave"]); } catch { /* Service may not have started. */ }
