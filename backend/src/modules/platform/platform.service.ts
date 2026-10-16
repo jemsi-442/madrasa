@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
+import { z } from "zod";
 
 import { HttpError } from "../../shared/errors/http-error";
 import { assertPlatformPermission, hasPlatformPermission, type PlatformPermission } from "./platform.permissions";
@@ -18,6 +19,108 @@ export const officeHistoryActions = [
 
 export class PlatformGovernanceService {
   constructor(private readonly db: PrismaClient) {}
+
+  async staffDirectory(actor: PlatformContext, input: unknown = {}) {
+    const query = z.object({
+      search: z.string().trim().max(100).default(''),
+      role: z.enum(['ADMIN', 'TEACHER', 'ACCOUNTANT']).optional(),
+      status: z.enum(['ACTIVE', 'DISABLED']).optional(),
+      page: z.coerce.number().int().min(1).max(100000).default(1),
+    }).strict().parse(input);
+    return this.db.$transaction(async (tx) => {
+      await this.authorize(tx, actor, 'tenant.staff-directory.read');
+      const where: Prisma.UserWhereInput = {
+        role: query.role ?? { in: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.search ? { OR: [{ fullName: { contains: query.search } },
+          { organization: { name: { contains: query.search } } },
+          { organization: { code: { contains: query.search } } }] } : {}),
+      };
+      const total = await tx.user.count({ where });
+      const [admins, teachers, guardianLinks, pendingRequests] = await Promise.all([
+        tx.user.count({ where: { role: 'ADMIN', status: 'ACTIVE' } }),
+        tx.user.count({ where: { role: 'TEACHER', status: 'ACTIVE' } }),
+        tx.studentGuardian.count(),
+        tx.tenantApplication.count({ where: { status: 'REQUESTED', organizationId: null } }),
+      ]);
+      const rows = await tx.user.findMany({ where, skip: (query.page - 1) * 25, take: 25,
+        orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+        select: { id: true, fullName: true, role: true, status: true,
+          organization: { select: { id: true, name: true, code: true, status: true } } },
+      });
+      return { total, page: query.page, pageSize: 25,
+        summary: { admins, teachers, guardianLinks, pendingRequests }, items: rows.map(row => ({
+        id: row.id.toString(), fullName: row.fullName, role: row.role, status: row.status,
+        school: { ...row.organization, id: row.organization.id.toString() },
+      })) };
+    });
+  }
+
+  async madrasaDirectory(actor: PlatformContext, input: unknown = {}) {
+    const query = z.object({
+      search: z.string().trim().max(100).default(''),
+      location: z.string().trim().max(255).optional(),
+      export: z.enum(['true']).optional(),
+      status: z.enum(['ACTIVE', 'SUSPENDED', 'TRIAL', 'PENDING_ACTIVATION', 'REQUESTED', 'APPROVED', 'REJECTED']).optional(),
+      page: z.coerce.number().int().min(1).max(100000).default(1),
+    }).strict().parse(input);
+    return this.db.$transaction(async (tx) => {
+      await this.authorize(tx, actor, 'tenant.directory.read');
+      const where: Prisma.OrganizationWhereInput = {
+        ...(query.location ? { branches: { some: { location: query.location } } } : {}),
+        ...(query.status ? (['REQUESTED', 'APPROVED', 'REJECTED'].includes(query.status)
+          ? { id: -1n } : { status: query.status as 'ACTIVE' | 'SUSPENDED' | 'TRIAL' | 'PENDING_ACTIVATION' }) : {}),
+        ...(query.search ? { OR: [{ name: { contains: query.search } }, { code: { contains: query.search } }] } : {}),
+      };
+      const applicationWhere: Prisma.TenantApplicationWhereInput = {
+        organizationId: null,
+        ...(query.location ? { id: '__no_location__' } : {}),
+        ...(query.status ? (['REQUESTED', 'APPROVED', 'REJECTED'].includes(query.status)
+          ? { status: query.status as 'REQUESTED' | 'APPROVED' | 'REJECTED' } : { id: '__not_application__' }) : {}),
+        ...(query.search ? { OR: [{ schoolName: { contains: query.search } }, { requestedCode: { contains: query.search } }] } : {}),
+      };
+      const pendingCount = await tx.tenantApplication.count({ where: applicationWhere });
+      const total = await tx.organization.count({ where }) + pendingCount;
+      if (query.export && total > 5000) throw new HttpError(422, 'Narrow the filters to export at most 5000 madrasas');
+      const [all, active, onboarding, assignedAdmins, branches] = await Promise.all([
+        tx.organization.count(), tx.organization.count({ where: { status: 'ACTIVE' } }),
+        tx.organization.count({ where: { status: 'PENDING_ACTIVATION' } }),
+        tx.user.count({ where: { role: 'ADMIN', status: 'ACTIVE' } }),
+        tx.branch.findMany({ where: { location: { not: null } }, distinct: ['location'], select: { location: true }, orderBy: { location: 'asc' } }),
+      ]);
+      const offset = query.export ? 0 : (query.page - 1) * 25;
+      const limit = query.export ? 5000 : 25;
+      // Pending records come first; once provisioned, only the organization row remains.
+      const applications = offset < pendingCount ? await tx.tenantApplication.findMany({
+        where: applicationWhere, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: offset, take: limit,
+        select: { id: true, schoolName: true, requestedCode: true, adminEmail: true, status: true, requestedById: true, decisionReason: true },
+      }) : [];
+      const rows = applications.length < limit ? await tx.organization.findMany({
+        where, orderBy: [{ name: 'asc' }, { id: 'asc' }], skip: Math.max(0, offset - pendingCount), take: limit - applications.length,
+        select: { id: true, name: true, code: true, status: true,
+          branches: { select: { location: true }, orderBy: { id: 'asc' } },
+          users: { where: { role: 'ADMIN', status: 'ACTIVE' }, select: { fullName: true }, orderBy: { id: 'asc' } },
+          onboardingApplication: { select: { id: true } },
+          _count: { select: { students: true, users: { where: { role: 'TEACHER', status: 'ACTIVE' } } } },
+        },
+      }) : [];
+      return { total, page: query.page, pageSize: query.export ? 5000 : 25,
+        summary: { total: all, active, onboarding, assignedAdmins },
+        locations: branches.map(branch => branch.location).filter(value => value?.trim()),
+        items: [...applications.map(row => ({
+          id: `application:${row.id}`, name: row.schoolName, code: row.requestedCode, status: row.status,
+          locations: [], admins: [], students: null, teachers: null, applicationId: row.id,
+          canReview: row.status === 'REQUESTED' && row.requestedById !== actor.accountId,
+          decisionReason: row.decisionReason,
+          adminEmail: row.adminEmail,
+        })), ...rows.map(row => ({
+        id: row.id.toString(), name: row.name, code: row.code, status: row.status,
+        locations: [...new Set(row.branches.map(branch => branch.location).filter(value => value?.trim()))],
+        admins: row.users.map(user => user.fullName), students: row._count.students,
+        teachers: row._count.users, applicationId: row.onboardingApplication?.id ?? null,
+      }))] };
+    });
+  }
 
   async onboardingProgress(actor: PlatformContext, input: unknown) {
     const id = platformAccountIdSchema.parse(input);
