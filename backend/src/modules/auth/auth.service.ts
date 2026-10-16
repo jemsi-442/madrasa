@@ -7,6 +7,7 @@ import { env } from "../../config/env";
 import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
 import type { LoginInput, RefreshTokenInput } from "./auth.schemas";
+import { schoolLoginIdentity } from "./login-identity";
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -15,6 +16,7 @@ const hashRefreshToken = (refreshToken: string) =>
   crypto.createHash("sha256").update(refreshToken).digest("hex");
 
 type SessionUser = {
+  authVersion?: number;
   id: bigint;
   fullName: string;
   role: "ADMIN" | "ACCOUNTANT" | "TEACHER" | "PARENT" | "LEARNER";
@@ -23,6 +25,7 @@ type SessionUser = {
 };
 
 type RefreshTokenPayload = {
+  ver?: number;
   sub: string;
   type: "refresh";
   iat: number;
@@ -44,6 +47,7 @@ const buildAccessToken = (user: SessionUser) =>
       role: user.role,
       branchId: user.branchId?.toString() ?? null,
       type: "access",
+      ver: user.authVersion ?? 0,
     },
     env.JWT_SECRET,
     {
@@ -52,11 +56,12 @@ const buildAccessToken = (user: SessionUser) =>
     },
   );
 
-const buildRefreshToken = (userId: bigint) =>
+const buildRefreshToken = (userId: bigint, version = 0) =>
   jwt.sign(
     {
       type: "refresh",
       jti: crypto.randomUUID(),
+      ver: version,
     },
     env.JWT_REFRESH_SECRET,
     {
@@ -67,7 +72,7 @@ const buildRefreshToken = (userId: bigint) =>
 
 export const buildSessionResponse = async (user: SessionUser) => {
   const accessToken = buildAccessToken(user);
-  const refreshToken = buildRefreshToken(user.id);
+  const refreshToken = buildRefreshToken(user.id, user.authVersion ?? 0);
   const refreshTokenHash = hashRefreshToken(refreshToken);
 
   return {
@@ -106,6 +111,7 @@ const loadActiveUser = async (userId: bigint) => {
       id: true,
       fullName: true,
       role: true,
+      authVersion: true,
       orgId: true,
       branchId: true,
     },
@@ -250,7 +256,7 @@ const rotateRefreshToken = async (
 export const login = async (input: LoginInput) => {
   const user = await prisma.user.findFirst({
     where: {
-      OR: [{ email: input.login }, { phone: input.login }],
+      ...schoolLoginIdentity(input.login),
       status: "ACTIVE",
       organization: { status: { in: ["ACTIVE", "TRIAL"] } },
     },
@@ -260,6 +266,7 @@ export const login = async (input: LoginInput) => {
       email: true,
       phone: true,
       passwordHash: true,
+      authVersion: true,
       role: true,
       orgId: true,
       branchId: true,
@@ -315,6 +322,9 @@ export const refreshSession = async (input: RefreshTokenInput) => {
   }
 
   const user = await loadActiveUser(storedToken.userId);
+  if ((decodeRefreshToken(input.refreshToken).ver ?? 0) !== user.authVersion) {
+    throw new HttpError(401, "Please sign in again");
+  }
   const nextSession = await rotateRefreshToken(storedToken.id, user);
 
   return {

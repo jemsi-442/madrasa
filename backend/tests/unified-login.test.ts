@@ -30,6 +30,18 @@ function fixture() {
   return { app, db, account, client, limit, school, clear };
 }
 describe('unified login', () => {
+  it('resolves family registration through the same login and rate-limit identity', async () => {
+    const f = fixture();
+    f.db.platformAccount.findUnique.mockResolvedValue(null);
+    f.db.user.count.mockResolvedValue(1);
+    await request(f.app).post('/login').send({ login: ' dsm/fam/26/001 ', password }).expect(200);
+    expect(f.limit).toHaveBeenCalledWith('DSM/FAM/26/001', expect.any(String));
+    expect(f.db.user.count).toHaveBeenCalledWith({ where: { OR: [
+      { email: 'DSM/FAM/26/001' }, { phone: 'DSM/FAM/26/001' },
+      { familyLoginId: 'DSM/FAM/26/001', role: 'PARENT' },
+    ] } });
+    expect(f.school.mock.calls[0]![0].body).toEqual({ login: 'DSM/FAM/26/001', password });
+  });
   for (const count of [0, 2]) it(`password bootstrap preserves reviewer limit: ${count}`, async () => {
     const f = fixture();
     const create = vi.fn().mockResolvedValue({ id: 'new', role: 'SUPER_ADMIN' });

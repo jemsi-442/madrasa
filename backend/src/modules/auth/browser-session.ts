@@ -5,6 +5,9 @@ import { HttpError } from "../../shared/errors/http-error";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { loginSchema } from "./auth.schemas";
 import { login, logout, refreshSession } from "./auth.service";
+import { prisma } from '../../shared/db/prisma';
+import { readCompanyCookie, clearCompanyCookie, restoreCompanySession } from './company-browser-session';
+import { verifyPlatformAccess } from '../platform/platform.authentication';
 
 const cookieName = "mif_browser_session";
 const cookieOptions: CookieOptions = {
@@ -51,6 +54,7 @@ export const sendBrowserSession = (
   session: Awaited<ReturnType<typeof login>>,
   status = 200,
 ) => {
+  clearCompanyCookie(res, env.NODE_ENV === 'production');
   res.cookie(cookieName, session.refreshToken, cookieOptions);
   const { refreshToken: _refreshToken, ...publicSession } = session;
   res.status(status).json({ success: true, data: publicSession });
@@ -61,19 +65,37 @@ export const browserLogin = async (req: Request, res: Response) => {
 };
 
 export const browserRefresh = async (req: Request, res: Response) => {
-  const refreshToken = readCookie(req);
   try {
+    const companyToken = readCompanyCookie(req);
+    if (companyToken) {
+      if ([env.JWT_SECRET, env.JWT_REFRESH_SECRET].includes(env.PLATFORM_JWT_SECRET)) throw new HttpError(503, 'Sign-in is temporarily unavailable');
+      const data = await restoreCompanySession(prisma, env.PLATFORM_JWT_SECRET, companyToken);
+      res.json({ success: true, data });
+      return;
+    }
+    const refreshToken = readCookie(req);
     if (!refreshToken) throw new HttpError(401, "Please sign in");
     sendBrowserSession(res, await refreshSession({ refreshToken }));
   } catch (error) {
     if (error instanceof HttpError && error.statusCode === 401) {
       res.clearCookie(cookieName, cookieOptions);
+      clearCompanyCookie(res, env.NODE_ENV === 'production');
     }
     throw error;
   }
 };
 
 export const browserLogout = async (req: Request, res: Response) => {
+  try {
+    const token = readCompanyCookie(req);
+    if (token) {
+      const context = await verifyPlatformAccess(prisma, token, env.PLATFORM_JWT_SECRET);
+      await prisma.platformSession.updateMany({ where: { id: context.sessionId, accountId: context.accountId, revokedAt: null }, data: { revokedAt: new Date() } });
+    }
+  } catch (error) {
+    if (!(error instanceof HttpError && error.statusCode === 401)) throw error;
+  }
+  clearCompanyCookie(res, env.NODE_ENV === 'production');
   const refreshToken = readCookie(req);
   if (refreshToken) {
     try { await logout({ refreshToken }); } catch (error) {

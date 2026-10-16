@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { loginPassword } from "./password.schemas";
 
 export const loginSchema = z.object({
   login: z.string().min(1, "login is required"),
-  password: z.string().min(8, "password must be at least 8 characters"),
+  password: loginPassword,
 });
 
 export const refreshTokenSchema = z.object({

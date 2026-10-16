@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 
 import { env } from "../../config/env";
 import { HttpError } from "../errors/http-error";
+import { prisma } from "../db/prisma";
 
 export type AuthenticatedUser = {
   userId: string;
@@ -18,6 +19,7 @@ declare module "express-serve-static-core" {
 }
 
 type AccessTokenPayload = {
+  ver?: number;
   sub: string;
   orgId: string;
   role: AuthenticatedUser["role"];
@@ -39,7 +41,7 @@ const extractBearerToken = (authorizationHeader?: string) => {
   return token;
 };
 
-export const authenticate = (req: Request, _res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     const token = extractBearerToken(req.headers.authorization);
     const payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
@@ -47,12 +49,18 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction) =
     if (payload.type !== "access") {
       throw new HttpError(401, "Invalid access token");
     }
+    if (!/^\d+$/.test(payload.sub) || !/^\d+$/.test(payload.orgId)) throw new HttpError(401, "Invalid access token");
+    const account = await prisma.user.findFirst({ where: { id: BigInt(payload.sub), orgId: BigInt(payload.orgId),
+      role: payload.role, status: "ACTIVE", organization: { status: { in: ["ACTIVE", "TRIAL"] } } },
+      select: { authVersion: true, branchId: true } });
+    if (!account) throw new HttpError(403, "This account is no longer available");
+    if (account.authVersion !== (payload.ver ?? 0)) throw new HttpError(401, "Please sign in again");
 
     req.authUser = {
       userId: payload.sub,
       orgId: payload.orgId,
       role: payload.role,
-      branchId: payload.branchId ?? null,
+      branchId: account.branchId?.toString() ?? null,
     };
 
     next();

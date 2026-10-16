@@ -10,11 +10,7 @@ import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
 import { buildSessionResponse } from "./auth.service";
 import { sendBrowserSession } from "./browser-session";
-
-const registrationPassword = z.string().min(8).max(72).refine(
-  (value) => Buffer.byteLength(value, "utf8") <= 72,
-  "Password is too long",
-);
+import { newSchoolPassword as registrationPassword } from "./password.schemas";
 
 export const registrationSchema = z.object({
   fullName: z.string().trim().min(2).max(150),

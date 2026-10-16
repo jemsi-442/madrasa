@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -31,7 +31,7 @@ export async function loginPlatformPassword(db: PrismaClient, signingKey: string
     } });
     await tx.platformAuditEvent.create({ data: { actorId: account.id, actorRole: account.role,
       action: "platform.login.succeeded", entityType: "PlatformAccount", entityId: account.id } });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   const accessToken = jwt.sign({ sub: account.id, sid, role: account.role, type: "platform_access", iat: now, exp: now + 900 }, signingKey,
     { algorithm: "HS256", issuer: PLATFORM_ISSUER, audience: PLATFORM_AUDIENCE });
   return { scope: "platform" as const, accessToken, expiresIn: 900, user: { id: account.id, fullName: account.fullName, role: account.role } };
