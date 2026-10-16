@@ -1,6 +1,300 @@
 # MODERN ISLAMIC FOUNDATION Project Status
 
-Last updated: `2026-10-01`
+Last updated: `2026-10-16`
+
+## Unified Madrasa Lifecycle (2026-10-16)
+
+Applications is no longer a separate sidebar item or tab. Existing office
+shortcuts route to Madrasas. The directory merges unprovisioned requests with
+organizations, pending-first with bounded pagination; provisioned requests are
+excluded to avoid duplicate school rows. Awaiting approval, awaiting setup and
+declined states are searchable/filterable alongside created madrasa statuses.
+Manage exposes independent approve/decline, onboarding review and office history.
+The original server-side independent-review, IT setup and activation controls
+remain in force. Summary cards count created organizations (labelled explicitly);
+pending records have unknown learner/teacher counts rather than invented zeros.
+
+## Madrasa Reference Layout Correction (2026-10-16)
+
+The directory now follows the supplied hierarchy: separate Export list/Add
+Madrasa actions, four global summary cards, a wide search row, status/location
+filters, full-width desktop table, numbered rows and status badges. Locations
+come from recorded branch locations, not invented region data. Assigned admins
+counts active ADMIN accounts, not an assumption of one admin per madrasa.
+CSV export includes all matching records up to 5000, rejects larger exports
+instead of truncating, and escapes spreadsheet formulas. Manage opens an inline
+madrasa section with linked onboarding review; Add Madrasa opens the existing
+application form. No permission to edit classroom records is added.
+
+## Institution Workspace: Users & Permissions (2026-10-16)
+
+Super Admin has a read-only staff directory at `GET /api/platform/staff-directory`.
+The new `tenant.staff-directory.read` grant excludes IT and school roles. Queries
+allow only ADMIN, TEACHER and ACCOUNTANT, with bounded pagination, name/school
+search and status filters. Responses expose names, roles and school scope only;
+no contact details, credentials, parent accounts or child records are selected.
+The responsive Users & Permissions page provides account review, role summaries,
+and links to existing company-account and admin-onboarding workflows. It does
+not grant permission-editing or staff invitation powers to Super Admin.
+Backend directory tests (11), Flutter staff/login tests (12), typecheck and
+Flutter analysis pass. The remaining institution modules are not yet complete.
+
+## Institution Workspace: Madrasa Directory (2026-10-16)
+
+Super Admin now has a separate Madrasas directory backed by `GET /api/platform/madrasas`.
+It supports name/code search, status filtering, 25-row pagination, aggregate
+registered learner and active teacher counts, and active administrator names.
+The explicit `tenant.directory.read` permission belongs only to Super Admin;
+IT and school roles cannot read it. No individual learner data or credentials
+are returned. Mobile uses a list; desktop uses a table with read-only details.
+Adding a madrasa links to the existing independent application/approval flow,
+not a shortcut around IT setup and activation checks.
+
+This is the first working institution page, not completion of the eight-page
+proposal. Institution-wide permissions, curriculum, learning oversight, donor
+funds, reports and communications remain subsequent work; SMS is not enabled.
+Five backend directory tests and eleven Flutter directory/login tests pass;
+backend typecheck and Flutter analysis pass.
+
+## Platform Workspace Redesign (2026-10-15)
+
+Refresh presentation: school headers and platform overview/register pages now
+reuse WorkspaceRefreshButton with the same rounded refresh icon. Platform busy
+states show a labelled spinner and disable repeat requests. Existing session,
+filter and stale-record safeguards remain unchanged. All 39 targeted shared UI,
+overview, list-refresh and platform layout tests passed.
+
+Desktop sidebar parity: school and platform shells now use WorkspaceDesktopSidebar
+with identical 250px expanded / 84px collapsed widths and a shared 1000px desktop
+breakpoint. Platform header toggle padding matches school headers; native mobile
+platform layouts keep their drawer even on tablets. All 67 scoped navigation/layout
+tests and 12 shared-component tests passed, including explicit rail width checks.
+Flutter analyzer reported no issues.
+
+Sidebar controls: WorkspaceSidebarToggle now supplies open, close, expand and
+collapse icons to school and platform shells. Super Admin/IT desktop sidebars
+can collapse to an 84px rail; all mobile drawers have an explicit close button.
+Platform collapse state survives page changes. Navigation permissions and busy
+guards are unchanged. 113 targeted layout/navigation/keyboard tests and five
+additional per-school-role drawer close tests passed; analyzer reported no issues.
+
+Typography style: replaced the interface's Noto Sans Display family with bundled
+Lato (400/500/600/700), including its license. Body text uses Medium and sidebar
+menus Semibold; existing headline Bold weights now have a matching face. Explicit
+navigation/public font overrides use the shared family token. Seventy-four targeted
+tests passed, analyzer is clean, and the office render was visually inspected with
+the real Lato assets. Decorative serif text and legacy media font assets are retained.
+
+Readability update: shared body text is 16px, secondary text 14px and labels 15px.
+Navigation, office metadata, metric labels, status badges, notices and tables
+consume the shared sizes. System text scaling stays enabled; action tiles give
+large text more room by omitting their decorative leading icon. All 43 targeted
+design-system, platform, finance and dashboard layout tests passed.
+
+Shared feedback and actions: finance/teacher notices and public form errors now
+delegate to AfaqNotice; form errors retain live-region semantics. Finance and IT
+quick actions use AfaqActionTile with disabled-state handling. Teacher tags use
+the shared status badge. Removed the unreachable legacy office overview/panels;
+Super Admin uses only PlatformOfficeDashboard. Role-specific permissions and
+destinations remain unchanged.
+
+Full-suite regression fixes: PublicBrand falls back to its mark in constrained
+headers instead of overflowing. RecordTable has shared-token row-height fallbacks
+when embedded outside the app theme. Mobile registration tests now assert the
+existing family-registration route rather than the superseded Parent access page.
+
+Verification: all 721 Flutter tests passed; analyzer reported no issues. The
+office screenshot test also passed with buildAfaqTheme and its rendered image
+was inspected. Web release build succeeded and preview port 8087 returned HTTP
+200. Demo API port 4087 was offline; no database was recreated or credentials
+changed. Physical Android testing was not performed in this pass.
+
+Shared tables: RecordTable now inherits global DataTableTheme styling and uses
+shared table tokens for header color, dimensions and spacing. Each table owns
+an independent horizontal controller with a visible bottom scrollbar. Tests
+cover theme inheritance, narrow-screen access to actions and disposal. All 42
+targeted design-system, academic, finance, dashboard and teacher tests passed;
+Flutter analyze reported no issues. No role permissions or data sources changed.
+
+Shared metrics: TeacherMetric and platform office metrics now delegate to the
+existing DashboardMetric used by school dashboards. Its card surface uses the
+shared panel decoration. Values, labels, notes and role-specific data sources
+are unchanged. Fifty targeted design-system, teacher, dashboard, finance and
+platform layout tests passed after correcting the extraction compile error.
+
+Shared badges: FinanceStatus, StatusPill, platform account and application statuses
+now use AfaqStatusBadge. Styling is shared while status semantics remain local.
+The badge supports optional icons and wrapping labels, including enlarged text.
+Forty-eight targeted design-system, finance, academic and platform tests passed;
+Flutter analyze reported no issues.
+
+Shared-shell migration: platform navigation now reuses WorkspaceSidebar, the
+same component used by school workspaces, with role-specific destinations and
+a busy/disabled guard. WorkspaceHeaderSurface supplies the common header border,
+surface and minimum height to both school and platform headers. Short screens
+hide the decorative sidebar footer to preserve scrollable navigation. Forty-five
+targeted regression tests passed and Flutter analyze reported no issues.
+
+Shared design-system foundation: design_tokens.dart owns common colors, fonts,
+panel/control radii and panel decoration. design_theme.dart now owns the root
+Material theme and global button/input styling. adminTheme is a compatibility
+delegate. Foundation palette aliases, SurfacePanel, office panels, platform shell
+colors and selected teacher/finance primitives consume these shared definitions.
+Role permissions/navigation are unchanged. Shared primitives are centralized;
+page-specific charts, media layouts and mobile navigation remain specialized.
+
+The office home now loads the five newest requests from the protected application
+register API. Names, requested codes and decision labels replace the static
+register description. A list failure is distinct from an empty register and does
+not discard successfully loaded overview counts. Session-version checks prevent
+late responses from being rendered after account/session replacement. Office
+activity still opens the existing history page rather than streaming on home.
+
+Reference-layout rebuild: Super Admin now uses a dedicated office dashboard,
+not the old vertically stacked overview. It has a compact sans-serif welcome,
+six horizontal metrics, a three-column overview row, a second three-column
+work row and a mission banner. The shell uses a navy background, uppercase
+AFAQ book mark and cool-white surfaces. Regional data explicitly remains
+unconnected; no school counts, student charts or donation totals are fabricated.
+Office history and request lists open the existing protected pages rather than
+pretending to stream records on the home page. Desktop visual capture is
+available via office_visual_capture_test.dart with CAPTURE_OFFICE=true.
+
+Application cards now separate the school name, decision badge, requested code
+and proposed school administrator. Badges use text and icons as well as color;
+unknown statuses are explicitly unavailable. Code/email fields are selectable.
+Decision actions and independent-review authorization are unchanged. Seventeen
+targeted existing layout/application tests passed; Flutter analyze is clean.
+
+Quick actions now use bordered, full-card interactive tiles in three desktop
+columns, two medium-width columns or one mobile column. Hover and keyboard focus
+have visible states. Targeted overview/layout tests verify tap and Enter-key
+navigation at 390/1440px and blocked navigation while loading; all 15 passed.
+
+Reference-inspired office overview: metric icons now have soft circular accents;
+an application-status breakdown and next-step panel sit side by side on wide
+screens and stack on mobile. All chart values come from the overview snapshot.
+Missing/partial data and an empty application set have explicit states, not fake
+percentages. Quick actions and an Afaq mission panel complete the page. No
+student, donation, regional or security data was added to the office overview.
+
+Follow-up: task pages now include role-specific guidance for applications,
+company accounts, office/security history, service health and personal sessions.
+The application workflow is explanatory, not a claim of completed onboarding.
+The sidebar omits its decorative footer on short screens so landscape navigation
+remains scrollable. Twenty-four targeted task/layout regression tests passed,
+including enlarged text at 320px and reaching sessions in a 740x320 drawer;
+Flutter analyze reported no issues.
+
+Authenticated platform accounts now enter an Afaq-branded overview with a
+responsive sidebar (desktop/tablet) or navigation drawer (mobile), instead of
+the old welcome banner and chip-based console navigation.
+
+- Super Admin: Overview, Madrassa applications, Company accounts, Office history.
+- IT: Overview, System health, Audit trail, Madrassa setup, My sessions.
+- Office overview uses real application/onboarding totals and links to filtered
+  pending reviews and approved onboarding. Failed loads show unavailable values,
+  not invented zero counts. IT health retains snapshot freshness checks.
+- IT provisioning opens inline as a workspace page, not a nested modal window.
+- Existing task forms, permission checks and session-expiry protections remain;
+  this is a shell/home/navigation redesign, not a rewrite of every task form.
+
+Verification: all 116 platform Flutter tests passed and Flutter analyze reported
+no issues. Layout tests cover both roles at 320, 800 and 1440 pixels, including
+role-specific navigation and overview failure states. The browser test script
+now includes these workspace layout tests. Physical Android-device verification
+has not been performed for this redesign.
+The nine targeted Chromium workspace/overview tests also passed with mocked API
+responses, and the release web build succeeded with the isolated local API at
+port 4087. The loopback preview is served at port 8087; this is not a production
+deployment.
+
+## Family Onboarding Update (2026-10-09)
+
+Email preparation now includes Afaq-branded HTML/plain-text drafts for family
+approval and school-account password changes, plus a synthetic-data CLI preview.
+The strict payloads reject extra fields such as passwords, receipts and child
+records. Twelve template tests and backend typechecking passed. This is a
+preview-only foundation: no provider, queue or automatic delivery is connected.
+An offline capture CLI now saves synthetic drafts in private files, with atomic
+publication and duplicate/conflict handling. It defaults to disabled, refuses
+production capture and only accepts `.test` email addresses and login hosts.
+All 19 email template/sandbox tests and backend typechecking passed. The planned
+`afaq.africa` domain has not been configured or treated as a verified sender.
+The agreed production layout is now captured in `backend/.env.production.example`:
+apex web, `api.afaq.africa`, `noreply@afaq.africa` and planned support mailbox.
+Email remains disabled, production secrets are empty, and local settings are
+unchanged. This prepares deployment configuration without claiming live hosting.
+An IT-only operational CLI, `npm run deployment:check -- --env-file <file>`, now
+checks the planned production configuration offline and prints redacted results.
+It makes no service connections and distinguishes automated blockers from manual
+DNS/TLS, backup, access-control, email and payment acceptance checks. Passing
+configuration checks is explicitly not a verified deployment.
+
+A standalone TLS-only SMTP adapter and an explicit-file SMTP check CLI now exist.
+They are not called by registration/password flows and no provider connection or
+real send was performed. Connection checks require an explicit `--connect` flag;
+configuration checks are offline. SMTP acceptance is not presented as delivery.
+Fifty-four targeted tests and TypeScript checks passed. The npm audit still
+reports 15 dependency issues, including one critical, outside Nodemailer; these
+remain a production-readiness risk requiring a separate tested remediation.
+
+### Dependency Remediation (2026-10-09)
+
+The subsequent dependency remediation supersedes the 15-issue audit above:
+`npm install` now reports zero known vulnerabilities. Express, Morgan, Vitest,
+tsx and affected transitive dependencies were updated within their major lines.
+Prisma/client remain 6.19.3; a scoped `@prisma/config` override pins `deepmerge-ts`
+8.0.2 to address its advisory without upgrading the database tooling to Prisma 8.
+The override requires continued compatibility checks on future Prisma upgrades.
+Added regressions verify proxy trust handling and actual Prisma config loading.
+CI now blocks high/critical dependency advisories. A clean npm audit is not a
+claim of complete application security or a verified production deployment.
+Verification after the updates: 115 targeted unit/HTTP tests and 20 isolated
+family integration tests passed; all 31 migrations were replayed on a disposable
+database, including the non-empty install guard and idempotent deploy check.
+Prisma generation, backend typecheck and build passed. The real database was not
+modified and existing deployed processes have not been rebuilt/restarted here.
+
+### Local Runtime Verification (2026-10-09)
+
+The previous disposable demo was no longer running and its temporary files were
+absent. A new isolated demo was started with synthetic accounts and the patched
+dependencies; no existing database was restored, reseeded or modified. The local
+web preview responds on 8087 and API health on 4087. All five demo accounts passed
+login, authorized reads, denied company/school cross-scope access and logout.
+`smoke:demo` makes those checks repeatable without printing credentials or tokens.
+The new demo uses new temporary credentials; production has not been deployed.
+
+Public parent registration now creates a pending, school-scoped request, not an
+authenticated account. School admins review requests in Family accounts, verify
+identity and the applicant's private receipt, then atomically link an available
+guardian and issue a family login number. One family account can access multiple
+verified children. Duplicate submissions cannot replace a pending password;
+approval/rejection removes the application's password hash. Office-rejected
+requests can be resubmitted after clarification.
+
+School and company accounts now have current-password-verified password changes
+with session invalidation. School admins can reset a verified parent's password
+within their scope, but cannot reset company or school-admin passwords through
+that workflow. Forgot password remains an office-assisted request. Automated
+email and production deployment are not complete: no email service is configured,
+and the real `mms` database has not been migrated. The private demo was backed up
+and upgraded independently. See backend/DEVELOPMENT.md for deployment boundaries.
+
+Verification for this update: 113 selected Flutter VM tests, four Chromium
+onboarding tests, 59 backend regression tests and 20 isolated MariaDB integration
+tests passed. The isolated installer verified all 31 migrations, refusal to
+overwrite a non-empty database and an idempotent migration deployment. These are
+targeted suites, not a claim that every repository test was run. Backend
+typechecking, a release web build and an Android debug APK build passed. The APK
+has not been installed or exercised on a physical phone in this update.
+
+The local preview uses web port 8087 and the isolated API on port 4087. Parent
+requests begin at `/#/parent-access`; school admins review them under
+`Family accounts > Registration requests`. Existing demo passwords were not
+changed. Do not deploy the new API against the real database before the documented
+backup, migration and coordinated API-worker replacement steps.
 
 ## 1. Current State
 

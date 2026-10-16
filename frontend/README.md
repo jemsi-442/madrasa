@@ -4,6 +4,110 @@ This is the only active frontend. It targets web, Android, and iOS and talks to 
 
 ## Run locally
 
+### Shared visual system
+
+Use `lib/src/design_tokens.dart` (`AfaqDesign`) for shared colors, fonts and
+radii. `lib/src/design_theme.dart` owns `buildAfaqTheme()` and the control theme
+used by every role. `adminTheme()` is a compatibility wrapper, not a separate
+design. `SurfacePanel` and platform office panels share `panelDecoration()`.
+Change these shared definitions instead of copying styles into a role page.
+
+Typography sizes are shared tokens: `bodySize` (16), `secondarySize` (14), and
+`labelSize` (15). Dashboard navigation, metrics, notices and table text use these
+values. Keep system text scaling enabled; action tiles omit their decorative
+leading icon at large accessibility text sizes to give the label more space.
+`bodyFont` is bundled Lato, with real 400/500/600/700 faces. Body copy uses Medium,
+navigation uses Semibold and key headings use Bold. Keep this family centralized
+instead of hard-coding an older font in a page or navigation control.
+
+Platform and school desktop/drawer navigation now share `WorkspaceSidebar` in
+`workspace_chrome.dart`. Header surfaces share `WorkspaceHeaderSurface`; adjust
+`AfaqDesign.headerHeight` and the shared surface rather than each role header.
+Menus, callbacks and permissions remain role-specific. Public-page layouts,
+charts, media controls and role-specific mobile navigation patterns are
+intentionally kept; global consistency does not make every page identical.
+
+Sidebar controls use `WorkspaceSidebarToggle` for all roles: the desktop menu icon
+collapses/expands the rail; mobile menu opens the drawer and its header close
+button dismisses it. Platform workspaces retain collapse state while navigating.
+Do not add separate menu icons to individual dashboard pages.
+Refresh controls use `WorkspaceRefreshButton` in school headers and platform
+overview/register pages. A loading control shows an accessible spinner and
+disables repeat clicks; list pages can retain their text label. Fetching, filters,
+session guards and stale-record handling remain owned by the page controller.
+`WorkspaceDesktopSidebar` also owns the shared rail geometry: expanded 250px,
+collapsed 84px. Both shells use the 1000px desktop breakpoint and keep native
+mobile layouts in drawer mode, including tablets. Width changes resize the main
+content identically rather than using a separate platform-only layout.
+
+Run `flutter test test/design_system_test.dart` to check shared-style contracts.
+
+Status presentation lives in `status_badge.dart` (`AfaqStatusBadge`). FinanceStatus,
+StatusPill, platform account status and application headings delegate to it.
+Keep status-to-label/color decisions in their module; do not infer business
+meaning inside the visual component. Shared badge padding is in `AfaqDesign`.
+
+Use `DashboardMetric` from `foundation_ui.dart` for metric cards. TeacherMetric
+and platform office metrics now delegate to it, alongside existing school/finance
+usage. Its surface uses `AfaqDesign.panelDecoration()`; `dense` selects a compact
+layout rather than maintaining a separate role-specific card implementation.
+
+Use `RecordTable` from `dashboard_components.dart` for record grids. Its header,
+row heights, typography and spacing inherit the global `DataTableTheme` in
+`design_theme.dart`, with dimensions and colors in `AfaqDesign`. Each table owns
+its horizontal scroll controller and visible bottom scrollbar so narrow screens
+can reach all columns. Do not copy table styling into individual role pages.
+
+`shared_feedback.dart` owns `AfaqNotice` and `AfaqActionTile`. Finance and teacher
+notices, public form errors and finance/IT action tiles delegate to these widgets.
+Form errors retain their live-region announcement; a null action disables a tile.
+Teacher tags use `AfaqStatusBadge`, just like finance and platform statuses.
+Keep module-specific messages and callbacks in their module, not in these widgets.
+
+Before changing shared components, run `flutter analyze --no-pub` and
+`flutter test --no-pub`. Design-system tests check reuse, narrow layouts, disabled
+actions and theme inheritance. The full suite also exercises role separation,
+family navigation, keyboard scrolling and financial record layouts.
+
+Run the commands in this section from `frontend/`.
+
+### Current demo with automatic hot reload
+
+```bash
+cd /home/jaykali/madrasa/frontend
+FLUTTER_BIN=/home/jaykali/development/flutter/bin/flutter \
+API_BASE_URL=http://127.0.0.1:4087 \
+node ../scripts/dev-web.mjs
+```
+
+Open **http://127.0.0.1:8087/#/login**, or **http://127.0.0.1:8087/** for Home.
+Keep the terminal running. Saving Dart files under `lib/` triggers automatic
+hot reload; the initial compilation takes longer than subsequent updates.
+Changes to dependencies, assets or web bootstrap files require restarting the
+command. Stop with `Ctrl+C`. Do not start another server on port 8087 if one is
+already running.
+
+The isolated demo API must be running separately on port **4087**. For the
+regular school backend, change `API_BASE_URL` to `http://127.0.0.1:4000` and
+ensure its CORS settings allow `http://127.0.0.1:8087`. The `FLUTTER_BIN` path
+above is specific to this workstation; omit it if `flutter` is on your PATH.
+
+The wrapper uses this Flutter command internally (without the wrapper, saves
+do not automatically trigger reload):
+
+```bash
+flutter run -d web-server --machine \
+  --web-hostname=127.0.0.1 \
+  --web-port=8087 \
+  --no-web-resources-cdn \
+  --dart-define=API_BASE_URL=http://127.0.0.1:4087
+```
+
+Use either the wrapper or the direct command, not both. This is a local
+development server, not a production deployment.
+
+### Regular school backend
+
 ```bash
 flutter pub get
 flutter run -d web-server --web-port 8080 --dart-define=API_BASE_URL=http://127.0.0.1:4000
@@ -17,7 +121,7 @@ Use `flutter devices` to find Android/iOS targets. Native builds default to `htt
 flutter run -d <device-id> --dart-define=API_BASE_URL=https://api.example.com
 ```
 
-The public home opens without the backend. Signing in and creating an online learning account require the API to be running. All roles use the same sign-in form. The backend decides the role; no role picker is shown. Native access and refresh tokens remain in memory, so a full native restart requires sign-in. Web access tokens are also in memory, while the server-managed browser session can restore sign-in after a reload.
+The public home opens without the backend. Signing in and creating an online learning account require the API to be running. All roles use the same sign-in form. The backend decides the role; no role picker is shown. Native access and refresh tokens remain in memory, so a full native restart requires sign-in. Web access tokens are also in memory, while the server-managed browser session can restore sign-in after a reload. This includes Super Admin and IT: their HttpOnly cookie restores the same unexpired 15-minute session, without renewing its lifetime. Sign in once after upgrading to receive that cookie. Logout, revoked access and expiry still require sign-in.
 
 The registration page creates an independent online learner through `POST /api/auth/register` and signs them in. The server assigns `LEARNER`; public callers cannot select staff roles, organization, branch, or student ownership. It does not grant paid-course access.
 
@@ -553,6 +657,30 @@ Platform-specific Save CSV visibility follows the test host; an Android-shaped
 widget preview on Linux is not a device test of the Android file picker.
 
 ## Verify
+
+### Family Access
+
+Parents use `/parent-access` to submit a family registration request. This does not
+sign them in or expose child records. The confirmation includes a private request
+receipt for school-office verification; it is not a login credential.
+
+School ADMIN: open **Family accounts > Registration requests**, independently
+verify the applicant, enter their receipt, select the verified guardian and region,
+then approve. Approval creates one family account and its login number. Rejection
+creates no account; the family can resubmit after resolving details with the office.
+The **Family accounts** tab provides private sign-in instructions and verified
+parent password recovery. Email delivery is not configured.
+
+All school roles have **Account menu > Change password**. Company users have a
+**Change password** control in their console. Successful changes require sign-in
+again on all devices. Public **Forgot password** still requests office assistance,
+not an automatic reset email.
+
+These features require the updated backend and the family onboarding migrations.
+Do not point a new frontend at an unmigrated API. See `../backend/DEVELOPMENT.md`
+for the private-demo upgrade and real-deployment checklist.
+
+### Commands
 
 ```bash
 flutter analyze

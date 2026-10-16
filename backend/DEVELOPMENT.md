@@ -246,9 +246,16 @@ now a compatibility alias to that same entry page, not a separate login.
 reject cross-directory or multiple-school matches with a generic credential
 error rather than guessing a role. Wrong/disabled company credentials never
 fall back to a school account. Redis limits apply before identity lookup.
-Company sessions remain memory-only, separately signed/authorized, and expire
-after 15 minutes without school-cookie refresh. Browser company login clears
-the old school cookie; logout/expiry returns to the common login page.
+Company access tokens remain in memory and separately signed/authorized.
+Browser company login also sets a host-only HttpOnly, SameSite=Lax cookie
+restricted to `/api/auth/browser` (Secure in production). The origin-guarded
+browser refresh endpoint restores the same verified company session after a
+reload, without extending its original 15-minute lifetime. It checks account
+status and server-side revocation; invalid company cookies never fall back to a
+school session. Company login clears the school cookie and school login clears
+the company cookie. Logout revokes the session and clears the cookie; expiry
+returns to the common login page. Existing sessions must sign in once after
+this update to receive the restoration cookie.
 Migration `202610091200_password_company_sessions` makes the historic MFA
 verification timestamp nullable; password-only sessions record null, not a fake
 MFA success. Session freshness uses creation time for these sessions. Existing
@@ -825,7 +832,7 @@ permissions or tenant-data access have been expanded by these probes.
 
 ### Login and Controlled Bootstrap
 
-For a disposable, local-only company-console demonstration, run from `backend`:
+For a disposable, local-only company and family demonstration, run from `backend`:
 
 ```bash
 npm run platform:demo -- --start
@@ -833,15 +840,23 @@ npm run platform:demo -- --start
 
 This creates a new private `/tmp/afaq-local-demo-*` MariaDB data directory and
 Redis instance on loopback ports, installs the schema there, and binds a
-platform-only API to `127.0.0.1:4087`. It does not use the configured school
-database or import its records. Two Super Admins and one IT account get random
+full application API to `127.0.0.1:4087`. It does not use the configured school
+database or import its records. Two Super Admins, one IT account, one school
+admin and one parent account get random
 passwords; credentials are written to the printed private JSON
 file (mode 600 in a mode-700 directory), never to project files. These seeded
 identities are demo fixtures, not production bootstrap or an IT invitation flow.
+The parent has two linked demo children, with no fabricated academic results.
+Use the school admin's Family accounts page to issue its family number. The
+parent can then use that number with its unchanged password. Child admission
+numbers remain separate. New starts do not preserve issued family numbers.
+The API runs in a separate process with explicit disposable database/Redis URLs,
+fresh signing secrets, dotenv disabled, and payment-provider mock mode enabled.
 
 Build Flutter web with `--dart-define=API_BASE_URL=http://127.0.0.1:4087` and serve
-it at `http://127.0.0.1:8087`; open `/#/login`. Other browser origins are not
-allowed by this demo API. No authenticator or MFA code is required. An optional
+it at `http://127.0.0.1:8087`; open `/#/login`. Development loopback browser origins
+are allowed by the normal app policy; browser auth still requires Origin and
+X-MIF-Browser headers. No authenticator or MFA code is required. An optional
 `--reuse-demo-passwords /tmp/afaq-local-demo-REPLACE/credentials.json` after
 `--start` preserves passwords from a previous local demo when creating fresh
 demo accounts; it does not copy school records or modify the previous database.
@@ -851,6 +866,36 @@ the demo API and its services; temporary data remains private until removed or
 the OS cleans `/tmp`. Each new start creates new accounts and a new directory,
 not a resume or password reset. It refuses `NODE_ENV=production` and requires
 explicit `--start`; no existing database is migrated or overwritten.
+
+To refresh a running disposable demo API without reseeding its database (Linux):
+
+```bash
+node scripts/reload-local-demo-api.mjs <api-pid> <demo-supervisor-pid>
+```
+
+Use the Node processes running `scripts/local-demo-api.ts` and
+`scripts/platform-local-demo.ts`, not the npm wrapper PIDs. The helper verifies
+workspace paths, ancestry and disposable loopback database/Redis configuration
+before stopping only the API. It retains the environment in memory, including
+existing signing keys; it does not print secrets, run migrations or reseed.
+The replacement watches backend source changes and stops when the original demo
+supervisor exits. Keep the helper terminal open. Existing credentials and family
+numbers remain unchanged. This is a local development handover, not a production
+deployment command; schema changes still require a separately reviewed migration.
+
+If the demo supervisor/API/Redis have stopped but its isolated MariaDB process
+is still alive, recover without recreating accounts or migrating the database:
+
+```bash
+node scripts/resume-local-demo-api.mjs <surviving-demo-mariadbd-pid>
+```
+
+The helper validates the private `/tmp/afaq-local-demo-*` data directory and
+nonstandard loopback ports, reads the original configuration from that process
+without printing secrets, and starts only Redis and the API. Ports must be free.
+Passwords, records and signing keys are retained; Redis ephemeral state is not.
+Keep this command running. Ctrl+C stops only the services it started, not MariaDB.
+It cannot recover a stopped database or missing original process environment.
 
 Unified login JSON is `login`, `password`; company responses include
 `scope: platform`, a 15-minute access token and minimal profile, not a refresh
@@ -1094,3 +1139,390 @@ Next implementation gates, in order:
 Before deployment, back up and test migration on a disposable/staging database.
 Do not manually activate platform accounts or expose the internal service as an
 unauthenticated route to bypass these gates.
+# Family Login Foundation
+
+The family uses one PARENT account linked to one guardian profile. Existing
+student-guardian links allow that account to switch between children without
+merging their academic, attendance or financial records. A family login is not
+a student's admission number and is never used as the password.
+
+After applying the additive `202610091400_family_login` migration to an explicitly
+selected test database and generating Prisma Client, a school ADMIN can call:
+
+```http
+POST /api/users/:id/family-registration
+Content-Type: application/json
+Authorization: Bearer <school-admin-access-token>
+
+{"regionCode":"DSM"}
+```
+
+The response includes `userId` and `familyLoginId`, for example
+`DSM/FAM/26/001`. FAM denotes the family rather than a child's current course.
+The server chooses the Dar es Salaam calendar year and allocates a sequence
+shared across schools for each region/year. The identifier is globally unique.
+Repeated requests return the existing identifier unchanged. Issuance, counter
+allocation and the school audit entry share one serializable transaction.
+Only active school admins can issue numbers to active parents with a guardian
+profile in their school; branch-scoped admins are restricted to their branch.
+
+The existing unified login accepts the family identifier and existing password.
+Parent Home and Support pages display the account's family sign-in number with
+a copy action. Unissued numbers show office guidance instead of sample data.
+Both parent profile and workspace overview return only the signed-in family's
+identifier; student admission numbers remain separate.
+Email/phone login remains compatible during rollout. Ambiguous identities fail
+with `Invalid credentials`; registration does not grant access to new children.
+
+School admins now have a **Family accounts** workspace page for existing parent
+accounts. It supports local search, guardian confirmation, region validation,
+idempotent issuance, selectable numbers and clipboard copying. Disabled or
+unlinked accounts cannot issue a number from the UI. Server authorization remains
+authoritative. Existing passwords are never displayed or changed. Admins can
+choose **Create parent account** for an existing guardian, supply an email and
+initial password, then issue the family number after creation. Initial passwords
+are discarded with the form; the next dialog reloads the saved family and linked
+children from the server before issuance. Cancelling that dialog preserves the
+account for later issuance. If reloading fails, retry only refreshes the list and
+never repeats account creation. Initial passwords
+must be shared privately; no email is sent. The paginated guardian picker excludes
+already-linked guardians. Branch admins can only select families with children
+linked exclusively within their branch; mixed-branch families require a
+school-wide admin. The server rechecks those restrictions at creation and defaults
+the new account to the branch admin's branch, rejecting a different requested branch.
+Demo data includes Salma Demo and Yusuf Demo as a family awaiting account creation.
+The family directory has mutually exclusive stages: Needs guardian, Awaiting
+number, Number issued and Disabled. Counts cover the loaded authorized parent
+accounts, not unregistered guardians. Search also matches linked child names and
+admission numbers. Issuance updates the stage immediately and shows a confirmation
+with a Show issued action; no email delivery is implied by that confirmation.
+
+Public parent signup and office-reviewed approval are now implemented as described
+below. Configured regional-code policy and automated email delivery remain separate
+work. The UI requires the migrations and updated backend; it has not been enabled
+on the existing school database.
+No email delivery is configured. Do not apply this migration to an
+existing school database without the normal backup and deployment review.
+
+### Isolated family-account verification
+
+From `backend/`, run:
+
+```bash
+npm run test:platform:staging -- --fresh-install --family-registration
+```
+
+This creates disposable MariaDB and Redis instances on temporary loopback ports,
+installs the migration history in an empty test database, and removes the
+instances afterward. It never falls back to the configured school database.
+The integration suite exercises issuance and unchanged passwords, unified login,
+browser cookie refresh, sibling visibility, unrelated-child denial, role/school/
+branch restrictions, concurrent issuance, cross-school uniqueness, transaction
+rollback on audit failure, and disabled-account denial.
+
+Account creation also claims guardian/student links conditionally inside the
+transaction. Concurrent requests cannot replace an existing parent or learner
+link: the losing transaction rolls back its newly created account and returns
+409. The isolated suite now includes both creation races (10 integration tests).
+This protects one account per guardian record; it does not merge duplicate
+guardian records.
+
+Verified on 2026-10-09: eight disposable-database integration tests and 24
+family/unified-login regression tests passed, with TypeScript checking clean.
+MariaDB's changed-record error 1020 is retried as a full transaction, alongside
+Prisma serialization conflicts, with a three-attempt limit. Other unknown database
+errors are not retried or masked. Browser-session checks here use HTTP requests;
+they are not a manual browser or physical-device UI acceptance test.
+
+### Family self-registration and password recovery
+
+- `/parent-access` is the public family request form. Name, email, phone, child
+  references and a chosen password are submitted to `/api/auth/family-registration`.
+  The server chooses the public site's active organization and main branch; no
+  caller-supplied role, school, branch or student link is accepted. Multi-school
+  public hosting must configure the correct `PUBLIC_SITE_ORG_CODE` per deployment.
+- A pending application grants no login or child access. Only the password hash is
+  stored. Duplicate emails receive the same generic response and never replace a
+  pending applicant's password. Each response provides a private receipt; the
+  accepted application's receipt hash is stored, never its plain receipt.
+- School ADMIN opens Family accounts > Registration requests. Independent identity
+  verification and the applicant's original receipt are required for approval.
+  A name/admission match is not proof of guardianship. The receipt is NOT a login
+  factor or a password. If it is lost or a request is disputed, do not approve it:
+  the office can reject the pending request and ask the verified family to submit
+  again. Resubmission issues a fresh receipt/password hash only for rejected requests.
+- Approval atomically claims an available guardian in the reviewing admin's scope,
+  creates an active PARENT account, issues a family number, and records an audit
+  event. Concurrent approvals cannot create a second account. Rejection creates
+  no account. Both decisions erase the application's stored password hash.
+  Branch admins are restricted to their branch. School-wide admins may approve a
+  family whose children span branches; that parent account has school-wide scope
+  but still sees only its verified guardian-linked children.
+- The school supplies the family number privately. The password chosen at signup
+  stays unchanged. No automatic email, receipt delivery or email verification is
+  implemented; never promise delivery. Pending requests require office follow-up.
+  Duplicate pending requests never replace the original credentials. A new public
+  submission can reopen an office-rejected request; the previous decision remains
+  in the audit trail.
+- School users can use Account menu > Change password. Super Admin and IT can use
+  the Change password control in the company console. The current password is
+  required; success revokes all sessions and requires sign-in again.
+- Verified family recovery is available to school ADMIN through Reset password on
+  a parent card. It cannot reset school administrators or company accounts. The
+  office supplies the new password privately; the family number is unchanged.
+  The public Forgot password page remains an office-help request, NOT an automatic
+  email reset. Company account recovery remains with the company's authorized IT
+  operating procedure; a school administrator never receives that authority.
+- School access/refresh tokens carry `authVersion`. Password changes increment the
+  version and revoke refresh tokens; all authenticated school requests check the
+  current account/version, including branch and active-school status. Legacy tokens
+  without a version represent version zero only. Company changes revoke its
+  database-backed sessions independently.
+
+### Deployment boundary
+
+Migration `202610091600_family_applications` adds the request table and school
+session version. Deploy it before running the new API. The isolated integration
+command above installs all migrations and tests pending access denial, receipt
+validation, approval races, scoped review, rejection, and password revocation.
+
+The live isolated demo can be backed up and upgraded without losing its accounts:
+
+```bash
+node scripts/upgrade-local-family-demo.mjs DEMO_API_PID --confirm-isolated-demo
+```
+
+This Linux helper verifies the process, working directory and private loopback
+database. It refuses port 3306 and any database except `afaq_local_demo`, makes a
+private SQL backup under `/tmp`, then runs migration deploy with the demo's own
+environment. Never use it for the real school database.
+
+Before real deployment: arrange a protected database backup and tested restore,
+review migrations, configure the public school mapping and trusted web origins,
+schedule the API/client deployment together, and run acceptance checks with
+authorized school accounts. This work does not migrate the existing `mms` database.
+Replace all API workers together: old workers do not enforce the new session
+version and must not continue serving traffic after password recovery is enabled.
+Automatic email remains blocked on choosing/configuring an email provider and
+verifying its sender domain. Do not paste SMTP passwords or API keys into chat.
+
+## Family Email Preview (2026-10-09)
+
+From `backend`, inspect the Afaq notification drafts without sending email or
+reading account data:
+
+```bash
+npm run email:preview -- approved
+npm run email:preview -- password-changed
+npm run email:preview -- approved --html
+npx vitest run tests/family-email.test.ts
+```
+
+The previews use synthetic contacts and `https://example.test/#/login`, not a
+real sign-in destination. Templates contain no passwords, verification receipts,
+student names or student records. Names are escaped in HTML; payloads reject
+unknown fields. A password-change template is only appropriate after the
+password transaction and session revocation have successfully committed.
+
+This does not enable delivery or change the existing MANUAL approval workflow.
+Before integrating a provider, IT must configure a verified sender and a trusted
+HTTPS public login URL from server configuration (never from a request). Confirm
+recipient ownership separately: office identity/receipt checks do not themselves
+verify an email address. Persist notification jobs with the business transaction,
+deduplicate retries, record provider acceptance separately from delivery, and
+keep passwords, receipts and message bodies out of logs. Do not call an email
+provider from inside an approval database transaction. Email setup remains an IT
+responsibility, not a Super Admin setting.
+
+### Afaq Deployment Target
+
+IT can run the offline configuration preflight from `backend`:
+
+```bash
+npm run deployment:check -- --env-file .env.production.example
+```
+
+The example intentionally exits with code 1 because deployment secrets and the
+real school mapping are empty. Supply an explicitly selected, protected deployment
+configuration file to check the actual settings; do not commit that file. The
+command does not load the local `.env`, connect to services, change DNS, apply
+migrations or print configuration values. Exit 0 means the automated configuration
+checks passed, not that deployment is ready. Exit 1 means blocked settings; exit 2
+means invalid CLI usage or an unreadable configuration file. Complete every
+`MANUAL` item separately, including provider setup and verified email recipients.
+Secret length/format checks cannot prove randomness: generate secrets securely.
+
+Use `.env.production.example` as the configuration reference for the agreed
+domain layout: frontend `https://afaq.africa`, API `https://api.afaq.africa`,
+sender `noreply@afaq.africa`, and planned support mailbox `support@afaq.africa`.
+These are deployment targets, not proof of domain ownership, working DNS,
+mailbox creation or email delivery. The support address is reserved configuration;
+it is not wired to the application's support UI or API yet.
+
+The template deliberately leaves secrets, database URLs and the public school
+code empty, so it cannot start against a guessed database or school. Configure
+them in the deployment environment. Do not replace the local development `.env`.
+Only the exact apex web origin is allowed; add `www` explicitly if it will be
+served, or redirect it to the apex at the hosting layer.
+
+Build the future production web client from `frontend` with:
+
+```bash
+flutter build web --dart-define=API_BASE_URL=https://api.afaq.africa
+```
+
+Do not publish or switch local clients to this API until DNS, HTTPS and the API
+deployment have been verified. `EMAIL_MODE=disabled` remains mandatory for this
+template: SMTP is not integrated with automatic account notifications. IT must verify domain ownership,
+configure the selected provider's exact DNS records and test delivery before
+enabling automatic delivery. No DNS values or provider credentials are
+invented by this configuration.
+
+### Running Offline Capture
+
+`afaq.africa` is a planned domain, not a verified sender. There is no DNS or
+provider integration yet. Use only synthetic data in the CLI sandbox:
+
+```bash
+# Run from backend. mktemp creates a private directory for this preview session.
+export EMAIL_CAPTURE_DIR="$(mktemp -d /tmp/afaq-email-preview-XXXXXX)"
+export EMAIL_MODE=capture
+export EMAIL_FROM=noreply@example.test
+export EMAIL_LOGIN_URL=https://example.test/#/login
+npm run email:capture -- approved
+npm run email:capture -- password-changed
+```
+
+The command prints a path to a private JSON file containing both text and HTML.
+It never sends email, accesses the database or contacts a provider. `CAPTURED`
+means saved locally, not sent or delivered. Capture is forbidden when
+`NODE_ENV=production` and accepts only `.test` recipients, senders and login hosts.
+`EMAIL_MODE=disabled` is the default; unsupported provider modes fail validation.
+The current sandbox settings are consumed by the CLI, not the running API.
+
+Files are published atomically with mode 0600 in an owner-only directory.
+Repeated identical demo commands reuse the existing file; conflicting content
+under the same key is rejected. Use a fresh temporary directory after changing
+the templates. Temporary previews are not a durable notification queue and have
+no automatic retention policy; remove your preview directory when finished.
+Do not place it under a public web directory or commit captures to source control.
+
+Verification: `npx vitest run tests/email-sandbox.test.ts tests/family-email.test.ts`
+covers configuration, private files, concurrency, conflicting retries and blocked
+real recipients. Provider credentials, durable jobs, verified recipients and real
+delivery tracking remain separate work before enabling automatic notifications.
+
+### Standalone SMTP Adapter
+
+A Nodemailer SMTP adapter is implemented, independently of the capture CLI and
+the registration/password endpoints. It has no automatic callers and does not
+enable delivery merely because SMTP variables are configured. Keep the production
+application's `EMAIL_MODE=disabled` until verified recipients and a durable outbox
+are integrated. There is no public email-send endpoint or Super Admin email panel.
+
+IT can prepare a separate protected configuration file with `EMAIL_MODE=smtp`,
+`EMAIL_FROM`, `EMAIL_LOGIN_URL`, `SMTP_HOST`, `SMTP_PORT` (465 or 587), `SMTP_USER`
+and `SMTP_PASSWORD`. Set `EMAIL_SENDER_VERIFIED=true` only after completing the
+selected provider's sender verification. This is an operator acknowledgement,
+not automatic proof of DNS or mailbox ownership. Never commit this private file.
+
+```bash
+# Offline configuration validation, no network connections.
+npm run email:check-smtp -- --env-file /absolute/path/to/private-smtp-config
+# Explicitly connect and authenticate, but do not send any email.
+npm run email:check-smtp -- --env-file /absolute/path/to/private-smtp-config --connect
+```
+
+The check reads only the supplied file, not local `.env`. Exit 0 means the requested
+check passed, 1 means a connection/authentication failure, and 2 means invalid
+usage/configuration. Errors are redacted. Connection verification does not prove
+sender authorization or inbox delivery. No actual provider has been contacted
+as part of implementation; tests mock the transport.
+
+The adapter requires TLS and certificate validation, uses bounded timeouts, and
+disables file/URL content fetching and protocol logging, following the
+[Nodemailer SMTP documentation](https://nodemailer.com/smtp).
+Only strict Afaq template payloads are accepted; arbitrary MIME, attachments and
+raw messages are not forwarded. The eventual worker must load matching recipient
+verification from trusted storage, never from a request-supplied flag. Family
+application approval alone is not email ownership verification.
+
+Results distinguish `SMTP_ACCEPTED`, `REJECTED` and `UNKNOWN`; acceptance is not
+inbox delivery. Exceptions/timeouts return `UNKNOWN` without provider text. Do not
+blindly retry: a server may have accepted the message before the connection was
+lost. A stable notification UUID becomes the Message-ID for correlation, but SMTP
+does not guarantee deduplication by Message-ID. The future durable outbox must
+handle leases, retries and ambiguous outcomes explicitly.
+
+Verification: 54 targeted email/preflight tests and TypeScript checks passed.
+The dependency audit reports 15 issues elsewhere in the installed dependency
+tree (including one critical); Nodemailer is not listed in that report. This is
+not a clean production security audit. Review and test dependency remediation
+before production rather than applying unchecked bulk upgrades.
+
+### Dependency Security Remediation (2026-10-09)
+
+The follow-up remediation resolved the 15 issues noted above: the refreshed
+lockfile audit reports zero known vulnerabilities. Install with `npm ci` to
+reproduce the patched dependency graph, and run `npm audit --audit-level=high`
+as CI now does. Existing deployments need a tested rebuild/redeploy; an installed
+package update does not replace code already loaded in a running process.
+
+Express 4.22.3 resolves proxy-addr 2.0.8, and Morgan 1.12.1, Vitest 4.1.11 and
+tsx 4.23.15 raise the direct dependency minimums. Other affected transitive
+packages are pinned by the lockfile. Prisma and its client remain 6.19.3.
+The narrowly scoped `@prisma/config -> deepmerge-ts: 8.0.2` override addresses
+[the deepmerge advisory](https://github.com/advisories/GHSA-ggr8-5vv4-36mx).
+It crosses that transitive dependency's major version, so do not remove or update
+it without repeating Prisma config-load, generate and isolated migration tests.
+No real database migration is part of this dependency update.
+
+To check an already-running disposable demo after a runtime restart, use its
+private credentials file printed by `npm run platform:demo -- --start`:
+
+```bash
+npm run smoke:demo -- --confirm-local-demo /tmp/afaq-local-demo-XXXXXX/credentials.json
+```
+
+This accepts only the five synthetic `.test` accounts from a private demo file
+and targets fixed loopback port 4087. It checks health, login, authorized read
+endpoints and denied cross-scope access, then logs out its test sessions. It
+never prints credentials/tokens or changes school records; login/logout audit
+and session records are expected. It does not test the browser UI, issue family
+numbers, send email, reseed accounts or migrate a database. A newly created demo
+has new passwords unless the previous private credential file is explicitly
+reused. Temporary demo files are not production backups.
+
+`tests/dependency-security.test.ts` verifies the
+[patched proxy trust behavior](https://github.com/advisories/GHSA-jqcg-44mw-7w3h)
+and loads a temporary Prisma configuration through the real config loader.
+Known-advisory checks supplement application testing and deployment review;
+they do not prove that the system has no vulnerabilities.
+
+Post-update verification passed: 115 targeted unit/HTTP regressions, 20 isolated
+family integration cases, Prisma generation, typecheck and backend build. The
+fresh-install runner replayed all 31 migrations and checked repeat-deploy safety
+on a disposable database. No migration ran against the real `mms` database.
+# Shared Curriculum
+
+The platform `Curriculum & Subjects` workspace uses `/api/platform/curriculum`.
+Only active Super Admin accounts can access these endpoints; school and IT
+accounts cannot manage institution frameworks.
+
+- Create a unique subject/version draft with description and learning objectives.
+- The author may edit only a draft. Submit it for an independent Super Admin review.
+- Approve, then publish. Published versions are immutable; changes require a new version.
+- Assign published versions to active madrasas. Repeated assignments are idempotent.
+  Assignments record distribution, not teacher adoption or completion, and do not
+  overwrite local subjects, lessons, assessments or older assignments.
+- All writes and their audit events share one transaction. This workflow does not
+  send email or SMS and does not require a messaging provider.
+
+Deployment requires migration `202610160300_curriculum_versions`, followed by
+`npx prisma generate` and an API restart. Apply migrations through the normal
+deployment process; do not use `db push` against production.
+
+Tests: `npx vitest run tests/platform-curriculum.test.ts`. For the isolated local
+demo only, `node_modules/.bin/tsx scripts/test-curriculum-demo.ts <database-pid>`
+checks draft, review, publication and assignment against the real database and
+rolls back every test record.
