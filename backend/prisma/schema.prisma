@@ -103,6 +103,106 @@ model TenantApplication {
 }
 
 // Separate from tenant audit logs; never stores school content or credentials.
+enum CurriculumStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+}
+
+model CurriculumVersion {
+  id String @id @default(cuid()) @db.VarChar(30)
+  subject String @db.VarChar(120)
+  level String @default("") @db.VarChar(80)
+  topics CurriculumTopic[]
+  lessons CurriculumLesson[]
+  version String @db.VarChar(30)
+  description String @db.VarChar(500)
+  objectives Json
+  status CurriculumStatus @default(DRAFT)
+  createdBy String @db.VarChar(30)
+  reviewedBy String? @db.VarChar(30)
+  publishedAt DateTime?
+  reviews CurriculumReview[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assignments CurriculumAssignment[]
+  @@unique([subject, level, version])
+  @@map("curriculum_versions")
+}
+
+model CurriculumTopic {
+  id String @id @default(cuid()) @db.VarChar(30)
+  versionId String @db.VarChar(30)
+  title String @db.VarChar(150)
+  position Int
+  version CurriculumVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  objectives CurriculumObjective[]
+  @@index([versionId, position])
+  @@map("curriculum_topics")
+}
+
+model CurriculumObjective {
+  id String @id @default(cuid()) @db.VarChar(30)
+  topicId String @db.VarChar(30)
+  code String @db.VarChar(40)
+  description String @db.VarChar(1000)
+  assessmentMethod String @db.VarChar(30)
+  criteria String @db.VarChar(1000)
+  topic CurriculumTopic @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  lessons CurriculumLessonObjective[]
+  @@unique([topicId, code])
+  @@map("curriculum_objectives")
+}
+
+model CurriculumLesson {
+  id String @id @default(cuid()) @db.VarChar(30)
+  versionId String @db.VarChar(30)
+  title String @db.VarChar(150)
+  position Int
+  durationMinutes Int
+  activities String @db.Text
+  version CurriculumVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  objectives CurriculumLessonObjective[]
+  @@index([versionId, position])
+  @@map("curriculum_lessons")
+}
+
+model CurriculumLessonObjective {
+  lessonId String @db.VarChar(30)
+  objectiveId String @db.VarChar(30)
+  lesson CurriculumLesson @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  objective CurriculumObjective @relation(fields: [objectiveId], references: [id], onDelete: Restrict)
+  @@id([lessonId, objectiveId])
+  @@map("curriculum_lesson_objectives")
+}
+
+model CurriculumAssignment {
+  id String @id @default(cuid()) @db.VarChar(30)
+  versionId String @db.VarChar(30)
+  organizationId BigInt
+  assignedBy String @db.VarChar(30)
+  createdAt DateTime @default(now())
+  version CurriculumVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  @@unique([versionId, organizationId])
+  @@map("curriculum_assignments")
+}
+
+model CurriculumReview {
+  id String @id @default(cuid()) @db.VarChar(30)
+  versionId String @db.VarChar(30)
+  actorId String @db.VarChar(30)
+  action String @db.VarChar(20)
+  fromStatus CurriculumStatus
+  toStatus CurriculumStatus
+  comment String? @db.Text
+  createdAt DateTime @default(now())
+  version CurriculumVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  @@index([versionId, createdAt])
+  @@map("curriculum_reviews")
+}
+
 model PlatformAuditEvent {
   id            String   @id @default(cuid()) @db.VarChar(30)
   actorId       String   @map("actor_id") @db.VarChar(30)
@@ -296,6 +396,8 @@ enum WebhookProcessingStatus {
 }
 
 model Organization {
+  curriculumAssignments CurriculumAssignment[]
+  familyApplications FamilyApplication[]
   id              BigInt              @id @default(autoincrement())
   name            String              @db.VarChar(150)
   code            String              @unique @db.VarChar(50)
@@ -339,6 +441,7 @@ model Organization {
 }
 
 model Branch {
+  familyApplications FamilyApplication[]
   id            BigInt            @id @default(autoincrement())
   orgId         BigInt            @map("org_id")
   name          String            @db.VarChar(150)
@@ -364,6 +467,8 @@ model Branch {
 }
 
 model User {
+  authVersion Int @default(0) @map("auth_version")
+  familyLoginId         String?            @unique @map("family_login_id") @db.VarChar(50)
   onboardingInvitation SchoolAdminInvitation?
   reportingPeriods ReportingPeriod[]
   studentReports StudentReport[]
@@ -420,6 +525,38 @@ model User {
   @@unique([orgId, email], map: "uniq_users_org_email")
   @@unique([orgId, phone], map: "uniq_users_org_phone")
   @@map("users")
+}
+
+model FamilyRegistrationCounter {
+  regionCode String @map("region_code") @db.VarChar(8)
+  year Int
+  sequence Int
+
+  @@id([regionCode, year])
+  @@map("family_registration_counters")
+}
+
+model FamilyApplication {
+  id String @id @default(uuid()) @db.VarChar(36)
+  orgId BigInt @map("org_id")
+  branchId BigInt @map("branch_id")
+  fullName String @map("full_name") @db.VarChar(150)
+  email String @db.VarChar(150)
+  phone String @db.VarChar(30)
+  childReference String @map("child_reference") @db.VarChar(500)
+  receiptHash String @map("receipt_hash") @db.VarChar(64)
+  passwordHash String? @map("password_hash") @db.VarChar(255)
+  status String @default("PENDING") @db.VarChar(20)
+  userId BigInt? @map("user_id")
+  reviewedBy BigInt? @map("reviewed_by")
+  reviewedAt DateTime? @map("reviewed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([orgId, email])
+  @@index([orgId, branchId, status])
+  @@map("family_applications")
 }
 
 model Guardian {
