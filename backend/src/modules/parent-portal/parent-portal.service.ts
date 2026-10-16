@@ -196,6 +196,7 @@ const loadParentGuardian = async (orgId: string, userId: string) => {
       userId: BigInt(userId),
     },
     select: {
+      user: { select: { familyLoginId: true } },
       id: true,
       fullName: true,
       phone: true,
@@ -302,6 +303,7 @@ export const getParentPortalProfile = async (orgId: string, userId: string) => {
 
   return {
     guardian: {
+      familyLoginId: guardian.user?.familyLoginId ?? null,
       id: guardian.id.toString(),
       fullName: guardian.fullName,
       phone: guardian.phone,

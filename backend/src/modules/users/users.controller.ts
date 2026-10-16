@@ -5,7 +5,7 @@ import { createUser, listUsers } from "./users.service";
 
 export const createUserHandler = async (req: Request, res: Response) => {
   const input = createUserSchema.parse(req.body);
-  const user = await createUser(req.authUser!.orgId, input);
+  const user = await createUser(req.authUser!.orgId, input, req.authUser!.branchId);
 
   res.status(201).json({
     success: true,
@@ -16,7 +16,7 @@ export const createUserHandler = async (req: Request, res: Response) => {
 
 export const listUsersHandler = async (req: Request, res: Response) => {
   const query = listUsersQuerySchema.parse(req.query);
-  const users = await listUsers(req.authUser!.orgId, query);
+  const users = await listUsers(req.authUser!.orgId, query, req.authUser!.branchId);
 
   res.status(200).json({
     success: true,
@@ -24,4 +24,3 @@ export const listUsersHandler = async (req: Request, res: Response) => {
     data: users,
   });
 };
-

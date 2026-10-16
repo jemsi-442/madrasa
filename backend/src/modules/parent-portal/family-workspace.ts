@@ -35,6 +35,7 @@ async function guardian(actor: AuthenticatedUser) {
   const orgId = BigInt(actor.orgId);
   const record = await prisma.guardian.findFirst({ where: { orgId, userId: BigInt(actor.userId) },
     select: { id: true, fullName: true, phone: true, email: true, relationship: true,
+      user: { select: { familyLoginId: true } },
       studentLinks: { where: { orgId, student: { orgId } }, orderBy: { studentId: "asc" },
         select: { student: { select: studentFields } } } } });
   if (!record) throw new HttpError(404, "The school office has not linked your guardian profile yet");
@@ -56,8 +57,8 @@ async function overview(actor: AuthenticatedUser, month?: string) {
   const ids = parent.studentLinks.map(link => link.student.id);
   const attendance = await prisma.attendanceRecord.findMany({ where: { orgId, studentId: { in: ids }, date: { gte: window.from, lt: window.until } }, select: { studentId: true, status: true } });
   const sessions = await prisma.quranSession.findMany({ where: { orgId, studentId: { in: ids }, voidedAt: null, activity: "MEMORIZATION", observation: "INDEPENDENT" }, select: sessionFields });
-  const { studentLinks, ...profile } = parent;
-  return { guardian: profile, month: window.month,
+  const { studentLinks, user, ...profile } = parent;
+  return { guardian: { ...profile, familyLoginId: user?.familyLoginId ?? null }, month: window.month,
     children: studentLinks.map(({ student }) => {
       const count = memorised(sessions.filter(row => row.studentId === student.id)).size;
       return { ...student, attendance: attendanceSummary(attendance.filter(row => row.studentId === student.id)),
