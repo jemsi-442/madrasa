@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'design_tokens.dart';
 
-const ink = Color(0xFF011F3D);
-const gold = Color(0xFFB78A2F);
-const paper = Color(0xFFFBF9F4);
-const muted = Color(0xFF66758B);
+const ink = AfaqDesign.ink;
+const gold = AfaqDesign.gold;
+const paper = AfaqDesign.paper;
+const muted = AfaqDesign.muted;
 
-const forest = Color(0xFF278258);
-const blue = Color(0xFF3A70AD);
-const lavender = Color(0xFF7168AA);
-const line = Color(0xFFE8E7E3);
+const forest = AfaqDesign.green;
+const blue = AfaqDesign.blue;
+const lavender = AfaqDesign.purple;
+const line = AfaqDesign.border;
 
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.compact = false, this.light = false});
@@ -119,8 +120,8 @@ class SurfacePanel extends StatelessWidget {
   const SurfacePanel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(22),
-    this.color = Colors.white,
+    this.padding = AfaqDesign.panelPadding,
+    this.color = AfaqDesign.surface,
   });
 
   final Widget child;
@@ -130,18 +131,7 @@ class SurfacePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: line),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0612263F),
-            blurRadius: 18,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
+      decoration: AfaqDesign.panelDecoration(color: color),
       child: Padding(padding: padding, child: child),
     );
   }
@@ -159,7 +149,7 @@ class SectionLabel extends StatelessWidget {
       text.toUpperCase(),
       style: TextStyle(
         color: color,
-        fontSize: 11,
+        fontSize: AfaqDesign.secondarySize,
         fontWeight: FontWeight.w800,
         letterSpacing: 2,
       ),
@@ -217,7 +207,7 @@ class DashboardMetric extends StatelessWidget {
             label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: ink, fontSize: 13),
+            style: const TextStyle(color: ink, fontSize: AfaqDesign.secondarySize),
           ),
           if (note != null) ...[
             const SizedBox(height: 8),
@@ -225,7 +215,7 @@ class DashboardMetric extends StatelessWidget {
               note!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: muted, fontSize: 11),
+              style: const TextStyle(color: muted, fontSize: AfaqDesign.secondarySize),
             ),
           ],
         ],
@@ -239,17 +229,7 @@ class DashboardMetric extends StatelessWidget {
               ? 18
               : 22,
         ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.alphaBlend(accent.withValues(alpha: 0.14), Colors.white),
-              Color.alphaBlend(accent.withValues(alpha: 0.055), Colors.white),
-            ],
-          ),
-        ),
+        decoration: AfaqDesign.panelDecoration(),
         child: compact && !dense
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

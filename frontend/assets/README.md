@@ -1,5 +1,13 @@
 # Public Page Assets
 
+## Interface Typography
+
+The interface uses bundled Lato Regular (400), Medium (500), Semibold (600),
+and Bold (700). These unmodified fonts come from the system fonts-lato package;
+copyright and SIL Open Font License terms are included in `fonts/Lato-LICENSE.txt`.
+The app does not fetch fonts at runtime. Noto Serif Display remains available for
+decorative headings and Noto Sans Display is retained for existing media assets.
+
 ## Media Player Samples
 
 `media-preview/video.mp4` is an original 40-second silent animation generated
