@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
+import 'helpers/platform_navigation.dart';
 
 void main() {
   testWidgets('office workspace does not expose technical setup checks', (
@@ -25,14 +26,20 @@ void main() {
                       'role': 'SUPER_ADMIN',
                     },
                   }
-                : [
-                    {
-                      'id': 'application',
-                      'schoolName': 'Afaq School',
-                      'requestedCode': 'afaq-school',
-                      'status': 'APPROVED',
-                    },
-                  ],
+                : {
+                    'total': 1,
+                    'items': [
+                      {
+                        'id': 'application',
+                        'name': 'Afaq School',
+                        'applicationId': 'application',
+                        'code': 'afaq-school',
+                        'admins': [],
+                        'locations': [],
+                        'status': 'APPROVED',
+                      },
+                    ],
+                  },
           }),
           200,
         );
@@ -40,10 +47,12 @@ void main() {
     );
     await api.login('reviewer@example.test', 'password', '123456');
     await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-    await tester.ensureVisible(find.text('Madrassa applications'));
-    await tester.tap(find.text('Madrassa applications'));
+    await openPlatformPage(tester, 'Madrassa applications');
     await tester.pumpAndSettle();
-    expect(find.text('Onboarding progress'), findsOneWidget);
+    await tester.ensureVisible(find.text('Manage →'));
+    await tester.tap(find.text('Manage →'));
+    await tester.pumpAndSettle();
+    expect(find.text('Review onboarding'), findsOneWidget);
     expect(find.text('Check setup readiness'), findsNothing);
     expect(find.text('System health'), findsNothing);
     expect(find.text('Audit trail'), findsNothing);

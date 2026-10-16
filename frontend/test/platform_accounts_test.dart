@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
+import 'helpers/platform_navigation.dart';
 
 void main() {
   testWidgets('company filters send scoped query and clear together', (
@@ -135,7 +136,7 @@ void main() {
     await tester.tap(find.text('Confirm disable'));
     await tester.pumpAndSettle();
     expect(writes, 1);
-    expect(find.text('DISABLED'), findsOneWidget);
+    expect(find.text('Disabled'), findsOneWidget);
     expect(find.text('Disable IT account'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
@@ -178,20 +179,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
       await tester.pumpAndSettle();
       if (role == 'SUPER_ADMIN') {
-        await tester.ensureVisible(find.text('Office history'));
-        await tester.tap(find.text('Office history'));
-        await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('Company accounts'));
-        await tester.tap(find.text('Company accounts'));
-        await tester.pumpAndSettle();
+        await openPlatformPage(tester, 'Office history');
+        await openPlatformPage(tester, 'Company accounts');
         expect(reads, 1);
         expect(find.text('Company Reviewer'), findsOneWidget);
         expect(find.text('Your account'), findsOneWidget);
         expect(find.text('Request madrassa'), findsNothing);
         expect(find.text('My sessions'), findsNothing);
-        await tester.ensureVisible(find.text('Office history'));
-        await tester.tap(find.text('Office history'));
-        await tester.pumpAndSettle();
+        await openPlatformPage(tester, 'Office history');
         expect(find.text('Company Reviewer'), findsNothing);
       } else {
         expect(find.text('Company accounts'), findsNothing);

@@ -6,10 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
+import 'helpers/platform_navigation.dart';
 
 void main() {
   for (final view in [
-    'Madrassa applications',
     'Office history',
     'Company accounts',
     'My sessions',
@@ -74,9 +74,7 @@ void main() {
         );
         await api.login('admin@example.test', 'password', '123456');
         await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-        await tester.ensureVisible(find.text(view));
-        await tester.tap(find.text(view));
-        await tester.pumpAndSettle();
+        await openPlatformPage(tester, view);
         expect(find.textContaining('snapshot-record'), findsWidgets);
         final before = reads;
         phase = 1;

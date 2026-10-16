@@ -93,7 +93,7 @@ void main() {
         );
         await tester.tap(find.text('Confirm restore'));
         await tester.pumpAndSettle();
-        expect(find.text(permitted ? 'ACTIVE' : 'DISABLED'), findsOneWidget);
+        expect(find.text(permitted ? 'Active' : 'Disabled'), findsOneWidget);
       }
       expect(attempts, 2);
       expect(find.text('Review restoration'), findsNothing);

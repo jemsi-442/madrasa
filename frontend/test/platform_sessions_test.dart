@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
+import 'helpers/platform_navigation.dart';
 
 void main() {
   testWidgets(
@@ -41,9 +42,7 @@ void main() {
       );
       await api.login('it@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await tester.ensureVisible(find.text('My sessions'));
-      await tester.tap(find.text('My sessions'));
-      await tester.pumpAndSettle();
+      await openPlatformPage(tester, 'My sessions');
       expect(find.text('Current session'), findsOneWidget);
       await tester.ensureVisible(find.text('Sign out this session'));
       await tester.tap(find.text('Sign out this session'));

@@ -66,14 +66,14 @@ void main() {
       await api.login('admin@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('workspace-footer')), findsOneWidget);
       if (role == 'SUPER_ADMIN') {
         await tester.ensureVisible(find.text('Governance overview'));
         await tester.tap(find.text('Governance overview'));
         await tester.pumpAndSettle();
-        expect(find.text('Platform snapshot'), findsOneWidget);
-        expect(find.text('Disabled IT accounts'), findsOneWidget);
-        expect(find.text('Approved, awaiting setup'), findsOneWidget);
-        expect(find.text('Created, awaiting activation'), findsOneWidget);
+        expect(find.text('Welcome, Reviewer!'), findsOneWidget);
+        expect(find.text('Disabled IT accounts'), findsNothing);
+        expect(find.text('Awaiting activation'), findsOneWidget);
         await tester.ensureVisible(find.text('View approved onboarding'));
         await tester.tap(find.text('View approved onboarding'));
         await tester.pumpAndSettle();
@@ -89,12 +89,12 @@ void main() {
         await tester.ensureVisible(find.text('Governance overview'));
         await tester.tap(find.text('Governance overview'));
         await tester.pumpAndSettle();
-        expect(find.text('Platform snapshot'), findsOneWidget);
+        expect(find.text('Welcome, Reviewer!'), findsOneWidget);
         fail = true;
-        await tester.ensureVisible(find.text('Governance overview'));
-        await tester.tap(find.text('Governance overview'));
+        await tester.ensureVisible(find.byTooltip('Refresh overview'));
+        await tester.tap(find.byTooltip('Refresh overview'));
         await tester.pumpAndSettle();
-        expect(find.text('Platform snapshot'), findsNothing);
+        expect(find.text('Not available'), findsNWidgets(6));
         expect(reads, 4);
       } else {
         expect(find.text('Governance overview'), findsNothing);

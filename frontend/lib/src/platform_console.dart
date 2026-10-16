@@ -9,13 +9,21 @@ import 'api_client.dart';
 import 'foundation_ui.dart';
 import 'platform_provisioning_panel.dart';
 import 'platform_onboarding_progress.dart';
+import 'school_password_dialog.dart';
+import 'platform_workspace_shell.dart';
+import 'workspace_chrome.dart';
+import 'platform_madrasas_page.dart';
+import 'platform_staff_page.dart';
+import 'platform_curriculum_page.dart';
+import 'workspace_form_dialog.dart';
+import 'workspace_details_dialog.dart';
 
 String platformTimestamp(dynamic value) {
   final parsed = value is String ? DateTime.tryParse(value) : null;
   return parsed?.toUtc().toIso8601String() ?? 'Not recorded';
 }
 
-/// Platform credentials never enter school session storage or browser cookies.
+/// Access tokens stay in memory; browser restoration uses an HttpOnly cookie.
 class PlatformApi {
   PlatformApi({http.Client? client, String? baseUrl})
     : _client = client ?? http.Client(),
@@ -307,6 +315,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool healthView = false;
   bool sessionsView = false;
   bool accountsView = false;
+  bool homeView = false;
+  bool madrasasView = false;
+  bool staffView = false;
+  bool curriculumView = false;
+  bool setupView = false;
   String applicationStatus = '';
   String applicationScope = '';
   Map<String, dynamic>? overview;
@@ -324,6 +337,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     scheduleExpiry();
     if (widget.onSignedOut != null && api.user != null) {
       audit = !isAdmin;
+      homeView = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) run(load);
       });
@@ -416,8 +430,40 @@ class _PlatformConsoleState extends State<PlatformConsole> {
 
   Future<void> load() async {
     if (!mounted) return;
+    if (madrasasView || staffView || curriculumView) return;
     // Never present a previous access/audit snapshot as a successful refresh.
     setState(() => records = []);
+    if (homeView) {
+      final version = api.sessionVersion;
+      final office = isAdmin;
+      overview = null;
+      health = null;
+      final result = Map<String, dynamic>.from(
+        await api.call(office ? '/overview' : '/health') as Map,
+      );
+      if (!mounted || api.user == null || api.sessionVersion != version) return;
+      if (office) {
+        try {
+          final recent = await api.call(
+            '/tenant-applications?page=1&pageSize=5',
+          );
+          result['recentApplications'] = recent as List;
+        } catch (_) {
+          if (api.user == null || api.sessionVersion != version) rethrow;
+          result['recentApplicationsUnavailable'] = true;
+        }
+      }
+      if (mounted && api.user != null && api.sessionVersion == version) {
+        setState(() {
+          if (isAdmin) {
+            overview = Map<String, dynamic>.from(result as Map);
+          } else {
+            health = Map<String, dynamic>.from(result as Map);
+          }
+        });
+      }
+      return;
+    }
     if (healthView) {
       health = null;
       final data = await api.call('/health');
@@ -744,10 +790,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     final key = GlobalKey<FormState>();
     final body = await sessionDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          record == null ? 'Request a madrassa' : '$decision application',
-        ),
+      builder: (context) => WorkspaceFormDialog(
+        title: Text(record == null ? 'Add Madrasa' : 'Review madrasa'),
         content: SizedBox(
           width: 440,
           child: SingleChildScrollView(
@@ -843,7 +887,9 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                     : {'decision': decision, 'reason': reason.text.trim()},
               );
             },
-            child: Text(record == null ? 'Submit request' : 'Confirm decision'),
+            child: Text(
+              record == null ? 'Save for approval' : 'Confirm decision',
+            ),
           ),
         ],
       ),
@@ -905,935 +951,1035 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     return _buildConsole(context);
   }
 
-  Widget _buildConsole(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Afaq / Platform governance'),
-      actions: [
-        if (api.user != null)
-          PopupMenuButton<bool>(
-            enabled: !busy,
-            tooltip: 'Sign out options',
-            onSelected: requestLogout,
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: false, child: Text('Sign out')),
-              PopupMenuItem(value: true, child: Text('Sign out all sessions')),
-            ],
-          ),
-      ],
-    ),
-    body: LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        padding: EdgeInsets.all(constraints.maxWidth < 600 ? 16 : 40),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xff08283e), Color(0xff164d59)],
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'AFAQ  /  TRUST & OVERSIGHT',
-                        style: TextStyle(
-                          color: Color(0xffe5c480),
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        api.user == null
-                            ? 'One platform.\nClear responsibilities.'
-                            : 'Welcome, ${api.user!['fullName']}',
-                        style: const TextStyle(
-                          fontFamily: 'NotoSerifDisplay',
-                          fontSize: 32,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        api.user == null
-                            ? 'Restricted access for company Super Admin and IT/Security. School accounts use the school login.'
-                            : '${isAdmin ? 'Super Admin' : 'IT / Security'} workspace. School academic and financial records remain separate.',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ],
-                  ),
+  PlatformPage get currentPage => homeView
+      ? PlatformPage.home
+      : madrasasView
+      ? PlatformPage.madrasas
+      : staffView
+      ? PlatformPage.staff
+      : curriculumView
+      ? PlatformPage.curriculum
+      : setupView
+      ? PlatformPage.setup
+      : healthView
+      ? PlatformPage.health
+      : sessionsView
+      ? PlatformPage.sessions
+      : accountsView
+      ? PlatformPage.accounts
+      : audit
+      ? PlatformPage.history
+      : PlatformPage.applications;
+
+  void navigateTo(PlatformPage destination) {
+    if (busy || api.user == null) return;
+    if (destination == PlatformPage.applications && isAdmin) {
+      destination = PlatformPage.madrasas;
+    }
+    if (isAdmin &&
+        [
+          PlatformPage.health,
+          PlatformPage.setup,
+          PlatformPage.sessions,
+        ].contains(destination)) {
+      return;
+    }
+    if (!isAdmin &&
+        [
+          PlatformPage.madrasas,
+          PlatformPage.staff,
+          PlatformPage.curriculum,
+          PlatformPage.applications,
+          PlatformPage.accounts,
+        ].contains(destination)) {
+      return;
+    }
+    run(() async {
+      homeView = destination == PlatformPage.home;
+      madrasasView = destination == PlatformPage.madrasas;
+      staffView = destination == PlatformPage.staff;
+      curriculumView = destination == PlatformPage.curriculum;
+      setupView = destination == PlatformPage.setup;
+      healthView = destination == PlatformPage.health;
+      sessionsView = destination == PlatformPage.sessions;
+      accountsView = destination == PlatformPage.accounts;
+      audit = destination == PlatformPage.history;
+      overview = null;
+      health = null;
+      records = [];
+      page = 1;
+      if (!setupView && !madrasasView && !staffView && !curriculumView) {
+        await load();
+      }
+    });
+  }
+
+  Widget _buildConsole(BuildContext context) {
+    final legacy = Scaffold(
+      appBar: AppBar(
+        title: const Text('Afaq / Platform governance'),
+        actions: [
+          if (api.user != null)
+            IconButton(
+              tooltip: 'Change password',
+              onPressed: busy
+                  ? null
+                  : () async {
+                      final changed = await showSchoolPasswordDialog(
+                        context,
+                        (_, body) => api.call('/change-password', body: body),
+                      );
+                      if (changed) {
+                        api.clear();
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      }
+                    },
+              icon: const Icon(Icons.lock_reset),
+            ),
+          if (api.user != null)
+            PopupMenuButton<bool>(
+              enabled: !busy,
+              tooltip: 'Sign out options',
+              onSelected: requestLogout,
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: false, child: Text('Sign out')),
+                PopupMenuItem(
+                  value: true,
+                  child: Text('Sign out all sessions'),
                 ),
-                const SizedBox(height: 24),
-                if (error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        error!,
-                        style: const TextStyle(color: Color(0xffa32e2e)),
+              ],
+            ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: EdgeInsets.all(constraints.maxWidth < 600 ? 16 : 40),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (api.user == null)
+                    Container(
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xff08283e), Color(0xff164d59)],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                    ),
-                  ),
-                if (confirmation != null && api.user != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        confirmation!,
-                        style: const TextStyle(color: Color(0xff247954)),
-                      ),
-                    ),
-                  ),
-                if (busy) const LinearProgressIndicator(),
-                if (api.user == null)
-                  Align(
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: 480,
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Form(
-                            key: form,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const Text(
-                                  'Platform sign in',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                TextFormField(
-                                  controller: email,
-                                  enabled: !busy,
-                                  keyboardType: TextInputType.emailAddress,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Company email',
-                                  ),
-                                  validator: (v) => (v ?? '').contains('@')
-                                      ? null
-                                      : 'Enter your email.',
-                                ),
-                                const SizedBox(height: 14),
-                                TextFormField(
-                                  controller: password,
-                                  enabled: !busy,
-                                  obscureText: true,
-                                  enableSuggestions: false,
-                                  autocorrect: false,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Password',
-                                  ),
-                                  validator: (v) => (v ?? '').isEmpty
-                                      ? 'Enter your password.'
-                                      : null,
-                                ),
-                                const SizedBox(height: 14),
-                                TextFormField(
-                                  controller: code,
-                                  enabled: !busy,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(6),
-                                  ],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Authenticator code',
-                                  ),
-                                  onFieldSubmitted: (_) => signIn(),
-                                  validator: (v) => (v?.length ?? 0) == 6
-                                      ? null
-                                      : 'Enter the six-digit code.',
-                                ),
-                                const SizedBox(height: 20),
-                                FilledButton(
-                                  onPressed: busy ? null : signIn,
-                                  child: const Text('Verify and sign in'),
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Sessions last 15 minutes. Refreshing this page requires a new sign-in. Access is provisioned by an authorized operator; there is no public signup.',
-                                ),
-                                TextButton(
-                                  onPressed: busy
-                                      ? null
-                                      : () => Navigator.of(
-                                          context,
-                                        ).pushNamed('/login'),
-                                  child: const Text('Go to school login'),
-                                ),
-                              ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'AFAQ  /  TRUST & OVERSIGHT',
+                            style: TextStyle(
+                              color: Color(0xffe5c480),
+                              letterSpacing: 2,
                             ),
                           ),
+                          const SizedBox(height: 14),
+                          Text(
+                            api.user == null
+                                ? 'One platform.\nClear responsibilities.'
+                                : 'Welcome, ${api.user!['fullName']}',
+                            style: const TextStyle(
+                              fontFamily: 'NotoSerifDisplay',
+                              fontSize: 32,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            api.user == null
+                                ? 'Restricted access for company Super Admin and IT/Security. School accounts use the school login.'
+                                : '${isAdmin ? 'Super Admin' : 'IT / Security'} workspace. School academic and financial records remain separate.',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          error!,
+                          style: const TextStyle(color: Color(0xffa32e2e)),
                         ),
                       ),
                     ),
-                  )
-                else ...[
-                  if (isAdmin) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: busy
-                            ? null
-                            : () => run(() async {
-                                overview = null;
-                                final result = await api.call('/overview');
-                                if (mounted && api.user != null) {
-                                  overview = Map<String, dynamic>.from(
-                                    result as Map,
-                                  );
-                                }
-                              }),
-                        icon: const Icon(Icons.dashboard_outlined),
-                        label: const Text('Governance overview'),
+                  if (confirmation != null && api.user != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          confirmation!,
+                          style: const TextStyle(color: Color(0xff247954)),
+                        ),
                       ),
                     ),
-                    if (overview != null)
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Platform snapshot',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text('Checked (UTC): ${overview!['checkedAt']}'),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 16,
-                                runSpacing: 12,
+                  if (busy) const LinearProgressIndicator(),
+                  if (api.user == null)
+                    Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: 480,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Form(
+                              key: form,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  overviewMetric(
-                                    'Awaiting your independent review',
-                                    overview!['awaitingYourReview'],
-                                  ),
-                                  overviewMetric(
-                                    'Requested applications',
-                                    overview!['applications']['REQUESTED'],
-                                  ),
-                                  overviewMetric(
-                                    'Approved applications',
-                                    overview!['applications']['APPROVED'],
-                                  ),
-                                  overviewMetric(
-                                    'Rejected applications',
-                                    overview!['applications']['REJECTED'],
-                                  ),
-                                  if (overview!['onboarding'] is Map) ...[
-                                    overviewMetric(
-                                      'Approved, awaiting setup',
-                                      overview!['onboarding']['awaitingSetup'],
+                                  const Text(
+                                    'Platform sign in',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    overviewMetric(
-                                      'Created, awaiting activation',
-                                      overview!['onboarding']['pendingActivation'],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  TextFormField(
+                                    controller: email,
+                                    enabled: !busy,
+                                    keyboardType: TextInputType.emailAddress,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Company email',
                                     ),
-                                  ],
-                                  overviewMetric(
-                                    'Active IT accounts',
-                                    overview!['accounts']['IT_SECURITY']['ACTIVE'],
+                                    validator: (v) => (v ?? '').contains('@')
+                                        ? null
+                                        : 'Enter your email.',
                                   ),
-                                  overviewMetric(
-                                    'Disabled IT accounts',
-                                    overview!['accounts']['IT_SECURITY']['DISABLED'],
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: password,
+                                    enabled: !busy,
+                                    obscureText: true,
+                                    enableSuggestions: false,
+                                    autocorrect: false,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Password',
+                                    ),
+                                    validator: (v) => (v ?? '').isEmpty
+                                        ? 'Enter your password.'
+                                        : null,
                                   ),
-                                  overviewMetric(
-                                    'Active Super Admins',
-                                    overview!['accounts']['SUPER_ADMIN']['ACTIVE'],
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: code,
+                                    enabled: !busy,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(6),
+                                    ],
+                                    decoration: const InputDecoration(
+                                      labelText: 'Authenticator code',
+                                    ),
+                                    onFieldSubmitted: (_) => signIn(),
+                                    validator: (v) => (v?.length ?? 0) == 6
+                                        ? null
+                                        : 'Enter the six-digit code.',
+                                  ),
+                                  const SizedBox(height: 20),
+                                  FilledButton(
+                                    onPressed: busy ? null : signIn,
+                                    child: const Text('Verify and sign in'),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Sessions last 15 minutes. Browser reload restores an unexpired session. Access is provisioned by an authorized operator; there is no public signup.',
+                                  ),
+                                  TextButton(
+                                    onPressed: busy
+                                        ? null
+                                        : () => Navigator.of(
+                                            context,
+                                          ).pushNamed('/login'),
+                                    child: const Text('Go to school login'),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Approval is not activation. Awaiting activation counts linked schools marked pending, not verified readiness. Review each application before taking action. Email delivery and activation controls remain unavailable here. Counts are a snapshot; refresh before making decisions.',
-                              ),
-                              TextButton(
-                                onPressed: () => setState(() {
-                                  overview = null;
-                                }),
-                                child: const Text('Hide overview'),
-                              ),
-                              OutlinedButton.icon(
-                                onPressed: busy
-                                    ? null
-                                    : () => run(() async {
-                                        audit = false;
-                                        healthView = false;
-                                        sessionsView = false;
-                                        accountsView = false;
-                                        applicationStatus = 'APPROVED';
-                                        applicationScope = '';
-                                        page = 1;
-                                        records = [];
-                                        overview = null;
-                                        await load();
-                                      }),
-                                icon: const Icon(Icons.checklist_outlined),
-                                label: const Text('View approved onboarding'),
-                              ),
-                              FilledButton.icon(
-                                onPressed: busy
-                                    ? null
-                                    : () => run(() async {
-                                        audit = false;
-                                        healthView = false;
-                                        sessionsView = false;
-                                        accountsView = false;
-                                        applicationStatus = 'REQUESTED';
-                                        applicationScope = 'reviewable';
-                                        page = 1;
-                                        records = [];
-                                        overview = null;
-                                        await load();
-                                      }),
-                                icon: const Icon(Icons.fact_check_outlined),
-                                label: const Text(
-                                  'Review pending applications',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                  ],
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      if (isAdmin)
-                        ChoiceChip(
-                          label: const Text('Madrassa applications'),
-                          selected:
-                              !audit &&
-                              !healthView &&
-                              !sessionsView &&
-                              !accountsView,
-                          onSelected: busy
-                              ? null
-                              : (_) => run(() async {
-                                  audit = false;
-                                  healthView = false;
-                                  sessionsView = false;
-                                  accountsView = false;
-                                  page = 1;
-                                  records = [];
-                                  await load();
-                                }),
-                        ),
-                      ChoiceChip(
-                        label: Text(isAdmin ? 'Office history' : 'Audit trail'),
-                        selected:
-                            audit &&
-                            !healthView &&
-                            !sessionsView &&
-                            !accountsView,
-                        onSelected: busy
-                            ? null
-                            : (_) => run(() async {
-                                audit = true;
-                                healthView = false;
-                                sessionsView = false;
-                                accountsView = false;
-                                page = 1;
-                                records = [];
-                                await load();
-                              }),
-                      ),
-                      if (api.user?['role'] == 'IT_SECURITY')
-                        OutlinedButton.icon(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  final version = api.sessionVersion;
-                                  final historyId = await sessionDialog<String>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Madrassa setup'),
-                                      content: SizedBox(
-                                        width: 620,
-                                        child: SingleChildScrollView(
-                                          child: PlatformProvisioningPanel(
-                                            call: api.call,
-                                            onViewHistory: (id) =>
-                                                Navigator.pop(context, id),
-                                            sessionIsCurrent: () =>
-                                                api.user != null &&
-                                                api.sessionVersion == version,
-                                          ),
-                                        ),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text('Close'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (mounted &&
-                                      api.user != null &&
-                                      api.sessionVersion == version) {
-                                    if (historyId != null) {
-                                      await openApplicationAudit(historyId);
-                                    } else {
-                                      setState(() {});
-                                    }
-                                  }
-                                },
-                          icon: const Icon(Icons.domain_add_outlined),
-                          label: const Text('Madrassa setup'),
-                        ),
-                      if (!isAdmin)
-                        ChoiceChip(
-                          label: const Text('System health'),
-                          selected: healthView,
-                          onSelected: busy
-                              ? null
-                              : (_) => run(() async {
-                                  healthView = true;
-                                  sessionsView = false;
-                                  accountsView = false;
-                                  records = [];
-                                  await load();
-                                }),
-                        ),
-                      OutlinedButton.icon(
-                        onPressed: busy ? null : () => run(load),
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Refresh'),
-                      ),
-                      if (!isAdmin)
-                        ChoiceChip(
-                          label: const Text('My sessions'),
-                          selected: sessionsView,
-                          onSelected: busy
-                              ? null
-                              : (_) => run(() async {
-                                  sessionsView = true;
-                                  accountsView = false;
-                                  healthView = false;
-                                  page = 1;
-                                  records = [];
-                                  await load();
-                                }),
-                        ),
-                      if (isAdmin)
-                        ChoiceChip(
-                          label: const Text('Company accounts'),
-                          selected: accountsView,
-                          onSelected: busy
-                              ? null
-                              : (_) => run(() async {
-                                  accountsView = true;
-                                  sessionsView = false;
-                                  healthView = false;
-                                  page = 1;
-                                  records = [];
-                                  await load();
-                                }),
-                        ),
-                      if (isAdmin &&
-                          !audit &&
-                          !healthView &&
-                          !sessionsView &&
-                          !accountsView)
-                        FilledButton.icon(
-                          onPressed: busy ? null : () => applicationDialog(),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Request madrassa'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  if (healthView)
-                    PlatformHealthPanel(snapshot: health, loading: busy)
-                  else ...[
-                    Text(
-                      accountsView
-                          ? 'Company accounts only. School users are managed separately. Super Admin can disable active IT accounts; Super Admin accounts are protected.'
-                          : sessionsView
-                          ? 'Your active sessions. Times are UTC. Only sessions belonging to your account are shown.'
-                          : audit
-                          ? 'Platform activity'
-                          : 'Request > Independent review > IT setup > Admin invitation (pending)',
-                      style: const TextStyle(color: muted),
-                    ),
-                    const SizedBox(height: 12),
-                    if (!accountsView && !sessionsView && !audit) ...[
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          auditFilter(
-                            'Application status',
-                            applicationStatus,
-                            const {
-                              '': 'All decisions',
-                              'REQUESTED': 'Requested',
-                              'APPROVED': 'Approved',
-                              'REJECTED': 'Rejected',
-                            },
-                            (value) {
-                              applicationStatus = value;
-                              if (applicationScope == 'reviewable' &&
-                                  value != 'REQUESTED') {
-                                applicationScope = '';
-                              }
-                            },
-                          ),
-                          auditFilter(
-                            'Application scope',
-                            applicationScope,
-                            const {
-                              '': 'All applications',
-                              'mine': 'My requests',
-                              'reviewable': 'Awaiting my review',
-                            },
-                            (value) {
-                              applicationScope = value;
-                              if (value == 'reviewable') {
-                                applicationStatus = 'REQUESTED';
-                              }
-                            },
-                          ),
-                          TextButton(
-                            onPressed:
-                                busy ||
-                                    (applicationStatus.isEmpty &&
-                                        applicationScope.isEmpty)
-                                ? null
-                                : () => run(() async {
-                                    applicationStatus = '';
-                                    applicationScope = '';
-                                    page = 1;
-                                    records = [];
-                                    await load();
-                                  }),
-                            child: const Text('Clear application filters'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (accountsView) ...[
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          auditFilter(
-                            'Account role',
-                            accountRole,
-                            const {
-                              '': 'All company roles',
-                              'SUPER_ADMIN': 'Super Admin',
-                              'IT_SECURITY': 'IT Security',
-                            },
-                            (value) {
-                              accountRole = value;
-                            },
-                          ),
-                          auditFilter(
-                            'Account status',
-                            accountStatus,
-                            const {
-                              '': 'All statuses',
-                              'ACTIVE': 'Active',
-                              'DISABLED': 'Disabled',
-                            },
-                            (value) {
-                              accountStatus = value;
-                            },
-                          ),
-                          TextButton(
-                            onPressed:
-                                busy ||
-                                    (accountRole.isEmpty &&
-                                        accountStatus.isEmpty)
-                                ? null
-                                : () => run(() async {
-                                    accountRole = '';
-                                    accountStatus = '';
-                                    page = 1;
-                                    records = [];
-                                    await load();
-                                  }),
-                            child: const Text('Clear account filters'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (audit && !sessionsView && !accountsView) ...[
-                      if (auditTechnicalReviewId != null ||
-                          auditApplicationId != null ||
-                          auditActorId != null) ...[
-                        Text(
-                          auditTechnicalReviewId != null
-                              ? 'Sign-off history: $auditTechnicalReviewId'
-                              : auditActorId != null
-                              ? 'Activity by account: $auditActorId'
-                              : 'Application history: $auditApplicationId',
-                        ),
-                        if (auditActorId != null)
-                          const Text(
-                            'Filtered by the recorded actor ID, not the affected entity. For failed logins, this ID identifies the target account, not a verified person.',
-                          ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () => openApplicationAudit(null),
-                          child: const Text(
-                            'Show all application and platform events',
-                          ),
-                        ),
-                      ],
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          auditFilter(
-                            'Event',
-                            auditAction,
-                            {
-                              '': 'All events',
-                              if (!isAdmin)
-                                'tenant.technical-review.recorded':
-                                    'IT sign-off recorded',
-                              if (!isAdmin)
-                                'tenant.technical-review.withdrawn':
-                                    'IT sign-off withdrawn',
-                              if (!isAdmin)
-                                'platform.login.failed': 'Failed login',
-                              if (!isAdmin)
-                                'platform.login.succeeded': 'Successful login',
-                              'tenant.application.requested':
-                                  'Madrassa requested',
-                              'tenant.application.approved':
-                                  'Madrassa approved',
-                              'tenant.application.rejected':
-                                  'Madrassa rejected',
-                              if (!isAdmin)
-                                'tenant.school.provisioned':
-                                    'Inactive madrassa created',
-                              if (!isAdmin)
-                                'tenant.admin.invitation.issued':
-                                    'Admin invitation recorded',
-                              'tenant.school.activated': 'Madrassa activated',
-                              if (!isAdmin)
-                                'platform.session.revoked': 'Session revoked',
-                              if (!isAdmin)
-                                'platform.sessions.revoked':
-                                    'All sessions revoked',
-                              if (!isAdmin)
-                                'platform.account.bootstrapped':
-                                    'Reviewer created',
-                              'platform.account.disabled':
-                                  'IT account disabled',
-                              'platform.account.restored':
-                                  'IT account restored',
-                            },
-                            (value) {
-                              auditAction = value;
-                            },
-                          ),
-                          if (!isAdmin)
-                            auditFilter(
-                              'Role',
-                              auditRole,
-                              const {
-                                '': 'All roles',
-                                'SUPER_ADMIN': 'Super Admin',
-                                'IT_SECURITY': 'IT / Security',
-                              },
-                              (value) {
-                                auditRole = value;
-                              },
                             ),
-                          auditFilter(
-                            'Period',
-                            auditPeriod,
-                            const {
-                              '': 'All time',
-                              '1': 'Last 24 hours',
-                              '7': 'Last 7 days',
-                              '30': 'Last 30 days',
-                            },
-                            (value) {
-                              auditPeriod = value;
-                              auditSince = value.isEmpty
-                                  ? null
-                                  : DateTime.now().toUtc().subtract(
-                                      Duration(days: int.parse(value)),
-                                    );
-                            },
                           ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(
-                          isAdmin
-                              ? 'Office decisions and account administration. Times are UTC. Technical and security logs are managed by IT.'
-                              : 'Times are UTC. Failed login events identify the account targeted, not a verified person. Filters do not grant school-data access.',
                         ),
                       ),
-                    ],
-                    if (records.isEmpty && !busy && error == null)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(28),
-                          child: Text('No records to display.'),
+                    )
+                  else ...[
+                    PlatformTaskIntro(page: currentPage, isAdmin: isAdmin),
+                    const SizedBox(height: 20),
+                    if (isAdmin) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () => navigateTo(PlatformPage.home),
+                          icon: const Icon(Icons.dashboard_outlined),
+                          label: const Text('Governance overview'),
                         ),
                       ),
-                    for (final record in records)
-                      if (accountsView)
-                        accountCard(record)
-                      else if (sessionsView)
-                        sessionCard(record)
-                      else
+                      if (overview != null)
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  '${record[audit ? 'action' : 'schoolName']}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                const Text(
+                                  'Platform snapshot',
+                                  style: TextStyle(
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
                                 Text(
-                                  audit
-                                      ? '${record['actorRole']} / ${record['entityType']}\n${record['createdAt']}'
-                                      : '${record['requestedCode']} / ${record['status']}\nAdmin: ${record['adminEmail']}',
+                                  'Checked (UTC): ${overview!['checkedAt']}',
                                 ),
-                                if (audit)
-                                  ExpansionTile(
-                                    key: ValueKey(record['id']),
-                                    title: const Text('Event details'),
-                                    tilePadding: EdgeInsets.zero,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: SelectableText(
-                                          'Event ID: ${record['id']}\nAccount ID: ${record['actorId']}\nEntity ID: ${record['entityId']}'
-                                          '${record['metadata'] is Map && (record['metadata'] as Map).isNotEmpty ? '\nStatus details: ${jsonEncode(record['metadata'])}' : ''}',
-                                        ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 16,
+                                  runSpacing: 12,
+                                  children: [
+                                    overviewMetric(
+                                      'Awaiting your independent review',
+                                      overview!['awaitingYourReview'],
+                                    ),
+                                    overviewMetric(
+                                      'Requested applications',
+                                      overview!['applications']['REQUESTED'],
+                                    ),
+                                    overviewMetric(
+                                      'Approved applications',
+                                      overview!['applications']['APPROVED'],
+                                    ),
+                                    overviewMetric(
+                                      'Rejected applications',
+                                      overview!['applications']['REJECTED'],
+                                    ),
+                                    if (overview!['onboarding'] is Map) ...[
+                                      overviewMetric(
+                                        'Approved, awaiting setup',
+                                        overview!['onboarding']['awaitingSetup'],
+                                      ),
+                                      overviewMetric(
+                                        'Created, awaiting activation',
+                                        overview!['onboarding']['pendingActivation'],
                                       ),
                                     ],
-                                  ),
-                                if (!audit && record['decisionReason'] != null)
-                                  Text('Decision: ${record['decisionReason']}'),
-                                if (audit &&
-                                    !isAdmin &&
-                                    ((record['action'] ==
-                                                'tenant.technical-review.recorded' &&
-                                            record['entityType'] ==
-                                                'TenantApplication' &&
-                                            record['id'] is String) ||
-                                        (record['action'] ==
-                                                'tenant.technical-review.withdrawn' &&
-                                            record['entityType'] ==
-                                                'TechnicalReview' &&
-                                            record['entityId'] is String)))
-                                  TextButton(
-                                    onPressed: busy
-                                        ? null
-                                        : () => openApplicationAudit(
-                                            null,
-                                            technicalReviewId:
-                                                record[record['entityType'] ==
-                                                            'TechnicalReview'
-                                                        ? 'entityId'
-                                                        : 'id']
-                                                    as String,
-                                          ),
-                                    child: const Text('View sign-off history'),
-                                  ),
-                                if (audit &&
-                                    !isAdmin &&
-                                    record['actorId'] is String &&
-                                    (record['actorId'] as String).isNotEmpty)
-                                  TextButton(
-                                    onPressed: busy
-                                        ? null
-                                        : () => openApplicationAudit(
-                                            null,
-                                            actorId:
-                                                record['actorId'] as String,
-                                          ),
-                                    child: const Text('View actor activity'),
-                                  ),
-                                if (audit &&
-                                    record['entityType'] ==
-                                        'TenantApplication' &&
-                                    record['entityId'] is String)
-                                  TextButton(
-                                    onPressed: busy
-                                        ? null
-                                        : () => openApplicationAudit(
-                                            record['entityId'] as String,
-                                          ),
-                                    child: const Text(
-                                      'View application history',
+                                    overviewMetric(
+                                      'Active IT accounts',
+                                      overview!['accounts']['IT_SECURITY']['ACTIVE'],
                                     ),
-                                  ),
-                                if (!audit) ...[
-                                  TextButton(
-                                    onPressed: busy
-                                        ? null
-                                        : () => openApplicationAudit(
-                                            record['id'] as String,
-                                          ),
-                                    child: const Text(
-                                      'View application history',
+                                    overviewMetric(
+                                      'Disabled IT accounts',
+                                      overview!['accounts']['IT_SECURITY']['DISABLED'],
                                     ),
-                                  ),
-                                  if (record['status'] == 'APPROVED')
-                                    TextButton.icon(
-                                      onPressed: busy
-                                          ? null
-                                          : () =>
-                                                showOnboardingProgress(record),
-                                      icon: const Icon(
-                                        Icons.checklist_outlined,
-                                      ),
-                                      label: const Text('Onboarding progress'),
+                                    overviewMetric(
+                                      'Active Super Admins',
+                                      overview!['accounts']['SUPER_ADMIN']['ACTIVE'],
                                     ),
-                                  if (!isAdmin &&
-                                      record['status'] == 'APPROVED')
-                                    OutlinedButton.icon(
-                                      onPressed: busy
-                                          ? null
-                                          : () => inspectProvisioning(record),
-                                      icon: const Icon(
-                                        Icons.fact_check_outlined,
-                                      ),
-                                      label: const Text(
-                                        'Check setup readiness',
-                                      ),
-                                    ),
-                                  const SizedBox(height: 8),
-                                  Text(switch (record['status']) {
-                                    'APPROVED' =>
-                                      'Approved for future provisioning. No madrassa or school account has been created by this approval.',
-                                    'REJECTED' =>
-                                      'Request closed. No activation will follow from this decision.',
-                                    _ =>
-                                      'Pending independent review. No school access has been issued.',
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Approval is not activation. Awaiting activation counts linked schools marked pending, not verified readiness. Review each application before taking action. Email delivery and activation controls remain unavailable here. Counts are a snapshot; refresh before making decisions.',
+                                ),
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    overview = null;
                                   }),
-                                  ExpansionTile(
-                                    key: ValueKey(
-                                      'application-details-${record['id']}',
-                                    ),
-                                    title: const Text('Application details'),
-                                    tilePadding: EdgeInsets.zero,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: SelectableText(
-                                          'Application ID: ${record['id']}\nRequested by account: ${record['requestedById'] ?? 'Not recorded'}\nRequested (UTC): ${platformTimestamp(record['createdAt'])}\nReviewed by account: ${record['reviewedById'] ?? 'Not yet reviewed'}\nReviewed (UTC): ${platformTimestamp(record['reviewedAt'])}',
-                                        ),
-                                      ),
-                                    ],
+                                  child: const Text('Hide overview'),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: busy
+                                      ? null
+                                      : () => run(() async {
+                                          audit = false;
+                                          healthView = false;
+                                          sessionsView = false;
+                                          accountsView = false;
+                                          applicationStatus = 'APPROVED';
+                                          applicationScope = '';
+                                          page = 1;
+                                          records = [];
+                                          overview = null;
+                                          await load();
+                                        }),
+                                  icon: const Icon(Icons.checklist_outlined),
+                                  label: const Text('View approved onboarding'),
+                                ),
+                                FilledButton.icon(
+                                  onPressed: busy
+                                      ? null
+                                      : () => run(() async {
+                                          audit = false;
+                                          healthView = false;
+                                          sessionsView = false;
+                                          accountsView = false;
+                                          applicationStatus = 'REQUESTED';
+                                          applicationScope = 'reviewable';
+                                          page = 1;
+                                          records = [];
+                                          overview = null;
+                                          await load();
+                                        }),
+                                  icon: const Icon(Icons.fact_check_outlined),
+                                  label: const Text(
+                                    'Review pending applications',
                                   ),
-                                ],
-                                if (!audit &&
-                                    record['status'] == 'REQUESTED') ...[
-                                  const SizedBox(height: 12),
-                                  if (record['requestedById'] ==
-                                      api.user!['id'])
-                                    const Text(
-                                      'Awaiting review by another Super Admin.',
-                                    )
-                                  else
-                                    Wrap(
-                                      spacing: 12,
-                                      children: [
-                                        FilledButton(
-                                          onPressed: busy
-                                              ? null
-                                              : () => applicationDialog(
-                                                  record: record,
-                                                  decision: 'APPROVED',
-                                                ),
-                                          child: const Text('Approve'),
-                                        ),
-                                        OutlinedButton(
-                                          onPressed: busy
-                                              ? null
-                                              : () => applicationDialog(
-                                                  record: record,
-                                                  decision: 'REJECTED',
-                                                ),
-                                          child: const Text('Reject'),
-                                        ),
-                                      ],
-                                    ),
-                                ],
+                                ),
                               ],
                             ),
                           ),
                         ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      const SizedBox(height: 12),
+                    ],
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
                       children: [
-                        IconButton(
-                          tooltip: 'Previous page',
-                          onPressed: busy || page == 1
-                              ? null
-                              : () => run(() async {
-                                  page--;
-                                  records = [];
-                                  await load();
-                                }),
-                          icon: const Icon(Icons.chevron_left),
+                        WorkspaceRefreshButton(
+                          onRefresh: () => run(load),
+                          loading: busy,
+                          label: 'Refresh',
                         ),
-                        Text('Page $page'),
-                        IconButton(
-                          tooltip: 'Next page',
-                          onPressed: busy || records.length < 20
-                              ? null
-                              : () => run(() async {
-                                  page++;
-                                  records = [];
-                                  await load();
-                                }),
-                          icon: const Icon(Icons.chevron_right),
-                        ),
+                        if (isAdmin &&
+                            !audit &&
+                            !healthView &&
+                            !sessionsView &&
+                            !accountsView)
+                          FilledButton.icon(
+                            onPressed: busy ? null : () => applicationDialog(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Request madrassa'),
+                          ),
                       ],
                     ),
+                    const SizedBox(height: 18),
+                    if (healthView)
+                      PlatformHealthPanel(snapshot: health, loading: busy)
+                    else ...[
+                      Text(
+                        accountsView
+                            ? 'Company accounts only. School users are managed separately. Super Admin can disable active IT accounts; Super Admin accounts are protected.'
+                            : sessionsView
+                            ? 'Your active sessions. Times are UTC. Only sessions belonging to your account are shown.'
+                            : audit
+                            ? 'Platform activity'
+                            : 'Request > Independent review > IT setup > Admin invitation (pending)',
+                        style: const TextStyle(color: muted),
+                      ),
+                      const SizedBox(height: 12),
+                      if (!accountsView && !sessionsView && !audit) ...[
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            auditFilter(
+                              'Application status',
+                              applicationStatus,
+                              const {
+                                '': 'All decisions',
+                                'REQUESTED': 'Requested',
+                                'APPROVED': 'Approved',
+                                'REJECTED': 'Rejected',
+                              },
+                              (value) {
+                                applicationStatus = value;
+                                if (applicationScope == 'reviewable' &&
+                                    value != 'REQUESTED') {
+                                  applicationScope = '';
+                                }
+                              },
+                            ),
+                            auditFilter(
+                              'Application scope',
+                              applicationScope,
+                              const {
+                                '': 'All applications',
+                                'mine': 'My requests',
+                                'reviewable': 'Awaiting my review',
+                              },
+                              (value) {
+                                applicationScope = value;
+                                if (value == 'reviewable') {
+                                  applicationStatus = 'REQUESTED';
+                                }
+                              },
+                            ),
+                            TextButton(
+                              onPressed:
+                                  busy ||
+                                      (applicationStatus.isEmpty &&
+                                          applicationScope.isEmpty)
+                                  ? null
+                                  : () => run(() async {
+                                      applicationStatus = '';
+                                      applicationScope = '';
+                                      page = 1;
+                                      records = [];
+                                      await load();
+                                    }),
+                              child: const Text('Clear application filters'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (accountsView) ...[
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            auditFilter(
+                              'Account role',
+                              accountRole,
+                              const {
+                                '': 'All company roles',
+                                'SUPER_ADMIN': 'Super Admin',
+                                'IT_SECURITY': 'IT Security',
+                              },
+                              (value) {
+                                accountRole = value;
+                              },
+                            ),
+                            auditFilter(
+                              'Account status',
+                              accountStatus,
+                              const {
+                                '': 'All statuses',
+                                'ACTIVE': 'Active',
+                                'DISABLED': 'Disabled',
+                              },
+                              (value) {
+                                accountStatus = value;
+                              },
+                            ),
+                            TextButton(
+                              onPressed:
+                                  busy ||
+                                      (accountRole.isEmpty &&
+                                          accountStatus.isEmpty)
+                                  ? null
+                                  : () => run(() async {
+                                      accountRole = '';
+                                      accountStatus = '';
+                                      page = 1;
+                                      records = [];
+                                      await load();
+                                    }),
+                              child: const Text('Clear account filters'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (audit && !sessionsView && !accountsView) ...[
+                        if (auditTechnicalReviewId != null ||
+                            auditApplicationId != null ||
+                            auditActorId != null) ...[
+                          Text(
+                            auditTechnicalReviewId != null
+                                ? 'Sign-off history: $auditTechnicalReviewId'
+                                : auditActorId != null
+                                ? 'Activity by account: $auditActorId'
+                                : 'Application history: $auditApplicationId',
+                          ),
+                          if (auditActorId != null)
+                            const Text(
+                              'Filtered by the recorded actor ID, not the affected entity. For failed logins, this ID identifies the target account, not a verified person.',
+                            ),
+                          TextButton(
+                            onPressed: busy
+                                ? null
+                                : () => openApplicationAudit(null),
+                            child: const Text(
+                              'Show all application and platform events',
+                            ),
+                          ),
+                        ],
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            auditFilter(
+                              'Event',
+                              auditAction,
+                              {
+                                '': 'All events',
+                                if (!isAdmin)
+                                  'tenant.technical-review.recorded':
+                                      'IT sign-off recorded',
+                                if (!isAdmin)
+                                  'tenant.technical-review.withdrawn':
+                                      'IT sign-off withdrawn',
+                                if (!isAdmin)
+                                  'platform.login.failed': 'Failed login',
+                                if (!isAdmin)
+                                  'platform.login.succeeded':
+                                      'Successful login',
+                                'tenant.application.requested':
+                                    'Madrassa requested',
+                                'tenant.application.approved':
+                                    'Madrassa approved',
+                                'tenant.application.rejected':
+                                    'Madrassa rejected',
+                                if (!isAdmin)
+                                  'tenant.school.provisioned':
+                                      'Inactive madrassa created',
+                                if (!isAdmin)
+                                  'tenant.admin.invitation.issued':
+                                      'Admin invitation recorded',
+                                'tenant.school.activated': 'Madrassa activated',
+                                if (!isAdmin)
+                                  'platform.session.revoked': 'Session revoked',
+                                if (!isAdmin)
+                                  'platform.sessions.revoked':
+                                      'All sessions revoked',
+                                if (!isAdmin)
+                                  'platform.account.bootstrapped':
+                                      'Reviewer created',
+                                'platform.account.disabled':
+                                    'IT account disabled',
+                                'platform.account.restored':
+                                    'IT account restored',
+                              },
+                              (value) {
+                                auditAction = value;
+                              },
+                            ),
+                            if (!isAdmin)
+                              auditFilter(
+                                'Role',
+                                auditRole,
+                                const {
+                                  '': 'All roles',
+                                  'SUPER_ADMIN': 'Super Admin',
+                                  'IT_SECURITY': 'IT / Security',
+                                },
+                                (value) {
+                                  auditRole = value;
+                                },
+                              ),
+                            auditFilter(
+                              'Period',
+                              auditPeriod,
+                              const {
+                                '': 'All time',
+                                '1': 'Last 24 hours',
+                                '7': 'Last 7 days',
+                                '30': 'Last 30 days',
+                              },
+                              (value) {
+                                auditPeriod = value;
+                                auditSince = value.isEmpty
+                                    ? null
+                                    : DateTime.now().toUtc().subtract(
+                                        Duration(days: int.parse(value)),
+                                      );
+                              },
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            isAdmin
+                                ? 'Office decisions and account administration. Times are UTC. Technical and security logs are managed by IT.'
+                                : 'Times are UTC. Failed login events identify the account targeted, not a verified person. Filters do not grant school-data access.',
+                          ),
+                        ),
+                      ],
+                      if (records.isEmpty && !busy && error == null)
+                        const Card(
+                          child: Padding(
+                            padding: EdgeInsets.all(28),
+                            child: Text('No records to display.'),
+                          ),
+                        ),
+                      for (final record in records)
+                        if (accountsView)
+                          accountCard(record)
+                        else if (sessionsView)
+                          sessionCard(record)
+                        else
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (!audit)
+                                    PlatformApplicationHeading(record: record)
+                                  else ...[
+                                    Text(
+                                      '${record[audit ? 'action' : 'schoolName']}',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      audit
+                                          ? '${record['actorRole']} / ${record['entityType']}\n${record['createdAt']}'
+                                          : '${record['requestedCode']} / ${record['status']}\nAdmin: ${record['adminEmail']}',
+                                    ),
+                                  ],
+                                  if (audit)
+                                    ExpansionTile(
+                                      key: ValueKey(record['id']),
+                                      title: const Text('Event details'),
+                                      tilePadding: EdgeInsets.zero,
+                                      children: [
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: SelectableText(
+                                            'Event ID: ${record['id']}\nAccount ID: ${record['actorId']}\nEntity ID: ${record['entityId']}'
+                                            '${record['metadata'] is Map && (record['metadata'] as Map).isNotEmpty ? '\nStatus details: ${jsonEncode(record['metadata'])}' : ''}',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  if (!audit &&
+                                      record['decisionReason'] != null)
+                                    Text(
+                                      'Decision: ${record['decisionReason']}',
+                                    ),
+                                  if (audit &&
+                                      !isAdmin &&
+                                      ((record['action'] ==
+                                                  'tenant.technical-review.recorded' &&
+                                              record['entityType'] ==
+                                                  'TenantApplication' &&
+                                              record['id'] is String) ||
+                                          (record['action'] ==
+                                                  'tenant.technical-review.withdrawn' &&
+                                              record['entityType'] ==
+                                                  'TechnicalReview' &&
+                                              record['entityId'] is String)))
+                                    TextButton(
+                                      onPressed: busy
+                                          ? null
+                                          : () => openApplicationAudit(
+                                              null,
+                                              technicalReviewId:
+                                                  record[record['entityType'] ==
+                                                              'TechnicalReview'
+                                                          ? 'entityId'
+                                                          : 'id']
+                                                      as String,
+                                            ),
+                                      child: const Text(
+                                        'View sign-off history',
+                                      ),
+                                    ),
+                                  if (audit &&
+                                      !isAdmin &&
+                                      record['actorId'] is String &&
+                                      (record['actorId'] as String).isNotEmpty)
+                                    TextButton(
+                                      onPressed: busy
+                                          ? null
+                                          : () => openApplicationAudit(
+                                              null,
+                                              actorId:
+                                                  record['actorId'] as String,
+                                            ),
+                                      child: const Text('View actor activity'),
+                                    ),
+                                  if (audit &&
+                                      record['entityType'] ==
+                                          'TenantApplication' &&
+                                      record['entityId'] is String)
+                                    TextButton(
+                                      onPressed: busy
+                                          ? null
+                                          : () => openApplicationAudit(
+                                              record['entityId'] as String,
+                                            ),
+                                      child: const Text(
+                                        'View application history',
+                                      ),
+                                    ),
+                                  if (!audit) ...[
+                                    TextButton(
+                                      onPressed: busy
+                                          ? null
+                                          : () => openApplicationAudit(
+                                              record['id'] as String,
+                                            ),
+                                      child: const Text(
+                                        'View application history',
+                                      ),
+                                    ),
+                                    if (record['status'] == 'APPROVED')
+                                      TextButton.icon(
+                                        onPressed: busy
+                                            ? null
+                                            : () => showOnboardingProgress(
+                                                record,
+                                              ),
+                                        icon: const Icon(
+                                          Icons.checklist_outlined,
+                                        ),
+                                        label: const Text(
+                                          'Onboarding progress',
+                                        ),
+                                      ),
+                                    if (!isAdmin &&
+                                        record['status'] == 'APPROVED')
+                                      OutlinedButton.icon(
+                                        onPressed: busy
+                                            ? null
+                                            : () => inspectProvisioning(record),
+                                        icon: const Icon(
+                                          Icons.fact_check_outlined,
+                                        ),
+                                        label: const Text(
+                                          'Check setup readiness',
+                                        ),
+                                      ),
+                                    const SizedBox(height: 8),
+                                    Text(switch (record['status']) {
+                                      'APPROVED' =>
+                                        'Approved for future provisioning. No madrassa or school account has been created by this approval.',
+                                      'REJECTED' =>
+                                        'Request closed. No activation will follow from this decision.',
+                                      _ =>
+                                        'Pending independent review. No school access has been issued.',
+                                    }),
+                                    ExpansionTile(
+                                      key: ValueKey(
+                                        'application-details-${record['id']}',
+                                      ),
+                                      title: const Text('Application details'),
+                                      tilePadding: EdgeInsets.zero,
+                                      children: [
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: SelectableText(
+                                            'Application ID: ${record['id']}\nRequested by account: ${record['requestedById'] ?? 'Not recorded'}\nRequested (UTC): ${platformTimestamp(record['createdAt'])}\nReviewed by account: ${record['reviewedById'] ?? 'Not yet reviewed'}\nReviewed (UTC): ${platformTimestamp(record['reviewedAt'])}',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (!audit &&
+                                      record['status'] == 'REQUESTED') ...[
+                                    const SizedBox(height: 12),
+                                    if (record['requestedById'] ==
+                                        api.user!['id'])
+                                      const Text(
+                                        'Awaiting review by another Super Admin.',
+                                      )
+                                    else
+                                      Wrap(
+                                        spacing: 12,
+                                        children: [
+                                          FilledButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => applicationDialog(
+                                                    record: record,
+                                                    decision: 'APPROVED',
+                                                  ),
+                                            child: const Text('Approve'),
+                                          ),
+                                          OutlinedButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => applicationDialog(
+                                                    record: record,
+                                                    decision: 'REJECTED',
+                                                  ),
+                                            child: const Text('Reject'),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            tooltip: 'Previous page',
+                            onPressed: busy || page == 1
+                                ? null
+                                : () => run(() async {
+                                    page--;
+                                    records = [];
+                                    await load();
+                                  }),
+                            icon: const Icon(Icons.chevron_left),
+                          ),
+                          Text('Page $page'),
+                          IconButton(
+                            tooltip: 'Next page',
+                            onPressed: busy || records.length < 20
+                                ? null
+                                : () => run(() async {
+                                    page++;
+                                    records = [];
+                                    await load();
+                                  }),
+                            icon: const Icon(Icons.chevron_right),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+    if (api.user == null) return legacy;
+    final version = api.sessionVersion;
+    return PlatformWorkspaceShell(
+      isAdmin: isAdmin,
+      name: '${api.user!['fullName']}',
+      page: currentPage,
+      busy: busy,
+      onNavigate: navigateTo,
+      actions: [
+        WorkspaceAccountMenu(
+          fullName: '${api.user!['fullName']}',
+          roleLabel: isAdmin ? 'Super Admin' : 'IT / Security',
+          email: api.user!['email'] as String?,
+          compact: MediaQuery.sizeOf(context).width < 900,
+          enabled: !busy,
+          onSignOut: () => requestLogout(false),
+          onSignOutAll: () => requestLogout(true),
+          onSessions: () => navigateTo(PlatformPage.sessions),
+          onChangePassword: () async {
+            final changed = await showSchoolPasswordDialog(
+              context,
+              (_, body) => api.call('/change-password', body: body),
+            );
+            if (changed) {
+              api.clear();
+              if (mounted) setState(() {});
+            }
+          },
+        ),
+      ],
+      child: curriculumView
+          ? PlatformCurriculumPage(
+              key: ValueKey(version),
+              call: api.call,
+              accountId: '${api.user!['id']}',
+              onSessionExpired: () {
+                if (mounted) setState(() {});
+              },
+            )
+          : staffView
+          ? PlatformStaffPage(
+              key: ValueKey(version),
+              load: (path) => api.call(path),
+              onCompanyAccounts: () => navigateTo(PlatformPage.accounts),
+              onApplications: () => navigateTo(PlatformPage.applications),
+              onSessionExpired: () {
+                if (mounted) setState(() {});
+              },
+            )
+          : madrasasView
+          ? PlatformMadrasasPage(
+              key: ValueKey(version),
+              load: (path) => api.call(path),
+              onApplications: () => navigateTo(PlatformPage.applications),
+              onAdd: () async {
+                await applicationDialog();
+                if (context.mounted &&
+                    (error != null || confirmation != null)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error ?? confirmation!)),
+                  );
+                }
+              },
+              onOnboarding: (id) => showOnboardingProgress({'id': id}),
+              onHistory: (id) {
+                setState(() => madrasasView = false);
+                openApplicationAudit(id);
+              },
+              onReview: (record, decision) async {
+                await applicationDialog(
+                  record: {
+                    'id': record['applicationId'],
+                    'schoolName': record['name'],
+                    'requestedCode': record['code'],
+                    'adminEmail': record['adminEmail'],
+                  },
+                  decision: decision,
+                );
+                if (context.mounted &&
+                    (error != null || confirmation != null)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error ?? confirmation!)),
+                  );
+                }
+              },
+              onSessionExpired: () {
+                if (mounted) setState(() {});
+              },
+            )
+          : homeView
+          ? PlatformOverview(
+              isAdmin: isAdmin,
+              name: '${api.user!['fullName']}',
+              snapshot: isAdmin ? overview : health,
+              busy: busy,
+              error: error,
+              onRefresh: () => run(load),
+              onNavigate: navigateTo,
+              onReviewPending: () {
+                applicationStatus = 'REQUESTED';
+                applicationScope = 'reviewable';
+                navigateTo(PlatformPage.applications);
+              },
+              onApproved: () {
+                applicationStatus = 'APPROVED';
+                applicationScope = '';
+                navigateTo(PlatformPage.applications);
+              },
+              healthPanel: isAdmin
+                  ? null
+                  : PlatformHealthPanel(snapshot: health, loading: busy),
+            )
+          : setupView
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: PlatformProvisioningPanel(
+                key: ValueKey(version),
+                call: api.call,
+                sessionIsCurrent: () =>
+                    api.user != null && api.sessionVersion == version,
+                onViewHistory: (id) async {
+                  setState(() {
+                    setupView = false;
+                    homeView = false;
+                  });
+                  await openApplicationAudit(id);
+                },
+              ),
+            )
+          : legacy.body!,
+    );
+  }
 
   Future<void> disableItAccount(
     Map<String, dynamic> record, {
@@ -1868,50 +2014,58 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     final dialogForm = GlobalKey<FormState>();
     final confirmed = await sessionDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => WorkspaceFormDialog(
         title: Text(restore ? 'Restore IT access?' : 'Disable IT account?'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: dialogForm,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${record['fullName']}\n${record['email']}'),
-                if (suspension != null) ...[
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Form(
+              key: dialogForm,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  WorkspaceRecordDetails(
+                    fields: [
+                      ('Account name', '${record['fullName']}'),
+                      ('Email address', '${record['email']}'),
+                    ],
+                  ),
+                  if (suspension != null) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Suspension being reviewed',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SelectableText(
+                      'By account: ${suspension!['actorId']}\n${suspension!['createdAt']}',
+                    ),
+                    SelectableText(
+                      suspension!['reason'] as String? ?? 'No reason recorded.',
+                    ),
+                  ],
                   const SizedBox(height: 12),
-                  const Text(
-                    'Suspension being reviewed',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    restore
+                        ? 'Only a different Super Admin can approve this restoration. Confirm the reason for suspension has been resolved. IT must sign in again with email and password; old sessions remain revoked.'
+                        : 'This blocks login and revokes all sessions. The account and audit history are kept. Restoration requires a different Super Admin.',
                   ),
-                  SelectableText(
-                    'By account: ${suspension!['actorId']}\n${suspension!['createdAt']}',
-                  ),
-                  SelectableText(
-                    suspension!['reason'] as String? ?? 'No reason recorded.',
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    onChanged: (value) => reason = value,
+                    maxLength: 500,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Reason',
+                      helperText: 'Do not include passwords or other secrets.',
+                    ),
+                    validator: (value) => (value?.trim().length ?? 0) < 10
+                        ? 'Enter at least 10 characters.'
+                        : null,
                   ),
                 ],
-                const SizedBox(height: 12),
-                Text(
-                  restore
-                      ? 'Only a different Super Admin can approve this restoration. Confirm the reason for suspension has been resolved. IT must sign in again with email and password; old sessions remain revoked.'
-                      : 'This blocks login and revokes all sessions. The account and audit history are kept. Restoration requires a different Super Admin.',
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  onChanged: (value) => reason = value,
-                  maxLength: 500,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Reason',
-                    helperText: 'Do not include passwords or other secrets.',
-                  ),
-                  validator: (value) => (value?.trim().length ?? 0) < 10
-                      ? 'Enter at least 10 characters.'
-                      : null,
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -2008,9 +2162,25 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${record['fullName']}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CircleAvatar(
+                backgroundColor: Color(0xffedf3f6),
+                foregroundColor: Color(0xff102c3b),
+                child: Icon(Icons.person_outline),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  '${record['fullName'] ?? 'Company account'}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           SelectableText('${record['email']}'),
@@ -2020,22 +2190,25 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             runSpacing: 8,
             children: [
               Chip(
-                label: Text(
-                  record['role'] == 'SUPER_ADMIN'
-                      ? 'Super Admin'
-                      : 'IT Security',
-                ),
+                label: Text(switch (record['role']) {
+                  'SUPER_ADMIN' => 'Super Admin',
+                  'IT_SECURITY' => 'IT Security',
+                  _ => 'Role unavailable',
+                }),
               ),
-              Chip(label: Text('${record['status']}')),
+              PlatformAccountStatus(status: record['status'] as String?),
               if (record['id'] == api.user?['id'])
                 const Chip(label: Text('Your account')),
             ],
           ),
-          Text(
-            record['role'] == 'SUPER_ADMIN'
-                ? 'Platform governance, independent madrassa review and company oversight.'
-                : 'Platform audit and service health. No school academic or finance access.',
-          ),
+          Text(switch (record['role']) {
+            'SUPER_ADMIN' =>
+              'Platform governance, independent madrassa review and company oversight.',
+            'IT_SECURITY' =>
+              'Platform audit and service health. No school academic or finance access.',
+            _ =>
+              'Account responsibilities are unavailable. Refresh before taking action.',
+          }),
           const SizedBox(height: 8),
           SelectableText(
             'Account ID: ${record['id']}\nCreated (UTC): ${record['createdAt']}',

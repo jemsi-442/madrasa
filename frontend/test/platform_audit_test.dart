@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
+import 'helpers/platform_navigation.dart';
 
 void main() {
   for (final fromProgress in [false, true]) {
@@ -54,9 +55,7 @@ void main() {
       );
       await api.login('it@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await tester.ensureVisible(find.text('Madrassa setup'));
-      await tester.tap(find.text('Madrassa setup'));
-      await tester.pumpAndSettle();
+      await openPlatformPage(tester, 'Madrassa setup');
       if (fromProgress) {
         await tester.ensureVisible(find.text('Onboarding progress'));
         await tester.tap(find.text('Onboarding progress'));
@@ -118,9 +117,7 @@ void main() {
       );
       await api.login('it@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await tester.ensureVisible(find.text('Audit trail'));
-      await tester.tap(find.text('Audit trail'));
-      await tester.pumpAndSettle();
+      await openPlatformPage(tester, 'Audit trail');
       await tester.ensureVisible(find.text('View sign-off history'));
       await tester.tap(find.text('View sign-off history'));
       await tester.pumpAndSettle();
@@ -164,16 +161,22 @@ void main() {
                     'role': role,
                   },
                 }
-              : req.url.path.endsWith('/tenant-applications')
-              ? [
-                  {
-                    'id': 'application',
-                    'schoolName': 'School',
-                    'requestedCode': 'school',
-                    'status': 'APPROVED',
-                    'adminEmail': 'admin@example.test',
-                  },
-                ]
+              : req.url.path.endsWith('/madrasas')
+              ? {
+                  'total': 1,
+                  'items': [
+                    {
+                      'id': 'application',
+                      'name': 'School',
+                      'applicationId': 'application',
+                      'code': 'school',
+                      'admins': [],
+                      'locations': [],
+                      'status': 'APPROVED',
+                      'adminEmail': 'admin@example.test',
+                    },
+                  ],
+                }
               : [
                   {
                     'id': 'event',
@@ -190,19 +193,23 @@ void main() {
       );
       await api.login('operator@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await tester.ensureVisible(
-        find.text(
-          role == 'SUPER_ADMIN' ? 'Madrassa applications' : 'Audit trail',
-        ),
-      );
-      await tester.tap(
-        find.text(
-          role == 'SUPER_ADMIN' ? 'Madrassa applications' : 'Audit trail',
-        ),
+      await openPlatformPage(
+        tester,
+        role == 'SUPER_ADMIN' ? 'Madrassa applications' : 'Audit trail',
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('View application history'));
-      await tester.tap(find.text('View application history'));
+      if (role == 'SUPER_ADMIN') {
+        await tester.ensureVisible(find.text('Manage →'));
+        await tester.tap(find.text('Manage →'));
+        await tester.pumpAndSettle();
+      }
+      final history = find.text(
+        role == 'SUPER_ADMIN'
+            ? 'View office history'
+            : 'View application history',
+      );
+      await tester.ensureVisible(history);
+      await tester.tap(history);
       await tester.pumpAndSettle();
       expect(requests.last.path, '/api/platform/audit-events');
       expect(requests.last.queryParameters['applicationId'], 'application');
@@ -270,7 +277,7 @@ void main() {
         expect(find.text('Activity by account: operator'), findsNothing);
       } else {
         expect(find.text('View actor activity'), findsNothing);
-        expect(find.text('Office history'), findsOneWidget);
+        expect(find.text('Office activity'), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
@@ -320,9 +327,7 @@ void main() {
       );
       await api.login('it@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await tester.ensureVisible(find.text('Audit trail'));
-      await tester.tap(find.text('Audit trail'));
-      await tester.pumpAndSettle();
+      await openPlatformPage(tester, 'Audit trail');
       await tester.ensureVisible(find.text('All events'));
       await tester.tap(find.text('All events'));
       await tester.pumpAndSettle();
