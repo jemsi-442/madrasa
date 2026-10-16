@@ -296,12 +296,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('IT technical readiness'), findsNothing);
+    await tester.ensureVisible(find.text('Refresh progress'));
     await tester.tap(find.text('Refresh progress'));
     await tester.pumpAndSettle();
     expect(
       paths.where((path) => path.endsWith('/onboarding-progress')).length,
       2,
     );
+    await tester.ensureVisible(find.text('Back to queue'));
     await tester.tap(find.text('Back to queue'));
     await tester.pumpAndSettle();
     expect(find.text('School status: PENDING_ACTIVATION'), findsOneWidget);

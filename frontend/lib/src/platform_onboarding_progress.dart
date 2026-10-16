@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'workspace_details_dialog.dart';
 
 class RefreshableOnboardingProgress extends StatefulWidget {
   const RefreshableOnboardingProgress({
@@ -147,9 +148,15 @@ class PlatformOnboardingProgress extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     mainAxisSize: MainAxisSize.min,
     children: [
-      Text(
-        '${data['schoolName']} / ${data['requestedCode']}',
-        style: Theme.of(context).textTheme.titleMedium,
+      WorkspaceDetailsSection(
+        title: 'Madrasa onboarding',
+        icon: Icons.account_balance_outlined,
+        child: WorkspaceRecordDetails(
+          fields: [
+            ('Madrasa', '${data['schoolName']}'),
+            ('Registration code', '${data['requestedCode']}'),
+          ],
+        ),
       ),
       const SizedBox(height: 12),
       Container(
