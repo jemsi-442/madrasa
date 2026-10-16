@@ -1,8 +1,10 @@
 import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'workspace_form_dialog.dart';
 
 typedef PageSubmitter =
     Future<dynamic> Function(String path, Map<String, dynamic> body);
@@ -25,12 +27,13 @@ class AdminField {
     this.options,
     this.lookupPath,
     this.lookupLabel = 'fullName',
+    this.lookupSubtitle,
     this.initial,
   });
   final String name, label, kind, lookupLabel;
   final bool required;
   final Map<String, String>? options;
-  final String? lookupPath, initial;
+  final String? lookupPath, lookupSubtitle, initial;
 }
 
 Future<bool> showAdminForm(
@@ -178,7 +181,7 @@ class _AdminFormState extends State<_AdminForm> {
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
-    child: AlertDialog(
+    child: WorkspaceFormDialog(
       title: Text(widget.title),
       content: SizedBox(
         width: 480,
@@ -191,13 +194,7 @@ class _AdminFormState extends State<_AdminForm> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (widget.note != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 18),
-                    child: Text(
-                      widget.note!,
-                      style: const TextStyle(color: muted, fontSize: 13),
-                    ),
-                  ),
+                  WorkspaceFormNotice(message: widget.note!),
                 for (final f in widget.fields)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 18),
@@ -273,8 +270,13 @@ class _AdminFormState extends State<_AdminForm> {
                                   ).hasMatch(v)) {
                                 return 'Enter a valid email address';
                               }
-                              if (f.kind == 'password' && v.length < 8) {
+                              if (f.kind == 'password' &&
+                                  (raw ?? '').length < 8) {
                                 return 'Use at least 8 characters';
+                              }
+                              if (f.kind == 'password' &&
+                                  utf8.encode(raw ?? '').length > 72) {
+                                return 'Password is too long (maximum 72 UTF-8 bytes).';
                               }
                               if (f.kind == 'money' &&
                                   (!RegExp(
@@ -288,10 +290,7 @@ class _AdminFormState extends State<_AdminForm> {
                           ),
                   ),
                 if (error != null)
-                  Text(
-                    error!,
-                    style: const TextStyle(color: Color(0xFFB42318)),
-                  ),
+                  WorkspaceFormNotice(message: error!, isError: true),
               ],
             ),
           ),
@@ -326,6 +325,7 @@ class _RecordPicker extends StatefulWidget {
 }
 
 class _RecordPickerState extends State<_RecordPicker> {
+  final searchController = TextEditingController();
   String search = '';
   int page = 1;
   late Future<dynamic> future = fetch();
@@ -338,6 +338,18 @@ class _RecordPickerState extends State<_RecordPicker> {
     });
   }
 
+  void applySearch() {
+    search = searchController.text.trim();
+    page = 1;
+    reload();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: Text('Choose ${widget.field.label.toLowerCase()}'),
@@ -347,15 +359,29 @@ class _RecordPickerState extends State<_RecordPicker> {
       child: Column(
         children: [
           TextField(
-            decoration: const InputDecoration(
+            controller: searchController,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
               labelText: 'Search',
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
+                tooltip: 'Clear search',
+                onPressed: () {
+                  searchController.clear();
+                  applySearch();
+                },
+                icon: const Icon(Icons.clear),
+              ),
             ),
-            onSubmitted: (value) {
-              search = value.trim();
-              page = 1;
-              reload();
-            },
+            onSubmitted: (_) => applySearch(),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: applySearch,
+              icon: const Icon(Icons.search),
+              label: const Text('Search records'),
+            ),
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -375,6 +401,11 @@ class _RecordPickerState extends State<_RecordPicker> {
                           title: Text(
                             recordText(row[widget.field.lookupLabel]),
                           ),
+                          subtitle: widget.field.lookupSubtitle == null
+                              ? null
+                              : Text(
+                                  recordText(row[widget.field.lookupSubtitle]),
+                                ),
                           onTap: () => Navigator.pop(context, row),
                         ),
                       DirectoryPager(
