@@ -10,6 +10,7 @@ import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/app_state.dart';
 import 'package:mif_app/src/registration_page.dart';
 import 'package:mif_app/src/office_help_page.dart';
+import 'package:mif_app/src/family_registration_page.dart';
 
 void main() {
   Future<void> fill(
@@ -147,8 +148,8 @@ void main() {
       await tester.ensureVisible(parent);
       await tester.tap(parent);
       await tester.pumpAndSettle();
-      expect(find.byType(OfficeHelpScreen), findsOneWidget);
-      expect(find.text('Stay Close to Their Learning'), findsOneWidget);
+      expect(find.byType(FamilyRegistrationScreen), findsOneWidget);
+      expect(find.text('One family. Connected learning.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

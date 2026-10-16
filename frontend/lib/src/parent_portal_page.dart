@@ -5,6 +5,7 @@ import 'foundation_ui.dart';
 import 'teacher_ui.dart';
 import 'parent_academics.dart';
 import 'parent_reports.dart';
+import 'family_identity_card.dart';
 
 typedef FamilyNavigate = void Function(int page, {String? childId});
 
@@ -34,6 +35,16 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
   DateTime month = DateTime(DateTime.now().year, DateTime.now().month);
   int sessionPage = 1;
   bool bySurah = false;
+  @override
+  void didUpdateWidget(covariant ParentPortalPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.page != widget.page) profileId = null;
+    if (oldWidget.childId != widget.childId) {
+      sessionPage = 1;
+      if (profileId != null) profileId = widget.childId;
+    }
+  }
+
   String get monthKey =>
       '${month.year}-${month.month.toString().padLeft(2, '0')}';
 
@@ -104,7 +115,20 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
     final children = recordList(overview['children']);
     final matches = children.where((c) => '${c['id']}' == widget.childId);
     final selected = matches.isNotEmpty ? matches.first : children.firstOrNull;
+    final unavailableSelection = widget.childId != null && matches.isEmpty;
+    final visibleProfile =
+        profileId != null &&
+        children.any((child) => '${child['id']}' == profileId);
     return stack([
+      if (unavailableSelection || (profileId != null && !visibleProfile))
+        const TeacherNotice(
+          'The previously selected child is no longer available in this family account. Choose an available child or contact your school office.',
+          warning: true,
+        ),
+      if (widget.page == 0)
+        FamilyIdentityCard(
+          number: recordMap(overview['guardian'])['familyLoginId'] as String?,
+        ),
       Wrap(
         spacing: 12,
         runSpacing: 12,
@@ -135,7 +159,7 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
                 onChanged: (id) {
                   if (id == null) return;
                   setState(() {
-                    profileId = null;
+                    if (profileId != null) profileId = id;
                     sessionPage = 1;
                   });
                   widget.onChildSelected(id);
@@ -165,7 +189,7 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
       else if (widget.page == 0)
         dashboard(overview, selected!)
       else if (widget.page == 1)
-        profileId == null ? childCards(children) : profile(profileId!)
+        !visibleProfile ? childCards(children) : profile(profileId!)
       else if (widget.page == 2)
         attendance('${selected!['id']}')
       else if (widget.page == 3)
@@ -945,6 +969,7 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
       ]),
     ),
     second: stack([
+      FamilyIdentityCard(number: guardian['familyLoginId'] as String?),
       panel(
         'Your guardian profile',
         stack([

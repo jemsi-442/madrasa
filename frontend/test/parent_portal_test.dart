@@ -70,7 +70,7 @@ Future<dynamic> familyLoad(String path) async {
   if (path.endsWith('/announcements')) return [notice];
   if (path.endsWith('/profile')) {
     return {
-      'student': child,
+      'student': path.contains('/children/2/') ? sibling : child,
       'guardian': guardian,
       'timetable': [
         {
@@ -261,6 +261,57 @@ void main() {
   );
 
   testWidgets(
+    'switching children keeps profile open and removes previous child details',
+    (tester) async {
+      screen(tester, 1440);
+      String? selected;
+      final waiting = Completer<dynamic>();
+      final paths = <String>[];
+      await tester.pumpWidget(
+        host(
+          StatefulBuilder(
+            builder: (context, setState) => ParentPortalPage(
+              page: 1,
+              childId: selected,
+              load: (path) {
+                paths.add(path);
+                return path.endsWith('/children/2/profile')
+                    ? waiting.future
+                    : familyLoad(path);
+              },
+              onChildSelected: (id) => setState(() => selected = id),
+              onOpen: (_, {childId}) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View profile').first);
+      await tester.pumpAndSettle();
+      expect(find.text('AFQ001'), findsOneWidget);
+      await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Yusuf Hassan').last);
+      await tester.pump();
+      expect(
+        paths,
+        contains('/api/parent-portal/workspace/children/2/profile'),
+      );
+      expect(find.text('AFQ001'), findsNothing);
+      waiting.complete(
+        await familyLoad('/api/parent-portal/workspace/children/2/profile'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('AFQ002'), findsOneWidget);
+      expect(find.text('All children'), findsOneWidget);
+      expect(find.text('View profile'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'profile loads safe details and timetable; child linking requires office',
     (tester) async {
       screen(tester, 1440);
@@ -318,6 +369,64 @@ void main() {
     expect(paths.last, '/api/parent-portal/workspace/children/1/quran?page=2');
     expect(find.text('Save progress'), findsNothing);
   });
+
+  testWidgets(
+    'refresh removes an unlinked child profile and explains the change',
+    (tester) async {
+      screen(tester, 1440);
+      var refresh = 0;
+      var linked = true;
+      late StateSetter update;
+      final paths = <String>[];
+      await tester.pumpWidget(
+        host(
+          StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return ParentPortalPage(
+                page: 1,
+                childId: '1',
+                refreshToken: refresh,
+                load: (path) async {
+                  paths.add(path);
+                  if (path.endsWith('/overview')) {
+                    return {
+                      'guardian': guardian,
+                      'children': linked ? [child, sibling] : [sibling],
+                    };
+                  }
+                  return familyLoad(path);
+                },
+                onChildSelected: (_) {},
+                onOpen: (_, {childId}) {},
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View profile').first);
+      await tester.pumpAndSettle();
+      expect(find.text('AFQ001'), findsOneWidget);
+      paths.clear();
+      update(() {
+        linked = false;
+        refresh++;
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('AFQ001'), findsNothing);
+      expect(
+        find.textContaining('previously selected child is no longer available'),
+        findsOneWidget,
+      );
+      expect(find.text('View profile'), findsOneWidget);
+      expect(
+        paths.where((path) => path.endsWith('/children/1/profile')),
+        isEmpty,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('empty family has office guidance, no invented metrics', (
     tester,
