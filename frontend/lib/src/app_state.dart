@@ -49,7 +49,7 @@ class AppState extends ChangeNotifier {
         return;
       }
       final restored = await api.refresh('');
-      if (!_disposed && version == _authVersion) session = restored;
+      if (!_disposed && version == _authVersion) _acceptedSession(restored);
     } catch (exception) {
       if (!_disposed &&
           version == _authVersion &&
@@ -68,7 +68,14 @@ class AppState extends ChangeNotifier {
   void _acceptedSession(AuthSession value) {
     companyApi?.close();
     companyApi = null;
-    session = value;
+    if (value.scope == 'platform') {
+      companyApi =
+          (companyApiFactory?.call() ?? PlatformApi(baseUrl: api.baseUrl))
+            ..acceptSession(value);
+      session = null;
+    } else {
+      session = value;
+    }
     restorationError = null;
     browserState.write(_signOutKey, null, shared: true);
   }
@@ -88,19 +95,7 @@ class AppState extends ChangeNotifier {
       final signedIn = await api.login(login, password);
       if (_disposed || version != _authVersion) return false;
       _refreshing = null;
-      if (signedIn.scope == 'platform') {
-        final company =
-            (companyApiFactory?.call() ?? PlatformApi(baseUrl: api.baseUrl))
-              ..acceptSession(signedIn);
-        companyApi?.close();
-        companyApi = company;
-        session = null;
-        restorationError = null;
-        // Never silently restore a previous school cookie behind a company login.
-        browserState.write(_signOutKey, '1', shared: true);
-      } else {
-        _acceptedSession(signedIn);
-      }
+      _acceptedSession(signedIn);
       return true;
     } on ApiException catch (exception) {
       if (_disposed || version != _authVersion) return false;
@@ -219,7 +214,8 @@ class AppState extends ChangeNotifier {
             session == null ||
             version != _authVersion ||
             session!.userId != current.userId ||
-            renewed.userId != current.userId) {
+            renewed.userId != current.userId ||
+            renewed.scope != 'school') {
           throw const ApiException('Please sign in again.', 401);
         }
         session = renewed;
@@ -271,6 +267,13 @@ class AppState extends ChangeNotifier {
         /* Local logout still completes. */
       }
       company.close();
+      if (api.browserAuth) {
+        try {
+          await api.logout('');
+        } catch (_) {
+          /* Local sign-out marker remains. */
+        }
+      }
       if (!_disposed) notifyListeners();
       return;
     }

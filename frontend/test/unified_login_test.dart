@@ -71,17 +71,26 @@ void main() {
         expect(find.byType(PlatformConsole), findsOneWidget);
         expect(state.session, isNull);
         expect(state.companyApi!.user!['role'], role);
+        final mobileNavigation = find.byTooltip('Open navigation');
+        if (mobileNavigation.evaluate().isNotEmpty) {
+          await tester.tap(mobileNavigation);
+          await tester.pumpAndSettle();
+        }
         expect(
           find.text('System health'),
           role == 'IT_SECURITY' ? findsOneWidget : findsNothing,
         );
+        if (mobileNavigation.evaluate().isNotEmpty) {
+          Navigator.of(tester.element(find.byType(Drawer))).pop();
+          await tester.pumpAndSettle();
+        }
         expect(
           requests.where((path) => path.endsWith('/platform/login')),
           isEmpty,
         );
         state.companyApi!.clear();
-        await tester.ensureVisible(find.text('Refresh'));
-        await tester.tap(find.text('Refresh'));
+        await tester.ensureVisible(find.byTooltip('Refresh overview'));
+        await tester.tap(find.byTooltip('Refresh overview'));
         await tester.pumpAndSettle();
         expect(find.byType(LoginScreen), findsOneWidget);
         expect(find.text('Authenticator code'), findsNothing);
