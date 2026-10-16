@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { PlatformCurriculumService } from './platform.curriculum';
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 
@@ -9,6 +10,7 @@ import { PlatformGovernanceService, type PlatformContext } from "./platform.serv
 import { loginPlatform, type PlatformLoginOptions } from "./platform.login";
 import { loginPlatformPassword } from "./platform.password-login";
 import type { PlatformHealthReader } from "./platform.health";
+import { changePlatformPassword } from "./platform.change-password";
 
 declare module "express-serve-static-core" {
   interface Request { platformContext?: PlatformContext }
@@ -17,6 +19,7 @@ declare module "express-serve-static-core" {
 export function createPlatformRouter(db: PrismaClient, secret: string, schoolSecrets: readonly string[], login?: PlatformLoginOptions, health?: PlatformHealthReader) {
   const router = Router();
   const service = new PlatformGovernanceService(db);
+  const curriculum = new PlatformCurriculumService(db);
   router.use(asyncHandler(async (req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     if (secret.length < 32 || schoolSecrets.includes(secret)) {
@@ -55,11 +58,53 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
     });
     res.json({ success: true, data: account });
   }));
+  router.get('/curriculum', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.list(req.platformContext!, req.query) });
+  }));
+  router.post('/curriculum', asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await curriculum.save(req.platformContext!, req.body) });
+  }));
+  router.post('/curriculum/:id/edit', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.edit(req.platformContext!, req.params.id, req.body) });
+  }));
+  router.post('/curriculum/:id/transition', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.transition(req.platformContext!, req.params.id, req.body) });
+  }));
+  router.post('/curriculum/:id/assign', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.assign(req.platformContext!, req.params.id, req.body) });
+  }));
+  router.post('/curriculum/:id/clone', asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await curriculum.clone(req.platformContext!, req.params.id, req.body) });
+  }));
+  router.post('/curriculum/:id/topics', asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await curriculum.addTopic(req.platformContext!, req.params.id, req.body) });
+  }));
+  router.post('/curriculum/:id/lessons', asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await curriculum.saveLesson(req.platformContext!, req.params.id, req.body) });
+  }));
+  router.post('/curriculum/:id/lessons/:lessonId', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.saveLesson(req.platformContext!, req.params.id, req.body, req.params.lessonId) });
+  }));
+  router.post('/curriculum/:id/topics/:topicId', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.addTopic(req.platformContext!, req.params.id, req.body, req.params.topicId) });
+  }));
+  router.post("/change-password", asyncHandler(async (req, res) => {
+    if (!login) throw new HttpError(503, "Password changes are not configured");
+    await login.consumeLimit(req.platformContext!.accountId, req.ip ?? req.socket.remoteAddress ?? "unknown");
+    await changePlatformPassword(db, req.platformContext!, req.body);
+    res.json({ success: true, data: { message: "Password changed. Sign in again on all devices." } });
+  }));
   router.get("/health", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.health(req.platformContext!, health) });
   }));
   router.get("/overview", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.overview(req.platformContext!) });
+  }));
+  router.get("/madrasas", asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await service.madrasaDirectory(req.platformContext!, req.query) });
+  }));
+  router.get("/staff-directory", asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await service.staffDirectory(req.platformContext!, req.query) });
   }));
   router.get("/tenant-applications", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.listApplications(req.platformContext!, req.query) });

@@ -1,6 +1,9 @@
 import { HttpError } from "../../shared/errors/http-error";
 
 export const platformPermissions = [
+  "curriculum.manage",
+  "tenant.directory.read",
+  "tenant.staff-directory.read",
   "tenant.application.read",
   "tenant.application.create",
   "tenant.application.review",
@@ -23,6 +26,9 @@ export type PlatformPermission = (typeof platformPermissions)[number];
 
 const grants: Readonly<Record<string, readonly PlatformPermission[]>> = {
   SUPER_ADMIN: [
+    "curriculum.manage",
+    "tenant.staff-directory.read",
+    "tenant.directory.read",
     "tenant.application.read", "tenant.application.create", "tenant.application.review",
     "tenant.onboarding.read", "tenant.activation.approve", "platform.office-history.read",
     "platform.session.self", "platform.account.read", "platform.account.disable.it",
