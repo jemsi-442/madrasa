@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'status_badge.dart';
+import 'design_tokens.dart';
 
 import 'foundation_ui.dart';
 
@@ -189,7 +191,7 @@ class EmptyRecords extends StatelessWidget {
   );
 }
 
-class RecordTable extends StatelessWidget {
+class RecordTable extends StatefulWidget {
   const RecordTable({
     super.key,
     required this.columns,
@@ -201,32 +203,48 @@ class RecordTable extends StatelessWidget {
   final double minWidth;
 
   @override
+  State<RecordTable> createState() => _RecordTableState();
+}
+
+class _RecordTableState extends State<RecordTable> {
+  final _horizontal = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontal.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: math.max(minWidth, constraints.maxWidth),
-        ),
-        child: DataTable(
-          headingRowColor: const WidgetStatePropertyAll(Color(0xFFF3F5F7)),
-          headingTextStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: ink,
+    builder: (context, constraints) => Scrollbar(
+      controller: _horizontal,
+      thumbVisibility: true,
+      interactive: true,
+      scrollbarOrientation: ScrollbarOrientation.bottom,
+      child: SingleChildScrollView(
+        controller: _horizontal,
+        primary: false,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(bottom: 14),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: math.max(widget.minWidth, constraints.maxWidth),
           ),
-          dataTextStyle: const TextStyle(fontSize: 13, color: ink),
-          headingRowHeight: 44,
-          dataRowMinHeight: 64,
-          dataRowMaxHeight: 80,
-          horizontalMargin: 14,
-          columnSpacing: 20,
-          dividerThickness: 0.6,
-          showCheckboxColumn: false,
-          columns: [
-            for (final column in columns) DataColumn(label: Text(column)),
-          ],
-          rows: rows,
+          child: DataTable(
+            showCheckboxColumn: false,
+            dataRowMinHeight:
+                DataTableTheme.of(context).dataRowMinHeight ??
+                AfaqDesign.tableRowMinHeight,
+            dataRowMaxHeight:
+                DataTableTheme.of(context).dataRowMaxHeight ??
+                AfaqDesign.tableRowMaxHeight,
+            columns: [
+              for (final column in widget.columns)
+                DataColumn(label: Text(column)),
+            ],
+            rows: widget.rows,
+          ),
         ),
       ),
     ),
@@ -245,21 +263,7 @@ class StatusPill extends StatelessWidget {
       'LATE' => gold,
       _ => blue,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: Text(
-        friendlyStatus(status),
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
-    );
+    return AfaqStatusBadge(label: friendlyStatus(status), color: color);
   }
 }
 

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'design_tokens.dart';
+import 'shared_feedback.dart';
 
 import 'app_layout.dart';
 import 'public_entry_visuals.dart';
@@ -12,14 +14,14 @@ ThemeData publicTheme(BuildContext context) => Theme.of(context).copyWith(
   scaffoldBackgroundColor: publicCream,
   textTheme: Theme.of(context).textTheme.copyWith(
     headlineLarge: const TextStyle(
-      fontFamily: 'NotoSansDisplay',
+      fontFamily: AfaqDesign.bodyFont,
       color: publicInk,
       fontSize: 48,
       height: 1.12,
       fontWeight: FontWeight.w700,
     ),
     headlineMedium: const TextStyle(
-      fontFamily: 'NotoSansDisplay',
+      fontFamily: AfaqDesign.bodyFont,
       color: publicInk,
       fontSize: 30,
       height: 1.2,
@@ -80,7 +82,7 @@ class PublicBrand extends StatelessWidget {
       textAlign: stacked ? TextAlign.center : TextAlign.left,
       style: TextStyle(
         color: light ? Colors.white : publicInk,
-        fontFamily: 'NotoSansDisplay',
+        fontFamily: AfaqDesign.bodyFont,
         fontWeight: FontWeight.w700,
         fontSize: stacked
             ? 28
@@ -99,13 +101,23 @@ class PublicBrand extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [mark, const SizedBox(height: 14), name],
             )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                mark,
-                SizedBox(width: compact ? 9 : 13),
-                Flexible(child: name),
-              ],
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 140) {
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(fit: BoxFit.scaleDown, child: mark),
+                  );
+                }
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    mark,
+                    SizedBox(width: compact ? 9 : 13),
+                    Flexible(child: name),
+                  ],
+                );
+              },
             ),
     );
   }
@@ -263,7 +275,7 @@ class GoldAction extends StatelessWidget {
         disabledForegroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 26),
         textStyle: const TextStyle(
-          fontFamily: 'NotoSansDisplay',
+          fontFamily: AfaqDesign.bodyFont,
           fontWeight: FontWeight.w700,
           fontSize: 16,
         ),
@@ -321,38 +333,8 @@ class FormNotice extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    liveRegion: true,
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF2EF),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFF9B3528),
-            size: 19,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Color(0xFF9B3528),
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      AfaqNotice(message, color: const Color(0xFF9B3528), liveRegion: true);
 }
 
 class MobileBackButton extends StatelessWidget {

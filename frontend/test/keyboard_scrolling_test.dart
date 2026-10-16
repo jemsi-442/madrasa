@@ -225,7 +225,7 @@ void main() {
     await tester.pumpWidget(MifApp(state: state, layout: AppLayout.website));
     await tester.pumpAndSettle();
     final background = position(tester, primaryView);
-    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.tap(find.byTooltip('Open navigation'));
     await tester.pumpAndSettle();
     final drawer = position(
       tester,

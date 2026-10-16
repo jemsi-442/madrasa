@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
+import 'shared_feedback.dart';
+import 'status_badge.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 
@@ -39,49 +41,12 @@ class TeacherMetric extends StatelessWidget {
   final IconData icon;
   final Color color;
   @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minHeight: 148),
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      color: Color.alphaBlend(color.withValues(alpha: .10), Colors.white),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 23),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: muted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text(
-          value,
-          style: const TextStyle(
-            color: ink,
-            fontSize: 30,
-            height: 1.1,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          note,
-          style: const TextStyle(color: muted, fontSize: 12, height: 1.5),
-        ),
-      ],
-    ),
+  Widget build(BuildContext context) => DashboardMetric(
+    label: label,
+    value: value,
+    note: note,
+    icon: icon,
+    accent: color,
   );
 }
 
@@ -90,30 +55,10 @@ class TeacherNotice extends StatelessWidget {
   final String text;
   final bool warning;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: warning ? const Color(0xFFFAF5E8) : const Color(0xFFF5F7FA),
-      border: Border.all(color: warning ? const Color(0xFFEBDDB5) : line),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          warning ? Icons.info_outline : Icons.lock_outline,
-          color: warning ? gold : muted,
-          size: 19,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: muted, fontSize: 13, height: 1.65),
-          ),
-        ),
-      ],
-    ),
+  Widget build(BuildContext context) => AfaqNotice(
+    text,
+    icon: warning ? Icons.info_outline : Icons.lock_outline,
+    color: warning ? gold : muted,
   );
 }
 
@@ -170,17 +115,8 @@ class TeacherTag extends StatelessWidget {
   final String text;
   final Color color;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .10),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Text(
-      text,
-      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      AfaqStatusBadge(label: text, color: color);
 }
 
 class TeacherData extends StatefulWidget {

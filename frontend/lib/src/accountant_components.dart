@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'status_badge.dart';
+import 'shared_feedback.dart';
 
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
@@ -79,21 +81,7 @@ class FinanceStatus extends StatelessWidget {
       'PARTIALLY_PAID' || 'REVIEWING' || 'CONTACTED' => blue,
       _ => muted,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        friendlyStatus(status),
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
+    return AfaqStatusBadge(label: friendlyStatus(status), color: color);
   }
 }
 
@@ -103,27 +91,7 @@ class FinanceNotice extends StatelessWidget {
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: blue.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: blue.withValues(alpha: 0.12)),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: blue, size: 19),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: muted, fontSize: 12, height: 1.5),
-          ),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) => AfaqNotice(text, icon: icon);
 }
 
 class FinanceTile extends StatelessWidget {
@@ -144,62 +112,13 @@ class FinanceTile extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: const BorderSide(color: line),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(11),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(icon, color: accent, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: ink,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: muted,
-                      fontSize: 12,
-                      height: 1.5,
-                    ),
-                  ),
-                  if (trailing != null) ...[
-                    const SizedBox(height: 10),
-                    trailing!,
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(Icons.arrow_forward_rounded, size: 18, color: muted),
-          ],
-        ),
-      ),
-    ),
+  Widget build(BuildContext context) => AfaqActionTile(
+    title: title,
+    subtitle: subtitle,
+    icon: icon,
+    onTap: onTap,
+    accent: accent,
+    trailing: trailing,
   );
 }
 

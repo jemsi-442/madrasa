@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'design_tokens.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -226,7 +227,7 @@ class _FooterLinks extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             minimumSize: const Size(48, 44),
             textStyle: const TextStyle(
-              fontFamily: 'NotoSansDisplay',
+              fontFamily: AfaqDesign.bodyFont,
               fontSize: 14,
               height: 1.4,
             ),
