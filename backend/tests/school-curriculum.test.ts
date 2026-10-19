@@ -91,7 +91,7 @@ describe('school curriculum boundaries', () => {
     expect(result.pendingLessons).toEqual([{ id: 'pending-lesson', title: 'Synthetic reading' }]);
     expect(tx.curriculumLesson.findMany).toHaveBeenCalledExactlyOnceWith({
       where: { versionId: 'v2', id: { notIn: ['taught-lesson'] } },
-      orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 10,
+      orderBy: [{ position: 'asc' }, { id: 'asc' }], skip: 0, take: 11,
       select: { id: true, title: true },
     });
   });
@@ -99,8 +99,19 @@ describe('school curriculum boundaries', () => {
     const { tx, service } = fixture();
     for (const page of [0, -1, 1.5, 10001, 'bad']) {
       await expect(service.deliveryHistory(admin, { classCurriculumId: 'adoption', page })).rejects.toThrow();
+      await expect(service.deliveryHistory(admin, { classCurriculumId: 'adoption', pendingPage: page })).rejects.toThrow();
     }
     expect(tx.curriculumLessonDelivery.findMany).not.toHaveBeenCalled();
+  });
+  it('pages pending lessons independently of history and trims the lookahead', async () => {
+    const { tx, service } = fixture();
+    tx.classCurriculum.findFirst.mockResolvedValue({ id: 'adoption', assignmentId: 'assigned-v2', assignment: { versionId: 'v2', version: { version: '2.0' } } });
+    tx.curriculumLesson.findMany.mockResolvedValue(Array.from({ length: 11 }, (_, i) => ({ id: `lesson-${i}`, title: 'Synthetic lesson' })));
+    const result = await service.deliveryHistory(admin, { classCurriculumId: 'adoption', pendingPage: '2' });
+    expect(result.pendingLessons).toHaveLength(10);
+    expect(result).toMatchObject({ page: 1, pendingPage: 2, pendingHasMore: true });
+    expect(tx.curriculumLesson.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 10, take: 11 }));
+    expect(tx.curriculumLessonDelivery.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0 }));
   });
   describe('online lesson delivery input and role boundaries', () => {
     const teacher: AuthenticatedUser = { ...admin, role: 'TEACHER' };

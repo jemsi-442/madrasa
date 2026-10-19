@@ -64,6 +64,79 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   for (final width in [390.0, 1440.0]) {
+    testWidgets('pending lesson pages retain history and retry at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final requests = <String>[];
+      var fail = true;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumDeliveryHistoryDialog(
+              adoptionId: 'adoption-1',
+              className: 'Class A',
+              load: (path) async {
+                final query = Uri.parse(path).queryParameters;
+                expect(query['page'], '1');
+                final pending = query['pendingPage']!;
+                requests.add(pending);
+                if (pending == '2' && fail) {
+                  fail = false;
+                  throw Exception('Unavailable');
+                }
+                return {
+                  'items': [],
+                  'hasMore': false,
+                  'pendingLessons': pending == '1'
+                      ? [
+                          {'id': 'l1', 'title': 'Synthetic pending lesson'},
+                        ]
+                      : [],
+                  'pendingHasMore': pending == '1',
+                  'teachingCoverage': {
+                    'version': '1.0',
+                    'taughtLessons': 0,
+                    'totalLessons': 12,
+                  },
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lessons without teaching records'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Next lessons'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Next lessons'));
+      await tester.pumpAndSettle();
+      expect(find.text('Could not load teaching history.'), findsOneWidget);
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Lessons page 2'), findsOneWidget);
+      expect(
+        find.textContaining('No pending lessons on this page'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Next lessons'))
+            .onPressed,
+        isNull,
+      );
+      await tester.ensureVisible(find.text('Previous lessons'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Previous lessons'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic pending lesson'), findsOneWidget);
+      expect(requests, ['1', '2', '2', '1']);
+      expect(tester.takeException(), isNull);
+    });
     testWidgets('teaching history pages and retries at $width', (tester) async {
       tester.view.physicalSize = Size(width, 1000);
       tester.view.devicePixelRatio = 1;

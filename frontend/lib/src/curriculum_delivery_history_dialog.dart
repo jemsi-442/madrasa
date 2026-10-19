@@ -18,11 +18,13 @@ class CurriculumDeliveryHistoryDialog extends StatefulWidget {
 
 class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
   int page = 1;
+  int pendingPage = 1;
+  bool pendingExpanded = false;
   late Future<dynamic> result = fetch();
   Future<dynamic> fetch() async {
     try {
       return await widget.load(
-        '/api/school-curriculum/deliveries?${Uri(queryParameters: {'classCurriculumId': widget.adoptionId, 'page': '$page'}).query}',
+        '/api/school-curriculum/deliveries?${Uri(queryParameters: {'classCurriculumId': widget.adoptionId, 'page': '$page', 'pendingPage': '$pendingPage'}).query}',
       );
     } catch (_) {
       return null;
@@ -31,6 +33,11 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
 
   void go(int target) => setState(() {
     page = target;
+    result = fetch();
+  });
+
+  void goPending(int target) => setState(() {
+    pendingPage = target;
     result = fetch();
   });
 
@@ -101,8 +108,11 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
                       'No lessons in this version; coverage is not applicable.',
                     ),
                   const SizedBox(height: 12),
-                  if (pendingLessons != null && pendingLessons.isNotEmpty)
+                  if (pendingLessons != null &&
+                      (pendingLessons.isNotEmpty || pendingPage > 1))
                     ExpansionTile(
+                      initiallyExpanded: pendingExpanded,
+                      onExpansionChanged: (value) => pendingExpanded = value,
                       tilePadding: EdgeInsets.zero,
                       title: const Text('Lessons without teaching records'),
                       subtitle: Text(
@@ -117,6 +127,29 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
                             leading: const Icon(Icons.menu_book_outlined),
                             title: Text('${lesson['title']}'),
                           ),
+                        if (pendingLessons.isEmpty)
+                          const Text(
+                            'No pending lessons on this page. Return to the previous page.',
+                          ),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            TextButton(
+                              onPressed: pendingPage > 1
+                                  ? () => goPending(pendingPage - 1)
+                                  : null,
+                              child: const Text('Previous lessons'),
+                            ),
+                            Text('Lessons page $pendingPage'),
+                            TextButton(
+                              onPressed: data['pendingHasMore'] == true
+                                  ? () => goPending(pendingPage + 1)
+                                  : null,
+                              child: const Text('Next lessons'),
+                            ),
+                          ],
+                        ),
                       ],
                     )
                   else if (pendingLessons != null &&

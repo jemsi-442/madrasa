@@ -214,6 +214,7 @@ export class SchoolCurriculumService {
     const query = z.object({
       classCurriculumId: z.string().min(1).max(30),
       page: z.coerce.number().int().min(1).max(10000).default(1),
+      pendingPage: z.coerce.number().int().min(1).max(10000).default(1),
     }).strict().parse(raw);
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
@@ -248,12 +249,13 @@ export class SchoolCurriculumService {
           id: { notIn: taughtLessons.map(row => row.lessonId) },
         },
         orderBy: [{ position: 'asc' }, { id: 'asc' }],
-        take: 10,
+        skip: (query.pendingPage - 1) * 10, take: 11,
         select: { id: true, title: true },
       });
       return serialise({
         items: rows.slice(0, 20), page: query.page, hasMore: rows.length > 20,
-        pendingLessons,
+        pendingLessons: pendingLessons.slice(0, 10),
+        pendingPage: query.pendingPage, pendingHasMore: pendingLessons.length > 10,
         teachingCoverage: {
           version: adoption.assignment.version.version,
           taughtLessons: taughtLessons.length, totalLessons,

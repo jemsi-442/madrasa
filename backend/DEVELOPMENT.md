@@ -1625,7 +1625,11 @@ curriculum order from the current adopted version without a teaching record.
 The history dialog expands this list and shows how many of the remaining lessons
 are displayed. This is a planning aid, not a claim that learners have failed or
 that teaching outside the system has not occurred. Old-version records never
-hide a new-version lesson, even if the titles match.
+hide a new-version lesson, even if the titles match. `pendingPage` (default 1,
+range 1..10000) paginates this list independently of history `page`. The response
+includes `pendingPage` and `pendingHasMore`; the dialog keeps the lesson list
+expanded across navigation and retries. Both lists use offset pagination, so
+concurrent teaching records can move pending lessons between pages.
 The history response also includes `teachingCoverage` for the current adopted
 version: distinct lesson IDs recorded as taught and total published lesson plans.
 This summary covers the entire class history, not just the current page. Repeated
