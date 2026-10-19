@@ -15,6 +15,7 @@ import 'workspace_chrome.dart';
 import 'platform_madrasas_page.dart';
 import 'platform_staff_page.dart';
 import 'platform_curriculum_page.dart';
+import 'curriculum_oversight_page.dart';
 import 'workspace_form_dialog.dart';
 import 'workspace_details_dialog.dart';
 
@@ -319,6 +320,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool madrasasView = false;
   bool staffView = false;
   bool curriculumView = false;
+  bool oversightView = false;
   bool setupView = false;
   String applicationStatus = '';
   String applicationScope = '';
@@ -430,7 +432,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
 
   Future<void> load() async {
     if (!mounted) return;
-    if (madrasasView || staffView || curriculumView) return;
+    if (madrasasView || staffView || curriculumView || oversightView) return;
     // Never present a previous access/audit snapshot as a successful refresh.
     setState(() => records = []);
     if (homeView) {
@@ -959,6 +961,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       ? PlatformPage.staff
       : curriculumView
       ? PlatformPage.curriculum
+      : oversightView
+      ? PlatformPage.oversight
       : setupView
       ? PlatformPage.setup
       : healthView
@@ -989,6 +993,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           PlatformPage.madrasas,
           PlatformPage.staff,
           PlatformPage.curriculum,
+          PlatformPage.oversight,
           PlatformPage.applications,
           PlatformPage.accounts,
         ].contains(destination)) {
@@ -999,6 +1004,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       madrasasView = destination == PlatformPage.madrasas;
       staffView = destination == PlatformPage.staff;
       curriculumView = destination == PlatformPage.curriculum;
+      oversightView = destination == PlatformPage.oversight;
       setupView = destination == PlatformPage.setup;
       healthView = destination == PlatformPage.health;
       sessionsView = destination == PlatformPage.sessions;
@@ -1008,7 +1014,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       health = null;
       records = [];
       page = 1;
-      if (!setupView && !madrasasView && !staffView && !curriculumView) {
+      if (!setupView &&
+          !madrasasView &&
+          !staffView &&
+          !curriculumView &&
+          !oversightView) {
         await load();
       }
     });
@@ -1878,11 +1888,21 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           },
         ),
       ],
-      child: curriculumView
+      child: oversightView
+          ? CurriculumOversightPage(
+              key: ValueKey(version),
+              load: (path) => api.call(path),
+              onBack: () => navigateTo(PlatformPage.curriculum),
+              onSessionExpired: () {
+                if (mounted) setState(() {});
+              },
+            )
+          : curriculumView
           ? PlatformCurriculumPage(
               key: ValueKey(version),
               call: api.call,
               accountId: '${api.user!['id']}',
+              onOpenOversight: () => navigateTo(PlatformPage.oversight),
               onSessionExpired: () {
                 if (mounted) setState(() {});
               },

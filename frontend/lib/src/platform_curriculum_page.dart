@@ -14,10 +14,12 @@ class PlatformCurriculumPage extends StatefulWidget {
     required this.call,
     required this.accountId,
     required this.onSessionExpired,
+    this.onOpenOversight,
   });
   final Future<dynamic> Function(String, {Map<String, dynamic>? body}) call;
   final String accountId;
   final VoidCallback onSessionExpired;
+  final VoidCallback? onOpenOversight;
   @override
   State<PlatformCurriculumPage> createState() => _PlatformCurriculumPageState();
 }
@@ -2520,7 +2522,8 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                     OutlinedButton.icon(
                       onPressed: saving
                           ? null
-                          : () => setState(() => oversight = true),
+                          : widget.onOpenOversight ??
+                                () => setState(() => oversight = true),
                       icon: const Icon(Icons.insights_outlined),
                       label: const Text('Learning Oversight'),
                     ),

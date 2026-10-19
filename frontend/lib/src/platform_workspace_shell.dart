@@ -14,6 +14,7 @@ enum PlatformPage {
   madrasas,
   staff,
   curriculum,
+  oversight,
   applications,
   accounts,
   history,
@@ -256,11 +257,8 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
     if (isAdmin) ...[
       (PlatformPage.madrasas, 'Madrasas', Icons.account_balance_outlined),
       (PlatformPage.staff, 'Users & Permissions', Icons.people_outline),
-      (
-        PlatformPage.curriculum,
-        'Curriculum &',
-        Icons.menu_book_outlined,
-      ),
+      (PlatformPage.curriculum, 'Curriculum &', Icons.menu_book_outlined),
+      (PlatformPage.oversight, 'Learning Oversight', Icons.insights_outlined),
       (PlatformPage.accounts, 'Company accounts', Icons.badge_outlined),
       (PlatformPage.history, 'Office history', Icons.history_rounded),
     ] else ...[
@@ -276,6 +274,7 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
     PlatformPage.madrasas => 'Madrasa directory',
     PlatformPage.staff => 'Users & Permissions',
     PlatformPage.curriculum => 'Curriculum & Subjects',
+    PlatformPage.oversight => 'Learning Oversight',
     PlatformPage.applications => 'Madrasas / Applications',
     PlatformPage.accounts => 'People & access',
     PlatformPage.history => isAdmin ? 'Office activity' : 'Security activity',
