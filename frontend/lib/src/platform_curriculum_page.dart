@@ -6,6 +6,7 @@ import 'workspace_chrome.dart';
 import 'workspace_form_dialog.dart';
 import 'curriculum_topic_dialog.dart';
 import 'curriculum_lesson_dialog.dart';
+import 'curriculum_oversight_page.dart';
 
 class PlatformCurriculumPage extends StatefulWidget {
   const PlatformCurriculumPage({
@@ -44,6 +45,7 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
   int tab = 0, page = 1, total = 0, schools = 0;
   int detailTab = 0;
   bool busy = true, saving = false, draftsOnly = false;
+  bool oversight = false;
   String? error;
   String? focusedId;
   String activeQuery = '';
@@ -2051,7 +2053,15 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
   }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
+  Widget build(BuildContext context) => oversight
+      ? CurriculumOversightPage(
+          load: (path) => widget.call(path),
+          onBack: () => setState(() => oversight = false),
+          onSessionExpired: widget.onSessionExpired,
+        )
+      : buildCurriculum(context);
+
+  Widget buildCurriculum(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
       final narrow = bounds.maxWidth < 1000;
       final navigationTabs = focusedId == null ? tabs : detailTabs;
@@ -2506,6 +2516,13 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                               load();
                             },
                       child: const Text('View unpublished'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () => setState(() => oversight = true),
+                      icon: const Icon(Icons.insights_outlined),
+                      label: const Text('Learning Oversight'),
                     ),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(

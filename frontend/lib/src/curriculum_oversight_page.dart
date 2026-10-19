@@ -1,0 +1,212 @@
+import 'package:flutter/material.dart';
+import 'api_client.dart';
+import 'workspace_form_dialog.dart';
+
+class CurriculumOversightPage extends StatefulWidget {
+  const CurriculumOversightPage({
+    super.key,
+    required this.load,
+    required this.onBack,
+    required this.onSessionExpired,
+  });
+  final Future<dynamic> Function(String) load;
+  final VoidCallback onBack, onSessionExpired;
+  @override
+  State<CurriculumOversightPage> createState() => _OversightState();
+}
+
+class _OversightState extends State<CurriculumOversightPage> {
+  final filters = [
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController(),
+  ];
+  Map<String, String> applied = {};
+  int page = 1;
+  late Future<dynamic> result = fetch();
+  Future<dynamic> fetch() async {
+    try {
+      return await widget.load(
+        '/curriculum/oversight?${Uri(queryParameters: {...applied, 'page': '$page'}).query}',
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 && mounted) widget.onSessionExpired();
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void reload(int target, {bool apply = false}) {
+    setState(() {
+      page = target;
+      if (apply) {
+        applied = {};
+        for (var i = 0; i < filters.length; i++) {
+          final value = filters[i].text.trim();
+          if (value.isNotEmpty) {
+            applied[['madrasa', 'subject', 'level'][i]] = value;
+          }
+        }
+      }
+      result = fetch();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final controller in filters) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: widget.onBack,
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Back to curriculum'),
+          ),
+        ),
+        Text(
+          'Learning Oversight',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        const SizedBox(height: 16),
+        const WorkspaceFormNotice(
+          message:
+              'Current class adoptions and teacher-reported teaching across assigned madrasas. Each lesson counts once per class and version. Not assessment or learner achievement. Totals are all-time, not monthly.',
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (var i = 0; i < filters.length; i++)
+              SizedBox(
+                width: 220,
+                child: TextField(
+                  controller: filters[i],
+                  decoration: InputDecoration(
+                    labelText: ['Madrasa', 'Subject', 'Level'][i],
+                  ),
+                  onSubmitted: (_) => reload(1, apply: true),
+                ),
+              ),
+            FilledButton(
+              onPressed: () => reload(1, apply: true),
+              child: const Text('Apply filters'),
+            ),
+            TextButton(
+              onPressed: () {
+                for (final controller in filters) {
+                  controller.clear();
+                }
+                reload(1, apply: true);
+              },
+              child: const Text('Clear filters'),
+            ),
+            TextButton.icon(
+              onPressed: () => reload(1),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        FutureBuilder<dynamic>(
+          future: result,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const LinearProgressIndicator();
+            }
+            if (snapshot.data == null) {
+              return Column(
+                children: [
+                  const Text('Could not load learning oversight.'),
+                  TextButton(
+                    onPressed: () => reload(page),
+                    child: const Text('Try again'),
+                  ),
+                ],
+              );
+            }
+            final data = snapshot.data as Map;
+            final rows = data['items'] as List;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (rows.isEmpty)
+                  const Text('No assigned frameworks match these filters.'),
+                for (final row in rows)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${row['madrasa']} · ${row['madrasaStatus']}',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            '${row['subject']} / ${row['level'] ?? 'Level not set'} / v${row['version']}',
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '${row['adoptedClasses']} class adoption records',
+                          ),
+                          Text(
+                            '${row['taughtClassLessons']} / ${row['plannedClassLessons']} class-lessons recorded as taught',
+                          ),
+                          Text(
+                            '${row['pendingClassLessons']} class-lessons without teaching records',
+                          ),
+                          if (row['plannedClassLessons'] == 0)
+                            const Text(
+                              'Teaching coverage is not applicable without adopted classes and planned lessons.',
+                            ),
+                          if (row['subjectActive'] != true)
+                            const Text(
+                              'School subject is inactive or not linked. Adoption records do not confirm current teaching access.',
+                            ),
+                          if (row['madrasaStatus'] != 'ACTIVE' &&
+                              row['madrasaStatus'] != 'TRIAL')
+                            const Text(
+                              'Madrasa is not active. Records are retained for oversight, not evidence of current access.',
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: page > 1 ? () => reload(page - 1) : null,
+                      child: const Text('Previous'),
+                    ),
+                    Text('Page $page'),
+                    TextButton(
+                      onPressed: data['hasMore'] == true
+                          ? () => reload(page + 1)
+                          : null,
+                      child: const Text('Next'),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}
