@@ -1584,6 +1584,13 @@ confirmation, while assessment linkage remains unfinished.
 
 ### Online lesson delivery backend
 
+The school curriculum list includes current-version `teachingCoverage` for each
+visible class adoption, using a single scoped grouped delivery query. Repeated
+deliveries of one lesson count once; previous-version deliveries remain in history
+but do not increase current-version coverage. Class cards show taught/total lessons,
+not learner achievement. Closing a successfully confirmed teaching dialog reloads
+the list from the server; closing a failed confirmation does not increase coverage.
+
 `POST /api/school-curriculum/deliveries` accepts only `classCurriculumId`,
 `assignmentId`, `lessonId` and a UUID `clientEventId`. Only an active teacher
 assigned to that class may record teaching. The active madrasa/branch scope,

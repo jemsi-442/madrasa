@@ -30,6 +30,32 @@ function fixture() {
   return { tx, service: new SchoolCurriculumService(db) };
 }
 describe('school curriculum boundaries', () => {
+  it('loads distinct current-version teaching counts in one scoped query', async () => {
+    const { tx, service } = fixture();
+    tx.curriculumAssignment.findMany.mockResolvedValue([{
+      id: 'assigned-v1', subjectId: 40n,
+      version: { id: 'v1', version: '1.0', lessons: [{ id: 'lesson-a' }, { id: 'lesson-b' }] },
+      adoptions: [{ id: 'class-a' }, { id: 'class-b' }],
+    }]);
+    tx.curriculumLessonDelivery.groupBy.mockResolvedValue([
+      { assignmentId: 'assigned-v1', classCurriculumId: 'class-a', lessonId: 'lesson-a' },
+      { assignmentId: 'assigned-v1', classCurriculumId: 'class-a', lessonId: 'lesson-b' },
+    ]);
+    const data = await service.list(admin);
+    expect(data.assignments[0].adoptions.map((row: { teachingCoverage: unknown }) => row.teachingCoverage)).toEqual([
+      { version: '1.0', taughtLessons: 2, totalLessons: 2 },
+      { version: '1.0', taughtLessons: 0, totalLessons: 2 },
+    ]);
+    expect(tx.curriculumLessonDelivery.groupBy).toHaveBeenCalledExactlyOnceWith({
+      by: ['classCurriculumId', 'assignmentId', 'lessonId'],
+      where: { orgId: 10n, OR: [{ assignmentId: 'assigned-v1', classCurriculumId: { in: ['class-a', 'class-b'] }, lesson: { versionId: 'v1' } }] },
+    });
+  });
+  it('does not query teaching records without visible adopted classes', async () => {
+    const { service, tx } = fixture();
+    await service.list(admin);
+    expect(tx.curriculumLessonDelivery.groupBy).not.toHaveBeenCalled();
+  });
   it('pages scoped teaching history without exposing event IDs or login details', async () => {
     const { tx, service } = fixture();
     tx.classCurriculum.findFirst.mockResolvedValue({ id: 'adoption', assignmentId: 'assigned-v1', assignment: { versionId: 'v1', version: { version: '1.0' } } });

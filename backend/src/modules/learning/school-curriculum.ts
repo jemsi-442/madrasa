@@ -65,7 +65,32 @@ export class SchoolCurriculumService {
         ] },
         select: { id: true, name: true, isActive: true }, orderBy: { name: 'asc' },
       }) : [];
-      return serialise({ assignments, classes, subjects });
+      const coverageScopes = assignments.filter(assignment => assignment.adoptions.length > 0).map(assignment => ({
+        assignmentId: assignment.id,
+        classCurriculumId: { in: assignment.adoptions.map(adoption => adoption.id) },
+        lesson: { versionId: assignment.version.id },
+      }));
+      const taught = coverageScopes.length === 0 ? [] : await tx.curriculumLessonDelivery.groupBy({
+        by: ['classCurriculumId', 'assignmentId', 'lessonId'],
+        where: { orgId: BigInt(actor.orgId), OR: coverageScopes },
+      });
+      const counts = new Map<string, number>();
+      for (const row of taught) {
+        const key = `${row.assignmentId}/${row.classCurriculumId}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      const withCoverage = assignments.map(assignment => ({
+        ...assignment,
+        adoptions: assignment.adoptions.map(adoption => ({
+          ...adoption,
+          teachingCoverage: {
+            version: assignment.version.version,
+            taughtLessons: counts.get(`${assignment.id}/${adoption.id}`) ?? 0,
+            totalLessons: assignment.version.lessons.length,
+          },
+        })),
+      }));
+      return serialise({ assignments: withCoverage, classes, subjects });
     });
   }
 

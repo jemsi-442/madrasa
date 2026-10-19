@@ -30,6 +30,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
 
   Future<void> recordTeaching(Map assignment, Map lesson) async {
     if (widget.isAdmin) return;
+    var confirmed = false;
     final adoptions = (assignment['adoptions'] as List).cast<Map>();
     String? selected = adoptions.length == 1
         ? '${adoptions.single['id']}'
@@ -127,6 +128,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                                 });
                             if (!mounted || !context.mounted) return;
                             recordedDeliveries.add(key);
+                            confirmed = true;
                             update(() => sending = false);
                           } catch (error) {
                             if (!mounted || !context.mounted) return;
@@ -157,6 +159,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         },
       ),
     );
+    if (confirmed && mounted) reload();
   }
 
   String historyDate(dynamic value) {
@@ -210,8 +213,13 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
     return 'Create an active school subject before adopting curriculum.';
   }
 
-  void reload() =>
-      setState(() => future = widget.load('/api/school-curriculum'));
+  void reload() {
+    final next = widget.load('/api/school-curriculum');
+    setState(() {
+      future = next;
+    });
+  }
+
   @override
   void didUpdateWidget(covariant SchoolCurriculumPage oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -454,6 +462,16 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                           icon: const Icon(Icons.history),
                           label: const Text('Teaching history'),
                         ),
+                        if (adoption['teachingCoverage'] is Map) ...[
+                          Text(
+                            'Teaching coverage: ${adoption['teachingCoverage']['taughtLessons']} / ${adoption['teachingCoverage']['totalLessons']} lessons',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          Text(
+                            'Current version only. Teacher-reported teaching, not learner achievement.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                         for (final history in adoption['history'] as List)
                           Padding(
                             padding: const EdgeInsets.only(left: 12, top: 4),

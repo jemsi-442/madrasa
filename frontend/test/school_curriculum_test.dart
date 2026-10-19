@@ -33,6 +33,11 @@ void main() {
               'adoptions': [
                 {
                   'id': 'adoption-1',
+                  'teachingCoverage': {
+                    'version': '1.0',
+                    'taughtLessons': 1,
+                    'totalLessons': 3,
+                  },
                   'createdAt': '2026-09-15T08:00:00.000Z',
                   'class': {
                     'id': '10',
@@ -86,6 +91,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        expect(find.text('Teaching coverage: 1 / 3 lessons'), findsOneWidget);
         expect(
           find.textContaining(
             'Previous: Arabic / Level 1 / v0.9 · in use from 1/1/2026 to 15/9/2026',
@@ -128,6 +134,7 @@ void main() {
         await tester.pump(const Duration(seconds: 5));
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Shared lesson plans'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Shared lesson plans'));
         await tester.pumpAndSettle();
         expect(find.text('Read in pairs'), findsOneWidget);

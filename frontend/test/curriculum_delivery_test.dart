@@ -14,6 +14,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         final first = Completer<dynamic>();
         final writes = <Map<String, dynamic>>[];
+        var loads = 0;
         final data = {
           'subjects': [],
           'classes': [],
@@ -56,7 +57,10 @@ void main() {
             home: Scaffold(
               body: SchoolCurriculumPage(
                 isAdmin: admin,
-                load: (_) async => data,
+                load: (_) async {
+                  loads++;
+                  return data;
+                },
                 submit: (path, body) async {
                   expect(path, '/api/school-curriculum/deliveries');
                   writes.add(Map<String, dynamic>.from(body));
@@ -102,6 +106,7 @@ void main() {
         // Closing and reopening the dialog still retries the same pending event.
         await tester.tap(find.text('Close'));
         await tester.pumpAndSettle();
+        expect(loads, 1);
         await tester.tap(find.text('Record lesson taught'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Confirm taught'));
@@ -131,6 +136,10 @@ void main() {
               .onPressed,
           isNull,
         );
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+        expect(loads, 2);
+        expect(writes, hasLength(2));
         expect(tester.takeException(), isNull);
       });
     }
