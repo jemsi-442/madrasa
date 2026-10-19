@@ -17,7 +17,15 @@ async function main() {
     });
     if (result.status !== 0) {
       // Do not include captured CLI output: connection strings may contain credentials.
-      throw new Error(`Prisma ${args.slice(0, 2).join(" ")} failed. Stop and inspect the target before retrying; no automatic repair was attempted.`);
+      const migration = result.stderr.match(/Migration name:\s*([A-Za-z0-9_]+)/)?.[1];
+      const prismaCode = result.stderr.match(/\b(P\d{4})\b/)?.[1];
+      const databaseCode = result.stderr.match(/Database error code:\s*(\d+)/)?.[1];
+      const details = [
+        migration ? `migration ${migration}` : null,
+        prismaCode ? `Prisma ${prismaCode}` : null,
+        databaseCode ? `database error ${databaseCode}` : null,
+      ].filter(Boolean).join(", ");
+      throw new Error(`Prisma ${args.slice(0, 2).join(" ")} failed${details ? ` (${details})` : ""}. Stop and inspect the target before retrying; no automatic repair was attempted.`);
     }
   };
   try {
