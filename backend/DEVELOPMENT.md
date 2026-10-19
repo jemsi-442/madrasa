@@ -1662,6 +1662,11 @@ records for that assignment/version, not historical adoption totals. Repeated
 teaching counts once per class; replaced-version records are not transferred.
 Inactive madrasa/subject records are labelled, not represented as active access.
 No learner records or teacher contact details are exposed. These are all-time
+snapshots: `generatedAt` is the server report-generation time, displayed in UTC,
+not the last teaching event or a live-data guarantee. Missing timestamps are
+labelled unavailable; failed refreshes do not show a previous timestamp as current.
+The UI distinguishes expired sessions and unavailable account access from generic
+load failures without displaying internal server error messages. The report uses
 teacher declarations; monthly reports, assessment coverage and export remain
 unfinished.
 Migration `202610201000_curriculum_lesson_delivery` is supplied

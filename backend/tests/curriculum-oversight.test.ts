@@ -45,7 +45,11 @@ it('rejects inactive accounts and invalid filters', async () => {
 it('does not read deliveries for an empty assignment result', async () => {
   const { service, tx } = fixture();
   tx.curriculumAssignment.findMany.mockResolvedValue([]);
-  expect(await service.oversight(actor, {})).toEqual({ items: [], page: 1, hasMore: false });
+  const before = Date.now();
+  const result = await service.oversight(actor, {});
+  expect(result).toMatchObject({ items: [], page: 1, hasMore: false });
+  expect(Date.parse(result.generatedAt)).toBeGreaterThanOrEqual(before);
+  expect(Date.parse(result.generatedAt)).toBeLessThanOrEqual(Date.now());
   expect(tx.curriculumLessonDelivery.groupBy).not.toHaveBeenCalled();
 });
 it('shows assignment without adoption as zero coverage, not teaching completion', async () => {

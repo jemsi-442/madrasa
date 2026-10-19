@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'api_client.dart';
 import 'workspace_form_dialog.dart';
 
+class _OversightFailure {
+  const _OversightFailure(this.status);
+  final int status;
+}
+
 class CurriculumOversightPage extends StatefulWidget {
   const CurriculumOversightPage({
     super.key,
@@ -40,6 +45,9 @@ class _OversightState extends State<CurriculumOversightPage> {
       );
     } on ApiException catch (error) {
       if (error.statusCode == 401 && mounted) widget.onSessionExpired();
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        return _OversightFailure(error.statusCode);
+      }
       return null;
     } catch (_) {
       return null;
@@ -149,6 +157,13 @@ class _OversightState extends State<CurriculumOversightPage> {
             if (snapshot.connectionState != ConnectionState.done) {
               return const LinearProgressIndicator();
             }
+            if (snapshot.data is _OversightFailure) {
+              return Text(
+                (snapshot.data as _OversightFailure).status == 401
+                    ? 'Your session has expired. Sign in again.'
+                    : 'Learning Oversight is not available for this account.',
+              );
+            }
             if (snapshot.data == null) {
               return Column(
                 children: [
@@ -162,9 +177,19 @@ class _OversightState extends State<CurriculumOversightPage> {
             }
             final data = snapshot.data as Map;
             final rows = data['items'] as List;
+            final generatedAt = DateTime.tryParse('${data['generatedAt']}');
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text(
+                  generatedAt == null
+                      ? 'Snapshot time unavailable. Refresh to request current data.'
+                      : 'Report generated: ${generatedAt.toUtc().toIso8601String()} (UTC)',
+                ),
+                const Text(
+                  'Snapshot only, not live monitoring. Refresh to check for updates.',
+                ),
+                const SizedBox(height: 12),
                 if (rows.isEmpty)
                   const Text('No assigned frameworks match these filters.'),
                 for (final row in rows)

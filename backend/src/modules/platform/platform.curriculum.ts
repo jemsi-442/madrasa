@@ -69,6 +69,7 @@ export class PlatformCurriculumService {
         by: ['assignmentId', 'classCurriculumId', 'lessonId'], where: { OR: scopes },
       }) : [];
       return {
+        generatedAt: new Date().toISOString(),
         page: query.page, hasMore: rows.length > 20,
         items: visible.map(row => {
           const planned = row.adoptions.length * row.version._count.lessons;

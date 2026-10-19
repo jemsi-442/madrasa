@@ -3,8 +3,76 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_oversight_page.dart';
 import 'package:mif_app/src/platform_curriculum_page.dart';
+import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final status in [401, 403]) {
+    testWidgets(
+      'oversight labels access error $status without server details',
+      (tester) async {
+        var expired = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: CurriculumOversightPage(
+                onBack: () {},
+                onSessionExpired: () => expired++,
+                load: (_) async =>
+                    throw ApiException('Internal server detail', status),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            status == 401
+                ? 'Your session has expired. Sign in again.'
+                : 'Learning Oversight is not available for this account.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Internal server detail'), findsNothing);
+        expect(find.text('Try again'), findsNothing);
+        expect(expired, status == 401 ? 1 : 0);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  testWidgets('refresh failure hides previous snapshot timestamp', (
+    tester,
+  ) async {
+    var calls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurriculumOversightPage(
+            onBack: () {},
+            onSessionExpired: () {},
+            load: (_) async {
+              if (++calls > 1) throw Exception('Unavailable');
+              return {
+                'items': [],
+                'hasMore': false,
+                'generatedAt': '2026-10-20T12:30:00Z',
+              };
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Report generated: 2026-10-20T12:30:00.000Z (UTC)'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.text('Refresh'));
+    await tester.tap(find.text('Refresh'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Report generated:'), findsNothing);
+    expect(find.text('Could not load learning oversight.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('late report cannot replace a newer applied filter', (
     tester,
   ) async {
