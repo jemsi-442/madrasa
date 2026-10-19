@@ -1507,7 +1507,7 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
 
   bool assignmentIsActive(Map<String, dynamic> assignment) {
     final status = (assignment['organization'] as Map?)?['status'];
-    return status == null || status == 'ACTIVE';
+    return status == 'ACTIVE';
   }
 
   bool assignmentIsTrial(Map<String, dynamic> assignment) =>
@@ -1570,6 +1570,9 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
     }
     if (status == 'TRIAL') {
       return 'Trial access · $adopted existing class adoptions · $subjectStatus';
+    }
+    if (status != 'ACTIVE') {
+      return 'Madrasa status unavailable · $adopted recorded class adoptions · Not counted as active · $subjectStatus';
     }
     final adoptionLabel = adopted == 1
         ? '1 class adoption record'
@@ -1975,7 +1978,7 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.account_balance_outlined),
                 title: Text(
-                  '${assignment['organization']['name']} (${assignment['organization']['code']})',
+                  '${assignment['organization']?['name'] ?? 'Madrasa unavailable'} (${assignment['organization']?['code'] ?? 'Code unavailable'})',
                 ),
                 subtitle: Text(
                   assignmentStatus(Map<String, dynamic>.from(assignment)),

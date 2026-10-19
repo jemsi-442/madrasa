@@ -722,7 +722,11 @@ void main() {
                     '_count': {'assignments': 1},
                     'assignments': [
                       {
-                        'organization': {'name': 'Afaq School', 'code': 'AFQ'},
+                        'organization': {
+                          'name': 'Afaq School',
+                          'code': 'AFQ',
+                          'status': 'ACTIVE',
+                        },
                       },
                     ],
                   },
@@ -818,6 +822,20 @@ void main() {
           },
           '_count': {'adoptions': 3},
         },
+        {
+          'id': 'assignment-unknown',
+          'organizationId': '13',
+          'subjectId': null,
+          'organization': {'name': 'Unknown Madrasa', 'code': 'UNK'},
+          '_count': {'adoptions': 7},
+        },
+        {
+          'id': 'assignment-unavailable',
+          'organizationId': '14',
+          'subjectId': null,
+          'organization': null,
+          '_count': {'adoptions': 4},
+        },
       ],
     };
     var assignmentPickerLoads = 0;
@@ -862,6 +880,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('2 class adoption records'), findsOneWidget);
+    expect(find.textContaining('Madrasa status unavailable'), findsNWidgets(2));
+    expect(find.textContaining('Not counted as active'), findsNWidgets(2));
+    expect(find.text('Madrasa unavailable (Code unavailable)'), findsOneWidget);
     expect(
       find.textContaining('Madrasa suspended · 8 historical class adoptions'),
       findsOneWidget,
@@ -910,7 +931,11 @@ void main() {
           'organizationId': '10',
           'subjectId': null,
           'subject': null,
-          'organization': {'name': 'Afaq Madrasa', 'code': 'AFQ'},
+          'organization': {
+            'name': 'Afaq Madrasa',
+            'code': 'AFQ',
+            'status': 'ACTIVE',
+          },
           '_count': {'adoptions': 1},
         },
         {
@@ -918,7 +943,11 @@ void main() {
           'organizationId': '11',
           'subjectId': '21',
           'subject': {'name': 'Arabic', 'isActive': false},
-          'organization': {'name': 'Rahma Madrasa', 'code': 'RAH'},
+          'organization': {
+            'name': 'Rahma Madrasa',
+            'code': 'RAH',
+            'status': 'ACTIVE',
+          },
           '_count': {'adoptions': 1},
         },
       ],
@@ -1601,7 +1630,7 @@ void main() {
       'assignments': <Map<String, dynamic>>[
         {
           'organizationId': '3',
-          'organization': {'name': 'Amina', 'code': 'A03'},
+          'organization': {'name': 'Amina', 'code': 'A03', 'status': 'ACTIVE'},
           '_count': {'adoptions': 2},
         },
       ],
