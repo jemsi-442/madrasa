@@ -1654,7 +1654,10 @@ are persisted. Unknown/forbidden destinations fall back to Overview. This is a
 same-tab navigation preference, not a URL deep link or native-app persistence.
 It rechecks active platform account and curriculum permission,
 supports madrasa-name, subject and level filters, and pages 20 assignments at a
-time. Each row reports current class adoptions and distinct class/lesson teaching
+time. The UI labels applied filters separately from unsubmitted edits; Refresh,
+retry and pagination retain the applied filter set. Clear filters resets both the
+inputs and applied set. Widget regression tests verify that a late earlier response
+cannot replace the latest report. Each row reports current class adoptions and distinct class/lesson teaching
 records for that assignment/version, not historical adoption totals. Repeated
 teaching counts once per class; replaced-version records are not transferred.
 Inactive madrasa/subject records are labelled, not represented as active access.

@@ -22,6 +22,15 @@ class _OversightState extends State<CurriculumOversightPage> {
     TextEditingController(),
   ];
   Map<String, String> applied = {};
+  static const filterKeys = ['madrasa', 'subject', 'level'];
+  static const filterLabels = ['Madrasa', 'Subject', 'Level'];
+  bool get hasUnappliedChanges {
+    for (var i = 0; i < filters.length; i++) {
+      if (filters[i].text.trim() != (applied[filterKeys[i]] ?? '')) return true;
+    }
+    return false;
+  }
+
   int page = 1;
   late Future<dynamic> result = fetch();
   Future<dynamic> fetch() async {
@@ -45,7 +54,7 @@ class _OversightState extends State<CurriculumOversightPage> {
         for (var i = 0; i < filters.length; i++) {
           final value = filters[i].text.trim();
           if (value.isNotEmpty) {
-            applied[['madrasa', 'subject', 'level'][i]] = value;
+            applied[filterKeys[i]] = value;
           }
         }
       }
@@ -94,9 +103,8 @@ class _OversightState extends State<CurriculumOversightPage> {
                 width: 220,
                 child: TextField(
                   controller: filters[i],
-                  decoration: InputDecoration(
-                    labelText: ['Madrasa', 'Subject', 'Level'][i],
-                  ),
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(labelText: filterLabels[i]),
                   onSubmitted: (_) => reload(1, apply: true),
                 ),
               ),
@@ -121,6 +129,20 @@ class _OversightState extends State<CurriculumOversightPage> {
           ],
         ),
         const SizedBox(height: 20),
+        Text(
+          applied.isEmpty
+              ? 'Applied filters: All assigned frameworks'
+              : 'Applied filters: ${applied.entries.map((entry) => '${filterLabels[filterKeys.indexOf(entry.key)]}: ${entry.value}').join(' / ')}',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        if (hasUnappliedChanges)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Filter changes are not applied yet. Select Apply filters; Refresh and pagination use the applied filters.',
+            ),
+          ),
+        const SizedBox(height: 12),
         FutureBuilder<dynamic>(
           future: result,
           builder: (context, snapshot) {

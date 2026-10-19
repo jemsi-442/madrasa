@@ -1,9 +1,51 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_oversight_page.dart';
 import 'package:mif_app/src/platform_curriculum_page.dart';
 
 void main() {
+  testWidgets('late report cannot replace a newer applied filter', (
+    tester,
+  ) async {
+    final old = Completer<dynamic>();
+    var requests = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurriculumOversightPage(
+            onBack: () {},
+            onSessionExpired: () {},
+            load: (path) async {
+              requests++;
+              if (requests == 1) return old.future;
+              expect(Uri.parse(path).queryParameters, {
+                'subject': 'Arabic',
+                'page': '1',
+              });
+              return {'items': [], 'hasMore': false};
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).at(1), 'Arabic');
+    await tester.ensureVisible(find.text('Apply filters'));
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+    expect(find.text('Applied filters: Subject: Arabic'), findsOneWidget);
+    old.complete({'items': [], 'hasMore': true});
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, 'Next'))
+          .onPressed,
+      isNull,
+    );
+    expect(find.text('Applied filters: Subject: Arabic'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('curriculum opens oversight and returns to library', (
     tester,
   ) async {
@@ -108,6 +150,18 @@ void main() {
       await tester.tap(find.text('Apply filters'));
       await tester.pumpAndSettle();
       expect(queries.last, {'madrasa': 'Synthetic', 'page': '1'});
+      expect(find.text('Applied filters: Madrasa: Synthetic'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'Unapplied Madrasa');
+      await tester.pump();
+      expect(
+        find.textContaining('Filter changes are not applied yet'),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      expect(queries.last, {'madrasa': 'Synthetic', 'page': '1'});
       await tester.ensureVisible(find.text('Next'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Next'));
@@ -118,6 +172,14 @@ void main() {
       await tester.tap(find.text('Clear filters'));
       await tester.pumpAndSettle();
       expect(queries.last, {'page': '1'});
+      expect(
+        find.textContaining('Filter changes are not applied yet'),
+        findsNothing,
+      );
+      expect(
+        find.text('Applied filters: All assigned frameworks'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }
