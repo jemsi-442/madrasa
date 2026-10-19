@@ -184,4 +184,31 @@ export class SchoolCurriculumService {
       throw error;
     }
   }
+
+  async deliveryHistory(actor: AuthenticatedUser, raw: unknown) {
+    const query = z.object({
+      classCurriculumId: z.string().min(1).max(30),
+      page: z.coerce.number().int().min(1).max(10000).default(1),
+    }).strict().parse(raw);
+    return this.db.$transaction(async tx => {
+      await this.authorize(tx, actor);
+      const adoption = await tx.classCurriculum.findFirst({
+        where: { id: query.classCurriculumId, orgId: BigInt(actor.orgId), class: classScope(actor) },
+        select: { id: true },
+      });
+      if (!adoption) throw new HttpError(404, 'Class curriculum is unavailable');
+      const rows = await tx.curriculumLessonDelivery.findMany({
+        where: { orgId: BigInt(actor.orgId), classCurriculumId: adoption.id },
+        orderBy: [{ taughtAt: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * 20, take: 21,
+        select: {
+          id: true, taughtAt: true,
+          lesson: { select: { title: true } },
+          teacher: { select: { fullName: true } },
+          assignment: { select: { version: { select: { subject: true, level: true, version: true } } } },
+        },
+      });
+      return serialise({ items: rows.slice(0, 20), page: query.page, hasMore: rows.length > 20 });
+    });
+  }
 }

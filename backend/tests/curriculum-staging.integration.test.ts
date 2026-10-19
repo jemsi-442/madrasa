@@ -567,6 +567,20 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       const savedDelivery = await db.curriculumLessonDelivery.findUniqueOrThrow({ where: { id: delivery.id } });
       expect(savedDelivery.assignmentId).toBe(firstAssignment.assignments[0]!.id);
       expect(savedDelivery.lessonId).toBe(sourceContent.lessons[0]!.id);
+      for (const actor of [schoolActor, teacherActor]) {
+        const teachingHistory = await school.deliveryHistory(actor, { classCurriculumId: deliveryInput.classCurriculumId });
+        expect(teachingHistory.items).toHaveLength(1);
+        expect(teachingHistory.items[0]).toMatchObject({
+          id: delivery.id,
+          assignment: { version: { version: '1.0' } },
+          teacher: { fullName: 'Assigned Curriculum Teacher' },
+        });
+        expect(teachingHistory.items[0]).not.toHaveProperty('clientEventId');
+        expect(teachingHistory.hasMore).toBe(false);
+      }
+      await expect(school.deliveryHistory({ ...teacherActor, userId: otherTeacher.id.toString() }, {
+        classCurriculumId: deliveryInput.classCurriculumId,
+      })).rejects.toMatchObject({ statusCode: 404 });
       await expect(school.recordDelivery({ ...teacherActor, userId: otherTeacher.id.toString() }, {
         ...deliveryInput, clientEventId: randomUUID(),
       })).rejects.toMatchObject({ statusCode: 404 });

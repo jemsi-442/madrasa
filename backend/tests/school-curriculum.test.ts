@@ -22,12 +22,39 @@ function fixture() {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     classCurriculumHistory: { create: vi.fn().mockResolvedValue({ id: 'history' }) },
+    curriculumLessonDelivery: { findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn() },
   };
   const db = { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient;
   return { tx, service: new SchoolCurriculumService(db) };
 }
 describe('school curriculum boundaries', () => {
+  it('pages scoped teaching history without exposing event IDs or login details', async () => {
+    const { tx, service } = fixture();
+    tx.classCurriculum.findFirst.mockResolvedValue({ id: 'adoption' });
+    tx.curriculumLessonDelivery.findMany.mockResolvedValue(Array.from({ length: 21 }, (_, i) => ({ id: `${i}` })));
+    const result = await service.deliveryHistory(admin, { classCurriculumId: 'adoption', page: '2' });
+    expect(result.items).toHaveLength(20);
+    expect(result).toMatchObject({ page: 2, hasMore: true });
+    expect(tx.curriculumLessonDelivery.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { orgId: 10n, classCurriculumId: 'adoption' }, skip: 20, take: 21,
+      select: expect.objectContaining({ teacher: { select: { fullName: true } } }),
+    }));
+    expect(tx.curriculumLessonDelivery.findMany.mock.calls[0]![0].select).not.toHaveProperty('clientEventId');
+  });
+  it('rejects inaccessible history before reading delivery records', async () => {
+    const { tx, service } = fixture();
+    await expect(service.deliveryHistory({ ...admin, role: 'TEACHER' }, { classCurriculumId: 'other' }))
+      .rejects.toMatchObject({ statusCode: 404 });
+    expect(tx.curriculumLessonDelivery.findMany).not.toHaveBeenCalled();
+  });
+  it('rejects invalid history pagination', async () => {
+    const { tx, service } = fixture();
+    for (const page of [0, -1, 1.5, 10001, 'bad']) {
+      await expect(service.deliveryHistory(admin, { classCurriculumId: 'adoption', page })).rejects.toThrow();
+    }
+    expect(tx.curriculumLessonDelivery.findMany).not.toHaveBeenCalled();
+  });
   describe('online lesson delivery input and role boundaries', () => {
     const teacher: AuthenticatedUser = { ...admin, role: 'TEACHER' };
     const delivery = {

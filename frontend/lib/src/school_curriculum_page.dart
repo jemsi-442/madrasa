@@ -4,6 +4,7 @@ import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'design_tokens.dart';
 import 'workspace_form_dialog.dart';
+import 'curriculum_delivery_history_dialog.dart';
 
 class SchoolCurriculumPage extends StatefulWidget {
   const SchoolCurriculumPage({
@@ -440,6 +441,18 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                               ),
                             ],
                           ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => showDialog<void>(
+                            context: context,
+                            builder: (_) => CurriculumDeliveryHistoryDialog(
+                              load: widget.load,
+                              adoptionId: '${adoption['id']}',
+                              className: '${adoption['class']['name']}',
+                            ),
+                          ),
+                          icon: const Icon(Icons.history),
+                          label: const Text('Teaching history'),
                         ),
                         for (final history in adoption['history'] as List)
                           Padding(

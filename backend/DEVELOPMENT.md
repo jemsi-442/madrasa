@@ -1606,8 +1606,14 @@ event cannot be submitted again for that class/lesson during that visit. Pending
 IDs are in memory only: they do not survive page disposal or browser reload.
 The warning on uncertain outcomes asks the teacher to retry before leaving.
 This is not an offline queue or a durable duplicate-prevention UI across visits.
-Paginated delivery history, coverage reports and persistent offline event storage
-are not implemented yet.
+`GET /api/school-curriculum/deliveries?classCurriculumId=...&page=1` returns
+20 records per page with `hasMore`, newest first. It rechecks the active account
+and class/branch/madrasa scope on every request. Admins and assigned teachers
+can open Teaching history beside a class adoption. History includes earlier
+curriculum versions and displays the recorded lesson, version, teacher name
+and local date/time; client event IDs and account contact details are not returned.
+Pagination is offset-based; refresh page 1 to see newly recorded teaching.
+Coverage reports and persistent offline event storage are not implemented yet.
 Do not expose teaching coverage in Learning Oversight until those integrations
 are completed. Migration `202610201000_curriculum_lesson_delivery` is supplied
 but has only been applied to the disposable test database.

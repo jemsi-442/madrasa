@@ -124,6 +124,9 @@ void main() {
         } else {
           expect(find.text('Use in a class'), findsNothing);
         }
+        // Let the adoption confirmation snackbar stop covering the mobile list.
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Shared lesson plans'));
         await tester.tap(find.text('Shared lesson plans'));
         await tester.pumpAndSettle();
