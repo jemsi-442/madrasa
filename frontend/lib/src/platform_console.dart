@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_client.dart';
+import 'browser_state.dart';
 import 'foundation_ui.dart';
 import 'platform_provisioning_panel.dart';
 import 'platform_onboarding_progress.dart';
@@ -288,9 +289,15 @@ class _AccountHistoryDialogState extends State<_AccountHistoryDialog> {
 }
 
 class PlatformConsole extends StatefulWidget {
-  const PlatformConsole({super.key, this.api, this.onSignedOut});
+  const PlatformConsole({
+    super.key,
+    this.api,
+    this.onSignedOut,
+    this.browserState = const BrowserState(),
+  });
   final PlatformApi? api;
   final VoidCallback? onSignedOut;
+  final BrowserState browserState;
   @override
   State<PlatformConsole> createState() => _PlatformConsoleState();
 }
@@ -341,7 +348,16 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       audit = !isAdmin;
       homeView = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) run(load);
+        if (!mounted || api.user == null) return;
+        final saved = widget.browserState.read(navigationKey);
+        final destination = PlatformPage.values
+            .where((page) => page.name == saved)
+            .firstOrNull;
+        navigateTo(
+          destination != null && allowedDestination(destination)
+              ? destination
+              : PlatformPage.home,
+        );
       });
     }
   }
@@ -975,29 +991,36 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       ? PlatformPage.history
       : PlatformPage.applications;
 
+  String get navigationKey =>
+      'afaq.platform.page.${api.user?['id']}.${api.user?['role']}';
+
+  bool allowedDestination(PlatformPage destination) => isAdmin
+      ? {
+          PlatformPage.home,
+          PlatformPage.madrasas,
+          PlatformPage.staff,
+          PlatformPage.curriculum,
+          PlatformPage.oversight,
+          PlatformPage.accounts,
+          PlatformPage.history,
+        }.contains(destination)
+      : api.user?['role'] == 'IT_SECURITY' &&
+            {
+              PlatformPage.home,
+              PlatformPage.health,
+              PlatformPage.setup,
+              PlatformPage.sessions,
+              PlatformPage.history,
+            }.contains(destination);
+
   void navigateTo(PlatformPage destination) {
     if (busy || api.user == null) return;
     if (destination == PlatformPage.applications && isAdmin) {
       destination = PlatformPage.madrasas;
     }
-    if (isAdmin &&
-        [
-          PlatformPage.health,
-          PlatformPage.setup,
-          PlatformPage.sessions,
-        ].contains(destination)) {
-      return;
-    }
-    if (!isAdmin &&
-        [
-          PlatformPage.madrasas,
-          PlatformPage.staff,
-          PlatformPage.curriculum,
-          PlatformPage.oversight,
-          PlatformPage.applications,
-          PlatformPage.accounts,
-        ].contains(destination)) {
-      return;
+    if (!allowedDestination(destination)) return;
+    if (widget.onSignedOut != null) {
+      widget.browserState.write(navigationKey, destination.name);
     }
     run(() async {
       homeView = destination == PlatformPage.home;

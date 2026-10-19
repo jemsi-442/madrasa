@@ -1647,7 +1647,11 @@ Learning Oversight now has an initial read-only assignment report at
 sidebar destination or Curriculum in the Super Admin workspace. Both entry points
 use the shared workspace header/footer and selected navigation state; IT has no
 destination for this report. In-page Refresh keeps the selected destination.
-This does not add browser-reload/deep-link restoration of the destination.
+After the existing authenticated session restoration, the workspace restores its
+last permitted destination from browser sessionStorage. Only the page name is
+stored under an account/role-specific key; no credentials, filters or report rows
+are persisted. Unknown/forbidden destinations fall back to Overview. This is a
+same-tab navigation preference, not a URL deep link or native-app persistence.
 It rechecks active platform account and curriculum permission,
 supports madrasa-name, subject and level filters, and pages 20 assignments at a
 time. Each row reports current class adoptions and distinct class/lesson teaching
