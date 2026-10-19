@@ -1579,8 +1579,8 @@ history or count as teaching or achievement.
 The school workspace Curriculum page shows topics, measurable objectives and
 shared lesson plans as read-only references. Adoption does not create learner
 achievements, assessments, delivery records or attendance. The online delivery
-write API below is a separate backend increment; the teacher UI and assessment
-linkage remain unfinished.
+write API below is a separate increment; the teacher UI supports online
+confirmation, while assessment linkage remains unfinished.
 
 ### Online lesson delivery backend
 
@@ -1598,8 +1598,16 @@ An old event may be retried after upgrade, but a new event against the replaced
 assignment is rejected. Serializable transactions protect the adoption snapshot.
 
 This records a teacher's declaration of teaching, not student attendance,
-assessment or achievement. A teacher-facing action, paginated delivery history,
-coverage reports and persistent offline event storage are not implemented yet.
+assessment or achievement. Teachers can open Shared lesson plans and choose
+Record lesson taught, select their adopted class, and confirm. The UI blocks
+repeat clicks while sending and reuses the event ID after a failed request,
+including closing/reopening the dialog within the same page visit. A confirmed
+event cannot be submitted again for that class/lesson during that visit. Pending
+IDs are in memory only: they do not survive page disposal or browser reload.
+The warning on uncertain outcomes asks the teacher to retry before leaving.
+This is not an offline queue or a durable duplicate-prevention UI across visits.
+Paginated delivery history, coverage reports and persistent offline event storage
+are not implemented yet.
 Do not expose teaching coverage in Learning Oversight until those integrations
 are completed. Migration `202610201000_curriculum_lesson_delivery` is supplied
 but has only been applied to the disposable test database.

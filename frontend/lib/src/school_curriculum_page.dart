@@ -24,6 +24,140 @@ class SchoolCurriculumPage extends StatefulWidget {
 class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
   late Future<dynamic> future = widget.load('/api/school-curriculum');
   bool saving = false;
+  final deliveryEvents = <String, String>{};
+  final recordedDeliveries = <String>{};
+
+  Future<void> recordTeaching(Map assignment, Map lesson) async {
+    if (widget.isAdmin) return;
+    final adoptions = (assignment['adoptions'] as List).cast<Map>();
+    String? selected = adoptions.length == 1
+        ? '${adoptions.single['id']}'
+        : null;
+    var sending = false;
+    String? failure;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, update) {
+          final key = '${assignment['id']}/$selected/${lesson['id']}';
+          final recorded = recordedDeliveries.contains(key);
+          return PopScope(
+            canPop: !sending,
+            child: WorkspaceFormDialog(
+              title: const Text('Record lesson taught'),
+              content: SizedBox(
+                width: 480,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('${lesson['title']}'),
+                      Text(
+                        '${assignment['version']['subject']} / Version ${assignment['version']['version']}',
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: selected,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Class taught',
+                        ),
+                        items: [
+                          for (final adoption in adoptions)
+                            DropdownMenuItem(
+                              value: '${adoption['id']}',
+                              child: Text(
+                                '${adoption['class']['name']} (${adoption['class']['academicYear']})',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: sending
+                            ? null
+                            : (value) => update(() {
+                                selected = value;
+                                failure = null;
+                              }),
+                      ),
+                      const SizedBox(height: 16),
+                      const WorkspaceFormNotice(
+                        message:
+                            'Confirm only after teaching this lesson. This records teaching now, not student attendance, assessment or achievement. An internet connection is required.',
+                      ),
+                      if (recorded)
+                        const WorkspaceFormNotice(
+                          message:
+                              'Teaching recorded successfully during this visit.',
+                        ),
+                      if (failure != null)
+                        WorkspaceFormNotice(message: failure!, isError: true),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: sending
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: const Text('Close'),
+                ),
+                FilledButton(
+                  onPressed: sending || selected == null || recorded
+                      ? null
+                      : () async {
+                          final eventId = deliveryEvents.putIfAbsent(
+                            key,
+                            submissionId,
+                          );
+                          update(() {
+                            sending = true;
+                            failure = null;
+                          });
+                          try {
+                            await widget
+                                .submit('/api/school-curriculum/deliveries', {
+                                  'classCurriculumId': selected,
+                                  'assignmentId': assignment['id'],
+                                  'lessonId': lesson['id'],
+                                  'clientEventId': eventId,
+                                });
+                            if (!mounted || !context.mounted) return;
+                            recordedDeliveries.add(key);
+                            update(() => sending = false);
+                          } catch (error) {
+                            if (!mounted || !context.mounted) return;
+                            update(() {
+                              sending = false;
+                              failure =
+                                  error is ApiException &&
+                                      [403, 404, 422].contains(error.statusCode)
+                                  ? 'Could not record teaching. Check your class access and the adopted lesson before trying again.'
+                                  : error is ApiException &&
+                                        error.statusCode == 409
+                                  ? 'The curriculum changed or another update is in progress. Retry here; if it persists, close and refresh the curriculum.'
+                                  : 'Confirmation was not received. Retry here with the same event; do not refresh or leave this page until confirmed.';
+                            });
+                          }
+                        },
+                  child: Text(
+                    sending
+                        ? 'Recording...'
+                        : recorded
+                        ? 'Recorded'
+                        : 'Confirm taught',
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   String historyDate(dynamic value) {
     final date = DateTime.tryParse('$value')?.toLocal();
     if (date == null) return '';
@@ -37,9 +171,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
       previous['subject'],
       previous['level'],
       previous['version'] == null ? null : 'v${previous['version']}',
-    ]
-        .where((value) => value != null && '$value'.trim().isNotEmpty)
-        .join(' / ');
+    ].where((value) => value != null && '$value'.trim().isNotEmpty).join(' / ');
     final adoptedAt = historyDate(history['previousAdoptedAt']);
     final replacedAt = historyDate(history['replacedAt']);
     var period = '';
@@ -59,8 +191,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
     return (data['subjects'] as List).any(
       (subject) =>
           subject['isActive'] == true &&
-          (mappedSubjectId == null ||
-              '${subject['id']}' == mappedSubjectId),
+          (mappedSubjectId == null || '${subject['id']}' == mappedSubjectId),
     );
   }
 
@@ -328,8 +459,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                       child: Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: FilledButton.icon(
-                          onPressed:
-                              saving || !canAdopt(item, data)
+                          onPressed: saving || !canAdopt(item, data)
                               ? null
                               : () => adopt(
                                   Map<String, dynamic>.from(item),
@@ -340,8 +470,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                         ),
                       ),
                     ),
-                  if (widget.isAdmin &&
-                      !canAdopt(item, data))
+                  if (widget.isAdmin && !canAdopt(item, data))
                     Text(
                       adoptionUnavailableMessage(
                         Map<String, dynamic>.from(item as Map),
@@ -389,6 +518,22 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('${lesson['activities']}'),
+                              if (!widget.isAdmin &&
+                                  lesson['id'] != null &&
+                                  (item['adoptions'] as List).isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: OutlinedButton.icon(
+                                    onPressed: () =>
+                                        recordTeaching(item, lesson),
+                                    icon: const Icon(
+                                      Icons.check_circle_outline,
+                                    ),
+                                    label: const Text('Record lesson taught'),
+                                  ),
+                                ),
                               for (final link in lesson['objectives'])
                                 Text(
                                   '${link['objective']['code']}: ${link['objective']['description']}',
