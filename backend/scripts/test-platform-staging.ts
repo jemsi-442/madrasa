@@ -101,12 +101,20 @@ try {
     console.log("Applying complete migration history to disposable MariaDB...");
     console.log(run(prisma, ["migrate", "deploy"], testEnv));
   }
-  const testFile = process.argv.includes("--family-registration")
-    ? "tests/family-registration.integration.test.ts"
-    : "tests/platform-staging.integration.test.ts";
+  const testFiles = process.argv.includes("--all-tests")
+    ? []
+    : process.argv.includes("--class-management")
+    ? ["tests/class-management.integration.test.ts"]
+    : process.argv.includes("--family-registration")
+    ? ["tests/family-registration.integration.test.ts"]
+    : ["tests/platform-staging.integration.test.ts"];
+  if (process.argv.includes("--curriculum") && !process.argv.includes("--all-tests")) {
+    testFiles.push("tests/curriculum-staging.integration.test.ts");
+  }
   // Family rollback tests install a database-wide failure trigger temporarily.
-  console.log(run(join(root, "node_modules/.bin/vitest"), ["run", "--no-file-parallelism", testFile,
-    ...(process.argv.includes("--family-registration") ? ["tests/family-onboarding.integration.test.ts"] : [])], testEnv));
+  const familyTests = process.argv.includes("--family-registration") && !process.argv.includes("--all-tests")
+    ? ["tests/family-onboarding.integration.test.ts"] : [];
+  console.log(run(join(root, "node_modules/.bin/vitest"), ["run", "--no-file-parallelism", ...testFiles, ...familyTests], testEnv));
 } finally {
   // Some environments disallow kill(2) even for owned children; use private sockets first.
   try { run("redis-cli", ["-s", redisSocket, "shutdown", "nosave"]); } catch { /* Service may not have started. */ }

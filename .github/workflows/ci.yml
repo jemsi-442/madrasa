@@ -190,7 +190,7 @@ jobs:
         run: npm run prisma:generate
       - name: Verify isolated governance lifecycle
         working-directory: backend
-        run: npm run test:platform:staging -- --${{ matrix.installation }}
+        run: npm run test:platform:staging -- --${{ matrix.installation }} --curriculum
 
   frontend:
     runs-on: ubuntu-latest

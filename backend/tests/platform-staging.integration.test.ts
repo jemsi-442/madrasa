@@ -75,9 +75,10 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
   it("logs in, blocks replay, independently approves, audits and revokes sessions", async () => {
     // Enrollment consumed the current code; simulate arrival of a new time step in this disposable DB only.
     await db.platformAccount.updateMany({ data: { lastMfaStep: -1 } });
-    const first = await loginPlatform(db, signing, options, { email: "first@example.test", password, code: code(firstSecret) }, "staging-client");
+    const replayCode = code(firstSecret);
+    const first = await loginPlatform(db, signing, options, { email: "first@example.test", password, code: replayCode }, "staging-client");
     const requester = await verifyPlatformAccess(db, first.accessToken, signing);
-    await expect(loginPlatform(db, signing, options, { email: "first@example.test", password, code: code(firstSecret) }, "staging-client"))
+    await expect(loginPlatform(db, signing, options, { email: "first@example.test", password, code: replayCode }, "staging-client"))
       .rejects.toMatchObject({ statusCode: 401 });
     const secondAccount = await db.platformAccount.findFirstOrThrow({ where: { email: { not: "first@example.test" } } });
     const second = await loginPlatform(db, signing, options, { email: secondAccount.email, password, code: code(secondSecret) }, "staging-client");

@@ -844,8 +844,15 @@ full application API to `127.0.0.1:4087`. It does not use the configured school
 database or import its records. Two Super Admins, one IT account, one school
 admin and one parent account get random
 passwords; credentials are written to the printed private JSON
-file (mode 600 in a mode-700 directory), never to project files. These seeded
-identities are demo fixtures, not production bootstrap or an IT invitation flow.
+file (mode 600 in a mode-700 directory), never to project files. The same five
+login passwords are retained between runs in `~/.afaq/platform-demo/credentials.json`
+(directory mode 700, file mode 600); the disposable database itself is still
+recreated each time. On first use after this change, the script imports the
+most recent valid credentials file from `/tmp/afaq-local-demo-*` if available.
+Use `jq -r '.[] | [.role, .email, .password] | @tsv' ~/.afaq/platform-demo/credentials.json`
+to read the saved logins. Add `--rotate-demo-passwords` after `--start` only when
+you intentionally want to replace them. These seeded identities are demo fixtures,
+not production bootstrap or an IT invitation flow.
 The parent has two linked demo children, with no fabricated academic results.
 Use the school admin's Family accounts page to issue its family number. The
 parent can then use that number with its unchanged password. Child admission
@@ -858,8 +865,8 @@ it at `http://127.0.0.1:8087`; open `/#/login`. Development loopback browser ori
 are allowed by the normal app policy; browser auth still requires Origin and
 X-MIF-Browser headers. No authenticator or MFA code is required. An optional
 `--reuse-demo-passwords /tmp/afaq-local-demo-REPLACE/credentials.json` after
-`--start` preserves passwords from a previous local demo when creating fresh
-demo accounts; it does not copy school records or modify the previous database.
+`--start` imports passwords from a specific previous local demo when creating
+fresh demo accounts; it does not copy school records or modify the previous database.
 The normal login rate limits and role authorization remain active. Never
 publish this file or reuse these credentials outside the demo. Ctrl+C stops
 the demo API and its services; temporary data remains private until removed or
@@ -1501,49 +1508,122 @@ they do not prove that the system has no vulnerabilities.
 
 Post-update verification passed: 115 targeted unit/HTTP regressions, 20 isolated
 family integration cases, Prisma generation, typecheck and backend build. The
-fresh-install runner replayed all 31 migrations and checked repeat-deploy safety
-on a disposable database. No migration ran against the real `mms` database.
+fresh-install runner applied all 38 migrations and checked repeat-deploy safety
+on an isolated MariaDB database. The latest staging run passed all 17
+real-service tests, including curriculum draft creation, multi-topic objectives,
+many-to-many lesson links, cloning with fresh objective identities, direct
+publication validation, immutable published content, assignment, school-subject
+binding, class-version replacement/history, safe draft lesson/topic removal,
+topic/objective/lesson search against the database, teacher class scoping, suspension
+and restoration access checks, fresh-installer confirmation and non-empty-target
+guards. No migration ran against the real `mms` database.
 # Shared Curriculum
 
 The platform `Curriculum & Subjects` workspace uses `/api/platform/curriculum`.
 Only active Super Admin accounts can access these endpoints; school and IT
 accounts cannot manage institution frameworks.
 
-- Create a unique subject/version draft with description and learning objectives.
-- The author may edit only a draft. Submit it for an independent Super Admin review.
-- Approve, then publish. Published versions are immutable; changes require a new version.
-- Assign published versions to active madrasas. Repeated assignments are idempotent.
-  Assignments record distribution, not teacher adoption or completion, and do not
-  overwrite local subjects, lessons, assessments or older assignments.
-- All writes and their audit events share one transaction. This workflow does not
-  send email or SMS and does not require a messaging provider.
+Super Admin owns the shared curriculum lifecycle: create a draft, edit any
+unpublished version, validate its level, topics and measurable objectives, then
+publish directly. Lesson plans may be included in a draft but are not required
+for publication. There is no submit-for-approval step. Published versions are
+immutable; changes require a new version. A framework can be assigned to one or
+several active madrasas at once. Repeated assignment is idempotent. Assignment
+means the version is available to that madrasa; it does not mean a class adopted
+it or learners achieved its objectives. Assignment and audit writes share one
+transaction. Legacy review records remain available for history but do not block
+direct publication by Super Admin.
 
-Deployment requires migration `202610160300_curriculum_versions`, followed by
-`npx prisma generate` and an API restart. Apply migrations through the normal
-deployment process; do not use `db push` against production.
+Draft topics and lesson plans can be removed by Super Admin. Removal is audited
+and limited to unpublished versions. A topic cannot be deleted while one of its
+objectives is linked to a lesson plan; remove or update those lesson links first.
+Published versions remain immutable.
 
-Tests: `npx vitest run tests/platform-curriculum.test.ts`. For the isolated local
-demo only, `node_modules/.bin/tsx scripts/test-curriculum-demo.ts <database-pid>`
-checks draft, review, publication and assignment against the real database and
-rolls back every test record.
+`GET /api/platform/curriculum` supports paging, review-history filtering,
+single-version lookup and search across subject, level, description, topic title,
+objective code/description/criteria, and lesson title/activities. The platform
+page reports publication, active madrasa assignment, school-subject mapping and
+class adoption as distinct steps. Suspended madrasas are excluded from active
+assignment totals, but their assignments and class adoptions remain visible as
+history; the school API blocks access while suspended, and reactivation restores
+the existing records. Opening a cloned draft's version history shows
+its published source version and the reason recorded at clone time, using the
+platform audit trail rather than duplicating lineage data on the curriculum row.
+
+Before assigning, Super Admin may call
+`GET /api/platform/curriculum/:id/assignment-preview?organizationId=...` for a
+read-only summary of the published framework, madrasa branches, class counts by
+level/year, and active local subjects. Exact subject-name matches are suggestions
+only; the school administrator still chooses the local subject during class
+adoption. The preview contains no learner-level records and creates no assignment.
+Only active madrasas can be previewed for a new assignment; the assignment write
+rechecks that status to avoid trusting stale preview data.
 
 ### Class curriculum adoption
 
-Migration `202610162000_class_curriculum` adds an explicit link between an
-existing class, school subject and published madrasa curriculum assignment.
-`GET /api/school-curriculum` exposes assigned frameworks to madrasa admins;
-teachers only see versions adopted by their own classes. Branch scope is enforced.
-`POST /api/school-curriculum/adoptions` accepts `assignmentId`, `classId` and
-`subjectId` from madrasa admins only. Tenant and actor IDs come from authentication.
-Repeated adoption is idempotent. A different version for an already-linked class
-subject is rejected rather than silently replacing history. An explicit version
-transition workflow is not implemented yet.
+`GET /api/school-curriculum` exposes published assignments within the authenticated
+madrasa. Madrasa admins see their madrasa's classes and active school subjects;
+teachers only see curriculum adopted by classes in their assignment scope. Tenant,
+branch and teacher scope are enforced server-side. IT/security and accountant roles
+do not receive curriculum access.
+
+`POST /api/school-curriculum/adoptions` is available to madrasa admins only and
+accepts `assignmentId`, `classId` and an existing `subjectId`. The first class
+adoption binds that madrasa's curriculum assignment to the chosen school subject;
+other classes adopting the assignment must use the same subject. Invalid,
+inactive, cross-madrasa or out-of-scope records are rejected. Repeating the same
+adoption is idempotent. Replacing a class's current version writes a history row
+and audit event in the same transaction; it does not overwrite learner/report
+history or count as teaching or achievement.
 
 The school workspace Curriculum page shows topics, measurable objectives and
-shared lesson plans. These plans are read-only references, not teacher delivery
-records. Adoption does not create learner achievements, assessments or attendance.
-Teacher-specific planning, delivery tracking and assessment linkage remain future
-work. No production migration has been applied by the local demo workflow.
+shared lesson plans as read-only references. Adoption does not create learner
+achievements, assessments, delivery records or attendance. Teacher delivery and
+assessment linkage remain future work.
 
-Tests: `npm test -- tests/school-curriculum.test.ts` and the isolated rollback
-script `scripts/test-curriculum-demo.ts` cover adoption and teacher visibility.
+### Curriculum foundation acceptance checkpoint (2026-10-20)
+
+Verified with `npm run test:platform:staging -- --fresh-install --curriculum`
+against disposable MariaDB and Redis (17 tests passed). The curriculum scenario
+covers direct publication, school assignment, subject mapping, class adoption,
+teacher visibility before and after adoption, and a version upgrade. Assigning
+version 2 does not change the teacher's version 1 until a madrasa admin adopts
+version 2. Teachers cannot perform that adoption. The old published content is
+compared with its complete pre-upgrade snapshot, and adoption history remains
+visible. Rejected topic/lesson edits retain timestamps and objective links and
+can be corrected without a false successful audit entry.
+
+The targeted backend validation/route suites passed 114 tests; six Flutter
+curriculum suites passed 49 widget tests, including desktop/mobile layouts,
+retained forms, conflict recovery, objective removal/undo and unsaved-topic
+protection. TypeScript typecheck and analysis of the five curriculum UI files
+also passed. These are service/database and widget checks, not a browser-driven
+cross-role end-to-end test or a physical-device acceptance test.
+
+This closes the authoring/assignment/read-only classroom reference checkpoint,
+not the entire learning module. Before Learning Oversight can report real
+teaching or assessment coverage, implement teacher delivery records, assessed
+objective outcomes and their version-specific reporting links. Do not derive
+achievement or teaching coverage from opening a framework. Persistent offline
+learning events and their permission rechecks also remain separate work. No
+populated school database or production deployment was changed by this check.
+
+Migrations currently defined for these additions are
+`202610160300_curriculum_versions`, `202610162000_class_curriculum`,
+`202610191000_class_curriculum_history` and
+`202610191100_curriculum_assignment_subject`. Generate the Prisma client and apply
+pending migrations through the normal deployment process; do not use `db push` on
+production or apply migrations to a populated environment without reviewing every
+pending migration first. No production migration has been applied by local demos.
+
+Tests: `npm test -- tests/platform-curriculum.test.ts` and
+`npm test -- tests/school-curriculum.test.ts` cover validation, roles and scoped
+API behavior with isolated Prisma mocks. To verify the schema and actual
+assignment/adoption/history writes together on disposable MariaDB and Redis, run
+`npm run test:platform:staging -- --fresh-install --curriculum`. The runner uses
+a private temporary database and removes it afterward; it does not use the
+configured school `DATABASE_URL`. To run the complete backend suite against that
+same isolated, freshly migrated database instead of the possibly stale local
+`.env` database, use `npm run test:platform:staging -- --fresh-install --all-tests`.
+To isolate class-scope relation checks, use
+`npm run test:platform:staging -- --fresh-install --class-management`.
