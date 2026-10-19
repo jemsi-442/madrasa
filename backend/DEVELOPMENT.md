@@ -1620,6 +1620,12 @@ can open Teaching history beside a class adoption. History includes earlier
 curriculum versions and displays the recorded lesson, version, teacher name
 and local date/time; client event IDs and account contact details are not returned.
 Pagination is offset-based; refresh page 1 to see newly recorded teaching.
+The response also includes `pendingLessons`: up to 10 lesson IDs and titles in
+curriculum order from the current adopted version without a teaching record.
+The history dialog expands this list and shows how many of the remaining lessons
+are displayed. This is a planning aid, not a claim that learners have failed or
+that teaching outside the system has not occurred. Old-version records never
+hide a new-version lesson, even if the titles match.
 The history response also includes `teachingCoverage` for the current adopted
 version: distinct lesson IDs recorded as taught and total published lesson plans.
 This summary covers the entire class history, not just the current page. Repeated

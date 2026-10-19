@@ -23,7 +23,7 @@ function fixture() {
     },
     classCurriculumHistory: { create: vi.fn().mockResolvedValue({ id: 'history' }) },
     curriculumLessonDelivery: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
-    curriculumLesson: { count: vi.fn().mockResolvedValue(3) },
+    curriculumLesson: { count: vi.fn().mockResolvedValue(3), findMany: vi.fn().mockResolvedValue([]) },
     auditLog: { create: vi.fn() },
   };
   const db = { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient;
@@ -80,6 +80,20 @@ describe('school curriculum boundaries', () => {
     await expect(service.deliveryHistory({ ...admin, role: 'TEACHER' }, { classCurriculumId: 'other' }))
       .rejects.toMatchObject({ statusCode: 404 });
     expect(tx.curriculumLessonDelivery.findMany).not.toHaveBeenCalled();
+    expect(tx.curriculumLesson.findMany).not.toHaveBeenCalled();
+  });
+  it('returns a bounded pending lesson list from only the current version', async () => {
+    const { tx, service } = fixture();
+    tx.classCurriculum.findFirst.mockResolvedValue({ id: 'adoption', assignmentId: 'assigned-v2', assignment: { versionId: 'v2', version: { version: '2.0' } } });
+    tx.curriculumLessonDelivery.groupBy.mockResolvedValue([{ lessonId: 'taught-lesson' }]);
+    tx.curriculumLesson.findMany.mockResolvedValue([{ id: 'pending-lesson', title: 'Synthetic reading' }]);
+    const result = await service.deliveryHistory(admin, { classCurriculumId: 'adoption' });
+    expect(result.pendingLessons).toEqual([{ id: 'pending-lesson', title: 'Synthetic reading' }]);
+    expect(tx.curriculumLesson.findMany).toHaveBeenCalledExactlyOnceWith({
+      where: { versionId: 'v2', id: { notIn: ['taught-lesson'] } },
+      orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 10,
+      select: { id: true, title: true },
+    });
   });
   it('rejects invalid history pagination', async () => {
     const { tx, service } = fixture();

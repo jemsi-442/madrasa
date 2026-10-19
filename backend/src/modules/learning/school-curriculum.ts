@@ -242,8 +242,18 @@ export class SchoolCurriculumService {
           lesson: { versionId: adoption.assignment.versionId },
         },
       });
+      const pendingLessons = await tx.curriculumLesson.findMany({
+        where: {
+          versionId: adoption.assignment.versionId,
+          id: { notIn: taughtLessons.map(row => row.lessonId) },
+        },
+        orderBy: [{ position: 'asc' }, { id: 'asc' }],
+        take: 10,
+        select: { id: true, title: true },
+      });
       return serialise({
         items: rows.slice(0, 20), page: query.page, hasMore: rows.length > 20,
+        pendingLessons,
         teachingCoverage: {
           version: adoption.assignment.version.version,
           taughtLessons: taughtLessons.length, totalLessons,

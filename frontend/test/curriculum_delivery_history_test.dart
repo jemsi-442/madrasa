@@ -3,6 +3,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_delivery_history_dialog.dart';
 
 void main() {
+  testWidgets('all teaching recorded does not claim learner achievement', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurriculumDeliveryHistoryDialog(
+            adoptionId: 'complete',
+            className: 'Class A',
+            load: (_) async => {
+              'items': [],
+              'hasMore': false,
+              'pendingLessons': [],
+              'teachingCoverage': {
+                'version': '2.0',
+                'taughtLessons': 2,
+                'totalLessons': 2,
+              },
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Learner achievement is assessed separately'),
+      findsOneWidget,
+    );
+    expect(find.text('Lessons without teaching records'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('coverage with no planned lessons is not treated as completion', (
     tester,
   ) async {
@@ -14,6 +45,7 @@ void main() {
             className: 'Class A',
             load: (_) async => {
               'items': [],
+              'pendingLessons': [],
               'hasMore': false,
               'teachingCoverage': {
                 'version': '1.0',
@@ -55,6 +87,9 @@ void main() {
                   throw Exception('Unavailable');
                 }
                 return {
+                  'pendingLessons': [
+                    {'id': 'pending-1', 'title': 'Synthetic next lesson'},
+                  ],
                   'teachingCoverage': {
                     'version': '2.0',
                     'taughtLessons': 1,
@@ -95,6 +130,18 @@ void main() {
       );
       expect(find.textContaining('v1.0'), findsOneWidget);
       expect(find.text('Reading page 1'), findsOneWidget);
+      await tester.tap(find.text('Lessons without teaching records'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic next lesson'), findsOneWidget);
+      expect(
+        find.text('Showing 1 of 3. Current version only.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('not an assessment'), findsOneWidget);
+      await tester.tap(find.text('Lessons without teaching records'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Next'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
       expect(find.text('Could not load teaching history.'), findsOneWidget);
@@ -108,6 +155,8 @@ void main() {
             .onPressed,
         isNull,
       );
+      await tester.ensureVisible(find.text('Previous'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Previous'));
       await tester.pumpAndSettle();
       expect(pages, ['1', '2', '2', '1']);

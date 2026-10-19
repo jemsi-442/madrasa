@@ -578,6 +578,7 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
         expect(teachingHistory.items[0]).not.toHaveProperty('clientEventId');
         expect(teachingHistory.hasMore).toBe(false);
         expect(teachingHistory.teachingCoverage).toEqual({ version: '2.0', taughtLessons: 0, totalLessons: 1 });
+        expect(teachingHistory.pendingLessons).toEqual([{ id: clonedDraft.lessons[0]!.id, title: clonedDraft.lessons[0]!.title }]);
       }
       await expect(school.deliveryHistory({ ...teacherActor, userId: otherTeacher.id.toString() }, {
         classCurriculumId: deliveryInput.classCurriculumId,
@@ -593,6 +594,7 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       const repeatedTeaching = await school.deliveryHistory(teacherActor, { classCurriculumId: deliveryInput.classCurriculumId });
       expect(repeatedTeaching.items).toHaveLength(3);
       expect(repeatedTeaching.teachingCoverage).toEqual({ version: '2.0', taughtLessons: 1, totalLessons: 1 });
+      expect(repeatedTeaching.pendingLessons).toEqual([]);
       const teachingList = await school.list(teacherActor);
       expect(teachingList.assignments[0].adoptions[0].teachingCoverage).toEqual(repeatedTeaching.teachingCoverage);
       await expect(school.recordDelivery({ ...teacherActor, userId: otherTeacher.id.toString() }, {

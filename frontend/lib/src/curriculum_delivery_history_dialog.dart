@@ -70,6 +70,7 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
             final data = snapshot.data as Map;
             final items = data['items'] as List;
             final coverage = data['teachingCoverage'] as Map?;
+            final pendingLessons = data['pendingLessons'] as List?;
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -100,6 +101,30 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
                       'No lessons in this version; coverage is not applicable.',
                     ),
                   const SizedBox(height: 12),
+                  if (pendingLessons != null && pendingLessons.isNotEmpty)
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      title: const Text('Lessons without teaching records'),
+                      subtitle: Text(
+                        'Showing ${pendingLessons.length} of ${(coverage['totalLessons'] as num) - (coverage['taughtLessons'] as num)}. Current version only.',
+                      ),
+                      children: [
+                        const Text(
+                          'No teaching confirmation is recorded yet. This is not an assessment of learners.',
+                        ),
+                        for (final lesson in pendingLessons)
+                          ListTile(
+                            leading: const Icon(Icons.menu_book_outlined),
+                            title: Text('${lesson['title']}'),
+                          ),
+                      ],
+                    )
+                  else if (pendingLessons != null &&
+                      (coverage['totalLessons'] as num) > 0 &&
+                      coverage['taughtLessons'] == coverage['totalLessons'])
+                    const Text(
+                      'All lessons in this version have a teaching record. Learner achievement is assessed separately.',
+                    ),
                 ],
                 const WorkspaceFormNotice(
                   message:
