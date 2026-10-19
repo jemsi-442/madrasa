@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'curriculum_save_conflict.dart';
 import 'api_client.dart';
 import 'design_tokens.dart';
 import 'workspace_chrome.dart';
@@ -20,6 +21,24 @@ class PlatformCurriculumPage extends StatefulWidget {
   State<PlatformCurriculumPage> createState() => _PlatformCurriculumPageState();
 }
 
+enum _ReadinessAction {
+  createFramework,
+  editDetails,
+  organiseTopics,
+  organiseLessons,
+  publish,
+}
+
+const _maxMadrasaAssignmentBatch = 100;
+
+class _PublicationReadiness {
+  const _PublicationReadiness(this.blocker, this.action);
+
+  final String? blocker;
+  final _ReadinessAction action;
+  bool get isReady => blocker == null;
+}
+
 class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
   List<Map<String, dynamic>> items = [];
   int tab = 0, page = 1, total = 0, schools = 0;
@@ -27,10 +46,14 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
   bool busy = true, saving = false, draftsOnly = false;
   String? error;
   String? focusedId;
+  String activeQuery = '';
+  int loadGeneration = 0;
+  final searchController = TextEditingController();
   final scroll = ScrollController();
   @override
   void dispose() {
     scroll.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
@@ -54,41 +77,131 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
   }
 
   Future<void> load() async {
+    final generation = ++loadGeneration;
     setState(() {
       busy = true;
       error = null;
     });
     try {
+      final query = <String, String>{
+        'page': '$page',
+        if (draftsOnly) 'review': 'true',
+        if (focusedId != null) 'id': focusedId!,
+        if (focusedId == null && activeQuery.isNotEmpty) 'q': activeQuery,
+      };
       final data = await widget.call(
-        '/curriculum?page=$page${draftsOnly ? '&review=true' : ''}${focusedId == null ? '' : '&id=${Uri.encodeQueryComponent(focusedId!)}'}',
+        '/curriculum?${Uri(queryParameters: query).query}',
       );
-      if (!mounted) return;
+      if (!mounted || generation != loadGeneration) return;
+      final loadedItems = (data['items'] as List).cast<Map<String, dynamic>>();
+      final cloneInfo = data['cloneInfo'];
+      if (focusedId != null && cloneInfo is Map) {
+        final index = loadedItems.indexWhere((item) => item['id'] == focusedId);
+        if (index >= 0) {
+          loadedItems[index] = {
+            ...loadedItems[index],
+            'cloneInfo': Map<String, dynamic>.from(cloneInfo),
+          };
+        }
+      }
       setState(() {
-        items = (data['items'] as List).cast<Map<String, dynamic>>();
+        items = loadedItems;
         total = data['total'];
         schools = data['madrasaCount'];
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != loadGeneration) return;
       if (e is ApiException && e.statusCode == 401) widget.onSessionExpired();
       setState(() => error = 'Could not load curriculum. Please try again.');
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted && generation == loadGeneration) {
+        setState(() => busy = false);
+      }
     }
   }
 
-  Future<void> write(
+  void searchCurriculum() {
+    final nextQuery = searchController.text.trim();
+    if (nextQuery == activeQuery && focusedId == null && page == 1) return;
+    setState(() {
+      activeQuery = nextQuery;
+      focusedId = null;
+      page = 1;
+    });
+    load();
+  }
+
+  String? _updatedAt(Map<String, dynamic> row) {
+    final value = row['updatedAt'];
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    if (value is String && DateTime.tryParse(value) != null) return value;
+    return null;
+  }
+
+  String _displayTimestamp(dynamic value) {
+    final parsed = DateTime.tryParse('$value');
+    if (parsed == null) return 'Date unavailable';
+    final local = parsed.toLocal();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour < 12 ? 'AM' : 'PM';
+    return '${local.day} ${months[local.month - 1]} ${local.year} · $hour:$minute $period';
+  }
+
+  String _statusLabel(dynamic value) {
+    final words = '$value'.toLowerCase().replaceAll('_', ' ').trim();
+    if (words.isEmpty || words == 'null') return 'Unknown status';
+    return words
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+        .join(' ');
+  }
+
+  Future<bool> write(
     String path,
     Map<String, dynamic> body, {
     String? focus,
+    String? expectedUpdatedAt,
     int nextTab = 2,
     int nextDetailTab = 0,
+    String conflictMessage =
+        'This framework changed or is no longer available. Refresh and try again.',
+    String? validationMessage,
+    void Function(String)? onFailure,
+    VoidCallback? onStaleVersion,
   }) async {
-    if (saving) return;
+    if (saving) return false;
     setState(() => saving = true);
     try {
-      final result = await widget.call(path, body: body);
-      if (!mounted) return;
+      if (focus != null &&
+          !path.endsWith('/assign') &&
+          !path.endsWith('/clone') &&
+          expectedUpdatedAt == null) {
+        throw const ApiException('Framework version is unavailable', 409);
+      }
+      final result = await widget.call(
+        path,
+        body: {
+          ...body,
+          if (expectedUpdatedAt != null) 'expectedUpdatedAt': expectedUpdatedAt,
+        },
+      );
+      if (!mounted) return false;
       setState(() {
         focusedId = focus ?? result['id'] as String;
         tab = nextTab;
@@ -107,16 +220,73 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
           curve: Curves.easeOut,
         );
       }
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       if (e is ApiException && e.statusCode == 401) widget.onSessionExpired();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not save. Check your permissions, version and current status, then retry.',
-          ),
-        ),
-      );
+      if (e is ApiException && e.statusCode == 409) {
+        setState(() {
+          if (focus != null) focusedId = focus;
+          draftsOnly = false;
+          page = 1;
+        });
+        await load();
+        if (!mounted) return false;
+      }
+      final positionTaken =
+          e is ApiException &&
+          e.statusCode == 409 &&
+          e.message.contains('already uses this position');
+      final versionAlreadyExists =
+          e is ApiException &&
+          e.statusCode == 409 &&
+          e.message.contains('subject version already exists');
+      final linkedObjective =
+          e is ApiException &&
+          e.statusCode == 409 &&
+          e.message.contains('Remove this objective from lesson plans');
+      final invalidObjectiveSelection =
+          e is ApiException &&
+          e.statusCode == 422 &&
+          e.message == 'Choose objectives from this framework version';
+      final staleForm =
+          onFailure != null &&
+          e is ApiException &&
+          e.statusCode == 409 &&
+          (e.message.startsWith('Framework changed') ||
+              e.message.startsWith('Published frameworks cannot be edited'));
+      var message = versionAlreadyExists
+          ? path.endsWith('/edit')
+                ? 'That subject and version already exist at the selected level. Choose a different level or create a new version.'
+                : 'That version already exists for this subject and level. Choose a different version number.'
+          : positionTaken
+          ? 'That order number was just taken. Choose another position after checking the latest draft.'
+          : linkedObjective
+          ? 'This objective is used in a lesson plan. Keep its original code, or cancel and remove its lesson links before changing or deleting it. Your entries are still here.'
+          : invalidObjectiveSelection
+          ? 'One or more selected objectives are not available in this framework version. Review the selected objectives before saving. Your lesson details are still here; if the list is outdated, cancel and reopen the latest draft.'
+          : staleForm
+          ? 'This version changed or was published while you were editing. Your entries are still here for reference. Cancel and reopen the latest draft before saving; create a new version if it is published.'
+          : e is ApiException && e.statusCode == 409
+          ? conflictMessage
+          : e is ApiException &&
+                e.statusCode == 422 &&
+                validationMessage != null
+          ? validationMessage
+          : 'Could not save. Check your permissions, version and current status, then retry.';
+      if (e is ApiException && e.statusCode == 409 && error != null) {
+        message +=
+            ' The latest version could not be loaded. After closing this form, use Try again on the page before editing again.';
+      }
+      if (staleForm) onStaleVersion?.call();
+      if (onFailure != null) {
+        onFailure(message);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+      return false;
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -131,136 +301,187 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
     );
     final form = GlobalKey<FormState>();
     var level = '${row?['level'] ?? ''}';
-    final result = await showDialog<Map<String, dynamic>>(
+    var submitting = false;
+    var staleVersion = false;
+    String? saveError;
+    await showDialog<void>(
       context: context,
-      builder: (context) => WorkspaceFormDialog(
-        title: Text(row == null ? 'New framework' : 'Edit draft'),
-        content: SizedBox(
-          width: 540,
-          child: SingleChildScrollView(
-            child: Form(
-              key: form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const WorkspaceFormSection(
-                    title: 'Framework details',
-                    description:
-                        'Name the subject and its version. All fields are required.',
-                  ),
-                  TextFormField(
-                    controller: subject,
-                    enabled: row == null,
-                    maxLength: 120,
-                    decoration: const InputDecoration(
-                      labelText: 'Subject',
-                      hintText: 'For example, Arabic',
-                      prefixIcon: Icon(Icons.menu_book_outlined),
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, update) => PopScope(
+          canPop: !submitting,
+          child: WorkspaceFormDialog(
+            title: Text(row == null ? 'New framework' : 'Edit draft'),
+            content: IgnorePointer(
+              ignoring: submitting,
+              child: SizedBox(
+                width: 540,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: form,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (saveError != null)
+                          WorkspaceFormNotice(
+                            message: saveError!,
+                            isError: true,
+                          ),
+                        const WorkspaceFormSection(
+                          title: 'Framework details',
+                          description:
+                              'Name the subject and its version. All fields are required.',
+                        ),
+                        TextFormField(
+                          controller: subject,
+                          readOnly: submitting,
+                          enabled: row == null,
+                          maxLength: 120,
+                          decoration: const InputDecoration(
+                            labelText: 'Subject',
+                            hintText: 'For example, Arabic',
+                            prefixIcon: Icon(Icons.menu_book_outlined),
+                          ),
+                          validator: (v) => (v?.trim().length ?? 0) < 2
+                              ? 'Enter a subject'
+                              : null,
+                        ),
+                        TextFormField(
+                          controller: version,
+                          readOnly: submitting,
+                          enabled: row == null,
+                          maxLength: 30,
+                          decoration: const InputDecoration(
+                            labelText: 'Version',
+                            hintText: '1.0',
+                            prefixIcon: Icon(Icons.layers_outlined),
+                          ),
+                          validator: (v) =>
+                              RegExp(r'^\d+\.\d+(?:\.\d+)?$').hasMatch(v ?? '')
+                              ? null
+                              : 'Use a version such as 1.0',
+                        ),
+                        TextFormField(
+                          controller: description,
+                          readOnly: submitting,
+                          maxLength: 500,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                            hintText:
+                                'Briefly describe what this framework covers.',
+                          ),
+                          validator: (v) => (v?.trim().length ?? 0) < 2
+                              ? 'Enter a description'
+                              : null,
+                        ),
+                        const SizedBox(height: 8),
+                        const WorkspaceFormSection(
+                          title: 'Learning outcomes',
+                          description:
+                              'Describe what learners should be able to do. Write one clear objective per line.',
+                        ),
+                        TextFormField(
+                          controller: objectives,
+                          readOnly: submitting,
+                          minLines: 4,
+                          maxLines: 8,
+                          decoration: const InputDecoration(
+                            labelText: 'Learning objectives',
+                            hintText:
+                                'Recognise Arabic letters\nRead simple words',
+                          ),
+                          validator: (v) {
+                            final lines = (v ?? '')
+                                .split('\n')
+                                .where((x) => x.trim().isNotEmpty)
+                                .toList();
+                            return lines.isEmpty ||
+                                    lines.length > 50 ||
+                                    lines.any(
+                                      (x) =>
+                                          x.trim().length < 2 ||
+                                          x.length > 1000,
+                                    )
+                                ? 'Enter 1-50 objectives, 2-1000 characters each'
+                                : null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        TextFormField(
+                          initialValue: level,
+                          readOnly: submitting,
+                          decoration: const InputDecoration(
+                            labelText: 'Level',
+                            hintText: 'For example, Level 1',
+                          ),
+                          maxLength: 80,
+                          onChanged: (value) => level = value.trim(),
+                          validator: (value) => (value ?? '').trim().isEmpty
+                              ? 'Enter a level'
+                              : null,
+                        ),
+                        const WorkspaceFormNotice(
+                          message:
+                              'Save your work as a draft, then publish when ready. No approval is required.',
+                        ),
+                      ],
                     ),
-                    validator: (v) =>
-                        (v?.trim().length ?? 0) < 2 ? 'Enter a subject' : null,
                   ),
-                  TextFormField(
-                    controller: version,
-                    enabled: row == null,
-                    maxLength: 30,
-                    decoration: const InputDecoration(
-                      labelText: 'Version',
-                      hintText: '1.0',
-                      prefixIcon: Icon(Icons.layers_outlined),
-                    ),
-                    validator: (v) =>
-                        RegExp(r'^\d+\.\d+(?:\.\d+)?$').hasMatch(v ?? '')
-                        ? null
-                        : 'Use a version such as 1.0',
-                  ),
-                  TextFormField(
-                    controller: description,
-                    maxLength: 500,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      hintText: 'Briefly describe what this framework covers.',
-                    ),
-                    validator: (v) => (v?.trim().length ?? 0) < 2
-                        ? 'Enter a description'
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  const WorkspaceFormSection(
-                    title: 'Learning outcomes',
-                    description:
-                        'Describe what learners should be able to do. Write one clear objective per line.',
-                  ),
-                  TextFormField(
-                    controller: objectives,
-                    minLines: 4,
-                    maxLines: 8,
-                    decoration: const InputDecoration(
-                      labelText: 'Learning objectives',
-                      hintText: 'Recognise Arabic letters\nRead simple words',
-                    ),
-                    validator: (v) {
-                      final lines = (v ?? '')
-                          .split('\n')
-                          .where((x) => x.trim().isNotEmpty)
-                          .toList();
-                      return lines.isEmpty ||
-                              lines.length > 50 ||
-                              lines.any(
-                                (x) => x.trim().length < 2 || x.length > 1000,
-                              )
-                          ? 'Enter 1-50 objectives, 2-1000 characters each'
-                          : null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    initialValue: level,
-                    decoration: const InputDecoration(
-                      labelText: 'Level',
-                      hintText: 'For example, Level 1',
-                    ),
-                    maxLength: 80,
-                    onChanged: (value) => level = value.trim(),
-                    validator: (value) =>
-                        (value ?? '').trim().isEmpty ? 'Enter a level' : null,
-                  ),
-                  const WorkspaceFormNotice(
-                    message:
-                        'Save your work as a draft, then publish when ready. No approval is required.',
-                  ),
-                ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: submitting ? null : () => Navigator.pop(context),
+                child: Text(
+                  staleVersion ? 'Discard edits & view latest' : 'Cancel',
+                ),
+              ),
+              FilledButton(
+                onPressed: submitting || staleVersion
+                    ? null
+                    : () async {
+                        if (form.currentState!.validate()) {
+                          final body = <String, dynamic>{
+                            if (row == null) 'subject': subject.text.trim(),
+                            if (row == null) 'version': version.text.trim(),
+                            'description': description.text.trim(),
+                            'level': level,
+                            'objectives': objectives.text
+                                .split('\n')
+                                .map((x) => x.trim())
+                                .where((x) => x.isNotEmpty)
+                                .toList(),
+                          };
+                          update(() {
+                            submitting = true;
+                            saveError = null;
+                          });
+                          final saved = await write(
+                            row == null
+                                ? '/curriculum'
+                                : '/curriculum/${row['id']}/edit',
+                            body,
+                            focus: row?['id'] as String?,
+                            expectedUpdatedAt: row == null
+                                ? null
+                                : _updatedAt(row),
+                            onFailure: (message) => saveError = message,
+                            onStaleVersion: () => staleVersion = true,
+                          );
+                          if (!context.mounted) return;
+                          update(() => submitting = false);
+                          if (saved) Navigator.pop(context);
+                        }
+                      },
+                child: Text(submitting ? 'Saving...' : 'Save draft'),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (form.currentState!.validate()) {
-                Navigator.pop(context, {
-                  if (row == null) 'subject': subject.text.trim(),
-                  if (row == null) 'version': version.text.trim(),
-                  'description': description.text.trim(),
-                  'level': level,
-                  'objectives': objectives.text
-                      .split('\n')
-                      .map((x) => x.trim())
-                      .where((x) => x.isNotEmpty)
-                      .toList(),
-                });
-              }
-            },
-            child: const Text('Save draft'),
-          ),
-        ],
       ),
     );
     // Controllers remain alive until the dialog's exit animation has completed.
@@ -269,13 +490,6 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
     version.dispose();
     description.dispose();
     objectives.dispose();
-    if (mounted && result != null) {
-      await write(
-        row == null ? '/curriculum' : '/curriculum/${row['id']}/edit',
-        result,
-        focus: row?['id'] as String?,
-      );
-    }
   }
 
   Future<void> assign(Map<String, dynamic> row) async {
@@ -298,66 +512,424 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
       if (mounted) setState(() => saving = false);
     }
     if (!mounted) return;
-    String? selected;
-    final id = await showDialog<String>(
+    final alreadyAssigned = (row['assignments'] as List? ?? [])
+        .map((assignment) => '${assignment['organizationId']}')
+        .toSet();
+    final available = choices
+        .where((school) => !alreadyAssigned.contains('${school['id']}'))
+        .toList();
+    final selected = <String>{};
+    var searchQuery = '';
+    var selectionLimitReached = false;
+    final previews = <String, Map<String, dynamic>>{};
+    final previewErrors = <String>{};
+    final previewLoading = <String>{};
+    final organizationIds = await showDialog<List<String>>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, update) => AlertDialog(
-          title: Text('Assign ${row['subject']} ${row['version']}'),
-          content: SizedBox(
-            width: 450,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Previous version assignments and local lessons remain unchanged.',
+        builder: (context, update) {
+          final matching = available.where((school) {
+            final query = searchQuery.trim().toLowerCase();
+            return query.isEmpty ||
+                '${school['name']}'.toLowerCase().contains(query) ||
+                '${school['code']}'.toLowerCase().contains(query);
+          }).toList();
+          return WorkspaceFormDialog(
+            title: Text('Assign ${row['subject']} ${row['version']}'),
+            content: SizedBox(
+              width: 560,
+              height: MediaQuery.sizeOf(context).height * .68,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const WorkspaceFormNotice(
+                    message:
+                        'Choose one or more active madrasas. Trial madrasas keep existing access but can receive new assignments only after activation. Existing assignments and local lessons remain unchanged.',
+                  ),
+                  if (available.isEmpty)
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          choices.isEmpty
+                              ? 'No active madrasas are available.'
+                              : 'This version is already assigned to every active madrasa.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  else ...[
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Find an active madrasa',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => update(() => searchQuery = value),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: matching.isEmpty
+                            ? null
+                            : () => update(() {
+                                final matchingIds = matching
+                                    .map((school) => '${school['id']}')
+                                    .toSet();
+                                if (matchingIds.every(selected.contains)) {
+                                  selected.removeAll(matchingIds);
+                                  selectionLimitReached = false;
+                                } else if (selected.length +
+                                        matchingIds
+                                            .difference(selected)
+                                            .length >
+                                    _maxMadrasaAssignmentBatch) {
+                                  selectionLimitReached = true;
+                                } else {
+                                  selected.addAll(matchingIds);
+                                  selectionLimitReached = false;
+                                }
+                              }),
+                        icon: const Icon(Icons.done_all),
+                        label: Text(
+                          matching.isNotEmpty &&
+                                  matching.every(
+                                    (school) =>
+                                        selected.contains('${school['id']}'),
+                                  )
+                              ? 'Clear matching selection'
+                              : 'Select all matching (${matching.length})',
+                        ),
+                      ),
+                    ),
+                    if (selectionLimitReached)
+                      const WorkspaceFormNotice(
+                        isError: true,
+                        message:
+                            'A single assignment can include up to 100 madrasas. Remove some selections or assign the remaining madrasas in another batch.',
+                      ),
+                    Expanded(
+                      child: matching.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No active madrasas match this search.',
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: matching.length,
+                              itemBuilder: (_, index) {
+                                final school = matching[index];
+                                final id = '${school['id']}';
+                                final preview = previews[id];
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    CheckboxListTile(
+                                      value: selected.contains(id),
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text('${school['name']}'),
+                                      subtitle: Text('${school['code']}'),
+                                      secondary: IconButton(
+                                        tooltip: preview != null
+                                            ? 'Hide madrasa preview'
+                                            : 'Preview madrasa',
+                                        onPressed: previewLoading.contains(id)
+                                            ? null
+                                            : () async {
+                                                if (preview != null) {
+                                                  update(
+                                                    () => previews.remove(id),
+                                                  );
+                                                  return;
+                                                }
+                                                update(() {
+                                                  previewErrors.remove(id);
+                                                  previewLoading.add(id);
+                                                });
+                                                try {
+                                                  final result = await widget.call(
+                                                    '/curriculum/${row['id']}/assignment-preview?organizationId=${Uri.encodeQueryComponent(id)}',
+                                                  );
+                                                  if (!context.mounted) return;
+                                                  update(
+                                                    () => previews[id] =
+                                                        Map<
+                                                          String,
+                                                          dynamic
+                                                        >.from(result),
+                                                  );
+                                                } catch (error) {
+                                                  if (!context.mounted) return;
+                                                  if (error is ApiException &&
+                                                      error.statusCode == 401) {
+                                                    widget.onSessionExpired();
+                                                  }
+                                                  update(
+                                                    () => previewErrors.add(id),
+                                                  );
+                                                } finally {
+                                                  if (context.mounted) {
+                                                    update(
+                                                      () => previewLoading
+                                                          .remove(id),
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                        icon: previewLoading.contains(id)
+                                            ? const SizedBox.square(
+                                                dimension: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : Icon(
+                                                preview != null
+                                                    ? Icons
+                                                          .visibility_off_outlined
+                                                    : Icons.visibility_outlined,
+                                              ),
+                                      ),
+                                      onChanged: (checked) => update(() {
+                                        if (checked == true) {
+                                          if (selected.length >=
+                                              _maxMadrasaAssignmentBatch) {
+                                            selectionLimitReached = true;
+                                          } else {
+                                            selected.add(id);
+                                            selectionLimitReached = false;
+                                          }
+                                        } else {
+                                          selected.remove(id);
+                                          selectionLimitReached = false;
+                                        }
+                                      }),
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                    ),
+                                    if (previewErrors.contains(id))
+                                      const Padding(
+                                        padding: EdgeInsets.only(
+                                          left: 16,
+                                          bottom: 8,
+                                        ),
+                                        child: Text(
+                                          'Could not load this madrasa preview. Try again.',
+                                        ),
+                                      ),
+                                    if (preview != null)
+                                      _assignmentPreviewCard(preview),
+                                  ],
+                                );
+                              },
+                            ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '${selected.length} / $_maxMadrasaAssignmentBatch madrasa(s) selected',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: selected.isEmpty
+                    ? null
+                    : () => Navigator.pop(context, selected.toList()),
+                icon: const Icon(Icons.school_outlined),
+                label: Text('Assign to ${selected.length}'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (!mounted || organizationIds == null || organizationIds.isEmpty) return;
+    final selectedSchools = choices
+        .where((school) => organizationIds.contains('${school['id']}'))
+        .toList();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => WorkspaceFormDialog(
+        title: const Text('Confirm madrasa assignment'),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('${row['subject']} · ${row['level']} · v${row['version']}'),
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * .4,
                 ),
-                const SizedBox(height: 16),
-                if (choices.isEmpty)
-                  const Text('No active madrasas are available.')
-                else
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Madrasa'),
-                    items: [
-                      for (final school in choices)
-                        DropdownMenuItem(
-                          value: school['id'] as String,
-                          child: Text(
-                            '${school['name']} (${school['code']})',
-                            overflow: TextOverflow.ellipsis,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (final school in selectedSchools)
+                        ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.account_balance_outlined),
+                          title: Text('${school['name']}'),
+                          subtitle: Text(
+                            _assignmentConfirmationSubtitle(
+                              school,
+                              previews['${school['id']}'],
+                            ),
                           ),
                         ),
                     ],
-                    onChanged: (v) => update(() => selected = v),
                   ),
-              ],
-            ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const WorkspaceFormNotice(
+                message:
+                    'Review the class and subject details shown for madrasa previews. A name match is only a suggestion. Assignment makes this published framework available; it does not adopt it in a class or record learner achievement.',
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: selected == null
-                  ? null
-                  : () => Navigator.pop(context, selected),
-              child: const Text('Assign version'),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Back'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.school_outlined),
+            label: Text('Assign to ${selectedSchools.length}'),
+          ),
+        ],
       ),
     );
-    if (mounted && id != null) {
+    if (mounted && confirm == true) {
       await write(
         '/curriculum/${row['id']}/assign',
-        {'organizationId': id},
+        {'organizationIds': organizationIds},
         focus: row['id'],
         nextTab: 3,
         nextDetailTab: 4,
+        validationMessage:
+            'One or more selected madrasas is no longer active. Refresh the list and choose active madrasas again; no assignments were created.',
       );
     }
+  }
+
+  String _assignmentConfirmationSubtitle(
+    Map<String, dynamic> school,
+    Map<String, dynamic>? preview,
+  ) {
+    final code = '${school['code']}';
+    if (preview == null || preview['madrasa'] is! Map) {
+      return '$code · Preview not opened';
+    }
+    final madrasa = Map<String, dynamic>.from(preview['madrasa'] as Map);
+    final subjects = (madrasa['activeSubjects'] as List?) ?? const [];
+    final matches = subjects
+        .where(
+          (subject) =>
+              subject is Map && subject['nameMatchesFramework'] == true,
+        )
+        .length;
+    final classCount = madrasa['classCount'] ?? 0;
+    final matchNote = matches == 1
+        ? '1 subject name suggestion'
+        : '$matches subject name suggestions';
+    final classLabel = classCount == 1 ? 'class' : 'classes';
+    final subjectLabel = subjects.length == 1
+        ? 'active subject'
+        : 'active subjects';
+    return '$code · $classCount $classLabel · ${subjects.length} $subjectLabel · $matchNote';
+  }
+
+  Widget _assignmentPreviewCard(Map<String, dynamic> preview) {
+    final madrasa = Map<String, dynamic>.from(preview['madrasa'] as Map);
+    final framework = Map<String, dynamic>.from(preview['framework'] as Map);
+    final branches = (madrasa['branches'] as List?) ?? const [];
+    final classLevels = (madrasa['classLevels'] as List?) ?? const [];
+    final subjects = (madrasa['activeSubjects'] as List?) ?? const [];
+    final existing = preview['existingAssignment'] as Map?;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xfff5f8fc),
+        border: Border.all(color: const Color(0xffdce5ee)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${madrasa['name']} · ${madrasa['code']}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Framework: ${framework['subject']} · ${framework['level']} · v${framework['version']}',
+          ),
+          Text(
+            'Classes: ${madrasa['classCount']} · Active subjects: ${subjects.length}',
+          ),
+          if (branches.isNotEmpty)
+            Text(
+              'Branches: ${branches.map((branch) {
+                final item = Map<String, dynamic>.from(branch as Map);
+                return '${item['name']}${item['location'] == null ? '' : ' · ${item['location']}'}';
+              }).join(', ')}',
+            ),
+          const SizedBox(height: 8),
+          const Text(
+            'Class levels',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          if (classLevels.isEmpty)
+            const Text('No classes registered yet.')
+          else
+            for (final group in classLevels)
+              Text(
+                '${group['level']} · ${group['academicYear']}: ${group['classCount']} class(es)',
+              ),
+          const SizedBox(height: 8),
+          const Text(
+            'Active local subjects',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          if (subjects.isEmpty)
+            const Text(
+              'No active subjects. The madrasa admin will need to create or activate one before class adoption.',
+            )
+          else
+            for (final subject in subjects)
+              Text(
+                '${subject['name']} (${subject['code']})${subject['nameMatchesFramework'] == true ? ' · name match suggestion only' : ''}',
+              ),
+          if (existing != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Already assigned · ${existing['classAdoptionCount']} class adoption(s)',
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            '${preview['note']}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> addTopic(
@@ -365,106 +937,156 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
     Map<String, dynamic>? topic,
   ]) async {
     final topics = row['topics'] as List? ?? [];
-    final position =
-        topics.fold<int>(
-          0,
-          (max, topic) =>
-              (topic['position'] as int) > max ? topic['position'] as int : max,
-        ) +
-        1;
-    final result = await showDialog<Map<String, dynamic>>(
+    final position = topic?['position'] as int? ?? _nextFreePosition(topics);
+    if (position > 1000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This draft has reached its topic limit.'),
+        ),
+      );
+      return;
+    }
+    final maxPosition = _orderLimit(topics);
+    await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => CurriculumTopicDialog(
-        position: topic?['position'] ?? position,
+        position: position,
+        maxPosition: maxPosition,
+        occupiedPositions: [
+          for (final existing in topics)
+            if (existing['id'] != topic?['id']) existing['position'] as int,
+        ],
         topic: topic,
+        onSave: (body) => saveContentDialog(
+          '/curriculum/${row['id']}/topics${topic == null ? '' : '/${topic['id']}'}',
+          body,
+          row,
+          1,
+        ),
       ),
     );
-    if (mounted && result != null) {
-      await write(
-        '/curriculum/${row['id']}/topics${topic == null ? '' : '/${topic['id']}'}',
-        result,
-        focus: row['id'],
-        nextTab: 1,
-        nextDetailTab: 1,
-      );
-    }
+  }
+
+  Future<String?> saveContentDialog(
+    String path,
+    Map<String, dynamic> body,
+    Map<String, dynamic> row,
+    int section,
+  ) async {
+    String? error;
+    var staleVersion = false;
+    final saved = await write(
+      path,
+      body,
+      focus: row['id'],
+      expectedUpdatedAt: _updatedAt(row),
+      nextTab: 1,
+      nextDetailTab: section,
+      onFailure: (message) => error = message,
+      onStaleVersion: () => staleVersion = true,
+    );
+    if (staleVersion) throw CurriculumSaveConflict(error!);
+    return saved ? null : error ?? 'Could not save. Please try again.';
   }
 
   Future<void> newVersion(Map<String, dynamic> row) async {
     final form = GlobalKey<FormState>();
     var version = '';
     var reason = '';
-    final result = await showDialog<Map<String, dynamic>>(
+    var submitting = false;
+    String? saveError;
+    await showDialog<void>(
       context: context,
-      builder: (context) => WorkspaceFormDialog(
-        title: const Text('Create new version'),
-        content: SizedBox(
-          width: 540,
-          child: SingleChildScrollView(
-            child: Form(
-              key: form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  WorkspaceFormNotice(
-                    message:
-                        'Copy ${row['subject']} ${row['version']} into a new draft. Existing madrasa assignments stay on the original version.',
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, update) => PopScope(
+          canPop: !submitting,
+          child: WorkspaceFormDialog(
+            title: const Text('Create new version'),
+            content: SizedBox(
+              width: 540,
+              child: SingleChildScrollView(
+                child: Form(
+                  key: form,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (saveError != null)
+                        WorkspaceFormNotice(message: saveError!, isError: true),
+                      WorkspaceFormNotice(
+                        message:
+                            'Copy ${row['subject']} ${row['version']} into a new draft. Existing madrasa assignments stay on the original version.',
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        readOnly: submitting,
+                        decoration: const InputDecoration(
+                          labelText: 'New version',
+                          hintText: 'For example, 1.1',
+                        ),
+                        maxLength: 30,
+                        onChanged: (value) => version = value.trim(),
+                        validator: (value) =>
+                            !RegExp(
+                              r'^\d+\.\d+(?:\.\d+)?$',
+                            ).hasMatch((value ?? '').trim())
+                            ? 'Use a version such as 1.1'
+                            : value!.trim() == row['version']
+                            ? 'Choose a different version number'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        readOnly: submitting,
+                        decoration: const InputDecoration(
+                          labelText: 'Reason for this version',
+                        ),
+                        minLines: 2,
+                        maxLines: 4,
+                        maxLength: 1000,
+                        onChanged: (value) => reason = value.trim(),
+                        validator: (value) => (value ?? '').trim().length < 10
+                            ? 'Describe the changes planned (at least 10 characters)'
+                            : null,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'New version',
-                      hintText: 'For example, 1.1',
-                    ),
-                    maxLength: 30,
-                    onChanged: (value) => version = value.trim(),
-                    validator: (value) =>
-                        !RegExp(
-                          r'^\d+\.\d+(?:\.\d+)?$',
-                        ).hasMatch((value ?? '').trim())
-                        ? 'Use a version such as 1.1'
-                        : value!.trim() == row['version']
-                        ? 'Choose a different version number'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'Reason for this version',
-                    ),
-                    minLines: 2,
-                    maxLines: 4,
-                    maxLength: 1000,
-                    onChanged: (value) => reason = value.trim(),
-                    validator: (value) => (value ?? '').trim().length < 10
-                        ? 'Describe the changes planned (at least 10 characters)'
-                        : null,
-                  ),
-                ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: submitting ? null : () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: submitting
+                    ? null
+                    : () async {
+                        if (form.currentState!.validate()) {
+                          update(() {
+                            submitting = true;
+                            saveError = null;
+                          });
+                          final saved = await write(
+                            '/curriculum/${row['id']}/clone',
+                            {'version': version, 'reason': reason},
+                            onFailure: (message) => saveError = message,
+                          );
+                          if (!context.mounted) return;
+                          update(() => submitting = false);
+                          if (saved) Navigator.pop(context);
+                        }
+                      },
+                child: Text(submitting ? 'Creating...' : 'Create draft'),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (form.currentState!.validate()) {
-                Navigator.pop(context, {'version': version, 'reason': reason});
-              }
-            },
-            child: const Text('Create draft'),
-          ),
-        ],
       ),
     );
-    if (mounted && result != null) {
-      await write('/curriculum/${row['id']}/clone', result);
-    }
   }
 
   Future<void> lessonPlan(
@@ -472,27 +1094,175 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
     Map<String, dynamic>? lesson,
   ]) async {
     final lessons = row['lessons'] as List? ?? [];
-    final position =
-        lessons.fold<int>(
-          0,
-          (n, l) => (l['position'] as int) > n ? l['position'] as int : n,
-        ) +
-        1;
-    final result = await showDialog<Map<String, dynamic>>(
+    final position = lesson?['position'] as int? ?? _nextFreePosition(lessons);
+    if (position > 1000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This draft has reached its lesson limit.'),
+        ),
+      );
+      return;
+    }
+    final maxPosition = _orderLimit(lessons);
+    await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => CurriculumLessonDialog(
         topics: row['topics'] as List? ?? [],
-        position: lesson?['position'] ?? position,
+        position: position,
+        maxPosition: maxPosition,
+        occupiedPositions: [
+          for (final existing in lessons)
+            if (existing['id'] != lesson?['id']) existing['position'] as int,
+        ],
         lesson: lesson,
+        onSave: (body) => saveContentDialog(
+          '/curriculum/${row['id']}/lessons${lesson == null ? '' : '/${lesson['id']}'}',
+          body,
+          row,
+          2,
+        ),
       ),
     );
-    if (mounted && result != null) {
+  }
+
+  int _nextFreePosition(List rows) {
+    final occupied = rows
+        .map((row) => (row as Map)['position'])
+        .whereType<int>()
+        .where((position) => position >= 1 && position <= 1000)
+        .toSet();
+    for (var position = 1; position <= 1000; position++) {
+      if (!occupied.contains(position)) return position;
+    }
+    return 1001;
+  }
+
+  int _orderLimit(List rows) {
+    var largest = 0;
+    for (final row in rows) {
+      final position = (row as Map)['position'];
+      if (position is int && position > largest) largest = position;
+    }
+    return (largest + 1).clamp(1, 1000);
+  }
+
+  Future<void> removeDraftContent(
+    Map<String, dynamic> row, {
+    required String type,
+    required String id,
+    required String title,
+  }) async {
+    final isTopic = type == 'topics';
+    if (isTopic) {
+      final objectiveIds = <String>{};
+      for (final topic in row['topics'] as List? ?? []) {
+        if ('${topic['id']}' == id) {
+          for (final objective in topic['objectives'] as List? ?? []) {
+            objectiveIds.add('${objective['id']}');
+          }
+          break;
+        }
+      }
+      final linkedLessons = <String>[];
+      for (final lesson in row['lessons'] as List? ?? []) {
+        final links = lesson['objectives'] as List? ?? [];
+        if (links.any((link) {
+          final objective = link['objective'] as Map?;
+          final objectiveId = link['objectiveId'] ?? objective?['id'];
+          return objectiveId != null && objectiveIds.contains('$objectiveId');
+        })) {
+          linkedLessons.add('${lesson['title']}');
+        }
+      }
+      if (linkedLessons.isNotEmpty) {
+        final review = await showDialog<bool>(
+          context: context,
+          builder: (context) => WorkspaceFormDialog(
+            title: Text('"$title" is used in lesson plans'),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const WorkspaceFormNotice(
+                      message:
+                          'Remove this topic from its lesson plans before deleting it. Edit each plan to unlink the objective, or remove the whole plan if it has no other objectives.',
+                    ),
+                    const SizedBox(height: 12),
+                    for (final lessonTitle in linkedLessons)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.play_lesson_outlined),
+                        title: Text(lessonTitle),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Keep topic'),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('Review lesson plans'),
+              ),
+            ],
+          ),
+        );
+        if (mounted && review == true) {
+          setState(() {
+            focusedId = row['id'] as String;
+            detailTab = 2;
+            tab = 1;
+            page = 1;
+            draftsOnly = false;
+          });
+          load();
+        }
+        return;
+      }
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => WorkspaceFormDialog(
+        title: Text('Remove $title?'),
+        content: SizedBox(
+          width: 520,
+          child: WorkspaceFormNotice(
+            message: isTopic
+                ? 'This removes the topic and its objectives from this draft. First remove its objectives from any lesson plans. Published versions are never changed.'
+                : 'This removes the lesson plan and its objective links from this draft. Published versions are never changed.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep it'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove from draft'),
+          ),
+        ],
+      ),
+    );
+    if (mounted && ok == true) {
       await write(
-        '/curriculum/${row['id']}/lessons${lesson == null ? '' : '/${lesson['id']}'}',
-        result,
+        '/curriculum/${row['id']}/$type/$id/delete',
+        const {},
         focus: row['id'],
+        expectedUpdatedAt: _updatedAt(row),
         nextTab: 1,
-        nextDetailTab: 2,
+        nextDetailTab: isTopic ? 1 : 2,
+        conflictMessage: isTopic
+            ? 'This topic is still linked to a lesson plan. Remove its objective links, then try again.'
+            : 'This lesson plan changed or is no longer available. Refresh and try again.',
       );
     }
   }
@@ -506,7 +1276,7 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
           width: 540,
           child: WorkspaceFormNotice(
             message:
-                'Publish this version now, then choose its madrasas. Published content cannot be edited; further changes need a new version.',
+                'Publish this version now, then choose its madrasas. Lesson plans are optional, but add any central guidance before publishing. Published content cannot be edited; changes need a new version.',
           ),
         ),
         actions: [
@@ -526,8 +1296,11 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
         '/curriculum/${row['id']}/transition',
         {'action': 'publish'},
         focus: row['id'],
+        expectedUpdatedAt: _updatedAt(row),
         nextTab: 3,
         nextDetailTab: 4,
+        validationMessage:
+            'Check each lesson title, duration, teaching guidance and objective links, then try publishing again.',
       );
     }
   }
@@ -538,25 +1311,290 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
     child: child,
   );
 
-  bool readyToPublish(Map<String, dynamic> row) {
+  _PublicationReadiness publicationReadiness(Map<String, dynamic> row) {
+    final subject = '${row['subject'] ?? ''}'.trim();
+    final version = '${row['version'] ?? ''}'.trim();
+    final description = '${row['description'] ?? ''}'.trim();
+    final outcomes = row['objectives'] as List? ?? [];
     final topics = row['topics'] as List? ?? [];
-    return '${row['level'] ?? ''}'.trim().isNotEmpty &&
-        topics.isNotEmpty &&
-        topics.every(
-          (topic) => (topic['objectives'] as List? ?? []).isNotEmpty,
+    final level = '${row['level'] ?? ''}'.trim();
+    if (subject.length < 2 || subject.length > 120) {
+      return const _PublicationReadiness(
+        'Start a new framework with a subject name between 2 and 120 characters.',
+        _ReadinessAction.createFramework,
+      );
+    }
+    if (version.length > 30 ||
+        !RegExp(r'^\d+\.\d+(?:\.\d+)?$').hasMatch(version)) {
+      return const _PublicationReadiness(
+        'Start a new framework with a version such as 1.0 or 1.0.1.',
+        _ReadinessAction.createFramework,
+      );
+    }
+    if (description.length < 2 || description.length > 500) {
+      return const _PublicationReadiness(
+        'Set a framework description between 2 and 500 characters.',
+        _ReadinessAction.editDetails,
+      );
+    }
+    if (outcomes.isEmpty ||
+        outcomes.length > 50 ||
+        outcomes.any((outcome) {
+          final value = '$outcome'.trim();
+          return value.length < 2 || value.length > 1000;
+        })) {
+      return const _PublicationReadiness(
+        'Add 1 to 50 learning outcomes, each 2 to 1000 characters.',
+        _ReadinessAction.editDetails,
+      );
+    }
+    if (level.isEmpty) {
+      return const _PublicationReadiness(
+        'Set the learning level first.',
+        _ReadinessAction.editDetails,
+      );
+    }
+    if (level.length > 80) {
+      return const _PublicationReadiness(
+        'Shorten the learning level to 80 characters.',
+        _ReadinessAction.editDetails,
+      );
+    }
+    if (topics.isEmpty) {
+      return const _PublicationReadiness(
+        'Add topics with measurable objectives, assessment methods and achievement criteria.',
+        _ReadinessAction.organiseTopics,
+      );
+    }
+    final topicPositions = <int>{};
+    for (final topic in topics) {
+      final title = '${topic['title'] ?? ''}'.trim();
+      if (title.length < 2 || title.length > 150) {
+        return const _PublicationReadiness(
+          'Give each topic a title between 2 and 150 characters.',
+          _ReadinessAction.organiseTopics,
         );
+      }
+      final objectives = topic['objectives'] as List? ?? [];
+      if (objectives.isEmpty || objectives.length > 50) {
+        return _PublicationReadiness(
+          'Add 1 to 50 objectives to "$title".',
+          _ReadinessAction.organiseTopics,
+        );
+      }
+      final objectiveCodes = <String>{};
+      for (final objective in objectives) {
+        final code = '${objective['code'] ?? ''}'.trim();
+        final description = '${objective['description'] ?? ''}'.trim();
+        final method = '${objective['assessmentMethod'] ?? ''}';
+        final criteria = '${objective['criteria'] ?? ''}'.trim();
+        final label = code.isEmpty
+            ? 'an objective in "$title"'
+            : 'objective $code';
+        if (code.length > 40 || !RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(code)) {
+          return _PublicationReadiness(
+            'Use a valid code for $label.',
+            _ReadinessAction.organiseTopics,
+          );
+        }
+        if (!objectiveCodes.add(code.toLowerCase())) {
+          return _PublicationReadiness(
+            'Use a unique objective code within "$title".',
+            _ReadinessAction.organiseTopics,
+          );
+        }
+        if (description.length < 10 || description.length > 1000) {
+          return _PublicationReadiness(
+            'Describe the observable skill for $label in 10 to 1000 characters.',
+            _ReadinessAction.organiseTopics,
+          );
+        }
+        if (!const {
+          'ORAL',
+          'WRITTEN',
+          'PRACTICAL',
+          'OBSERVATION',
+        }.contains(method)) {
+          return _PublicationReadiness(
+            'Choose an assessment method for $label.',
+            _ReadinessAction.organiseTopics,
+          );
+        }
+        if (criteria.length < 10 || criteria.length > 1000) {
+          return _PublicationReadiness(
+            'Add achievement criteria for $label in 10 to 1000 characters.',
+            _ReadinessAction.organiseTopics,
+          );
+        }
+      }
+      final position = topic['position'];
+      if (position is! int || position < 1 || position > 1000) {
+        return _PublicationReadiness(
+          'Set a valid order for "$title" (1 to 1000).',
+          _ReadinessAction.organiseTopics,
+        );
+      }
+      if (!topicPositions.add(position)) {
+        return const _PublicationReadiness(
+          'Give every topic a different order number.',
+          _ReadinessAction.organiseTopics,
+        );
+      }
+    }
+    final frameworkObjectiveIds = <String>{
+      for (final topic in topics)
+        for (final objective in topic['objectives'] as List? ?? [])
+          if (objective is Map && objective['id'] != null) '${objective['id']}',
+    };
+    final lessonPositions = <int>{};
+    for (final lesson in row['lessons'] as List? ?? []) {
+      final title = '${lesson['title'] ?? 'lesson'}'.trim();
+      final duration = lesson['durationMinutes'];
+      final activities = '${lesson['activities'] ?? ''}'.trim();
+      if (title.length < 2 || title.length > 150) {
+        return _PublicationReadiness(
+          'Give each lesson a title between 2 and 150 characters.',
+          _ReadinessAction.organiseLessons,
+        );
+      }
+      final position = lesson['position'];
+      if (position is! int || position < 1 || position > 1000) {
+        return _PublicationReadiness(
+          'Set a valid order for "$title" (1 to 1000).',
+          _ReadinessAction.organiseLessons,
+        );
+      }
+      if (duration is! int || duration < 1 || duration > 480) {
+        return _PublicationReadiness(
+          'Set the duration for "$title" between 1 and 480 minutes.',
+          _ReadinessAction.organiseLessons,
+        );
+      }
+      if (activities.length < 10 || activities.length > 10000) {
+        return _PublicationReadiness(
+          'Add teaching guidance for "$title" in 10 to 10000 characters.',
+          _ReadinessAction.organiseLessons,
+        );
+      }
+      if (!lessonPositions.add(position)) {
+        return const _PublicationReadiness(
+          'Give every lesson plan a different order number.',
+          _ReadinessAction.organiseLessons,
+        );
+      }
+      final linkedObjectives = lesson['objectives'] as List? ?? [];
+      if (linkedObjectives.isEmpty ||
+          linkedObjectives.any((link) {
+            if (link is! Map) return true;
+            final objective = link['objective'];
+            final objectiveId = objective is Map
+                ? objective['id']
+                : link['objectiveId'];
+            return objectiveId == null ||
+                !frameworkObjectiveIds.contains('$objectiveId');
+          })) {
+        return _PublicationReadiness(
+          'Link "$title" to at least one objective from this framework.',
+          _ReadinessAction.organiseLessons,
+        );
+      }
+    }
+    return const _PublicationReadiness(null, _ReadinessAction.publish);
+  }
+
+  bool readyToPublish(Map<String, dynamic> row) =>
+      publicationReadiness(row).isReady;
+
+  bool assignmentIsActive(Map<String, dynamic> assignment) {
+    final status = (assignment['organization'] as Map?)?['status'];
+    return status == null || status == 'ACTIVE';
+  }
+
+  bool assignmentIsTrial(Map<String, dynamic> assignment) =>
+      (assignment['organization'] as Map?)?['status'] == 'TRIAL';
+
+  bool assignmentIsSuspended(Map<String, dynamic> assignment) =>
+      (assignment['organization'] as Map?)?['status'] == 'SUSPENDED';
+
+  int countAssignments(
+    List assignments,
+    bool Function(Map<String, dynamic>) test,
+  ) => assignments
+      .where((assignment) => test(Map<String, dynamic>.from(assignment as Map)))
+      .length;
+
+  int countActiveAssignments(List assignments) => assignments
+      .where(
+        (assignment) =>
+            assignmentIsActive(Map<String, dynamic>.from(assignment as Map)),
+      )
+      .length;
+
+  int countActiveAdoptions(List assignments) => assignments
+      .where(
+        (assignment) =>
+            assignmentIsActive(Map<String, dynamic>.from(assignment as Map)),
+      )
+      .fold<int>(
+        0,
+        (count, assignment) =>
+            count + ((assignment['_count']?['adoptions'] as int?) ?? 0),
+      );
+
+  int countTrialAdoptions(List assignments) => assignments
+      .where(
+        (assignment) =>
+            assignmentIsTrial(Map<String, dynamic>.from(assignment as Map)),
+      )
+      .fold<int>(
+        0,
+        (count, assignment) =>
+            count + ((assignment['_count']?['adoptions'] as int?) ?? 0),
+      );
+
+  String assignmentStatus(Map<String, dynamic> assignment) {
+    final adopted = (assignment['_count']?['adoptions'] as int?) ?? 0;
+    final subject = assignment['subject'] as Map<String, dynamic>?;
+    final subjectStatus = assignment['subjectId'] == null
+        ? adopted > 0
+              ? 'Existing class adoption needs subject-link review'
+              : 'School subject not linked'
+        : subject == null
+        ? 'Mapped subject unavailable'
+        : subject['isActive'] == true
+        ? 'School subject: ${subject['name']}'
+        : 'Inactive subject: ${subject['name']}';
+    final status = (assignment['organization'] as Map?)?['status'];
+    if (status == 'SUSPENDED') {
+      return 'Madrasa suspended · $adopted historical class adoptions · $subjectStatus';
+    }
+    if (status == 'TRIAL') {
+      return 'Trial access · $adopted existing class adoptions · $subjectStatus';
+    }
+    final adoptionLabel = adopted == 1
+        ? '1 class adoption record'
+        : '$adopted class adoption records';
+    return '$adoptionLabel · $subjectStatus';
   }
 
   Widget nextStep(Map<String, dynamic> row) {
     final published = row['status'] == 'PUBLISHED';
     final needsLevel = '${row['level'] ?? ''}'.trim().isEmpty;
-    final ready = readyToPublish(row);
+    final readiness = publicationReadiness(row);
+    final ready = readiness.isReady;
+    final assignments = row['assignments'] as List? ?? [];
+    final activeAssignments = countActiveAssignments(assignments);
+    final noActiveMadrasas = schools == 0;
+    final allActiveMadrasasAssigned =
+        schools > 0 && activeAssignments >= schools;
     final message = published
-        ? 'Published. Next step: select Assign to madrasa. Existing lessons and previous assignments stay unchanged.'
-        : needsLevel
-        ? 'Next step: set the learning level before organising topics.'
+        ? noActiveMadrasas
+              ? 'Published. There are no active madrasas available to assign this version to right now.'
+              : allActiveMadrasasAssigned
+              ? 'Assigned to all $schools active madrasas. Next, review subject links and class adoption.'
+              : 'Assigned to $activeAssignments of $schools active madrasas. Assign it to more madrasas if needed.'
         : !ready
-        ? 'Next step: add topics with measurable objectives, assessment methods and achievement criteria.'
+        ? 'Next step: ${readiness.blocker}'
         : 'Next step: check your draft, then publish when ready. Lesson plans can be prepared before publication. No approval is required.';
     return panel(
       Column(
@@ -570,25 +1608,53 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
           Text(message),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: saving
+            onPressed: saving || (published && noActiveMadrasas)
                 ? null
                 : () {
                     if (published) {
-                      assign(row);
-                    } else if (needsLevel) {
-                      edit(row);
+                      if (allActiveMadrasasAssigned) {
+                        setState(() => detailTab = 4);
+                      } else {
+                        assign(row);
+                      }
                     } else {
-                      setState(() => detailTab = ready ? 3 : 1);
+                      switch (readiness.action) {
+                        case _ReadinessAction.createFramework:
+                          edit(null);
+                          break;
+                        case _ReadinessAction.editDetails:
+                          edit(row);
+                          break;
+                        case _ReadinessAction.organiseTopics:
+                          setState(() => detailTab = 1);
+                          break;
+                        case _ReadinessAction.organiseLessons:
+                          setState(() => detailTab = 2);
+                          break;
+                        case _ReadinessAction.publish:
+                          setState(() => detailTab = 3);
+                          break;
+                      }
                     }
                   },
             icon: const Icon(Icons.arrow_forward),
             label: Text(
               published
-                  ? 'Choose madrasa'
-                  : needsLevel
-                  ? 'Set level'
-                  : ready
+                  ? noActiveMadrasas
+                        ? 'No active madrasas'
+                        : allActiveMadrasasAssigned
+                        ? 'Review assignments'
+                        : 'Choose madrasa'
+                  : readiness.action == _ReadinessAction.createFramework
+                  ? 'Create corrected framework'
+                  : readiness.action == _ReadinessAction.editDetails
+                  ? needsLevel
+                        ? 'Set level'
+                        : 'Edit framework details'
+                  : readiness.action == _ReadinessAction.publish
                   ? 'Check publication'
+                  : readiness.action == _ReadinessAction.organiseLessons
+                  ? 'Organise lesson plans'
                   : 'Organise topics',
             ),
           ),
@@ -600,6 +1666,19 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
   Widget card(Map<String, dynamic> row) {
     final published = row['status'] == 'PUBLISHED';
     final focused = focusedId != null;
+    final assignments = row['assignments'] as List? ?? [];
+    final cloneInfo = row['cloneInfo'] as Map<String, dynamic>?;
+    final activeAssignmentTotal = countActiveAssignments(assignments);
+    final trialAssignmentTotal = countAssignments(
+      assignments,
+      assignmentIsTrial,
+    );
+    final suspendedAssignmentTotal = countAssignments(
+      assignments,
+      assignmentIsSuspended,
+    );
+    final activeAdoptions = countActiveAdoptions(assignments);
+    final trialAdoptions = countTrialAdoptions(assignments);
     final showTopics = focused ? detailTab == 1 : tab == 1;
     final showVersions = focused ? detailTab == 3 : tab == 2;
     final showAssignments = focused ? detailTab == 4 : tab == 3;
@@ -677,7 +1756,7 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                 ),
                 Chip(
                   label: Text(
-                    '${row['_count']['assignments']} madrasa assignments',
+                    '$activeAssignmentTotal active madrasa assignments',
                   ),
                 ),
               ],
@@ -711,24 +1790,47 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
             for (final lesson in (row['lessons'] as List? ?? [])) ...[
               const SizedBox(height: 12),
               Text(
-                '${lesson['title']} · ${lesson['durationMinutes']} min',
+                '${lesson['title'] ?? 'Untitled lesson'} · ${lesson['durationMinutes'] ?? 0} min',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-              SelectableText('${lesson['activities']}'),
+              SelectableText('${lesson['activities'] ?? ''}'),
               Wrap(
                 spacing: 8,
                 children: [
-                  for (final link in lesson['objectives'])
-                    Chip(label: Text('${link['objective']['code']}')),
+                  for (final link in lesson['objectives'] as List? ?? [])
+                    Chip(
+                      label: Text(
+                        '${(link as Map)['objective']?['code'] ?? link['objectiveId'] ?? 'Objective'}',
+                      ),
+                    ),
                 ],
               ),
               if (!published)
-                TextButton(
-                  onPressed: saving
-                      ? null
-                      : () =>
-                            lessonPlan(row, Map<String, dynamic>.from(lesson)),
-                  child: const Text('Edit lesson plan'),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: saving
+                          ? null
+                          : () => lessonPlan(
+                              row,
+                              Map<String, dynamic>.from(lesson),
+                            ),
+                      child: const Text('Edit lesson plan'),
+                    ),
+                    TextButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () => removeDraftContent(
+                              row,
+                              type: 'lessons',
+                              id: '${lesson['id']}',
+                              title: '${lesson['title']}',
+                            ),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Remove'),
+                    ),
+                  ],
                 ),
             ],
             if (!published && (row['topics'] as List? ?? []).isNotEmpty)
@@ -756,11 +1858,29 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               if (!published)
-                TextButton(
-                  onPressed: saving
-                      ? null
-                      : () => addTopic(row, Map<String, dynamic>.from(topic)),
-                  child: const Text('Edit topic'),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: saving
+                          ? null
+                          : () =>
+                                addTopic(row, Map<String, dynamic>.from(topic)),
+                      child: const Text('Edit topic'),
+                    ),
+                    TextButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () => removeDraftContent(
+                              row,
+                              type: 'topics',
+                              id: '${topic['id']}',
+                              title: '${topic['title']}',
+                            ),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Remove'),
+                    ),
+                  ],
                 ),
               for (final objective in topic['objectives'])
                 Padding(
@@ -795,10 +1915,17 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
               ),
           ],
           if (showVersions) ...[
+            if (cloneInfo != null) ...[
+              WorkspaceFormNotice(
+                message:
+                    'Draft cloned from ${cloneInfo['sourceVersion']?['subject'] ?? row['subject']} ${cloneInfo['sourceVersion']?['version'] ?? cloneInfo['sourceVersionId']}. Reason: ${cloneInfo['reason']}. The source version and its madrasa assignments remain unchanged.',
+              ),
+              const SizedBox(height: 14),
+            ],
             const SizedBox(height: 16),
-            Text('Prepared by: ${row['createdBy'] ?? 'Not recorded'}'),
+            Text('Prepared by: ${row['createdByName'] ?? 'Not recorded'}'),
             if (row['publishedAt'] != null)
-              Text('Published: ${row['publishedAt']}'),
+              Text('Published: ${_displayTimestamp(row['publishedAt'])}'),
             if ((row['reviews'] as List? ?? []).isNotEmpty) ...[
               const SizedBox(height: 12),
               const Text(
@@ -812,11 +1939,11 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${review['fromStatus']} → ${review['toStatus']}',
+                        '${_statusLabel(review['fromStatus'])} → ${_statusLabel(review['toStatus'])}',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
-                        '${review['actorId']} · ${review['createdAt']}',
+                        '${review['actorName'] ?? 'Platform account'} · ${_displayTimestamp(review['createdAt'])}',
                         style: const TextStyle(color: AfaqDesign.muted),
                       ),
                       if (review['comment'] != null)
@@ -836,19 +1963,30 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                 ),
               ),
               Text(
-                '${row['_count']['assignments']} / $schools madrasas',
+                '$activeAssignmentTotal / $schools active madrasas',
                 style: const TextStyle(color: AfaqDesign.muted),
               ),
             ],
           ),
           if (showAssignments) ...[
             const SizedBox(height: 12),
-            for (final a in row['assignments'])
-              Text(
-                '${a['organization']['name']} (${a['organization']['code']})',
+            for (final assignment in assignments)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.account_balance_outlined),
+                title: Text(
+                  '${assignment['organization']['name']} (${assignment['organization']['code']})',
+                ),
+                subtitle: Text(
+                  assignmentStatus(Map<String, dynamic>.from(assignment)),
+                ),
               ),
-            if ((row['assignments'] as List).isEmpty)
-              const Text('Not assigned yet.'),
+            if (assignments.isEmpty) const Text('Not assigned yet.'),
+            if (assignments.isNotEmpty)
+              Text(
+                '$activeAdoptions recorded class adoption(s) at active madrasas.${trialAssignmentTotal == 0 ? '' : ' $trialAdoptions existing class adoption(s) at $trialAssignmentTotal trial madrasa(s) remain available.'} ${suspendedAssignmentTotal == 0 ? '' : '$suspendedAssignmentTotal suspended assignment(s) are retained as history. '}These are adoption records, not proof that the linked subject is currently active or that learners achieved the objectives.',
+                style: const TextStyle(color: AfaqDesign.muted),
+              ),
           ],
           if (focusedId == null)
             Align(
@@ -953,6 +2091,45 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
               nextStep(items.first),
             const SizedBox(height: 20),
           ],
+          if (focusedId == null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: searchController,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => searchCurriculum(),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText:
+                          'Search subjects, topics, objectives and lessons',
+                      hintText: 'Try a topic, objective code or lesson title',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchController.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear search',
+                              onPressed: busy
+                                  ? null
+                                  : () {
+                                      searchController.clear();
+                                      searchCurriculum();
+                                    },
+                              icon: const Icon(Icons.close),
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.filledTonal(
+                  tooltip: 'Search curriculum',
+                  onPressed: searchCurriculum,
+                  icon: const Icon(Icons.arrow_forward),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           Row(
             children: [
               Expanded(
@@ -969,7 +2146,9 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                 ),
               ),
               Text(
-                '$total versions',
+                activeQuery.isEmpty
+                    ? '$total versions'
+                    : '$total search results',
                 style: const TextStyle(color: AfaqDesign.muted),
               ),
             ],
@@ -988,8 +2167,26 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
             )
           else if (visible.isEmpty)
             panel(
-              const Text(
-                'No frameworks to display. Create a framework to begin.',
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activeQuery.isEmpty
+                        ? 'No frameworks to display. Create a framework to begin.'
+                        : 'No frameworks match "$activeQuery".',
+                  ),
+                  if (activeQuery.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () {
+                              searchController.clear();
+                              searchCurriculum();
+                            },
+                      icon: const Icon(Icons.close),
+                      label: const Text('Clear search'),
+                    ),
+                ],
               ),
             )
           else
@@ -1052,7 +2249,11 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Text('Page $page'),
+              Text(
+                total == 0
+                    ? 'No results'
+                    : 'Showing ${(page - 1) * 24 + 1}-${page * 24 < total ? page * 24 : total} of $total',
+              ),
               const Spacer(),
               IconButton(
                 tooltip: 'Previous page',
@@ -1078,6 +2279,9 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
           ),
         ],
       );
+      final releaseRow = focusedId != null
+          ? (items.isNotEmpty ? items.first : null)
+          : (visible.isNotEmpty ? visible.first : null);
       final release = panel(
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1087,54 +2291,165 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-            for (final step in [
-              ('Draft content', 'Build subject objectives and activities.'),
-              (
-                'Publish a version',
-                'Publish directly when ready. No approval required.',
-              ),
-              ('Assign to madrasas', 'Keep a record of versions in use.'),
-            ].indexed)
-              Container(
-                margin: const EdgeInsets.only(bottom: 14),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xffe2e7eb)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 15,
-                      backgroundColor: const Color(0xfff8f0da),
-                      child: Text(
-                        '${step.$1 + 1}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AfaqDesign.gold,
+            if (releaseRow == null)
+              const Text(
+                'Create or choose a framework to see its release progress.',
+              )
+            else ...[
+              Builder(
+                builder: (context) {
+                  final published = releaseRow['status'] == 'PUBLISHED';
+                  final ready = readyToPublish(releaseRow);
+                  final assignments = releaseRow['assignments'] as List? ?? [];
+                  final activeAssignments = countActiveAssignments(assignments);
+                  final trialAssignments = countAssignments(
+                    assignments,
+                    assignmentIsTrial,
+                  );
+                  final suspendedAssignments = countAssignments(
+                    assignments,
+                    assignmentIsSuspended,
+                  );
+                  final trialAdoptions = countTrialAdoptions(assignments);
+                  final adoptions = countActiveAdoptions(assignments);
+                  final activeAssignmentRows = assignments
+                      .where(
+                        (assignment) => assignmentIsActive(
+                          Map<String, dynamic>.from(assignment as Map),
                         ),
-                      ),
+                      )
+                      .toList();
+                  final pendingSubjectMappings = activeAssignmentRows
+                      .where((assignment) => assignment['subjectId'] == null)
+                      .length;
+                  final inactiveSubjectMappings = activeAssignmentRows
+                      .where(
+                        (assignment) =>
+                            assignment['subjectId'] != null &&
+                            assignment['subject']?['isActive'] != true,
+                      )
+                      .length;
+                  final steps = [
+                    (
+                      'Complete draft',
+                      ready
+                          ? 'Level, topics and measurable objectives are ready.'
+                          : 'Add a level, topics and measurable assessment criteria.',
+                      ready,
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            step.$2.$1,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            step.$2.$2,
-                            style: const TextStyle(color: AfaqDesign.muted),
-                          ),
-                        ],
-                      ),
+                    (
+                      'Publish version',
+                      published
+                          ? 'Published directly by Super Admin; no approval step.'
+                          : ready
+                          ? 'Ready to publish when you confirm the draft.'
+                          : 'Complete the draft before publishing.',
+                      published,
                     ),
-                  ],
-                ),
+                    (
+                      'Assign to madrasas',
+                      !published
+                          ? 'Available after publication.'
+                          : activeAssignments == 0
+                          ? suspendedAssignments == 0 && trialAssignments == 0
+                                ? 'Published, but not assigned to any active madrasa yet.'
+                                : 'No active assignments. ${trialAssignments == 0 ? '' : '$trialAssignments trial madrasa(s) retain access to existing assignments. '}${suspendedAssignments == 0 ? '' : '$suspendedAssignments suspended assignment(s) are retained as history.'}'
+                          : 'Assigned to $activeAssignments active madrasa(s).${trialAssignments == 0 ? '' : ' $trialAssignments trial madrasa(s) retain access to existing assignments ($trialAdoptions class adoptions).'}${suspendedAssignments == 0 ? '' : ' $suspendedAssignments suspended assignment(s) retained as history.'}',
+                      activeAssignments > 0,
+                    ),
+                    (
+                      'Link school subjects',
+                      !published
+                          ? 'Available after publication and madrasa assignment.'
+                          : activeAssignments == 0
+                          ? 'Assign this version to an active madrasa before linking its school subject.'
+                          : pendingSubjectMappings > 0
+                          ? '$pendingSubjectMappings assignment(s) need a school-subject link; check existing adoptions before changing legacy mappings.'
+                          : inactiveSubjectMappings > 0
+                          ? '$inactiveSubjectMappings linked school subject(s) are inactive.'
+                          : 'All active madrasa assignments have a linked active school subject.',
+                      activeAssignments > 0 &&
+                          pendingSubjectMappings == 0 &&
+                          inactiveSubjectMappings == 0,
+                    ),
+                    (
+                      'Class adoption',
+                      activeAssignments == 0
+                          ? 'No active madrasa assignment; no class can currently adopt this version.'
+                          : adoptions == 0
+                          ? 'Assigned; no class adoption record exists yet.'
+                          : '$adoptions class adoption record(s) across active madrasas.',
+                      adoptions > 0,
+                    ),
+                  ];
+                  return Column(
+                    children: [
+                      for (final step in steps.indexed)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: step.$2.$3
+                                ? const Color(0xfff0f7f2)
+                                : const Color(0xfffbfcfd),
+                            border: Border.all(
+                              color: step.$2.$3
+                                  ? const Color(0xffcfe5d5)
+                                  : const Color(0xffe2e7eb),
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 15,
+                                backgroundColor: step.$2.$3
+                                    ? const Color(0xffdcefe2)
+                                    : const Color(0xfff8f0da),
+                                child: step.$2.$3
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 17,
+                                        color: Color(0xff28875a),
+                                      )
+                                    : Text(
+                                        '${step.$1 + 1}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AfaqDesign.gold,
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      step.$2.$1,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      step.$2.$2,
+                                      style: const TextStyle(
+                                        color: AfaqDesign.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
+            ],
             const Divider(height: 24),
             Container(
               padding: const EdgeInsets.all(16),
@@ -1187,7 +2502,7 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                               });
                               load();
                             },
-                      child: const Text('View drafts'),
+                      child: const Text('View unpublished'),
                     ),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(

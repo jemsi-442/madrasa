@@ -20,6 +20,8 @@ void main() {
                     context: context,
                     builder: (_) => const CurriculumLessonDialog(
                       position: 1,
+                      maxPosition: 1,
+                      occupiedPositions: [],
                       topics: [
                         {
                           'title': 'Reading',

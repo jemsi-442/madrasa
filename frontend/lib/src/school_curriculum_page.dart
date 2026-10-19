@@ -24,6 +24,60 @@ class SchoolCurriculumPage extends StatefulWidget {
 class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
   late Future<dynamic> future = widget.load('/api/school-curriculum');
   bool saving = false;
+  String historyDate(dynamic value) {
+    final date = DateTime.tryParse('$value')?.toLocal();
+    if (date == null) return '';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String historySummary(Map<String, dynamic> history) {
+    final previous =
+        (history['previousAssignment'] as Map?)?['version'] as Map? ?? {};
+    final framework = [
+      previous['subject'],
+      previous['level'],
+      previous['version'] == null ? null : 'v${previous['version']}',
+    ]
+        .where((value) => value != null && '$value'.trim().isNotEmpty)
+        .join(' / ');
+    final adoptedAt = historyDate(history['previousAdoptedAt']);
+    final replacedAt = historyDate(history['replacedAt']);
+    var period = '';
+    if (adoptedAt.isEmpty) {
+      if (replacedAt.isNotEmpty) period = ' · replaced $replacedAt';
+    } else {
+      period = ' · in use from $adoptedAt';
+      if (replacedAt.isNotEmpty) period += ' to $replacedAt';
+    }
+    final label = framework.isEmpty ? 'curriculum version' : framework;
+    return 'Previous: $label$period';
+  }
+
+  bool canAdopt(Map<String, dynamic> item, Map<String, dynamic> data) {
+    if ((data['classes'] as List).isEmpty) return false;
+    final mappedSubjectId = item['subjectId']?.toString();
+    return (data['subjects'] as List).any(
+      (subject) =>
+          subject['isActive'] == true &&
+          (mappedSubjectId == null ||
+              '${subject['id']}' == mappedSubjectId),
+    );
+  }
+
+  String adoptionUnavailableMessage(
+    Map<String, dynamic> item,
+    Map<String, dynamic> data,
+  ) {
+    if ((data['classes'] as List).isEmpty) {
+      return 'Create a class before adopting curriculum.';
+    }
+    final mappedSubjectId = item['subjectId']?.toString();
+    if (mappedSubjectId != null) {
+      return 'The school subject linked to this curriculum is inactive. Reactivate it before adopting this version in another class.';
+    }
+    return 'Create an active school subject before adopting curriculum.';
+  }
+
   void reload() =>
       setState(() => future = widget.load('/api/school-curriculum'));
   @override
@@ -36,12 +90,12 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
     Map<String, dynamic> assignment,
     Map<String, dynamic> data,
   ) async {
-    String? classId, subjectId;
+    String? classId, subjectId = assignment['subjectId']?.toString();
     final form = GlobalKey<FormState>();
     final choice = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => WorkspaceFormDialog(
-        title: const Text('Use curriculum in a class'),
+        title: const Text('Adopt curriculum in a class'),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
@@ -74,6 +128,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     isExpanded: true,
+                    initialValue: subjectId,
                     decoration: const InputDecoration(
                       labelText: 'Existing school subject',
                     ),
@@ -81,19 +136,30 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                       for (final row in data['subjects'])
                         DropdownMenuItem(
                           value: '${row['id']}',
+                          enabled: row['isActive'] == true,
                           child: Text(
-                            '${row['name']}',
+                            '${row['name']}${row['isActive'] == true ? '' : ' (inactive)'}',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                     ],
-                    onChanged: (v) => subjectId = v,
-                    validator: (v) => v == null ? 'Choose a subject' : null,
+                    onChanged: assignment['subjectId'] == null
+                        ? (v) => subjectId = v
+                        : null,
+                    validator: (v) =>
+                        v == null ||
+                            !(data['subjects'] as List).any(
+                              (row) =>
+                                  '${row['id']}' == v &&
+                                  row['isActive'] == true,
+                            )
+                        ? 'Choose an active school subject'
+                        : null,
                   ),
                   const SizedBox(height: 20),
                   const WorkspaceFormNotice(
                     message:
-                        'Confirm this level fits your class. The assigned teacher can read this version and its lesson plans. Existing adoption cannot be replaced here; learner records remain unchanged.',
+                        'Choose the school subject for this assignment the first time. Later classes must use the same subject. Replacing an active class version preserves its history and does not change learner records.',
                   ),
                 ],
               ),
@@ -126,7 +192,11 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
       await widget.submit('/api/school-curriculum/adoptions', choice);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Curriculum linked to the class.')),
+        const SnackBar(
+          content: Text(
+            'Class curriculum updated. Previous adoption history is preserved.',
+          ),
+        ),
       );
       reload();
     } catch (e) {
@@ -135,7 +205,9 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         SnackBar(
           content: Text(
             e is ApiException && e.statusCode == 409
-                ? 'This class subject already has a curriculum version. Refresh to see its adoption.'
+                ? 'The class curriculum changed. Refresh and try again.'
+                : e is ApiException && e.statusCode == 422
+                ? 'This curriculum is linked to another school subject. Refresh and check the selected subject.'
                 : 'Could not adopt curriculum. Check your access and try again.',
           ),
         ),
@@ -220,11 +292,35 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                       'Available to the madrasa; not adopted in any class in your scope.',
                     ),
                   for (final adoption in item['adoptions'])
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '${adoption['class']['name']} (${adoption['class']['academicYear']}) / ${adoption['subject']['name']}',
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${adoption['class']['name']} (${adoption['class']['academicYear']}) / ${adoption['subject']['name']}',
+                              ),
+                              Text(
+                                'Current curriculum: v${item['version']['version']}${historyDate(adoption['createdAt']).isEmpty ? '' : ' · in use since ${historyDate(adoption['createdAt'])}'}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        for (final history in adoption['history'] as List)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, top: 4),
+                            child: Text(
+                              historySummary(
+                                Map<String, dynamic>.from(history),
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                      ],
                     ),
                   if (widget.isAdmin)
                     Align(
@@ -233,9 +329,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                         padding: const EdgeInsets.only(top: 12),
                         child: FilledButton.icon(
                           onPressed:
-                              saving ||
-                                  (data['classes'] as List).isEmpty ||
-                                  (data['subjects'] as List).isEmpty
+                              saving || !canAdopt(item, data)
                               ? null
                               : () => adopt(
                                   Map<String, dynamic>.from(item),
@@ -247,10 +341,12 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                       ),
                     ),
                   if (widget.isAdmin &&
-                      ((data['classes'] as List).isEmpty ||
-                          (data['subjects'] as List).isEmpty))
-                    const Text(
-                      'Create a class and an active school subject before adopting curriculum.',
+                      !canAdopt(item, data))
+                    Text(
+                      adoptionUnavailableMessage(
+                        Map<String, dynamic>.from(item as Map),
+                        data,
+                      ),
                     ),
                   ExpansionTile(
                     title: const Text('Topics & objectives'),
