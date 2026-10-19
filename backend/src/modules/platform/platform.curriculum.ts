@@ -32,6 +32,59 @@ export class PlatformCurriculumService {
     assertPlatformPermission(user.role, 'curriculum.manage');
     return user;
   }
+  async oversight(actor: PlatformContext, input: unknown) {
+    const query = z.object({
+      page: z.coerce.number().int().min(1).max(10000).default(1),
+      madrasa: z.string().trim().min(1).max(120).optional(),
+      subject: z.string().trim().min(1).max(120).optional(),
+      level: z.string().trim().min(1).max(80).optional(),
+    }).strict().parse(input);
+    return this.db.$transaction(async tx => {
+      await this.authorize(tx, actor);
+      const rows = await tx.curriculumAssignment.findMany({
+        where: {
+          ...(query.madrasa ? { organization: { name: { contains: query.madrasa } } } : {}),
+          version: { status: 'PUBLISHED',
+            ...(query.subject ? { subject: { contains: query.subject } } : {}),
+            ...(query.level ? { level: { contains: query.level } } : {}),
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * 20, take: 21,
+        select: {
+          id: true, organizationId: true, versionId: true,
+          organization: { select: { name: true, status: true } },
+          subject: { select: { isActive: true } },
+          version: { select: { subject: true, level: true, version: true, _count: { select: { lessons: true } } } },
+          adoptions: { select: { id: true } },
+        },
+      });
+      const visible = rows.slice(0, 20);
+      const scopes = visible.filter(row => row.adoptions.length > 0).map(row => ({
+        orgId: row.organizationId, assignmentId: row.id,
+        classCurriculumId: { in: row.adoptions.map(adoption => adoption.id) },
+        lesson: { versionId: row.versionId },
+      }));
+      const deliveries = scopes.length ? await tx.curriculumLessonDelivery.groupBy({
+        by: ['assignmentId', 'classCurriculumId', 'lessonId'], where: { OR: scopes },
+      }) : [];
+      return {
+        page: query.page, hasMore: rows.length > 20,
+        items: visible.map(row => {
+          const planned = row.adoptions.length * row.version._count.lessons;
+          const taught = deliveries.filter(delivery => delivery.assignmentId === row.id).length;
+          return {
+            id: row.id, madrasa: row.organization.name, madrasaStatus: row.organization.status,
+            subject: row.version.subject, level: row.version.level, version: row.version.version,
+            subjectActive: row.subject?.isActive ?? null,
+            adoptedClasses: row.adoptions.length, plannedClassLessons: planned,
+            taughtClassLessons: taught, pendingClassLessons: planned - taught,
+          };
+        }),
+      };
+    });
+  }
+
   private async beginDraftEdit(
     tx: Prisma.TransactionClient,
     versionId: string,

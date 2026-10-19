@@ -66,6 +66,9 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
   router.get('/curriculum', asyncHandler(async (req, res) => {
     res.json({ success: true, data: await curriculum.list(req.platformContext!, req.query) });
   }));
+  router.get('/curriculum/oversight', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.oversight(req.platformContext!, req.query) });
+  }));
   router.post('/curriculum', asyncHandler(async (req, res) => {
     res.status(201).json({ success: true, data: await curriculum.save(req.platformContext!, req.body) });
   }));

@@ -1640,10 +1640,20 @@ This summary covers the entire class history, not just the current page. Repeate
 teaching events count once per lesson; records from replaced assignments do not
 contribute to the new version. A version with no lessons has no applicable coverage
 percentage. This is teacher-reported teaching coverage, not assessment coverage or
-learner achievement. Institution-wide coverage reports and persistent offline event
+learner achievement. Full institutional reports and persistent offline event
 storage are not implemented yet.
-Do not expose teaching coverage in Learning Oversight until those integrations
-are completed. Migration `202610201000_curriculum_lesson_delivery` is supplied
+Learning Oversight now has an initial read-only assignment report at
+`GET /api/platform/curriculum/oversight`, opened from Curriculum in the Super
+Admin workspace. It rechecks active platform account and curriculum permission,
+supports madrasa-name, subject and level filters, and pages 20 assignments at a
+time. Each row reports current class adoptions and distinct class/lesson teaching
+records for that assignment/version, not historical adoption totals. Repeated
+teaching counts once per class; replaced-version records are not transferred.
+Inactive madrasa/subject records are labelled, not represented as active access.
+No learner records or teacher contact details are exposed. These are all-time
+teacher declarations; monthly reports, assessment coverage, export and a separate
+Learning Oversight navigation destination remain unfinished.
+Migration `202610201000_curriculum_lesson_delivery` is supplied
 but has only been applied to the disposable test database.
 
 ### Curriculum foundation acceptance checkpoint (2026-10-20)

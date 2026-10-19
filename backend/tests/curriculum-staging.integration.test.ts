@@ -601,6 +601,13 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       expect(repeatedTeaching.pendingLessons).toEqual([]);
       const teachingList = await school.list(teacherActor);
       expect(teachingList.assignments[0].adoptions[0].teachingCoverage).toEqual(repeatedTeaching.teachingCoverage);
+      const oversight = await platform.oversight(platformActor, { madrasa: organization.name, subject: 'Arabic' });
+      expect(oversight.items.find(row => row.id === nextAssignment.assignments[0]!.id)).toMatchObject({
+        adoptedClasses: 1, plannedClassLessons: 1, taughtClassLessons: 1, pendingClassLessons: 0,
+      });
+      expect(oversight.items.find(row => row.id === firstAssignment.assignments[0]!.id)).toMatchObject({
+        adoptedClasses: 0, plannedClassLessons: 0, taughtClassLessons: 0,
+      });
       await expect(school.recordDelivery({ ...teacherActor, userId: otherTeacher.id.toString() }, {
         ...deliveryInput, clientEventId: randomUUID(),
       })).rejects.toMatchObject({ statusCode: 404 });
