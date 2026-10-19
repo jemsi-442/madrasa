@@ -15,9 +15,12 @@ export const curriculumInput = z.object({
   objectives: z.array(z.string().trim().min(2).max(1000)).min(1).max(50),
 }).strict();
 const idSchema = z.string().min(1).max(30);
+const organizationIdSchema = z.string().regex(/^[1-9]\d{0,18}$/)
+  .refine(value => BigInt(value) <= 9_223_372_036_854_775_807n);
 export const curriculumDecisionInput = z.object({
   action: z.literal('publish'),
   comment: z.string().trim().max(2000).optional(),
+  expectedUpdatedAt: z.string().datetime().optional(),
 }).strict();
 
 export class PlatformCurriculumService {
@@ -29,18 +32,188 @@ export class PlatformCurriculumService {
     assertPlatformPermission(user.role, 'curriculum.manage');
     return user;
   }
+  private async beginDraftEdit(
+    tx: Prisma.TransactionClient,
+    versionId: string,
+    changes: Prisma.CurriculumVersionUpdateManyMutationInput = {},
+    expectedUpdatedAt?: string,
+  ) {
+    const current = await tx.curriculumVersion.findUnique({
+      where: { id: versionId }, select: { status: true, updatedAt: true },
+    });
+    if (!current) throw new HttpError(404, 'Framework not found');
+    if (current.status === 'PUBLISHED') throw new HttpError(409, 'Published frameworks cannot be edited; create a new version');
+    if (expectedUpdatedAt && Date.parse(expectedUpdatedAt) !== current.updatedAt.getTime()) {
+      throw new HttpError(409, 'Framework changed since it was loaded. Refresh and try again');
+    }
+    const nextUpdatedAt = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
+    const changed = await tx.curriculumVersion.updateMany({
+      where: { id: versionId, status: { in: ['DRAFT', 'IN_REVIEW', 'APPROVED'] }, updatedAt: current.updatedAt },
+      data: { ...changes, status: 'DRAFT', reviewedBy: null, updatedAt: nextUpdatedAt },
+    });
+    if (changed.count !== 1) throw new HttpError(409, 'Framework changed while you were editing. Refresh and try again');
+  }
   async list(actor: PlatformContext, input: unknown) {
-    const query = z.object({ page: z.coerce.number().int().min(1).max(100000).default(1), review: z.enum(['true']).optional(), id: idSchema.optional() }).strict().parse(input);
-    const where: Prisma.CurriculumVersionWhereInput = query.review ? { status: { in: ['DRAFT', 'IN_REVIEW', 'APPROVED'] } } : {};
+    const query = z.object({
+      page: z.coerce.number().int().min(1).max(100000).default(1),
+      review: z.enum(['true']).optional(),
+      id: idSchema.optional(),
+      q: z.string().trim().min(1).max(120).optional(),
+    }).strict().parse(input);
+    const where: Prisma.CurriculumVersionWhereInput = {};
+    if (query.review) where.status = { in: ['DRAFT', 'IN_REVIEW', 'APPROVED'] };
     if (query.id) where.id = query.id;
+    if (query.q) {
+      where.OR = [
+        { subject: { contains: query.q } },
+        { level: { contains: query.q } },
+        { description: { contains: query.q } },
+        { topics: { some: { title: { contains: query.q } } } },
+        { topics: { some: { objectives: { some: { OR: [
+          { code: { contains: query.q } },
+          { description: { contains: query.q } },
+          { criteria: { contains: query.q } },
+        ] } } } } },
+        { lessons: { some: { OR: [
+          { title: { contains: query.q } },
+          { activities: { contains: query.q } },
+        ] } } },
+      ];
+    }
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
       const [items, total, madrasaCount] = await Promise.all([
-        tx.curriculumVersion.findMany({ where, take: 24, skip: (query.page - 1) * 24,
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], include: { lessons: { orderBy: [{ position: 'asc' }, { id: 'asc' }], include: { objectives: { include: { objective: true } } } }, topics: { orderBy: [{ position: 'asc' }, { id: 'asc' }], include: { objectives: { orderBy: { code: 'asc' } } } }, reviews: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 30 }, assignments: { select: { id: true, createdAt: true, organization: { select: { name: true, code: true } } } }, _count: { select: { assignments: true } } } }),
-        tx.curriculumVersion.count({ where }), tx.organization.count(),
+        tx.curriculumVersion.findMany({
+          where,
+          take: 24,
+          skip: (query.page - 1) * 24,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          include: {
+            lessons: {
+              orderBy: [{ position: 'asc' }, { id: 'asc' }],
+              include: { objectives: { include: { objective: true } } },
+            },
+            topics: {
+              orderBy: [{ position: 'asc' }, { id: 'asc' }],
+              include: { objectives: { orderBy: { code: 'asc' } } },
+            },
+            reviews: {
+              orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+              take: 30,
+            },
+            assignments: {
+              select: {
+                id: true,
+                organizationId: true,
+                subjectId: true,
+                createdAt: true,
+                organization: { select: { name: true, code: true, status: true } },
+                subject: { select: { name: true, isActive: true } },
+                _count: { select: { adoptions: true } },
+              },
+            },
+            _count: { select: { assignments: true } },
+          },
+        }),
+        tx.curriculumVersion.count({ where }), tx.organization.count({ where: { status: 'ACTIVE' } }),
       ]);
-      return { items, total, madrasaCount, page: query.page };
+      const accountIds = [...new Set(items.flatMap(item => [
+        ...(typeof item.createdBy === 'string' ? [item.createdBy] : []),
+        ...(item.reviews ?? []).map(review => review.actorId),
+      ]))];
+      const accounts = accountIds.length > 0
+        ? await tx.platformAccount.findMany({
+          where: { id: { in: accountIds } },
+          select: { id: true, fullName: true },
+        })
+        : [];
+      const accountNames = new Map(accounts.map(account => [account.id, account.fullName]));
+      const displayItems = items.map(item => {
+        const { createdBy, reviews, ...version } = item;
+        return {
+          ...version,
+          createdByName: typeof createdBy === 'string'
+            ? accountNames.get(createdBy) ?? null
+            : null,
+          reviews: (reviews ?? []).map(({ actorId, ...review }) => ({
+            ...review,
+            actorName: accountNames.get(actorId) ?? null,
+          })),
+        };
+      });
+      let cloneInfo: { reason: string; sourceVersionId: string; sourceVersion: { subject: string; level: string; version: string } | null } | null = null;
+      if (query.id && items.some(item => item.id === query.id)) {
+        const event = await tx.platformAuditEvent.findFirst({ where: {
+          entityType: 'CurriculumVersion', entityId: query.id, action: 'curriculum.draft.cloned',
+        }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { metadata: true } });
+        const metadata = z.object({ sourceVersionId: idSchema, reason: z.string().min(1) })
+          .passthrough().safeParse(event?.metadata);
+        if (metadata.success) {
+          const sourceVersion = await tx.curriculumVersion.findUnique({ where: { id: metadata.data.sourceVersionId },
+            select: { subject: true, level: true, version: true } });
+          cloneInfo = { ...metadata.data, sourceVersion };
+        }
+      }
+      return { items: displayItems, total, madrasaCount, page: query.page, cloneInfo };
+    });
+  }
+  async assignmentPreview(actor: PlatformContext, rawVersionId: unknown, rawOrganizationId: unknown) {
+    const versionId = idSchema.parse(rawVersionId);
+    const organizationId = BigInt(organizationIdSchema.parse(rawOrganizationId));
+    return this.db.$transaction(async tx => {
+      await this.authorize(tx, actor);
+      const version = await tx.curriculumVersion.findUnique({
+        where: { id: versionId },
+        select: { id: true, subject: true, level: true, version: true, status: true },
+      });
+      if (!version) throw new HttpError(404, 'Framework not found');
+      if (version.status !== 'PUBLISHED') throw new HttpError(409, 'Publish this framework before previewing an assignment');
+      const school = await tx.organization.findUnique({
+        where: { id: organizationId },
+        select: {
+          id: true, name: true, code: true, status: true,
+          branches: { select: { name: true, location: true }, orderBy: { name: 'asc' } },
+          subjects: {
+            where: { isActive: true },
+            select: { id: true, code: true, name: true },
+            orderBy: { name: 'asc' },
+          },
+          _count: { select: { classes: true } },
+        },
+      });
+      if (!school) throw new HttpError(404, 'Madrasa not found');
+      if (school.status !== 'ACTIVE') throw new HttpError(422, 'Only active madrasas can receive new curriculum assignments');
+      const classLevels = await tx.class.groupBy({
+        by: ['level', 'academicYear'],
+        where: { orgId: organizationId },
+        _count: { _all: true },
+        orderBy: [{ level: 'asc' }, { academicYear: 'asc' }],
+      });
+      const assignment = await tx.curriculumAssignment.findUnique({
+        where: { versionId_organizationId: { versionId, organizationId } },
+        select: { id: true, subjectId: true, _count: { select: { adoptions: true } } },
+      });
+      const expectedSubject = version.subject.trim().toLocaleLowerCase();
+      return {
+        framework: { subject: version.subject, level: version.level, version: version.version },
+        madrasa: {
+          id: school.id.toString(), name: school.name, code: school.code, status: school.status,
+          branches: school.branches.map(branch => ({ name: branch.name, location: branch.location })),
+          classCount: school._count.classes,
+          classLevels: classLevels.map(group => ({
+            level: group.level, academicYear: group.academicYear, classCount: group._count._all,
+          })),
+          activeSubjects: school.subjects.map(subject => ({
+            id: subject.id.toString(), code: subject.code, name: subject.name,
+            nameMatchesFramework: subject.name.trim().toLocaleLowerCase() === expectedSubject,
+          })),
+        },
+        existingAssignment: assignment ? {
+          id: assignment.id, subjectId: assignment.subjectId?.toString() ?? null,
+          classAdoptionCount: assignment._count.adoptions,
+        } : null,
+        note: 'Subject name matches are suggestions only. A madrasa administrator confirms the local subject and class adoption.',
+      };
     });
   }
   async save(actor: PlatformContext, input: unknown) {
@@ -60,16 +233,40 @@ export class PlatformCurriculumService {
   }
   async transition(actor: PlatformContext, id: unknown, input: unknown) {
     const versionId = idSchema.parse(id);
-    const { action, comment } = curriculumDecisionInput.parse(input);
+    const { action, comment, expectedUpdatedAt } = curriculumDecisionInput.parse(input);
     return this.db.$transaction(async tx => {
       const user = await this.authorize(tx, actor);
-      const row = await tx.curriculumVersion.findUnique({ where: { id: versionId }, include: { topics: { include: { objectives: true } } } });
+      const row = await tx.curriculumVersion.findUnique({ where: { id: versionId }, include: {
+        topics: { include: { objectives: true } },
+        lessons: {
+          select: {
+            position: true,
+            title: true,
+            durationMinutes: true,
+            activities: true,
+            objectives: {
+              select: {
+                objective: {
+                  select: { topic: { select: { versionId: true } } },
+                },
+              },
+            },
+          },
+        },
+      } });
       if (!row) throw new HttpError(404, 'Framework not found');
+      if (expectedUpdatedAt && Date.parse(expectedUpdatedAt) !== row.updatedAt.getTime()) {
+        throw new HttpError(409, 'Framework changed since it was loaded. Refresh and try again');
+      }
       // Legacy review states remain publishable without an approval step.
       const from = row.status;
       const to = 'PUBLISHED' as const;
       if (from === 'PUBLISHED') throw new HttpError(409, 'This version is already published');
-      if (!publicationContent.safeParse(row).success) throw new HttpError(422, 'Add a level, topics and measurable objectives with assessment criteria before publishing');
+      const lessonsMatchVersion = (row.lessons ?? []).every(lesson => (lesson.objectives ?? []).length > 0
+        && lesson.objectives.every(link => link.objective.topic.versionId === versionId));
+      if (!publicationContent.safeParse(row).success || !lessonsMatchVersion) {
+        throw new HttpError(422, 'Add a level, topics and measurable objectives with assessment criteria; link every lesson to objectives in this framework before publishing');
+      }
       curriculumInput.parse({ subject: row.subject, version: row.version,
         description: row.description, objectives: row.objectives });
       const updated = await tx.curriculumVersion.updateMany({ where: { id: versionId, status: from, updatedAt: row.updatedAt },
@@ -131,27 +328,39 @@ export class PlatformCurriculumService {
   }
   async edit(actor: PlatformContext, id: unknown, input: unknown) {
     const versionId = idSchema.parse(id);
-    const { level, ...data } = curriculumInput.omit({ subject: true, version: true }).parse(input);
-    return this.db.$transaction(async tx => {
-      const user = await this.authorize(tx, actor);
-      const changed = await tx.curriculumVersion.updateMany({ where: { id: versionId, status: { in: ['DRAFT', 'IN_REVIEW', 'APPROVED'] } }, data: { ...data, ...(level === undefined ? {} : { level }), status: 'DRAFT', reviewedBy: null } });
-      if (changed.count !== 1) throw new HttpError(409, 'Only unpublished versions can be edited');
-      await tx.platformAuditEvent.create({ data: { actorId: user.id, actorRole: user.role, action: 'curriculum.draft.updated', entityType: 'CurriculumVersion', entityId: versionId } });
-      return { id: versionId };
-    });
+    const { expectedUpdatedAt, ...values } = curriculumInput.omit({ subject: true, version: true })
+      .extend({ expectedUpdatedAt: z.string().datetime().optional() }).parse(input);
+    const { level, ...data } = values;
+    try {
+      return await this.db.$transaction(async tx => {
+        const user = await this.authorize(tx, actor);
+        await this.beginDraftEdit(tx, versionId, { ...data, ...(level === undefined ? {} : { level }) }, expectedUpdatedAt);
+        await tx.platformAuditEvent.create({ data: { actorId: user.id, actorRole: user.role, action: 'curriculum.draft.updated', entityType: 'CurriculumVersion', entityId: versionId } });
+        return { id: versionId };
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new HttpError(409, 'This subject version already exists at the selected level');
+      }
+      throw error;
+    }
   }
   async addTopic(actor: PlatformContext, id: unknown, input: unknown, existingId?: unknown) {
     const versionId = idSchema.parse(id);
     const topicId = existingId === undefined ? undefined : idSchema.parse(existingId);
-    const data = topicInput.parse(input);
+    const parsedInput = z.object({
+      expectedUpdatedAt: z.string().datetime().optional(),
+    }).passthrough().parse(input);
+    const { expectedUpdatedAt, ...topicData } = parsedInput;
+    const data = topicInput.parse(topicData);
     return this.db.$transaction(async tx => {
       const user = await this.authorize(tx, actor);
       // Lock the parent before changing its outline so publication cannot race a content write.
-      const changed = await tx.curriculumVersion.updateMany({
-        where: { id: versionId, status: { in: ['DRAFT', 'IN_REVIEW', 'APPROVED'] } },
-        data: { status: 'DRAFT', reviewedBy: null, updatedAt: new Date() },
-      });
-      if (changed.count !== 1) throw new HttpError(409, 'Only unpublished versions can be edited');
+      await this.beginDraftEdit(tx, versionId, {}, expectedUpdatedAt);
+      const positionConflict = await tx.curriculumTopic.findFirst({ where: {
+        versionId, position: data.position, ...(topicId ? { id: { not: topicId } } : {}),
+      }, select: { id: true } });
+      if (positionConflict) throw new HttpError(409, 'Another topic already uses this position');
       if (topicId) {
         const existing = await tx.curriculumTopic.findFirst({ where: { id: topicId, versionId } });
         if (!existing) throw new HttpError(404, 'Topic not found in this version');
@@ -184,14 +393,18 @@ export class PlatformCurriculumService {
   async saveLesson(actor: PlatformContext, id: unknown, input: unknown, existingId?: unknown) {
     const versionId = idSchema.parse(id);
     const lessonId = existingId === undefined ? undefined : idSchema.parse(existingId);
-    const { objectiveIds, ...data } = curriculumLessonInput.parse(input);
+    const parsedInput = z.object({
+      expectedUpdatedAt: z.string().datetime().optional(),
+    }).passthrough().parse(input);
+    const { expectedUpdatedAt, ...lessonData } = parsedInput;
+    const { objectiveIds, ...data } = curriculumLessonInput.parse(lessonData);
     return this.db.$transaction(async tx => {
       const user = await this.authorize(tx, actor);
-      const changed = await tx.curriculumVersion.updateMany({
-        where: { id: versionId, status: { in: ['DRAFT', 'IN_REVIEW', 'APPROVED'] } },
-        data: { status: 'DRAFT', reviewedBy: null, updatedAt: new Date() },
-      });
-      if (changed.count !== 1) throw new HttpError(409, 'Only unpublished versions can be edited');
+      await this.beginDraftEdit(tx, versionId, {}, expectedUpdatedAt);
+      const positionConflict = await tx.curriculumLesson.findFirst({ where: {
+        versionId, position: data.position, ...(lessonId ? { id: { not: lessonId } } : {}),
+      }, select: { id: true } });
+      if (positionConflict) throw new HttpError(409, 'Another lesson already uses this position');
       const count = await tx.curriculumObjective.count({ where: { id: { in: objectiveIds }, topic: { versionId } } });
       if (count !== objectiveIds.length) throw new HttpError(422, 'Choose objectives from this framework version');
       if (lessonId) {
@@ -212,22 +425,78 @@ export class PlatformCurriculumService {
       return { id: versionId };
     });
   }
+  async deleteLesson(actor: PlatformContext, id: unknown, lessonId: unknown, expectedUpdatedAt?: unknown) {
+    const versionId = idSchema.parse(id);
+    const selectedLessonId = idSchema.parse(lessonId);
+    const expected = z.string().datetime().optional().parse(expectedUpdatedAt);
+    return this.db.$transaction(async tx => {
+      const user = await this.authorize(tx, actor);
+      await this.beginDraftEdit(tx, versionId, {}, expected);
+      const lesson = await tx.curriculumLesson.findFirst({ where: { id: selectedLessonId, versionId }, select: { id: true } });
+      if (!lesson) throw new HttpError(404, 'Lesson not found in this version');
+      await tx.curriculumLessonObjective.deleteMany({ where: { lessonId: lesson.id } });
+      await tx.curriculumLesson.delete({ where: { id: lesson.id } });
+      await tx.platformAuditEvent.create({ data: { actorId: user.id, actorRole: user.role,
+        action: 'curriculum.lesson.deleted', entityType: 'CurriculumVersion', entityId: versionId,
+        metadata: { lessonId: lesson.id } } });
+      return { id: versionId };
+    });
+  }
+  async deleteTopic(actor: PlatformContext, id: unknown, topicId: unknown, expectedUpdatedAt?: unknown) {
+    const versionId = idSchema.parse(id);
+    const selectedTopicId = idSchema.parse(topicId);
+    const expected = z.string().datetime().optional().parse(expectedUpdatedAt);
+    return this.db.$transaction(async tx => {
+      const user = await this.authorize(tx, actor);
+      await this.beginDraftEdit(tx, versionId, {}, expected);
+      const topic = await tx.curriculumTopic.findFirst({ where: { id: selectedTopicId, versionId }, select: { id: true } });
+      if (!topic) throw new HttpError(404, 'Topic not found in this version');
+      const linkedObjectives = await tx.curriculumLessonObjective.count({ where: { objective: { topicId: topic.id } } });
+      if (linkedObjectives > 0) throw new HttpError(409, "Update lesson plans to remove this topic's objectives before deleting the topic");
+      await tx.curriculumObjective.deleteMany({ where: { topicId: topic.id } });
+      await tx.curriculumTopic.delete({ where: { id: topic.id } });
+      await tx.platformAuditEvent.create({ data: { actorId: user.id, actorRole: user.role,
+        action: 'curriculum.topic.deleted', entityType: 'CurriculumVersion', entityId: versionId,
+        metadata: { topicId: topic.id } } });
+      return { id: versionId };
+    });
+  }
   async assign(actor: PlatformContext, id: unknown, input: unknown) {
     const versionId = idSchema.parse(id);
-    const { organizationId } = z.object({ organizationId: z.string().regex(/^[1-9]\d{0,18}$/) }).strict().parse(input);
+    const parsed = z.union([
+      z.object({ organizationId: organizationIdSchema }).strict(),
+      z.object({ organizationIds: z.array(organizationIdSchema).min(1).max(100) }).strict()
+        .refine(value => new Set(value.organizationIds).size === value.organizationIds.length),
+    ]).parse(input);
+    const organizationIds = 'organizationId' in parsed ? [parsed.organizationId] : parsed.organizationIds;
     return this.db.$transaction(async tx => {
       const user = await this.authorize(tx, actor);
       const row = await tx.curriculumVersion.findUnique({ where: { id: versionId }, include: { topics: { include: { objectives: true } } } });
       if (!row || row.status !== 'PUBLISHED') throw new HttpError(409, 'Only published versions can be assigned');
-      const school = await tx.organization.findUnique({ where: { id: BigInt(organizationId) } });
-      if (!school || school.status !== 'ACTIVE') throw new HttpError(422, 'Choose an active madrasa');
-      const assignment = await tx.curriculumAssignment.upsert({
+      const schoolIds = organizationIds.map(BigInt);
+      const schools = await tx.organization.findMany({ where: { id: { in: schoolIds }, status: 'ACTIVE' }, select: { id: true } });
+      if (schools.length !== schoolIds.length) throw new HttpError(422, 'Choose only active madrasas');
+      const existing = await tx.curriculumAssignment.findMany({
+        where: { versionId, organizationId: { in: schoolIds } },
+        select: { organizationId: true },
+      });
+      const existingOrganizationIds = new Set(existing.map(assignment => assignment.organizationId.toString()));
+      const assignments = await Promise.all(schools.map(school => tx.curriculumAssignment.upsert({
         where: { versionId_organizationId: { versionId, organizationId: school.id } }, update: {},
         create: { versionId, organizationId: school.id, assignedBy: user.id },
-      });
-      await tx.platformAuditEvent.create({ data: { actorId: user.id, actorRole: user.role,
-        action: 'curriculum.assigned', entityType: 'CurriculumVersion', entityId: versionId, metadata: { organizationId } } });
-      return { ...assignment, organizationId };
+      })));
+      const newlyAssignedOrganizationIds = schools
+        .map(school => school.id.toString())
+        .filter(organizationId => !existingOrganizationIds.has(organizationId));
+      if (newlyAssignedOrganizationIds.length > 0) {
+        await tx.platformAuditEvent.create({ data: { actorId: user.id, actorRole: user.role,
+          action: 'curriculum.assigned', entityType: 'CurriculumVersion', entityId: versionId,
+          metadata: { organizationIds: newlyAssignedOrganizationIds } } });
+      }
+      return { id: versionId, assignments: assignments.map(assignment => ({
+        id: assignment.id,
+        organizationId: assignment.organizationId.toString(),
+      })) };
     });
   }
 }

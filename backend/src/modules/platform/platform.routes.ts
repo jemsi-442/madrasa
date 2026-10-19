@@ -12,6 +12,11 @@ import { loginPlatformPassword } from "./platform.password-login";
 import type { PlatformHealthReader } from "./platform.health";
 import { changePlatformPassword } from "./platform.change-password";
 
+const curriculumWriteBody = (body: unknown) => {
+  const parsed = z.object({ expectedUpdatedAt: z.string().datetime() }).passthrough().parse(body);
+  return { ...(body as Record<string, unknown>), expectedUpdatedAt: parsed.expectedUpdatedAt };
+};
+
 declare module "express-serve-static-core" {
   interface Request { platformContext?: PlatformContext }
 }
@@ -65,28 +70,57 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
     res.status(201).json({ success: true, data: await curriculum.save(req.platformContext!, req.body) });
   }));
   router.post('/curriculum/:id/edit', asyncHandler(async (req, res) => {
-    res.json({ success: true, data: await curriculum.edit(req.platformContext!, req.params.id, req.body) });
+    res.json({ success: true, data: await curriculum.edit(
+      req.platformContext!, req.params.id, curriculumWriteBody(req.body),
+    ) });
   }));
   router.post('/curriculum/:id/transition', asyncHandler(async (req, res) => {
-    res.json({ success: true, data: await curriculum.transition(req.platformContext!, req.params.id, req.body) });
+    res.json({ success: true, data: await curriculum.transition(
+      req.platformContext!, req.params.id, curriculumWriteBody(req.body),
+    ) });
   }));
   router.post('/curriculum/:id/assign', asyncHandler(async (req, res) => {
     res.json({ success: true, data: await curriculum.assign(req.platformContext!, req.params.id, req.body) });
+  }));
+  router.get('/curriculum/:id/assignment-preview', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.assignmentPreview(
+      req.platformContext!, req.params.id, req.query.organizationId,
+    ) });
   }));
   router.post('/curriculum/:id/clone', asyncHandler(async (req, res) => {
     res.status(201).json({ success: true, data: await curriculum.clone(req.platformContext!, req.params.id, req.body) });
   }));
   router.post('/curriculum/:id/topics', asyncHandler(async (req, res) => {
-    res.status(201).json({ success: true, data: await curriculum.addTopic(req.platformContext!, req.params.id, req.body) });
+    res.status(201).json({ success: true, data: await curriculum.addTopic(
+      req.platformContext!, req.params.id, curriculumWriteBody(req.body),
+    ) });
   }));
   router.post('/curriculum/:id/lessons', asyncHandler(async (req, res) => {
-    res.status(201).json({ success: true, data: await curriculum.saveLesson(req.platformContext!, req.params.id, req.body) });
+    res.status(201).json({ success: true, data: await curriculum.saveLesson(
+      req.platformContext!, req.params.id, curriculumWriteBody(req.body),
+    ) });
   }));
   router.post('/curriculum/:id/lessons/:lessonId', asyncHandler(async (req, res) => {
-    res.json({ success: true, data: await curriculum.saveLesson(req.platformContext!, req.params.id, req.body, req.params.lessonId) });
+    res.json({ success: true, data: await curriculum.saveLesson(
+      req.platformContext!, req.params.id, curriculumWriteBody(req.body), req.params.lessonId,
+    ) });
+  }));
+  router.post('/curriculum/:id/lessons/:lessonId/delete', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.deleteLesson(
+      req.platformContext!, req.params.id, req.params.lessonId,
+      curriculumWriteBody(req.body).expectedUpdatedAt,
+    ) });
   }));
   router.post('/curriculum/:id/topics/:topicId', asyncHandler(async (req, res) => {
-    res.json({ success: true, data: await curriculum.addTopic(req.platformContext!, req.params.id, req.body, req.params.topicId) });
+    res.json({ success: true, data: await curriculum.addTopic(
+      req.platformContext!, req.params.id, curriculumWriteBody(req.body), req.params.topicId,
+    ) });
+  }));
+  router.post('/curriculum/:id/topics/:topicId/delete', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await curriculum.deleteTopic(
+      req.platformContext!, req.params.id, req.params.topicId,
+      curriculumWriteBody(req.body).expectedUpdatedAt,
+    ) });
   }));
   router.post("/change-password", asyncHandler(async (req, res) => {
     if (!login) throw new HttpError(503, "Password changes are not configured");

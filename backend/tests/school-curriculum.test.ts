@@ -8,10 +8,20 @@ const input = { assignmentId: 'assigned-v1', classId: '30', subjectId: '40' };
 function fixture() {
   const tx = {
     user: { findFirst: vi.fn().mockResolvedValue({ id: 1n }) },
-    curriculumAssignment: { findFirst: vi.fn().mockResolvedValue({ id: 'assigned-v1' }), findMany: vi.fn().mockResolvedValue([]) },
+    curriculumAssignment: {
+      findFirst: vi.fn().mockResolvedValue({ id: 'assigned-v1', subjectId: null }),
+      findMany: vi.fn().mockResolvedValue([]),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
     class: { findFirst: vi.fn().mockResolvedValue({ id: 30n }), findMany: vi.fn().mockResolvedValue([]) },
     subject: { findFirst: vi.fn().mockResolvedValue({ id: 40n }), findMany: vi.fn().mockResolvedValue([]) },
-    classCurriculum: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: 'adoption', orgId: 10n }) },
+    classCurriculum: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: 'adoption', orgId: 10n }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    classCurriculumHistory: { create: vi.fn().mockResolvedValue({ id: 'history' }) },
     auditLog: { create: vi.fn() },
   };
   const db = { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient;
@@ -24,7 +34,62 @@ describe('school curriculum boundaries', () => {
     expect(tx.curriculumAssignment.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: input.assignmentId, organizationId: 10n, version: { status: 'PUBLISHED' } } }));
     expect(tx.class.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 30n, orgId: 10n, branchId: 20n } }));
     expect(tx.subject.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 40n, orgId: 10n, isActive: true } }));
+    expect(tx.curriculumAssignment.updateMany).toHaveBeenCalledWith({
+      where: { id: input.assignmentId, organizationId: 10n, subjectId: null },
+      data: { subjectId: 40n },
+    });
     expect(tx.auditLog.create).toHaveBeenCalledOnce();
+  });
+  it('does not allow one madrasa assignment to be adopted under a different subject', async () => {
+    const { tx, service } = fixture();
+    tx.curriculumAssignment.findFirst.mockResolvedValue({ id: input.assignmentId, subjectId: 41n });
+    await expect(service.adopt(admin, input)).rejects.toMatchObject({ statusCode: 422 });
+    expect(tx.classCurriculum.create).not.toHaveBeenCalled();
+    expect(tx.classCurriculumHistory.create).not.toHaveBeenCalled();
+  });
+  it('does not adopt against a mapped school subject that is no longer active', async () => {
+    const { tx, service } = fixture();
+    tx.curriculumAssignment.findFirst.mockResolvedValue({
+      id: input.assignmentId,
+      subjectId: 40n,
+    });
+    tx.subject.findFirst.mockResolvedValue(null);
+
+    await expect(service.adopt(admin, input)).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    expect(tx.curriculumAssignment.updateMany).not.toHaveBeenCalled();
+    expect(tx.classCurriculum.create).not.toHaveBeenCalled();
+    expect(tx.classCurriculumHistory.create).not.toHaveBeenCalled();
+  });
+  it('does not infer a mapping that conflicts with legacy class adoption', async () => {
+    const { tx, service } = fixture();
+    tx.classCurriculum.findFirst.mockResolvedValue({ id: 'legacy-adoption' });
+    await expect(service.adopt(admin, input)).rejects.toMatchObject({ statusCode: 409 });
+    expect(tx.curriculumAssignment.updateMany).not.toHaveBeenCalled();
+    expect(tx.classCurriculum.create).not.toHaveBeenCalled();
+  });
+  it('returns the assignment subject mapping to administrators for a locked UI choice', async () => {
+    const { tx, service } = fixture();
+    tx.curriculumAssignment.findMany.mockResolvedValue([{ id: 'assigned-v1', subjectId: 40n, version: {}, adoptions: [] }]);
+    tx.subject.findMany.mockResolvedValue([{ id: 40n, name: 'Arabic', isActive: true }]);
+    const result = await service.list(admin);
+    expect(tx.curriculumAssignment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({ subjectId: true }),
+    }));
+    expect(tx.subject.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { orgId: 10n, OR: [{ isActive: true }, { id: { in: [40n] } }] },
+    }));
+    expect(result.subjects).toEqual([{ id: '40', name: 'Arabic', isActive: true }]);
+  });
+  it('accepts the same subject mapping when another request wins the assignment race', async () => {
+    const { tx, service } = fixture();
+    tx.curriculumAssignment.findFirst
+      .mockResolvedValueOnce({ id: input.assignmentId, subjectId: null })
+      .mockResolvedValueOnce({ subjectId: 40n });
+    tx.curriculumAssignment.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.adopt(admin, input)).resolves.toMatchObject({ id: 'adoption' });
+    expect(tx.classCurriculum.create).toHaveBeenCalledOnce();
   });
   for (const missing of ['class', 'subject', 'curriculumAssignment'] as const) {
     it(`rejects unavailable or out-of-scope ${missing}`, async () => {
@@ -33,14 +98,43 @@ describe('school curriculum boundaries', () => {
       expect(tx.classCurriculum.create).not.toHaveBeenCalled();
     });
   }
-  it('makes repeat adoption idempotent and preserves previous versions', async () => {
+  it('makes repeat adoption idempotent', async () => {
     const { tx, service } = fixture();
     tx.classCurriculum.findUnique.mockResolvedValue({ id: 'existing', assignmentId: input.assignmentId });
     expect(await service.adopt(admin, input)).toMatchObject({ id: 'existing' });
     expect(tx.classCurriculum.create).not.toHaveBeenCalled();
+    expect(tx.classCurriculumHistory.create).not.toHaveBeenCalled();
     expect(tx.auditLog.create).not.toHaveBeenCalled();
-    tx.classCurriculum.findUnique.mockResolvedValue({ id: 'existing', assignmentId: 'older-assignment' });
+  });
+  it('archives the active adoption before upgrading a class to a new version', async () => {
+    const { tx, service } = fixture();
+    const adoptedAt = new Date('2026-09-01T08:00:00Z');
+    tx.classCurriculum.findUnique.mockResolvedValue({
+      id: 'existing', assignmentId: 'older-assignment', adoptedBy: 1n, createdAt: adoptedAt,
+    });
+    const result = await service.adopt(admin, input);
+    expect(tx.classCurriculumHistory.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      classCurriculumId: 'existing', orgId: 10n, classId: 30n, subjectId: 40n,
+      previousAssignmentId: 'older-assignment', previousAdoptedBy: 1n, previousAdoptedAt: adoptedAt,
+      replacedBy: 1n,
+    }) });
+    expect(tx.classCurriculum.updateMany).toHaveBeenCalledWith({
+      where: { id: 'existing', assignmentId: 'older-assignment', orgId: 10n },
+      data: expect.objectContaining({ assignmentId: input.assignmentId, adoptedBy: 1n }),
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      action: 'curriculum.class.version_changed',
+      metadata: expect.objectContaining({ previousAssignmentId: 'older-assignment', assignmentId: input.assignmentId }),
+    }) });
+    expect(result).toMatchObject({ id: 'existing', assignmentId: input.assignmentId });
+  });
+  it('rolls the replacement transaction back when the active adoption changed concurrently', async () => {
+    const { tx, service } = fixture();
+    tx.classCurriculum.findUnique.mockResolvedValue({ id: 'existing', assignmentId: 'older-assignment', adoptedBy: 2n, createdAt: new Date() });
+    tx.classCurriculum.updateMany.mockResolvedValue({ count: 0 });
     await expect(service.adopt(admin, input)).rejects.toMatchObject({ statusCode: 409 });
+    expect(tx.classCurriculumHistory.create).toHaveBeenCalledOnce();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
   it('restricts teacher reads to adopted assigned classes and hides school subject choices', async () => {
     const { tx, service } = fixture();
@@ -56,10 +150,23 @@ describe('school curriculum boundaries', () => {
     await expect(service.list({ ...admin, role: 'ACCOUNTANT' })).rejects.toMatchObject({ statusCode: 403 });
     tx.user.findFirst.mockResolvedValue(null);
     await expect(service.adopt(admin, input)).rejects.toMatchObject({ statusCode: 403 });
+    expect(tx.user.findFirst).toHaveBeenCalledWith({ where: {
+      id: 1n, orgId: 10n, role: 'ADMIN', status: 'ACTIVE', branchId: 20n,
+      organization: { status: { in: ['ACTIVE', 'TRIAL'] } },
+    }, select: { id: true } });
     expect(tx.classCurriculum.create).not.toHaveBeenCalled();
   });
   it('rejects client supplied tenant and actor fields', async () => {
     const { service } = fixture();
     await expect(service.adopt(admin, { ...input, orgId: '99', adoptedBy: '99' })).rejects.toThrow();
+  });
+  it('rejects identifiers outside the database BIGINT range before querying', async () => {
+    const { tx, service } = fixture();
+    await expect(service.adopt(admin, {
+      ...input,
+      classId: '9223372036854775808',
+    })).rejects.toThrow();
+    expect(tx.user.findFirst).not.toHaveBeenCalled();
+    expect(tx.classCurriculum.create).not.toHaveBeenCalled();
   });
 });

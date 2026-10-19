@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { HttpError } from '../../shared/errors/http-error';
 import type { AuthenticatedUser } from '../../shared/middleware/authenticate';
 
-const id = z.string().regex(/^[1-9]\d*$/).max(19);
+const maxDatabaseId = 9_223_372_036_854_775_807n;
+const id = z.string().regex(/^[1-9]\d{0,18}$/).refine(value => BigInt(value) <= maxDatabaseId);
 const adoptionInput = z.object({ assignmentId: z.string().min(1).max(30), classId: id, subjectId: id }).strict();
 const classScope = (actor: AuthenticatedUser) => ({
   orgId: BigInt(actor.orgId),
@@ -39,15 +40,24 @@ export class SchoolCurriculumService {
         where: { organizationId: BigInt(actor.orgId), version: { status: 'PUBLISHED' },
           ...(actor.role === 'TEACHER' ? { adoptions: { some: { class: where } } } : {}) },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, version: { select: content }, adoptions: {
+        select: { id: true, subjectId: true, version: { select: content }, adoptions: {
           where: { class: where }, select: { id: true, createdAt: true,
-            class: { select: classSelection }, subject: { select: { id: true, name: true } } },
+            class: { select: classSelection }, subject: { select: { id: true, name: true } },
+            history: { orderBy: { replacedAt: 'desc' }, select: { id: true, replacedAt: true, previousAdoptedAt: true,
+              previousAssignment: { select: { version: { select: { subject: true, level: true, version: true } } } } } },
+          },
         } },
       });
       const classes = await tx.class.findMany({ where, select: classSelection, orderBy: { name: 'asc' } });
+      const mappedSubjectIds = assignments.flatMap(assignment =>
+        assignment.subjectId === null ? [] : [assignment.subjectId],
+      );
       const subjects = actor.role === 'ADMIN' ? await tx.subject.findMany({
-        where: { orgId: BigInt(actor.orgId), isActive: true },
-        select: { id: true, name: true }, orderBy: { name: 'asc' },
+        where: { orgId: BigInt(actor.orgId), OR: [
+          { isActive: true },
+          ...(mappedSubjectIds.length ? [{ id: { in: mappedSubjectIds } }] : []),
+        ] },
+        select: { id: true, name: true, isActive: true }, orderBy: { name: 'asc' },
       }) : [];
       return serialise({ assignments, classes, subjects });
     });
@@ -61,15 +71,55 @@ export class SchoolCurriculumService {
         await this.authorize(tx, actor);
         const assignment = await tx.curriculumAssignment.findFirst({ where: {
           id: input.assignmentId, organizationId: BigInt(actor.orgId), version: { status: 'PUBLISHED' },
-        }, select: { id: true } });
+        }, select: { id: true, subjectId: true } });
         const classroom = await tx.class.findFirst({ where: { ...classScope(actor), id: BigInt(input.classId) }, select: { id: true } });
         const subject = await tx.subject.findFirst({ where: { id: BigInt(input.subjectId), orgId: BigInt(actor.orgId), isActive: true }, select: { id: true } });
         if (!assignment || !classroom || !subject) throw new HttpError(404, 'Curriculum, class or subject is unavailable');
+        if (assignment.subjectId !== null && assignment.subjectId !== subject.id) {
+          throw new HttpError(422, 'This curriculum assignment is linked to a different school subject');
+        }
+        if (assignment.subjectId === null) {
+          const conflictingAdoption = await tx.classCurriculum.findFirst({ where: {
+            orgId: BigInt(actor.orgId), assignmentId: assignment.id, subjectId: { not: subject.id },
+          }, select: { id: true } });
+          if (conflictingAdoption) throw new HttpError(409, 'This curriculum assignment already has an adoption for another school subject');
+          const mapped = await tx.curriculumAssignment.updateMany({
+            where: { id: assignment.id, organizationId: BigInt(actor.orgId), subjectId: null },
+            data: { subjectId: subject.id },
+          });
+          if (mapped.count !== 1) {
+            const currentAssignment = await tx.curriculumAssignment.findFirst({ where: {
+              id: assignment.id, organizationId: BigInt(actor.orgId),
+            }, select: { subjectId: true } });
+            if (currentAssignment?.subjectId !== subject.id) {
+              throw new HttpError(409, 'Curriculum subject mapping changed. Refresh and try again.');
+            }
+          }
+        }
         const key = { classId: classroom.id, subjectId: subject.id };
         const existing = await tx.classCurriculum.findUnique({ where: { classId_subjectId: key } });
         if (existing) {
-          if (existing.assignmentId !== assignment.id) throw new HttpError(409, 'This class subject already uses a version. Existing adoption is preserved.');
-          return serialise(existing);
+          if (existing.assignmentId === assignment.id) return serialise(existing);
+          const changedAt = new Date();
+          await tx.classCurriculumHistory.create({ data: {
+            classCurriculumId: existing.id,
+            orgId: BigInt(actor.orgId),
+            classId: classroom.id,
+            subjectId: subject.id,
+            previousAssignmentId: existing.assignmentId,
+            previousAdoptedBy: existing.adoptedBy,
+            previousAdoptedAt: existing.createdAt,
+            replacedBy: BigInt(actor.userId),
+          } });
+          const updated = await tx.classCurriculum.updateMany({
+            where: { id: existing.id, assignmentId: existing.assignmentId, orgId: BigInt(actor.orgId) },
+            data: { assignmentId: assignment.id, adoptedBy: BigInt(actor.userId), createdAt: changedAt },
+          });
+          if (updated.count !== 1) throw new HttpError(409, 'Adoption changed. Refresh before trying again.');
+          const current = { ...existing, assignmentId: assignment.id, adoptedBy: BigInt(actor.userId), createdAt: changedAt };
+          await tx.auditLog.create({ data: { orgId: BigInt(actor.orgId), actorUserId: BigInt(actor.userId), action: 'curriculum.class.version_changed', entityType: 'ClassCurriculum', entityId: existing.id,
+            metadata: { previousAssignmentId: existing.assignmentId, assignmentId: assignment.id, classId: input.classId, subjectId: input.subjectId } } });
+          return serialise(current);
         }
         const created = await tx.classCurriculum.create({ data: { ...key, orgId: BigInt(actor.orgId), assignmentId: assignment.id, adoptedBy: BigInt(actor.userId) } });
         await tx.auditLog.create({ data: { orgId: BigInt(actor.orgId), actorUserId: BigInt(actor.userId), action: 'curriculum.class.adopted', entityType: 'ClassCurriculum', entityId: created.id,

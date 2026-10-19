@@ -24,6 +24,7 @@ export const classRemoveSchema = z.object(change).strict();
 export const classDependencies = {
   currentStudents: true, enrollments: true, attendance: true, feeStructures: true,
   timetable: true, quranSessions: true, supportNotes: true, assessments: true, studentReports: true,
+  curricula: true, curriculumHistory: true,
 } as const;
 const fields = Prisma.validator<Prisma.ClassSelect>()({
   id: true, branchId: true, name: true, level: true, academicYear: true,

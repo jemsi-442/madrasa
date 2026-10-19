@@ -26,7 +26,19 @@ export const topicInput = z.object({
 export const publicationContent = z.object({
   level: z.string().trim().min(1).max(80),
   topics: z.array(z.object({
-    title: z.string().trim().min(2),
-    objectives: z.array(objectiveInput.passthrough()).min(1),
-  })).min(1),
+    title: z.string().trim().min(2).max(150),
+    position: z.number().int().min(1).max(1000),
+    objectives: z.array(objectiveInput.passthrough()).min(1).max(50)
+      .refine(value => new Set(value.map(objective => objective.code.toLowerCase())).size === value.length,
+        { message: 'Objective codes must be unique within each topic' }),
+  })).min(1).refine(value => new Set(value.map(topic => topic.position)).size === value.length,
+    { message: 'Topic positions must be unique' }),
+  lessons: z.array(z.object({
+    title: z.string().trim().min(2).max(150),
+    position: z.number().int().min(1).max(1000),
+    durationMinutes: z.number().int().min(1).max(480),
+    activities: z.string().trim().min(10).max(10000),
+  }).passthrough()).optional()
+    .refine(value => !value || new Set(value.map(lesson => lesson.position)).size === value.length,
+      { message: 'Lesson positions must be unique' }),
 });

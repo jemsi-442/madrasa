@@ -11,6 +11,7 @@ describe("admin class management", () => {
   let orgId: bigint, otherOrg: bigint, branch: bigint, otherBranch: bigint;
   let admin: bigint, teacher: bigint, replacement: bigint, foreignTeacher: bigint;
   let group: bigint, outside: bigint, foreign: bigint, pupil: bigint;
+  const curriculumVersionIds: string[] = [];
   const token = (role = "ADMIN") => jwt.sign({ sub: String(role === "ADMIN" ? admin : teacher),
     orgId: String(orgId), role, type: "access" }, env.JWT_SECRET, { expiresIn: "10m" });
   const read = (id = group, role = "ADMIN") => api.get(`/api/admin/classes/${id}/record`)
@@ -41,6 +42,10 @@ describe("admin class management", () => {
     await prisma.studentReport.deleteMany({ where });
     await prisma.reportingPeriod.deleteMany({ where });
     await prisma.assessment.deleteMany({ where });
+    await prisma.classCurriculumHistory.deleteMany({ where: { orgId: { in: [orgId, otherOrg].filter(Boolean) } } });
+    await prisma.classCurriculum.deleteMany({ where: { orgId: { in: [orgId, otherOrg].filter(Boolean) } } });
+    await prisma.curriculumAssignment.deleteMany({ where: { organizationId: { in: [orgId, otherOrg].filter(Boolean) } } });
+    if (curriculumVersionIds.length) await prisma.curriculumVersion.deleteMany({ where: { id: { in: curriculumVersionIds } } });
     await prisma.subject.deleteMany({ where });
     await prisma.studentSupportNote.deleteMany({ where });
     await prisma.quranSession.deleteMany({ where });
@@ -146,6 +151,43 @@ describe("admin class management", () => {
       timetable: id => prisma.classTimetableSlot.create({ data: { orgId, classId: id, createdById: admin, weekday: 1, startsAt: "08:00", endsAt: "08:45", subject: "Quran", validFrom: new Date("2026-01-01"), validUntil: new Date("2026-02-01"), cancelledAt: new Date() } }),
       quranSessions: id => prisma.quranSession.create({ data: { orgId, classId: id, studentId: pupil, teacherId: teacher, clientId: randomUUID(), requestHash: "b".repeat(64), surahId: 67, ayahFrom: 1, ayahTo: 5, activity: "READING", observation: "INDEPENDENT", learnedOn: new Date("2026-09-01") } }),
       supportNotes: id => prisma.studentSupportNote.create({ data: { orgId, classId: id, studentId: pupil, createdById: teacher, clientId: randomUUID(), note: "Follow-up resolved", resolvedAt: new Date() } }),
+      curricula: async id => {
+        const subject = await prisma.subject.create({ data: { orgId, code: randomUUID().slice(0, 20), name: "Curriculum guard subject" } });
+        const version = await prisma.curriculumVersion.create({ data: {
+          subject: "Curriculum guard", level: "Class management", version: randomUUID().slice(0, 12),
+          description: "Synthetic framework for class deletion guard", objectives: [], status: "PUBLISHED", createdBy: "test",
+        } });
+        curriculumVersionIds.push(version.id);
+        const assignment = await prisma.curriculumAssignment.create({ data: {
+          versionId: version.id, organizationId: orgId, subjectId: subject.id, assignedBy: "test",
+        } });
+        return prisma.classCurriculum.create({ data: {
+          orgId, classId: id, subjectId: subject.id, assignmentId: assignment.id, adoptedBy: admin,
+        } });
+      },
+      curriculumHistory: async id => {
+        const subject = await prisma.subject.create({ data: { orgId, code: randomUUID().slice(0, 20), name: "Curriculum history subject" } });
+        const createAssignment = async (version: string) => {
+          const framework = await prisma.curriculumVersion.create({ data: {
+            subject: "Curriculum history", level: "Class management", version,
+            description: "Synthetic framework for class history guard", objectives: [], status: "PUBLISHED", createdBy: "test",
+          } });
+          curriculumVersionIds.push(framework.id);
+          return prisma.curriculumAssignment.create({ data: {
+            versionId: framework.id, organizationId: orgId, subjectId: subject.id, assignedBy: "test",
+          } });
+        };
+        const previous = await createAssignment(randomUUID().slice(0, 12));
+        const current = await createAssignment(randomUUID().slice(0, 12));
+        const adoption = await prisma.classCurriculum.create({ data: {
+          orgId, classId: id, subjectId: subject.id, assignmentId: current.id, adoptedBy: admin,
+        } });
+        return prisma.classCurriculumHistory.create({ data: {
+          classCurriculumId: adoption.id, orgId, classId: id, subjectId: subject.id,
+          previousAssignmentId: previous.id, previousAdoptedBy: teacher,
+          previousAdoptedAt: new Date("2026-01-01"), replacedBy: admin,
+        } });
+      },
     };
     for (const [relation, create] of Object.entries(makers)) {
       const empty = await makeClass(`With ${relation}`);
@@ -155,6 +197,11 @@ describe("admin class management", () => {
       const record = (await read(empty.id)).body.data;
       expect(record.canRemove).toBe(false);
       expect(record._count[relation]).toBe(1);
+      if (relation === "curricula" || relation === "curriculumHistory") {
+        expect((await change(empty.id, "edit", details(record.revision, {
+          academicYear: "2027",
+        }))).status).toBe(409);
+      }
       expect((await change(empty.id, "remove", { revision: record.revision, reason: "Remove class" })).status).toBe(409);
       expect(await prisma.class.findUnique({ where: { id: empty.id } })).not.toBeNull();
     }

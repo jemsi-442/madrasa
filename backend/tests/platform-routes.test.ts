@@ -41,6 +41,24 @@ function fixture(role = "SUPER_ADMIN", secret = key) {
 }
 
 describe("platform HTTP boundary", () => {
+  it('requires a framework version token for draft writes and publication', async () => {
+    const f = fixture();
+    for (const [method, path] of [
+      ['post', '/api/platform/curriculum/framework/edit'],
+      ['post', '/api/platform/curriculum/framework/transition'],
+      ['post', '/api/platform/curriculum/framework/topics'],
+      ['post', '/api/platform/curriculum/framework/topics/topic'],
+      ['post', '/api/platform/curriculum/framework/lessons'],
+      ['post', '/api/platform/curriculum/framework/lessons/lesson'],
+      ['post', '/api/platform/curriculum/framework/topics/topic/delete'],
+      ['post', '/api/platform/curriculum/framework/lessons/lesson/delete'],
+    ] as const) {
+      const response = await request(f.app)[method](path)
+        .set('Authorization', `Bearer ${f.token}`)
+        .send({});
+      expect(response.status).toBe(422);
+    }
+  });
   it.each(['SUPER_ADMIN', 'IT_SECURITY'])('provides sanitized onboarding progress to %s', async (role) => {
     const f = fixture(role);
     const url = '/api/platform/tenant-applications/application/onboarding-progress';
