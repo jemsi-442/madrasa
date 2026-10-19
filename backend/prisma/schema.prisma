@@ -179,19 +179,24 @@ model CurriculumLessonObjective {
 
 model CurriculumAssignment {
   adoptions ClassCurriculum[]
+  adoptionHistory ClassCurriculumHistory[]
   id String @id @default(cuid()) @db.VarChar(30)
   versionId String @db.VarChar(30)
   organizationId BigInt
+  subjectId BigInt?
   assignedBy String @db.VarChar(30)
   createdAt DateTime @default(now())
   version CurriculumVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  subject Subject? @relation(fields: [organizationId, subjectId], references: [orgId, id], onDelete: Restrict)
   @@unique([versionId, organizationId])
   @@unique([organizationId, id])
+  @@index([organizationId, subjectId])
   @@map("curriculum_assignments")
 }
 
 model ClassCurriculum {
+  history ClassCurriculumHistory[]
   id String @id @default(cuid()) @db.VarChar(30)
   orgId BigInt
   classId BigInt
@@ -205,6 +210,29 @@ model ClassCurriculum {
   @@unique([classId, subjectId])
   @@index([orgId, assignmentId])
   @@map("class_curricula")
+}
+
+model ClassCurriculumHistory {
+  id String @id @default(cuid()) @db.VarChar(30)
+  classCurriculumId String @db.VarChar(30)
+  orgId BigInt
+  classId BigInt
+  subjectId BigInt
+  previousAssignmentId String @db.VarChar(30)
+  previousAdoptedBy BigInt
+  previousAdoptedAt DateTime
+  replacedBy BigInt
+  replacedAt DateTime @default(now())
+  classCurriculum ClassCurriculum @relation(fields: [classCurriculumId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  class Class @relation(fields: [orgId, classId], references: [orgId, id], onDelete: Restrict)
+  subject Subject @relation(fields: [orgId, subjectId], references: [orgId, id], onDelete: Restrict)
+  previousAssignment CurriculumAssignment @relation(fields: [orgId, previousAssignmentId], references: [organizationId, id], onDelete: Restrict)
+  previousActor User @relation("PriorCurriculumAdoptionActor", fields: [previousAdoptedBy], references: [id], onDelete: Restrict)
+  replacingActor User @relation("CurriculumReplacementActor", fields: [replacedBy], references: [id], onDelete: Restrict)
+  @@index([orgId, classId, subjectId, replacedAt])
+  @@index([previousAssignmentId])
+  @@map("class_curriculum_history")
 }
 
 model CurriculumReview {
@@ -415,6 +443,7 @@ enum WebhookProcessingStatus {
 
 model Organization {
   curriculumAssignments CurriculumAssignment[]
+  classCurriculumHistory ClassCurriculumHistory[]
   familyApplications FamilyApplication[]
   id              BigInt              @id @default(autoincrement())
   name            String              @db.VarChar(150)
@@ -486,6 +515,8 @@ model Branch {
 
 model User {
   authVersion Int @default(0) @map("auth_version")
+  priorCurriculumAdoptions ClassCurriculumHistory[] @relation("PriorCurriculumAdoptionActor")
+  curriculumReplacements ClassCurriculumHistory[] @relation("CurriculumReplacementActor")
   familyLoginId         String?            @unique @map("family_login_id") @db.VarChar(50)
   onboardingInvitation SchoolAdminInvitation?
   reportingPeriods ReportingPeriod[]
@@ -658,6 +689,7 @@ model StudentGuardian {
 
 model Class {
   curricula ClassCurriculum[]
+  curriculumHistory ClassCurriculumHistory[]
   studentReports StudentReport[]
   assessments Assessment[]
   timetable ClassTimetableSlot[]
@@ -688,6 +720,8 @@ model Class {
 
 model Subject {
   curricula ClassCurriculum[]
+  curriculumHistory ClassCurriculumHistory[]
+  curriculumAssignments CurriculumAssignment[]
   assessments Assessment[]
   @@unique([orgId, id], map: "uniq_subjects_org_id")
   id           BigInt       @id @default(autoincrement())

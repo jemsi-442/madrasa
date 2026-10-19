@@ -1,0 +1,21 @@
+CREATE TABLE `class_curriculum_history` (
+  `id` VARCHAR(30) NOT NULL PRIMARY KEY,
+  `classCurriculumId` VARCHAR(30) NOT NULL,
+  `orgId` BIGINT NOT NULL,
+  `classId` BIGINT NOT NULL,
+  `subjectId` BIGINT NOT NULL,
+  `previousAssignmentId` VARCHAR(30) NOT NULL,
+  `previousAdoptedBy` BIGINT NOT NULL,
+  `previousAdoptedAt` DATETIME(3) NOT NULL,
+  `replacedBy` BIGINT NOT NULL,
+  `replacedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX `class_curriculum_history_org_class_subject_replaced_idx` (`orgId`, `classId`, `subjectId`, `replacedAt`),
+  INDEX `class_curriculum_history_previous_assignment_idx` (`previousAssignmentId`),
+  FOREIGN KEY (`classCurriculumId`) REFERENCES `class_curricula` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`orgId`) REFERENCES `organizations` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`orgId`, `classId`) REFERENCES `classes` (`org_id`, `id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`orgId`, `subjectId`) REFERENCES `subjects` (`org_id`, `id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`orgId`, `previousAssignmentId`) REFERENCES `curriculum_assignments` (`organizationId`, `id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`previousAdoptedBy`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`replacedBy`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
