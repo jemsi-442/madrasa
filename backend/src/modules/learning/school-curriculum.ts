@@ -6,6 +6,12 @@ import type { AuthenticatedUser } from '../../shared/middleware/authenticate';
 const maxDatabaseId = 9_223_372_036_854_775_807n;
 const id = z.string().regex(/^[1-9]\d{0,18}$/).refine(value => BigInt(value) <= maxDatabaseId);
 const adoptionInput = z.object({ assignmentId: z.string().min(1).max(30), classId: id, subjectId: id }).strict();
+const deliveryInput = z.object({
+  classCurriculumId: z.string().min(1).max(30),
+  assignmentId: z.string().min(1).max(30),
+  lessonId: z.string().min(1).max(30),
+  clientEventId: z.string().uuid(),
+}).strict();
 const classScope = (actor: AuthenticatedUser) => ({
   orgId: BigInt(actor.orgId),
   ...(actor.branchId ? { branchId: BigInt(actor.branchId) } : {}),
@@ -128,6 +134,53 @@ export class SchoolCurriculumService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new HttpError(409, 'Adoption changed. Refresh before trying again.');
+      throw error;
+    }
+  }
+
+  async recordDelivery(actor: AuthenticatedUser, raw: unknown) {
+    if (actor.role !== 'TEACHER') throw new HttpError(403, 'Only the assigned teacher can record teaching');
+    const input = deliveryInput.parse(raw);
+    try {
+      return await this.db.$transaction(async tx => {
+        await this.authorize(tx, actor);
+        const adoption = await tx.classCurriculum.findFirst({
+          where: { id: input.classCurriculumId, orgId: BigInt(actor.orgId), class: classScope(actor) },
+          include: { assignment: { include: { version: true } }, subject: true },
+        });
+        if (!adoption) throw new HttpError(404, 'Class curriculum is unavailable');
+        const existing = await tx.curriculumLessonDelivery.findUnique({ where: {
+          orgId_teacherId_clientEventId: {
+            orgId: BigInt(actor.orgId), teacherId: BigInt(actor.userId), clientEventId: input.clientEventId,
+          },
+        } });
+        if (existing) {
+          if (existing.classCurriculumId !== input.classCurriculumId || existing.assignmentId !== input.assignmentId || existing.lessonId !== input.lessonId) {
+            throw new HttpError(409, 'This event ID was already used for another delivery');
+          }
+          return serialise(existing);
+        }
+        if (adoption.assignmentId !== input.assignmentId || adoption.assignment.version.status !== 'PUBLISHED' || !adoption.subject.isActive) {
+          throw new HttpError(409, 'Class curriculum changed. Refresh before recording teaching.');
+        }
+        const lesson = await tx.curriculumLesson.findFirst({ where: {
+          id: input.lessonId, versionId: adoption.assignment.versionId,
+        }, select: { id: true } });
+        if (!lesson) throw new HttpError(422, 'Choose a lesson from the adopted curriculum version');
+        const delivery = await tx.curriculumLessonDelivery.create({ data: {
+          ...input, orgId: BigInt(actor.orgId), teacherId: BigInt(actor.userId),
+        } });
+        await tx.auditLog.create({ data: {
+          orgId: BigInt(actor.orgId), actorUserId: BigInt(actor.userId),
+          action: 'curriculum.lesson.taught', entityType: 'CurriculumLessonDelivery', entityId: delivery.id,
+          metadata: { classCurriculumId: adoption.id, assignmentId: input.assignmentId, lessonId: input.lessonId },
+        } });
+        return serialise(delivery);
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && ['P2002', 'P2034'].includes(error.code)) {
+        throw new HttpError(409, 'Concurrent update. Retry with the same event ID.');
+      }
       throw error;
     }
   }

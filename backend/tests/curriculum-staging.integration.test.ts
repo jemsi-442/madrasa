@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { SchoolCurriculumService } from "../src/modules/learning/school-curriculum";
@@ -439,6 +439,26 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       expect(firstTeacherView.assignments[0].version).toMatchObject({ version: "1.0" });
       expect(firstTeacherView.assignments[0].version.lessons).toHaveLength(1);
       expect(firstTeacherView.assignments[0].version.topics).toHaveLength(2);
+      const deliveryInput = {
+        classCurriculumId: firstTeacherView.assignments[0].adoptions[0].id,
+        assignmentId: firstAssignment.assignments[0]!.id,
+        lessonId: sourceContent.lessons[0]!.id,
+        clientEventId: randomUUID(),
+      };
+      await expect(school.recordDelivery(schoolActor, deliveryInput)).rejects.toMatchObject({ statusCode: 403 });
+      await expect(school.recordDelivery(teacherActor, {
+        ...deliveryInput, lessonId: clonedDraft.lessons[0]!.id,
+      })).rejects.toMatchObject({ statusCode: 422 });
+      expect(await db.curriculumLessonDelivery.count({ where: { orgId: organization.id } })).toBe(0);
+      const delivery = await school.recordDelivery(teacherActor, deliveryInput);
+      expect(await school.recordDelivery(teacherActor, deliveryInput)).toEqual(delivery);
+      expect(await db.curriculumLessonDelivery.count({ where: { orgId: organization.id } })).toBe(1);
+      await expect(school.recordDelivery(teacherActor, {
+        ...deliveryInput, lessonId: clonedDraft.lessons[0]!.id,
+      })).rejects.toMatchObject({ statusCode: 409 });
+      expect(await db.auditLog.count({ where: {
+        orgId: organization.id, action: "curriculum.lesson.taught",
+      } })).toBe(1);
 
       const assignmentPreview = await platform.assignmentPreview(
         platformActor,
@@ -540,6 +560,16 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       expect(assignedTeacherView.classes.map((row: { name: string }) => row.name)).toEqual(["Level One"]);
       expect(assignedTeacherView.assignments.map((row: { id: string }) => row.id)).toEqual([nextAssignment.assignments[0]!.id]);
       expect(assignedTeacherView.assignments[0].adoptions[0].history[0].previousAssignment.version.version).toBe("1.0");
+      expect(await school.recordDelivery(teacherActor, deliveryInput)).toEqual(delivery);
+      await expect(school.recordDelivery(teacherActor, {
+        ...deliveryInput, clientEventId: randomUUID(),
+      })).rejects.toMatchObject({ statusCode: 409 });
+      const savedDelivery = await db.curriculumLessonDelivery.findUniqueOrThrow({ where: { id: delivery.id } });
+      expect(savedDelivery.assignmentId).toBe(firstAssignment.assignments[0]!.id);
+      expect(savedDelivery.lessonId).toBe(sourceContent.lessons[0]!.id);
+      await expect(school.recordDelivery({ ...teacherActor, userId: otherTeacher.id.toString() }, {
+        ...deliveryInput, clientEventId: randomUUID(),
+      })).rejects.toMatchObject({ statusCode: 404 });
       expect(await db.curriculumVersion.findUniqueOrThrow({
         where: { id: first.id },
         include: { topics: { include: { objectives: true } }, lessons: { include: { objectives: true } } },
@@ -653,10 +683,11 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       })).resolves.toMatchObject({ assignmentId: nextAssignment.assignments[0]!.id });
     } finally {
       if (organizationId !== undefined) {
+        await db.curriculumLessonDelivery.deleteMany({ where: { orgId: organizationId } });
         await db.classCurriculumHistory.deleteMany({ where: { orgId: organizationId } });
         await db.classCurriculum.deleteMany({ where: { orgId: organizationId } });
         await db.curriculumAssignment.deleteMany({ where: { organizationId } });
-        await db.auditLog.deleteMany({ where: { orgId: organizationId, ...(userId === undefined ? {} : { actorUserId: userId }) } });
+        await db.auditLog.deleteMany({ where: { orgId: organizationId } });
         await db.class.deleteMany({ where: { orgId: organizationId } });
         await db.subject.deleteMany({ where: { orgId: organizationId } });
         await db.user.deleteMany({ where: { orgId: organizationId } });

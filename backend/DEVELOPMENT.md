@@ -1578,8 +1578,31 @@ history or count as teaching or achievement.
 
 The school workspace Curriculum page shows topics, measurable objectives and
 shared lesson plans as read-only references. Adoption does not create learner
-achievements, assessments, delivery records or attendance. Teacher delivery and
-assessment linkage remain future work.
+achievements, assessments, delivery records or attendance. The online delivery
+write API below is a separate backend increment; the teacher UI and assessment
+linkage remain unfinished.
+
+### Online lesson delivery backend
+
+`POST /api/school-curriculum/deliveries` accepts only `classCurriculumId`,
+`assignmentId`, `lessonId` and a UUID `clientEventId`. Only an active teacher
+assigned to that class may record teaching. The active madrasa/branch scope,
+active subject and adopted published version are checked server-side. The
+server records the time; this endpoint does not support backdated/offline events.
+
+The delivery and audit entry are atomic. Reusing the same event ID with the same
+payload returns the original record after permission rechecks; changing its
+payload returns 409. On a concurrent-write 409, retain the event ID for retry.
+Class version upgrades do not rewrite the stored assignment or lesson ID.
+An old event may be retried after upgrade, but a new event against the replaced
+assignment is rejected. Serializable transactions protect the adoption snapshot.
+
+This records a teacher's declaration of teaching, not student attendance,
+assessment or achievement. A teacher-facing action, paginated delivery history,
+coverage reports and persistent offline event storage are not implemented yet.
+Do not expose teaching coverage in Learning Oversight until those integrations
+are completed. Migration `202610201000_curriculum_lesson_delivery` is supplied
+but has only been applied to the disposable test database.
 
 ### Curriculum foundation acceptance checkpoint (2026-10-20)
 

@@ -16,3 +16,6 @@ schoolCurriculumRouter.get('/', asyncHandler(async (req, res) => {
 schoolCurriculumRouter.post('/adoptions', requireRole('ADMIN'), asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.adopt(req.authUser!, req.body) });
 }));
+schoolCurriculumRouter.post('/deliveries', requireRole('TEACHER'), asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await service.recordDelivery(req.authUser!, req.body) });
+}));

@@ -28,6 +28,41 @@ function fixture() {
   return { tx, service: new SchoolCurriculumService(db) };
 }
 describe('school curriculum boundaries', () => {
+  describe('online lesson delivery input and role boundaries', () => {
+    const teacher: AuthenticatedUser = { ...admin, role: 'TEACHER' };
+    const delivery = {
+      classCurriculumId: 'adoption', assignmentId: 'assigned-v1', lessonId: 'lesson-1',
+      clientEventId: '20f05979-54b4-4ff9-bb7b-1131b99a2a86',
+    };
+    for (const role of ['ADMIN', 'ACCOUNTANT', 'PARENT'] as const) {
+      it(`does not allow ${role} to record teaching`, async () => {
+        const { service, tx } = fixture();
+        await expect(service.recordDelivery({ ...admin, role }, delivery)).rejects.toMatchObject({ statusCode: 403 });
+        expect(tx.classCurriculum.findFirst).not.toHaveBeenCalled();
+      });
+    }
+    for (const extra of [{ taughtAt: '2026-01-01T00:00:00Z' }, { teacherId: '2' }, { orgId: '99' }, { achievement: true }]) {
+      it(`rejects caller-supplied ${Object.keys(extra)[0]}`, async () => {
+        const { service, tx } = fixture();
+        await expect(service.recordDelivery(teacher, { ...delivery, ...extra })).rejects.toThrow();
+        expect(tx.user.findFirst).not.toHaveBeenCalled();
+      });
+    }
+    it('rechecks active account and class scope before accepting an event', async () => {
+      const { service, tx } = fixture();
+      await expect(service.recordDelivery(teacher, delivery)).rejects.toMatchObject({ statusCode: 404 });
+      expect(tx.classCurriculum.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: {
+        id: 'adoption', orgId: 10n, class: { orgId: 10n, branchId: 20n, teacherId: 1n },
+      } }));
+      tx.user.findFirst.mockResolvedValue(null);
+      await expect(service.recordDelivery(teacher, delivery)).rejects.toMatchObject({ statusCode: 403 });
+    });
+    it('requires a valid client event identifier', async () => {
+      const { service, tx } = fixture();
+      await expect(service.recordDelivery(teacher, { ...delivery, clientEventId: 'invalid' })).rejects.toThrow();
+      expect(tx.user.findFirst).not.toHaveBeenCalled();
+    });
+  });
   it('adopts an assigned published version using scoped existing class and subject', async () => {
     const { tx, service } = fixture();
     expect(await service.adopt(admin, input)).toEqual({ id: 'adoption', orgId: '10' });

@@ -156,6 +156,7 @@ model CurriculumObjective {
 }
 
 model CurriculumLesson {
+  deliveries CurriculumLessonDelivery[]
   id String @id @default(cuid()) @db.VarChar(30)
   versionId String @db.VarChar(30)
   title String @db.VarChar(150)
@@ -178,6 +179,7 @@ model CurriculumLessonObjective {
 }
 
 model CurriculumAssignment {
+  deliveries CurriculumLessonDelivery[]
   adoptions ClassCurriculum[]
   adoptionHistory ClassCurriculumHistory[]
   id String @id @default(cuid()) @db.VarChar(30)
@@ -196,6 +198,7 @@ model CurriculumAssignment {
 }
 
 model ClassCurriculum {
+  deliveries CurriculumLessonDelivery[]
   history ClassCurriculumHistory[]
   id String @id @default(cuid()) @db.VarChar(30)
   orgId BigInt
@@ -208,6 +211,7 @@ model ClassCurriculum {
   subject Subject @relation(fields: [orgId, subjectId], references: [orgId, id], onDelete: Restrict)
   assignment CurriculumAssignment @relation(fields: [orgId, assignmentId], references: [organizationId, id], onDelete: Restrict)
   @@unique([classId, subjectId])
+  @@unique([orgId, id])
   @@index([orgId, assignmentId])
   @@map("class_curricula")
 }
@@ -233,6 +237,24 @@ model ClassCurriculumHistory {
   @@index([orgId, classId, subjectId, replacedAt])
   @@index([previousAssignmentId])
   @@map("class_curriculum_history")
+}
+
+model CurriculumLessonDelivery {
+  id String @id @default(cuid()) @db.VarChar(30)
+  orgId BigInt
+  classCurriculumId String @db.VarChar(30)
+  assignmentId String @db.VarChar(30)
+  lessonId String @db.VarChar(30)
+  teacherId BigInt
+  clientEventId String @db.VarChar(36)
+  taughtAt DateTime @default(now())
+  adoption ClassCurriculum @relation(fields: [orgId, classCurriculumId], references: [orgId, id], onDelete: Restrict)
+  assignment CurriculumAssignment @relation(fields: [orgId, assignmentId], references: [organizationId, id], onDelete: Restrict)
+  lesson CurriculumLesson @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  teacher User @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  @@unique([orgId, teacherId, clientEventId])
+  @@index([orgId, classCurriculumId, taughtAt])
+  @@map("curriculum_lesson_deliveries")
 }
 
 model CurriculumReview {
@@ -514,6 +536,7 @@ model Branch {
 }
 
 model User {
+  curriculumDeliveries CurriculumLessonDelivery[]
   authVersion Int @default(0) @map("auth_version")
   priorCurriculumAdoptions ClassCurriculumHistory[] @relation("PriorCurriculumAdoptionActor")
   curriculumReplacements ClassCurriculumHistory[] @relation("CurriculumReplacementActor")
