@@ -1630,6 +1630,10 @@ range 1..10000) paginates this list independently of history `page`. The respons
 includes `pendingPage` and `pendingHasMore`; the dialog keeps the lesson list
 expanded across navigation and retries. Both lists use offset pagination, so
 concurrent teaching records can move pending lessons between pages.
+`Refresh history` in the dialog reloads both lists from page 1 and retains the
+expanded lesson section. Loading hides stale results and navigation; a failure
+offers retry without presenting old coverage as newly fetched data. This refresh
+uses the existing scoped read endpoint and does not write teaching records.
 The history response also includes `teachingCoverage` for the current adopted
 version: distinct lesson IDs recorded as taught and total published lesson plans.
 This summary covers the entire class history, not just the current page. Repeated

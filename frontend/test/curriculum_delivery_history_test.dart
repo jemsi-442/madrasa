@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_delivery_history_dialog.dart';
@@ -64,6 +65,75 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   for (final width in [390.0, 1440.0]) {
+    testWidgets('refresh resets both lists and handles failure at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final requests = <Map<String, String>>[];
+      final refreshing = Completer<dynamic>();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumDeliveryHistoryDialog(
+              adoptionId: 'adoption-1',
+              className: 'Class A',
+              load: (path) async {
+                final query = Uri.parse(path).queryParameters;
+                requests.add(query);
+                if (requests.length == 4) return refreshing.future;
+                return {
+                  'items': [],
+                  'hasMore': query['page'] == '1',
+                  'pendingLessons': [
+                    {'id': 'l1', 'title': 'Synthetic pending lesson'},
+                  ],
+                  'pendingHasMore': query['pendingPage'] == '1',
+                  'teachingCoverage': {
+                    'version': '1.0',
+                    'taughtLessons': requests.length == 5 ? 1 : 0,
+                    'totalLessons': 12,
+                  },
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lessons without teaching records'));
+      await tester.pumpAndSettle();
+      for (final label in ['Next lessons', 'Next', 'Refresh history']) {
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        if (label != 'Refresh history') await tester.pumpAndSettle();
+      }
+      await tester.pump();
+      expect(requests.last, {
+        'classCurriculumId': 'adoption-1',
+        'page': '1',
+        'pendingPage': '1',
+      });
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Refresh history'), findsNothing);
+      expect(find.text('0 / 12 lessons recorded as taught'), findsNothing);
+      refreshing.completeError(Exception('Unavailable'));
+      await tester.pumpAndSettle();
+      expect(find.text('Could not load teaching history.'), findsOneWidget);
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 / 12 lessons recorded as taught'), findsOneWidget);
+      expect(find.text('Lessons page 1'), findsOneWidget);
+      expect(requests[1]['pendingPage'], '2');
+      expect(requests[2]['page'], '2');
+      expect(requests[2]['pendingPage'], '2');
+      expect(requests.last['page'], '1');
+      expect(requests.last['pendingPage'], '1');
+      expect(tester.takeException(), isNull);
+    });
     testWidgets('pending lesson pages retain history and retry at $width', (
       tester,
     ) async {

@@ -41,6 +41,18 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
     result = fetch();
   });
 
+  void refresh() => setState(() {
+    page = 1;
+    pendingPage = 1;
+    result = fetch();
+  });
+
+  Widget refreshButton() => TextButton.icon(
+    onPressed: refresh,
+    icon: const Icon(Icons.refresh),
+    label: const Text('Refresh history'),
+  );
+
   String date(dynamic value) {
     final parsed = DateTime.tryParse('$value')?.toLocal();
     if (parsed == null) return 'Date unavailable';
@@ -71,6 +83,7 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
                     onPressed: () => go(page),
                     child: const Text('Try again'),
                   ),
+                  refreshButton(),
                 ],
               );
             }
@@ -82,6 +95,7 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Align(alignment: Alignment.centerRight, child: refreshButton()),
                 if (coverage != null) ...[
                   Text(
                     'Teaching coverage · v${coverage['version']}',
