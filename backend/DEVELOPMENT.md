@@ -1613,7 +1613,14 @@ can open Teaching history beside a class adoption. History includes earlier
 curriculum versions and displays the recorded lesson, version, teacher name
 and local date/time; client event IDs and account contact details are not returned.
 Pagination is offset-based; refresh page 1 to see newly recorded teaching.
-Coverage reports and persistent offline event storage are not implemented yet.
+The history response also includes `teachingCoverage` for the current adopted
+version: distinct lesson IDs recorded as taught and total published lesson plans.
+This summary covers the entire class history, not just the current page. Repeated
+teaching events count once per lesson; records from replaced assignments do not
+contribute to the new version. A version with no lessons has no applicable coverage
+percentage. This is teacher-reported teaching coverage, not assessment coverage or
+learner achievement. Institution-wide coverage reports and persistent offline event
+storage are not implemented yet.
 Do not expose teaching coverage in Learning Oversight until those integrations
 are completed. Migration `202610201000_curriculum_lesson_delivery` is supplied
 but has only been applied to the disposable test database.

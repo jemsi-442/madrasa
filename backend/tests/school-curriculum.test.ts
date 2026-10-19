@@ -22,7 +22,8 @@ function fixture() {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     classCurriculumHistory: { create: vi.fn().mockResolvedValue({ id: 'history' }) },
-    curriculumLessonDelivery: { findMany: vi.fn().mockResolvedValue([]) },
+    curriculumLessonDelivery: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    curriculumLesson: { count: vi.fn().mockResolvedValue(3) },
     auditLog: { create: vi.fn() },
   };
   const db = { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient;
@@ -31,11 +32,17 @@ function fixture() {
 describe('school curriculum boundaries', () => {
   it('pages scoped teaching history without exposing event IDs or login details', async () => {
     const { tx, service } = fixture();
-    tx.classCurriculum.findFirst.mockResolvedValue({ id: 'adoption' });
+    tx.classCurriculum.findFirst.mockResolvedValue({ id: 'adoption', assignmentId: 'assigned-v1', assignment: { versionId: 'v1', version: { version: '1.0' } } });
     tx.curriculumLessonDelivery.findMany.mockResolvedValue(Array.from({ length: 21 }, (_, i) => ({ id: `${i}` })));
     const result = await service.deliveryHistory(admin, { classCurriculumId: 'adoption', page: '2' });
     expect(result.items).toHaveLength(20);
     expect(result).toMatchObject({ page: 2, hasMore: true });
+    expect(result.teachingCoverage).toEqual({ version: '1.0', taughtLessons: 0, totalLessons: 3 });
+    expect(tx.curriculumLessonDelivery.groupBy).toHaveBeenCalledWith({
+      by: ['lessonId'], where: {
+        orgId: 10n, classCurriculumId: 'adoption', assignmentId: 'assigned-v1', lesson: { versionId: 'v1' },
+      },
+    });
     expect(tx.curriculumLessonDelivery.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { orgId: 10n, classCurriculumId: 'adoption' }, skip: 20, take: 21,
       select: expect.objectContaining({ teacher: { select: { fullName: true } } }),

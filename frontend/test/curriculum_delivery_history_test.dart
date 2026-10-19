@@ -3,6 +3,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_delivery_history_dialog.dart';
 
 void main() {
+  testWidgets('coverage with no planned lessons is not treated as completion', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurriculumDeliveryHistoryDialog(
+            adoptionId: 'empty',
+            className: 'Class A',
+            load: (_) async => {
+              'items': [],
+              'hasMore': false,
+              'teachingCoverage': {
+                'version': '1.0',
+                'taughtLessons': 0,
+                'totalLessons': 0,
+              },
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('coverage is not applicable'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('No teaching records on this page.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [390.0, 1440.0]) {
     testWidgets('teaching history pages and retries at $width', (tester) async {
       tester.view.physicalSize = Size(width, 1000);
@@ -27,6 +55,11 @@ void main() {
                   throw Exception('Unavailable');
                 }
                 return {
+                  'teachingCoverage': {
+                    'version': '2.0',
+                    'taughtLessons': 1,
+                    'totalLessons': 4,
+                  },
                   'page': int.parse(page),
                   'hasMore': page == '1',
                   'items': [
@@ -51,6 +84,15 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.textContaining('not attendance'), findsOneWidget);
+      expect(find.text('1 / 4 lessons recorded as taught'), findsOneWidget);
+      expect(
+        tester
+            .widget<LinearProgressIndicator>(
+              find.byType(LinearProgressIndicator),
+            )
+            .value,
+        0.25,
+      );
       expect(find.textContaining('v1.0'), findsOneWidget);
       expect(find.text('Reading page 1'), findsOneWidget);
       await tester.tap(find.text('Next'));

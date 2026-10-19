@@ -194,7 +194,7 @@ export class SchoolCurriculumService {
       await this.authorize(tx, actor);
       const adoption = await tx.classCurriculum.findFirst({
         where: { id: query.classCurriculumId, orgId: BigInt(actor.orgId), class: classScope(actor) },
-        select: { id: true },
+        select: { id: true, assignmentId: true, assignment: { select: { versionId: true, version: { select: { version: true } } } } },
       });
       if (!adoption) throw new HttpError(404, 'Class curriculum is unavailable');
       const rows = await tx.curriculumLessonDelivery.findMany({
@@ -208,7 +208,22 @@ export class SchoolCurriculumService {
           assignment: { select: { version: { select: { subject: true, level: true, version: true } } } },
         },
       });
-      return serialise({ items: rows.slice(0, 20), page: query.page, hasMore: rows.length > 20 });
+      const totalLessons = await tx.curriculumLesson.count({ where: { versionId: adoption.assignment.versionId } });
+      const taughtLessons = await tx.curriculumLessonDelivery.groupBy({
+        by: ['lessonId'],
+        where: {
+          orgId: BigInt(actor.orgId), classCurriculumId: adoption.id,
+          assignmentId: adoption.assignmentId,
+          lesson: { versionId: adoption.assignment.versionId },
+        },
+      });
+      return serialise({
+        items: rows.slice(0, 20), page: query.page, hasMore: rows.length > 20,
+        teachingCoverage: {
+          version: adoption.assignment.version.version,
+          taughtLessons: taughtLessons.length, totalLessons,
+        },
+      });
     });
   }
 }

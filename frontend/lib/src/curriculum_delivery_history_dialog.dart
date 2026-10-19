@@ -69,10 +69,38 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
             }
             final data = snapshot.data as Map;
             final items = data['items'] as List;
+            final coverage = data['teachingCoverage'] as Map?;
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (coverage != null) ...[
+                  Text(
+                    'Teaching coverage · v${coverage['version']}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    '${coverage['taughtLessons']} / ${coverage['totalLessons']} lessons recorded as taught',
+                  ),
+                  const Text(
+                    'Current adopted version only. Repeated teaching counts once per lesson.',
+                  ),
+                  if ((coverage['totalLessons'] as num) > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: LinearProgressIndicator(
+                        value:
+                            ((coverage['taughtLessons'] as num) /
+                                    (coverage['totalLessons'] as num))
+                                .clamp(0.0, 1.0),
+                      ),
+                    )
+                  else
+                    const Text(
+                      'No lessons in this version; coverage is not applicable.',
+                    ),
+                  const SizedBox(height: 12),
+                ],
                 const WorkspaceFormNotice(
                   message:
                       'Teacher-reported teaching, not attendance, assessment or learner achievement. Earlier curriculum versions remain in this history. Times are local.',

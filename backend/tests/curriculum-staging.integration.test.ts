@@ -577,10 +577,22 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
         });
         expect(teachingHistory.items[0]).not.toHaveProperty('clientEventId');
         expect(teachingHistory.hasMore).toBe(false);
+        expect(teachingHistory.teachingCoverage).toEqual({ version: '2.0', taughtLessons: 0, totalLessons: 1 });
       }
       await expect(school.deliveryHistory({ ...teacherActor, userId: otherTeacher.id.toString() }, {
         classCurriculumId: deliveryInput.classCurriculumId,
       })).rejects.toMatchObject({ statusCode: 404 });
+      for (let repetition = 0; repetition < 2; repetition++) {
+        await school.recordDelivery(teacherActor, {
+          ...deliveryInput,
+          assignmentId: nextAssignment.assignments[0]!.id,
+          lessonId: clonedDraft.lessons[0]!.id,
+          clientEventId: randomUUID(),
+        });
+      }
+      const repeatedTeaching = await school.deliveryHistory(teacherActor, { classCurriculumId: deliveryInput.classCurriculumId });
+      expect(repeatedTeaching.items).toHaveLength(3);
+      expect(repeatedTeaching.teachingCoverage).toEqual({ version: '2.0', taughtLessons: 1, totalLessons: 1 });
       await expect(school.recordDelivery({ ...teacherActor, userId: otherTeacher.id.toString() }, {
         ...deliveryInput, clientEventId: randomUUID(),
       })).rejects.toMatchObject({ statusCode: 404 });
