@@ -608,6 +608,12 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       expect(oversight.items.find(row => row.id === firstAssignment.assignments[0]!.id)).toMatchObject({
         adoptedClasses: 0, plannedClassLessons: 0, taughtClassLessons: 0,
       });
+      const adoptedReport = await platform.oversight(platformActor, { madrasa: organization.name, adoption: 'with' });
+      expect(adoptedReport.items.map(row => row.id)).toContain(nextAssignment.assignments[0]!.id);
+      expect(adoptedReport.items.map(row => row.id)).not.toContain(firstAssignment.assignments[0]!.id);
+      const unadoptedReport = await platform.oversight(platformActor, { madrasa: organization.name, adoption: 'without' });
+      expect(unadoptedReport.items.map(row => row.id)).toContain(firstAssignment.assignments[0]!.id);
+      expect(unadoptedReport.items.map(row => row.id)).not.toContain(nextAssignment.assignments[0]!.id);
       await expect(school.recordDelivery({ ...teacherActor, userId: otherTeacher.id.toString() }, {
         ...deliveryInput, clientEventId: randomUUID(),
       })).rejects.toMatchObject({ statusCode: 404 });

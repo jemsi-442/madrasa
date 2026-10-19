@@ -38,9 +38,17 @@ for (const role of ['IT_SECURITY', 'ACCOUNTANT']) it(`denies ${role} oversight`,
 });
 it('rejects inactive accounts and invalid filters', async () => {
   await expect(fixture('SUPER_ADMIN', 'SUSPENDED').service.oversight(actor, {})).rejects.toMatchObject({ statusCode: 403 });
-  for (const query of [{ page: 0 }, { page: 10001 }, { level: '' }, { studentId: '1' }]) {
+  for (const query of [{ page: 0 }, { page: 10001 }, { level: '' }, { adoption: 'invalid' }, { studentId: '1' }]) {
     await expect(fixture().service.oversight(actor, query)).rejects.toThrow();
   }
+});
+for (const adoption of ['with', 'without'] as const) it(`filters ${adoption} class adoptions before pagination`, async () => {
+  const { service, tx } = fixture();
+  await service.oversight(actor, { adoption, page: 2 });
+  expect(tx.curriculumAssignment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+    where: expect.objectContaining({ adoptions: adoption === 'with' ? { some: {} } : { none: {} } }),
+    skip: 20, take: 21,
+  }));
 });
 it('does not read deliveries for an empty assignment result', async () => {
   const { service, tx } = fixture();

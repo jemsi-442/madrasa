@@ -248,6 +248,23 @@ void main() {
         find.text('Applied filters: All assigned frameworks'),
         findsOneWidget,
       );
+      await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('No current class adoption').last);
+      await tester.pumpAndSettle();
+      expect(queries.last, {'page': '1'});
+      await tester.ensureVisible(find.text('Apply filters'));
+      await tester.tap(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      expect(queries.last, {'adoption': 'without', 'page': '1'});
+      expect(find.textContaining('not delayed onboarding'), findsOneWidget);
+      await tester.ensureVisible(find.text('Clear filters'));
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      expect(queries.last, {'page': '1'});
+      expect(find.textContaining('not delayed onboarding'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }

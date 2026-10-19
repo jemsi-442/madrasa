@@ -38,12 +38,14 @@ export class PlatformCurriculumService {
       madrasa: z.string().trim().min(1).max(120).optional(),
       subject: z.string().trim().min(1).max(120).optional(),
       level: z.string().trim().min(1).max(80).optional(),
+      adoption: z.enum(['with', 'without']).optional(),
     }).strict().parse(input);
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
       const rows = await tx.curriculumAssignment.findMany({
         where: {
           ...(query.madrasa ? { organization: { name: { contains: query.madrasa } } } : {}),
+          ...(query.adoption ? { adoptions: query.adoption === 'with' ? { some: {} } : { none: {} } } : {}),
           version: { status: 'PUBLISHED',
             ...(query.subject ? { subject: { contains: query.subject } } : {}),
             ...(query.level ? { level: { contains: query.level } } : {}),

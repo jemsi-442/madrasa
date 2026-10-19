@@ -1654,7 +1654,12 @@ are persisted. Unknown/forbidden destinations fall back to Overview. This is a
 same-tab navigation preference, not a URL deep link or native-app persistence.
 It rechecks active platform account and curriculum permission,
 supports madrasa-name, subject and level filters, and pages 20 assignments at a
-time. The UI labels applied filters separately from unsubmitted edits; Refresh,
+time. Optional `adoption=with|without` filters current class adoption records in
+the database before pagination. Omitting it includes all assignments. A version
+without current adoptions may have been replaced; it is not automatically a
+late-onboarding madrasa. The UI explains this distinction and resets the adoption
+filter with Clear filters.
+The UI labels applied filters separately from unsubmitted edits; Refresh,
 retry and pagination retain the applied filter set. Clear filters resets both the
 inputs and applied set. Widget regression tests verify that a late earlier response
 cannot replace the latest report. Each row reports current class adoptions and distinct class/lesson teaching

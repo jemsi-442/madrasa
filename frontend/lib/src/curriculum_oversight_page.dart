@@ -27,13 +27,19 @@ class _OversightState extends State<CurriculumOversightPage> {
     TextEditingController(),
   ];
   Map<String, String> applied = {};
+  String adoption = '';
+  static const adoptionLabels = {
+    '': 'All assignments',
+    'with': 'With class adoptions',
+    'without': 'No current class adoption',
+  };
   static const filterKeys = ['madrasa', 'subject', 'level'];
   static const filterLabels = ['Madrasa', 'Subject', 'Level'];
   bool get hasUnappliedChanges {
     for (var i = 0; i < filters.length; i++) {
       if (filters[i].text.trim() != (applied[filterKeys[i]] ?? '')) return true;
     }
-    return false;
+    return adoption != (applied['adoption'] ?? '');
   }
 
   int page = 1;
@@ -59,6 +65,7 @@ class _OversightState extends State<CurriculumOversightPage> {
       page = target;
       if (apply) {
         applied = {};
+        if (adoption.isNotEmpty) applied['adoption'] = adoption;
         for (var i = 0; i < filters.length; i++) {
           final value = filters[i].text.trim();
           if (value.isNotEmpty) {
@@ -116,6 +123,23 @@ class _OversightState extends State<CurriculumOversightPage> {
                   onSubmitted: (_) => reload(1, apply: true),
                 ),
               ),
+            SizedBox(
+              width: 280,
+              child: DropdownButtonFormField<String>(
+                initialValue: adoption,
+                key: ValueKey(adoption),
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Class adoption'),
+                items: [
+                  for (final entry in adoptionLabels.entries)
+                    DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                ],
+                onChanged: (value) => setState(() => adoption = value ?? ''),
+              ),
+            ),
             FilledButton(
               onPressed: () => reload(1, apply: true),
               child: const Text('Apply filters'),
@@ -125,6 +149,7 @@ class _OversightState extends State<CurriculumOversightPage> {
                 for (final controller in filters) {
                   controller.clear();
                 }
+                adoption = '';
                 reload(1, apply: true);
               },
               child: const Text('Clear filters'),
@@ -140,7 +165,7 @@ class _OversightState extends State<CurriculumOversightPage> {
         Text(
           applied.isEmpty
               ? 'Applied filters: All assigned frameworks'
-              : 'Applied filters: ${applied.entries.map((entry) => '${filterLabels[filterKeys.indexOf(entry.key)]}: ${entry.value}').join(' / ')}',
+              : 'Applied filters: ${applied.entries.map((entry) => entry.key == 'adoption' ? 'Class adoption: ${adoptionLabels[entry.value]}' : '${filterLabels[filterKeys.indexOf(entry.key)]}: ${entry.value}').join(' / ')}',
           style: Theme.of(context).textTheme.labelLarge,
         ),
         if (hasUnappliedChanges)
@@ -151,6 +176,11 @@ class _OversightState extends State<CurriculumOversightPage> {
             ),
           ),
         const SizedBox(height: 12),
+        if (applied['adoption'] == 'without')
+          const WorkspaceFormNotice(
+            message:
+                'No current class adoption may mean a version was replaced, not delayed onboarding. Review the assigned version before following up.',
+          ),
         FutureBuilder<dynamic>(
           future: result,
           builder: (context, snapshot) {
