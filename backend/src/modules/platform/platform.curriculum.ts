@@ -15,6 +15,13 @@ export const curriculumInput = z.object({
   objectives: z.array(z.string().trim().min(2).max(1000)).min(1).max(50),
 }).strict();
 const idSchema = z.string().min(1).max(30);
+const oversightMonth = z.string().regex(/^[1-9]\d{3}-(0[1-9]|1[0-2])$/);
+const monthRange = (month: string) => ({
+  gte: new Date(`${month}-01T00:00:00.000Z`),
+  ...(month === '9999-12'
+    ? { lte: new Date('9999-12-31T00:00:00.000Z') }
+    : { lt: new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 1)) }),
+});
 const organizationIdSchema = z.string().regex(/^[1-9]\d{0,18}$/)
   .refine(value => BigInt(value) <= 9_223_372_036_854_775_807n);
 export const curriculumDecisionInput = z.object({
@@ -40,7 +47,8 @@ export class PlatformCurriculumService {
       level: z.string().trim().min(1).max(80).optional(),
       adoption: z.enum(['with', 'without']).optional(),
       status: z.enum(['ACTIVE', 'TRIAL', 'SUSPENDED', 'PENDING_ACTIVATION']).optional(),
-      assessmentMonth: z.string().regex(/^[1-9]\d{3}-(0[1-9]|1[0-2])$/).optional(),
+      assessmentMonth: oversightMonth.optional(),
+      quranMonth: oversightMonth.optional(),
     }).strict().parse(input);
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
@@ -86,15 +94,7 @@ export class PlatformCurriculumService {
         OR: assessmentScopes,
         status: 'PUBLISHED',
         releases: { some: { retractedAt: null } },
-        ...(query.assessmentMonth ? { assessedOn: {
-          gte: new Date(`${query.assessmentMonth}-01T00:00:00.000Z`),
-          ...(query.assessmentMonth === '9999-12'
-            ? { lte: new Date('9999-12-31T00:00:00.000Z') }
-            : { lt: new Date(Date.UTC(
-              Number(query.assessmentMonth.slice(0, 4)),
-              Number(query.assessmentMonth.slice(5)), 1,
-            )) }),
-        } } : {}),
+        ...(query.assessmentMonth ? { assessedOn: monthRange(query.assessmentMonth) } : {}),
       };
       const publishedAssessments = assessmentScopes.length ? await tx.assessment.count({
         where: publishedScope,
@@ -115,12 +115,16 @@ export class PlatformCurriculumService {
       ])).values()];
       const quranGroups = quranScopes.length ? await tx.quranSession.groupBy({
         by: ['activity', 'observation'],
-        where: { OR: quranScopes, voidedAt: null },
+        where: {
+          OR: quranScopes, voidedAt: null,
+          ...(query.quranMonth ? { learnedOn: monthRange(query.quranMonth) } : {}),
+        },
         _count: { _all: true },
       }) : [];
       return {
         generatedAt: new Date().toISOString(),
         quran: {
+          month: query.quranMonth ?? null,
           classScopes: quranScopes.length,
           activities: ['READING', 'MEMORIZATION', 'REVISION', 'TAJWEED'].map(activity => {
             const groups = quranGroups.filter(group => group.activity === activity);

@@ -6,52 +6,61 @@ import 'package:mif_app/src/platform_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
-  testWidgets('assessment month validates, applies and survives refresh', (
-    tester,
-  ) async {
-    final queries = <Map<String, String>>[];
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: CurriculumOversightPage(
-            onBack: () {},
-            onSessionExpired: () {},
-            load: (path) async {
-              queries.add(Uri.parse(path).queryParameters);
-              return {'items': [], 'hasMore': false};
-            },
+  for (final field in [(3, 'assessmentMonth'), (4, 'quranMonth')]) {
+    testWidgets('${field.$2} validates, applies and survives refresh', (
+      tester,
+    ) async {
+      final queries = <Map<String, String>>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumOversightPage(
+              onBack: () {},
+              onSessionExpired: () {},
+              load: (path) async {
+                queries.add(Uri.parse(path).queryParameters);
+                return {'items': [], 'hasMore': false};
+              },
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final month = find.byType(TextField).at(3);
-    await tester.enterText(month, '2026-13');
-    await tester.ensureVisible(find.text('Apply filters'));
-    await tester.tap(find.text('Apply filters'));
-    await tester.pumpAndSettle();
-    expect(queries.length, 1);
-    expect(
-      find.text('Use YYYY-MM, or leave blank for all time.'),
-      findsOneWidget,
-    );
-    await tester.enterText(month, '2026-10');
-    await tester.ensureVisible(find.text('Apply filters'));
-    await tester.tap(find.text('Apply filters'));
-    await tester.pumpAndSettle();
-    expect(queries.last['assessmentMonth'], '2026-10');
-    await tester.enterText(month, '2026-11');
-    await tester.ensureVisible(find.text('Refresh'));
-    await tester.tap(find.text('Refresh'));
-    await tester.pumpAndSettle();
-    expect(queries.last['assessmentMonth'], '2026-10');
-    await tester.ensureVisible(find.text('Clear filters'));
-    await tester.tap(find.text('Clear filters'));
-    await tester.pumpAndSettle();
-    expect(queries.last, {'page': '1'});
-    expect(tester.widget<TextField>(month).controller!.text, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
+      );
+      await tester.pumpAndSettle();
+      final month = find.byType(TextField).at(field.$1);
+      await tester.enterText(month, '2026-13');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      expect(queries.length, 1);
+      expect(
+        find.text('Use YYYY-MM, or leave blank for all time.'),
+        findsOneWidget,
+      );
+      await tester.enterText(month, '2026-10');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      expect(queries.last[field.$2], '2026-10');
+      await tester.enterText(month, '2026-11');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      expect(queries.last[field.$2], '2026-10');
+      await tester.ensureVisible(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      expect(queries.last, {'page': '1'});
+      expect(tester.widget<TextField>(month).controller!.text, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('empty filtered report offers an explicit filter reset', (
     tester,
   ) async {

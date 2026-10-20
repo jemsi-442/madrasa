@@ -28,6 +28,7 @@ class _OversightState extends State<CurriculumOversightPage> {
     TextEditingController(),
     TextEditingController(),
     TextEditingController(),
+    TextEditingController(),
   ];
   Map<String, String> applied = {};
   String adoption = '';
@@ -44,18 +45,25 @@ class _OversightState extends State<CurriculumOversightPage> {
     'with': 'With class adoptions',
     'without': 'No current class adoption',
   };
-  static const filterKeys = ['madrasa', 'subject', 'level', 'assessmentMonth'];
+  static const filterKeys = [
+    'madrasa',
+    'subject',
+    'level',
+    'assessmentMonth',
+    'quranMonth',
+  ];
   static const filterLabels = [
     'Madrasa',
     'Subject',
     'Level',
     'Assessment month',
+    "Qur'an month",
   ];
-  static const filterLimits = [120, 120, 80, 7];
+  static const filterLimits = [120, 120, 80, 7, 7];
   bool validateFilters = false;
   String? filterError(int index) {
     final value = filters[index].text.trim();
-    if (index == 3 &&
+    if (index >= 3 &&
         value.isNotEmpty &&
         !RegExp(r'^[1-9]\d{3}-(0[1-9]|1[0-2])$').hasMatch(value)) {
       return 'Use YYYY-MM, or leave blank for all time.';
@@ -231,7 +239,7 @@ class _OversightState extends State<CurriculumOversightPage> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Choose a madrasa, framework or adoption status, then apply. Assessment month filters assessments by their assessment date only; teaching figures remain all-time.',
+                'Apply assignment filters and optional months. Assessment month uses the assessment date; Qur\'an month uses the learning date. Teaching figures remain all-time.',
                 style: TextStyle(color: AfaqDesign.muted),
               ),
               const SizedBox(height: 16),
@@ -247,7 +255,7 @@ class _OversightState extends State<CurriculumOversightPage> {
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           labelText: filterLabels[i],
-                          hintText: i == 3 ? 'YYYY-MM (optional)' : null,
+                          hintText: i >= 3 ? 'YYYY-MM (optional)' : null,
                           errorText: validateFilters ? filterError(i) : null,
                         ),
                         onSubmitted: (_) => reload(1, apply: true),

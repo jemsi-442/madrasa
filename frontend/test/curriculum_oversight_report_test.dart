@@ -102,6 +102,7 @@ void main() {
               padding: const EdgeInsets.all(24),
               child: CurriculumOversightReport(
                 quran: const {
+                  'month': '2026-09',
                   'classScopes': 3,
                   'activities': [
                     {
@@ -207,6 +208,12 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Tajweed'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Learning month: 2026-09 (learning date, not entry date)',
+        ),
+        findsOneWidget,
+      );
       expect(
         find.textContaining('assessment month does not apply'),
         findsOneWidget,

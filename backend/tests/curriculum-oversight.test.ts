@@ -173,6 +173,33 @@ it('counts Quran class scope once across subjects and ignores assessment month',
   });
   expect(JSON.stringify(result.quran)).not.toContain('studentId');
 });
+it('applies independent learning and assessment months', async () => {
+  const { service, tx } = fixture();
+  const result = await service.oversight(actor, { quranMonth: '2026-12', assessmentMonth: '2024-02' });
+  expect(result.quran.month).toBe('2026-12');
+  expect(result.assessments.month).toBe('2024-02');
+  expect(tx.quranSession.groupBy).toHaveBeenCalledWith({
+    by: ['activity', 'observation'],
+    where: {
+      OR: [{ orgId: 10n, classId: 11n }, { orgId: 10n, classId: 12n }],
+      voidedAt: null,
+      learnedOn: { gte: new Date('2026-12-01T00:00:00.000Z'), lt: new Date('2027-01-01T00:00:00.000Z') },
+    },
+    _count: { _all: true },
+  });
+  expect(tx.assessment.count).toHaveBeenCalledWith({
+    where: expect.objectContaining({
+      assessedOn: { gte: new Date('2024-02-01T00:00:00.000Z'), lt: new Date('2024-03-01T00:00:00.000Z') },
+    }),
+  });
+});
+for (const quranMonth of ['2026-13', '2026-0', '', '0000-01']) {
+  it(`rejects invalid Quran month ${quranMonth}`, async () => {
+    const { service, tx } = fixture();
+    await expect(service.oversight(actor, { quranMonth })).rejects.toThrow();
+    expect(tx.quranSession.groupBy).not.toHaveBeenCalled();
+  });
+}
 it('shows assignment without adoption as zero coverage, not teaching completion', async () => {
   const { service, tx } = fixture();
   const rows = await tx.curriculumAssignment.findMany();

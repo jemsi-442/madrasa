@@ -275,7 +275,7 @@ class CurriculumOversightReport extends StatelessWidget {
             )
           else
             Text(
-              'Teacher-recorded sessions across ${count(quran!, 'classScopes')} currently adopted classes on this page. All-time; assessment month does not apply. Voided sessions are excluded.',
+              'Teacher-recorded sessions across ${count(quran!, 'classScopes')} currently adopted classes on this page. ${quran!['month'] == null ? 'All-time' : 'Learning month: ${quran!['month']} (learning date, not entry date)'}; assessment month does not apply. Voided sessions are excluded.',
               style: const TextStyle(color: AfaqDesign.muted),
             ),
           const SizedBox(height: 20),
