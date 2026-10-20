@@ -6,6 +6,61 @@ import 'package:mif_app/src/platform_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (var index = 0; index < 3; index++) {
+    testWidgets('filter $index validates before replacing applied report', (
+      tester,
+    ) async {
+      final limit = [120, 120, 80][index];
+      final queries = <Map<String, String>>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumOversightPage(
+              onBack: () {},
+              onSessionExpired: () {},
+              load: (path) async {
+                queries.add(Uri.parse(path).queryParameters);
+                return {
+                  'items': [],
+                  'hasMore': false,
+                  'generatedAt': '2026-10-20T12:30:00Z',
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField).at(index),
+        'x' * (limit + 1),
+      );
+      await tester.ensureVisible(find.text('Apply filters'));
+      await tester.tap(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      expect(queries, hasLength(1));
+      expect(find.text('Use at most $limit characters.'), findsOneWidget);
+      expect(
+        find.text('Applied filters: All assigned frameworks'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Report generated:'), findsOneWidget);
+      await tester.enterText(
+        find.byType(TextField).at(index),
+        '  ${'x' * limit}  ',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(queries, hasLength(2));
+      expect(queries.last[['madrasa', 'subject', 'level'][index]], 'x' * limit);
+      expect(find.text('Use at most $limit characters.'), findsNothing);
+      await tester.ensureVisible(find.text('Clear filters'));
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      expect(queries.last, {'page': '1'});
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final status in [401, 403]) {
     testWidgets(
       'oversight labels access error $status without server details',

@@ -43,6 +43,12 @@ class _OversightState extends State<CurriculumOversightPage> {
   };
   static const filterKeys = ['madrasa', 'subject', 'level'];
   static const filterLabels = ['Madrasa', 'Subject', 'Level'];
+  static const filterLimits = [120, 120, 80];
+  bool validateFilters = false;
+  String? filterError(int index) =>
+      filters[index].text.trim().length > filterLimits[index]
+      ? 'Use at most ${filterLimits[index]} characters.'
+      : null;
   bool get hasUnappliedChanges {
     for (var i = 0; i < filters.length; i++) {
       if (filters[i].text.trim() != (applied[filterKeys[i]] ?? '')) return true;
@@ -70,9 +76,18 @@ class _OversightState extends State<CurriculumOversightPage> {
   }
 
   void reload(int target, {bool apply = false}) {
+    if (apply &&
+        List.generate(
+          filters.length,
+          filterError,
+        ).any((error) => error != null)) {
+      setState(() => validateFilters = true);
+      return;
+    }
     setState(() {
       page = target;
       if (apply) {
+        validateFilters = false;
         applied = {};
         if (adoption.isNotEmpty) applied['adoption'] = adoption;
         if (status.isNotEmpty) applied['status'] = status;
@@ -129,7 +144,10 @@ class _OversightState extends State<CurriculumOversightPage> {
                 child: TextField(
                   controller: filters[i],
                   onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(labelText: filterLabels[i]),
+                  decoration: InputDecoration(
+                    labelText: filterLabels[i],
+                    errorText: validateFilters ? filterError(i) : null,
+                  ),
                   onSubmitted: (_) => reload(1, apply: true),
                 ),
               ),
