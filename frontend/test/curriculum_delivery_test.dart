@@ -5,6 +5,131 @@ import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/school_curriculum_page.dart';
 
 void main() {
+  testWidgets(
+    'teaching retries and confirmations stay scoped to selected class',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final writes = <Map<String, dynamic>>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SchoolCurriculumPage(
+              isAdmin: false,
+              load: (_) async => {
+                'subjects': [],
+                'classes': [],
+                'assignments': [
+                  {
+                    'id': 'assignment-1',
+                    'version': {
+                      'subject': 'Arabic',
+                      'level': 'Level 1',
+                      'version': '1.0',
+                      'description': 'Synthetic example',
+                      'topics': [],
+                      'lessons': [
+                        {
+                          'id': 'lesson-1',
+                          'title': 'Reading words',
+                          'durationMinutes': 20,
+                          'activities': 'Guided practice',
+                          'objectives': [],
+                        },
+                      ],
+                    },
+                    'adoptions': [
+                      for (final name in ['A', 'B'])
+                        {
+                          'id': 'adoption-$name',
+                          'history': [],
+                          'class': {
+                            'id': name,
+                            'name': 'Class $name',
+                            'academicYear': '2026',
+                          },
+                          'subject': {'name': 'Arabic'},
+                        },
+                    ],
+                  },
+                ],
+              },
+              submit: (_, body) async {
+                writes.add(Map<String, dynamic>.from(body));
+                if (writes.length == 1) {
+                  throw const ApiException('Unavailable', 503);
+                }
+                return {'id': 'synthetic-delivery-${writes.length}'};
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Shared lesson plans'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Shared lesson plans'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Record lesson taught'));
+      await tester.tap(find.text('Record lesson taught'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Confirm taught'),
+            )
+            .onPressed,
+        isNull,
+      );
+      Future<void> selectClass(String name) async {
+        await tester.tap(find.byType(DropdownButtonFormField<String>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Class $name (2026)').last);
+        await tester.pumpAndSettle();
+      }
+
+      await selectClass('A');
+      await tester.tap(find.text('Confirm taught'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Confirmation was not received'),
+        findsOneWidget,
+      );
+      await selectClass('B');
+      expect(
+        find.textContaining('Confirmation was not received'),
+        findsNothing,
+      );
+      await tester.tap(find.text('Confirm taught'));
+      await tester.pumpAndSettle();
+      expect(find.text('Recorded'), findsOneWidget);
+      await selectClass('A');
+      expect(find.text('Recorded'), findsNothing);
+      expect(
+        find.textContaining('Teaching recorded successfully'),
+        findsNothing,
+      );
+      await tester.tap(find.text('Confirm taught'));
+      await tester.pumpAndSettle();
+      expect(writes, hasLength(3));
+      expect(writes[0], equals(writes[2]));
+      expect(writes[0]['classCurriculumId'], 'adoption-A');
+      expect(writes[1]['classCurriculumId'], 'adoption-B');
+      expect(writes[1]['clientEventId'], isNot(writes[0]['clientEventId']));
+      await selectClass('B');
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Recorded'))
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final width in [390.0, 1440.0]) {
     for (final admin in [false, true]) {
       testWidgets('online teaching at $width admin=$admin', (tester) async {
