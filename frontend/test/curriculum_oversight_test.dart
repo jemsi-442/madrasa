@@ -6,6 +6,49 @@ import 'package:mif_app/src/platform_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets('empty filtered report offers an explicit filter reset', (
+    tester,
+  ) async {
+    final queries = <Map<String, String>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurriculumOversightPage(
+            onBack: () {},
+            onSessionExpired: () {},
+            load: (path) async {
+              queries.add(Uri.parse(path).queryParameters);
+              return {'items': [], 'hasMore': false};
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Publish a framework'), findsOneWidget);
+    expect(find.text('Show all assignments'), findsNothing);
+    await tester.enterText(find.byType(TextField).first, 'Synthetic unmatched');
+    await tester.ensureVisible(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('does not mean the frameworks were deleted'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.text('Show all assignments'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Show all assignments'));
+    await tester.pumpAndSettle();
+    expect(queries.last, {'page': '1'});
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      isEmpty,
+    );
+    expect(find.text('Show all assignments'), findsNothing);
+    expect(find.textContaining('Publish a framework'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'summary precedes filters and hides while refreshing or failing',
     (tester) async {

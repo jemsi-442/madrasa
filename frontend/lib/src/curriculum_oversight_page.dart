@@ -111,6 +111,15 @@ class _OversightState extends State<CurriculumOversightPage> {
     });
   }
 
+  void clearFilters() {
+    for (final controller in filters) {
+      controller.clear();
+    }
+    adoption = '';
+    status = '';
+    reload(1, apply: true);
+  }
+
   @override
   void dispose() {
     for (final controller in filters) {
@@ -245,14 +254,7 @@ class _OversightState extends State<CurriculumOversightPage> {
                     child: const Text('Apply filters'),
                   ),
                   TextButton(
-                    onPressed: () {
-                      for (final controller in filters) {
-                        controller.clear();
-                      }
-                      adoption = '';
-                      status = '';
-                      reload(1, apply: true);
-                    },
+                    onPressed: clearFilters,
                     child: const Text('Clear filters'),
                   ),
                   TextButton.icon(
@@ -337,18 +339,48 @@ class _OversightState extends State<CurriculumOversightPage> {
                 ),
                 const SizedBox(height: 12),
                 if (rows.isEmpty)
-                  Text(
-                    page == 1
-                        ? 'No assigned frameworks match these filters.'
-                        : 'No records on this page. Assignments may have changed; return to the first page to check.',
-                  ),
-                if (rows.isEmpty && page > 1)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () => reload(1),
-                      icon: const Icon(Icons.first_page),
-                      label: const Text('Back to first page'),
+                  Container(
+                    decoration: AfaqDesign.panelDecoration(),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.search_off,
+                          color: AfaqDesign.muted,
+                          size: 32,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          page == 1
+                              ? 'No assigned frameworks match these filters.'
+                              : 'No records on this page. Assignments may have changed; return to the first page to check.',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        if (page == 1)
+                          Text(
+                            applied.isEmpty
+                                ? 'Publish a framework and assign it to an active madrasa from Curriculum. Class adoption is a separate step for the madrasa administrator.'
+                                : 'Try fewer filters or show all assignments. No matching records does not mean the frameworks were deleted.',
+                            style: const TextStyle(color: AfaqDesign.muted),
+                          ),
+                        if (page == 1 && applied.isNotEmpty)
+                          TextButton.icon(
+                            onPressed: clearFilters,
+                            icon: const Icon(Icons.filter_alt_off_outlined),
+                            label: const Text('Show all assignments'),
+                          ),
+                        if (page > 1)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () => reload(1),
+                              icon: const Icon(Icons.first_page),
+                              label: const Text('Back to first page'),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 if (rows.isNotEmpty)
