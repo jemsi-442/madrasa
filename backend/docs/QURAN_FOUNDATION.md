@@ -98,6 +98,18 @@ with both available and unavailable provider responses. They verify that the
 passage and observation survive, no learner context is sent to content endpoints,
 and no session is submitted until the teacher explicitly saves.
 
+Browser regression command (run from `frontend`):
+
+```sh
+CHROME_EXECUTABLE=/usr/bin/chromium flutter test --no-pub --platform chrome test/quran_reader_test.dart
+```
+
+All nine reader tests passed locally in Chromium on 2026-10-20, including
+390px/1440px layouts, RTL selectable text, error recovery and navigation.
+The reader suite is included in `scripts/test-platform-web.sh` for CI.
+These use mocked content responses; they do not verify a signed-in reader
+against the live backend or replace visual review of Arabic glyphs.
+
 ## Not complete yet
 
 Production connectivity was verified locally on 2026-10-20: metadata for 114

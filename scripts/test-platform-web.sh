@@ -15,6 +15,7 @@ printf 'Testing platform UI in a real browser with mocked API responses, not a l
 cd "$root_dir/frontend"
 "$flutter_bin" test --no-pub --platform chrome --reporter expanded \
   test/unified_login_test.dart \
+  test/quran_reader_test.dart \
   test/curriculum_delivery_test.dart \
   test/curriculum_delivery_history_test.dart \
   test/school_curriculum_test.dart \
