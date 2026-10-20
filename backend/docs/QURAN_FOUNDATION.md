@@ -49,9 +49,22 @@ Tests use mocked HTTP, synthetic metadata labels, and one verbatim verse example
 from the provider's documentation, never generated Quran text.
 Live provider verification still requires configured credentials.
 
+## Teacher reader
+
+Teachers can select **Open Quran Reader** from their Quran workspace. The shared
+dialog loads chapters and paginated Uthmani text through the backend, with
+selectable right-to-left verses and provider attribution. Pre-live shows its
+two-surah limitation. Failures show a safe error and retry, not replacement text.
+Reading does not submit observations or alter the teacher's current session.
+
+Flutter widget tests: `flutter test --no-pub test/quran_reader_test.dart`.
+They cover narrow/desktop layouts, access failures, retries and closing during
+an in-flight request with mocked responses.
+
 ## Not complete yet
 
-This is not a complete Quran Reader. Rendering, audio,
+Live provider content and Arabic typography on physical devices remain unverified.
+This is not a complete Quran Reader. Audio,
 translations, resource attribution, permitted offline caching, and access for
 other Afaq roles are still pending. Content availability must not be treated as
 student achievement. Reading must not automatically create teacher observations.

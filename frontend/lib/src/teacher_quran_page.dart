@@ -7,6 +7,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'teacher_students_page.dart';
 import 'teacher_ui.dart';
+import 'quran_reader.dart';
 
 class TeacherQuranPage extends StatefulWidget {
   const TeacherQuranPage({
@@ -292,6 +293,17 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: busy
+                  ? null
+                  : () => showQuranReader(context, widget.load),
+              icon: const Icon(Icons.menu_book_outlined),
+              label: const Text('Open Quran Reader'),
+            ),
+          ),
+          const SizedBox(height: 16),
           SurfacePanel(
             child: LayoutBuilder(
               builder: (context, box) {
