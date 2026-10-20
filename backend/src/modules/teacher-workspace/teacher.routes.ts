@@ -9,6 +9,13 @@ import { directoryQuery, recordId, sessionInput, sessionQuery, supportInput, tim
 import { addSupport, resolveSupport, saveQuran, studentQuran, teacherClasses, teacherOverview, teacherStudentProfile, teacherStudents, voidQuran } from "./teacher.service";
 import { cancelTimetable, createTimetable, getTimetable } from "./timetable.service";
 import catalog from "./quran-catalog.json";
+import { env } from "../../config/env";
+import { QuranContentClient } from "./quran-content";
+
+const quranContent = new QuranContentClient({
+  enabled: env.QF_ENABLED, environment: env.QF_ENV,
+  clientId: env.QF_CLIENT_ID, clientSecret: env.QF_CLIENT_SECRET,
+});
 
 export const teacherWorkspaceRouter = Router();
 export const classTimetableRouter = Router();
@@ -32,6 +39,11 @@ teacherWorkspaceRouter.get("/students/:id", asyncHandler(async (req, res) => {
 teacherWorkspaceRouter.get("/quran/catalog", (_req, res) => {
   res.json({ success: true, data: { chapters: catalog.chapters, juzs: catalog.juzs } });
 });
+teacherWorkspaceRouter.get("/quran/content/chapters", asyncHandler(async (req, res) => {
+  z.object({}).strict().parse(req.query);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ success: true, data: await quranContent.chapters() });
+}));
 teacherWorkspaceRouter.get("/quran", asyncHandler(async (req, res) => {
   res.json({ success: true, data: await studentQuran(req.authUser!, sessionQuery.parse(req.query)) });
 }));
