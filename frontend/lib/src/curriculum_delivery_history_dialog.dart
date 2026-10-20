@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'workspace_form_dialog.dart';
+
+class _HistoryAccessFailure {
+  const _HistoryAccessFailure(this.expired);
+  final bool expired;
+}
 
 class CurriculumDeliveryHistoryDialog extends StatefulWidget {
   const CurriculumDeliveryHistoryDialog({
@@ -26,6 +32,11 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
       return await widget.load(
         '/api/school-curriculum/deliveries?${Uri(queryParameters: {'classCurriculumId': widget.adoptionId, 'page': '$page', 'pendingPage': '$pendingPage'}).query}',
       );
+    } on ApiException catch (error) {
+      if ([401, 403, 404].contains(error.statusCode)) {
+        return _HistoryAccessFailure(error.statusCode == 401);
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -72,6 +83,15 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
               return const Padding(
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.data is _HistoryAccessFailure) {
+              final failure = snapshot.data as _HistoryAccessFailure;
+              return WorkspaceFormNotice(
+                isError: true,
+                message: failure.expired
+                    ? 'Your session has expired. Close this history and sign in again.'
+                    : 'Teaching history is unavailable for this class or account. Close this history and refresh your curriculum to check access.',
               );
             }
             if (snapshot.hasError || snapshot.data == null) {

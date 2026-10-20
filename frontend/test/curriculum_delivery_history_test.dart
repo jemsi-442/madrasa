@@ -2,8 +2,59 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_delivery_history_dialog.dart';
+import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final status in [401, 403, 404]) {
+    testWidgets('history refresh clears old coverage on access error $status', (
+      tester,
+    ) async {
+      var calls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumDeliveryHistoryDialog(
+              adoptionId: 'synthetic-adoption',
+              className: 'Class A',
+              load: (_) async {
+                if (++calls > 1) {
+                  throw ApiException('Private server detail', status);
+                }
+                return {
+                  'items': [],
+                  'hasMore': false,
+                  'teachingCoverage': {
+                    'version': '1.0',
+                    'taughtLessons': 1,
+                    'totalLessons': 2,
+                  },
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('1 / 2 lessons recorded as taught'), findsOneWidget);
+      await tester.tap(find.text('Refresh history'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining(
+          status == 401
+              ? 'Your session has expired.'
+              : 'Teaching history is unavailable for this class or account.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('1 / 2 lessons recorded as taught'), findsNothing);
+      expect(find.text('Private server detail'), findsNothing);
+      expect(find.text('Try again'), findsNothing);
+      expect(find.text('Refresh history'), findsNothing);
+      expect(find.text('Close'), findsOneWidget);
+      expect(calls, 2);
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('all teaching recorded does not claim learner achievement', (
     tester,
   ) async {
