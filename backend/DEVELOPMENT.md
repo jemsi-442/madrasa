@@ -1689,6 +1689,16 @@ but has only been applied to the disposable test database.
 
 ### Curriculum foundation acceptance checkpoint (2026-10-20)
 
+Browser verification: 49 tests passed on Chromium using Flutter's
+`--platform chrome` runner across `unified_login_test`,
+`curriculum_delivery_test`, `curriculum_delivery_history_test`,
+`school_curriculum_test` and `curriculum_oversight_test`. These use mocked API
+responses, including session/access failures and mobile/desktop viewport sizes.
+They are not live-backend end-to-end or physical-device tests.
+The four curriculum suites are now included in `scripts/test-platform-web.sh`
+alongside the existing platform suites; the full expanded script was not rerun
+as part of this targeted browser check.
+
 Latest verification rerun: the targeted `curriculum-oversight`,
 `platform-curriculum` and `school-curriculum` backend suites passed 91 tests,
 the isolated fresh-install/curriculum runner passed 17 integration tests, and
