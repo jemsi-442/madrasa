@@ -4,6 +4,7 @@
   "private": true,
   "description": "Backend foundation for the Madrasa Management System",
   "scripts": {
+    "quran:check": "tsx scripts/check-quran.ts",
     "email:preview": "tsx scripts/preview-family-email.ts",
     "email:capture": "tsx scripts/capture-family-email.ts",
     "email:check-smtp": "tsx scripts/check-smtp.ts",

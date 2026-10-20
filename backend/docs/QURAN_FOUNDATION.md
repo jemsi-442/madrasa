@@ -35,6 +35,27 @@ their environment and whether content is limited.
 
 Official reference: https://api-docs.quran.foundation/docs/quickstart/
 
+## Private connection check
+
+From `backend`, validate a private dotenv file without network access:
+
+```sh
+npm run quran:check -- --env-file /absolute/path/to/private.env
+```
+
+After that succeeds, explicitly test provider access:
+
+```sh
+npm run quran:check -- --env-file /absolute/path/to/private.env --connect
+```
+
+The check reads only the selected file. It does not use the database, change
+demo records, or print credentials, tokens or Quran text. The live check obtains
+a token, loads chapter metadata, and validates one verse from surah 1.
+Exit codes: 0 success, 1 connection/content failure, 2 invalid configuration or
+arguments. A successful dry run does not prove the credentials work; even a live
+sample does not verify all surahs, audio or translations.
+
 ## Behaviour and verification
 
 Client Credentials tokens are held server-side and renewed before expiry.
