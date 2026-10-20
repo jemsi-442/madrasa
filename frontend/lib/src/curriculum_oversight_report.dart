@@ -380,8 +380,8 @@ class CurriculumOversightReport extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                       ],
-                      const Text(
-                        'All-time, for current class adoptions on this page only. Each currently published assessment is counted once if it has a non-retracted release. Drafts and fully retracted assessments are excluded.',
+                      Text(
+                        '${assessments!['month'] == null ? 'All-time assessments' : 'Assessment month: ${assessments!['month']} (assessment date, not publication date)'}, for current class adoptions on this page only. Each currently published assessment is counted once if it has a non-retracted release. Drafts and fully retracted assessments are excluded.',
                         style: TextStyle(color: AfaqDesign.muted),
                       ),
                       const SizedBox(height: 8),

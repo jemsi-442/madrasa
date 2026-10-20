@@ -102,6 +102,7 @@ void main() {
               padding: const EdgeInsets.all(24),
               child: CurriculumOversightReport(
                 assessments: const {
+                  'month': '2026-10',
                   'publishedAssessments': 3,
                   'classSubjectScopes': 5,
                   'learnersWithPublishedScores': 2,
@@ -147,6 +148,12 @@ void main() {
       expect(find.textContaining('not framework versions'), findsOneWidget);
       expect(find.text('2 learners with published scores'), findsOneWidget);
       expect(find.textContaining('not a pass count'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Assessment month: 2026-10 (assessment date, not publication date)',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('On this page'), findsNWidgets(4));
       expect(find.byType(StatusPill), findsNWidgets(2));
       expect(find.text('Active'), findsOneWidget);

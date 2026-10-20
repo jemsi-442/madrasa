@@ -635,8 +635,17 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       }
       const oversight = await platform.oversight(platformActor, { madrasa: organization.name, subject: 'Arabic' });
       expect(oversight.assessments).toEqual({
-        classSubjectScopes: 2, publishedAssessments: 2, learnersWithPublishedScores: 2,
+        month: null, classSubjectScopes: 2, publishedAssessments: 2, learnersWithPublishedScores: 2,
       });
+      const october = await platform.oversight(platformActor, {
+        madrasa: organization.name, assessmentMonth: '2026-10',
+      });
+      expect(october.assessments).toMatchObject({ month: '2026-10', publishedAssessments: 2, learnersWithPublishedScores: 2 });
+      const november = await platform.oversight(platformActor, {
+        madrasa: organization.name, assessmentMonth: '2026-11',
+      });
+      expect(november.assessments).toMatchObject({ month: '2026-11', publishedAssessments: 0, learnersWithPublishedScores: 0 });
+      expect(november.items).toEqual(october.items);
       expect(JSON.stringify(oversight)).not.toContain('Synthetic Assessment Learner');
       expect(JSON.stringify(oversight)).not.toContain('studentId');
       expect(oversight.items.find(row => row.id === nextAssignment.assignments[0]!.id)).toMatchObject({

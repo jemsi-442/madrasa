@@ -27,6 +27,7 @@ class _OversightState extends State<CurriculumOversightPage> {
     TextEditingController(),
     TextEditingController(),
     TextEditingController(),
+    TextEditingController(),
   ];
   Map<String, String> applied = {};
   String adoption = '';
@@ -43,14 +44,27 @@ class _OversightState extends State<CurriculumOversightPage> {
     'with': 'With class adoptions',
     'without': 'No current class adoption',
   };
-  static const filterKeys = ['madrasa', 'subject', 'level'];
-  static const filterLabels = ['Madrasa', 'Subject', 'Level'];
-  static const filterLimits = [120, 120, 80];
+  static const filterKeys = ['madrasa', 'subject', 'level', 'assessmentMonth'];
+  static const filterLabels = [
+    'Madrasa',
+    'Subject',
+    'Level',
+    'Assessment month',
+  ];
+  static const filterLimits = [120, 120, 80, 7];
   bool validateFilters = false;
-  String? filterError(int index) =>
-      filters[index].text.trim().length > filterLimits[index]
-      ? 'Use at most ${filterLimits[index]} characters.'
-      : null;
+  String? filterError(int index) {
+    final value = filters[index].text.trim();
+    if (index == 3 &&
+        value.isNotEmpty &&
+        !RegExp(r'^[1-9]\d{3}-(0[1-9]|1[0-2])$').hasMatch(value)) {
+      return 'Use YYYY-MM, or leave blank for all time.';
+    }
+    return value.length > filterLimits[index]
+        ? 'Use at most ${filterLimits[index]} characters.'
+        : null;
+  }
+
   bool get hasUnappliedChanges {
     for (var i = 0; i < filters.length; i++) {
       if (filters[i].text.trim() != (applied[filterKeys[i]] ?? '')) return true;
@@ -217,7 +231,7 @@ class _OversightState extends State<CurriculumOversightPage> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Choose a madrasa, framework or adoption status, then apply.',
+                'Choose a madrasa, framework or adoption status, then apply. Assessment month filters assessments by their assessment date only; teaching figures remain all-time.',
                 style: TextStyle(color: AfaqDesign.muted),
               ),
               const SizedBox(height: 16),
@@ -233,6 +247,7 @@ class _OversightState extends State<CurriculumOversightPage> {
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           labelText: filterLabels[i],
+                          hintText: i == 3 ? 'YYYY-MM (optional)' : null,
                           errorText: validateFilters ? filterError(i) : null,
                         ),
                         onSubmitted: (_) => reload(1, apply: true),

@@ -40,6 +40,7 @@ export class PlatformCurriculumService {
       level: z.string().trim().min(1).max(80).optional(),
       adoption: z.enum(['with', 'without']).optional(),
       status: z.enum(['ACTIVE', 'TRIAL', 'SUSPENDED', 'PENDING_ACTIVATION']).optional(),
+      assessmentMonth: z.string().regex(/^[1-9]\d{3}-(0[1-9]|1[0-2])$/).optional(),
     }).strict().parse(input);
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
@@ -85,6 +86,15 @@ export class PlatformCurriculumService {
         OR: assessmentScopes,
         status: 'PUBLISHED',
         releases: { some: { retractedAt: null } },
+        ...(query.assessmentMonth ? { assessedOn: {
+          gte: new Date(`${query.assessmentMonth}-01T00:00:00.000Z`),
+          ...(query.assessmentMonth === '9999-12'
+            ? { lte: new Date('9999-12-31T00:00:00.000Z') }
+            : { lt: new Date(Date.UTC(
+              Number(query.assessmentMonth.slice(0, 4)),
+              Number(query.assessmentMonth.slice(5)), 1,
+            )) }),
+        } } : {}),
       };
       const publishedAssessments = assessmentScopes.length ? await tx.assessment.count({
         where: publishedScope,
@@ -102,6 +112,7 @@ export class PlatformCurriculumService {
       return {
         generatedAt: new Date().toISOString(),
         assessments: {
+          month: query.assessmentMonth ?? null,
           classSubjectScopes: assessmentScopes.length,
           publishedAssessments,
           learnersWithPublishedScores: assessedLearners.length,

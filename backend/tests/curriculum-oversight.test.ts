@@ -27,7 +27,7 @@ it('reports distinct class lessons using only current scoped adoptions', async (
   const result = await service.oversight(actor, { page: 2, madrasa: 'Synthetic', subject: 'Arabic', level: 'L1' });
   expect(result.items[0]).toMatchObject({ adoptedClasses: 2, plannedClassLessons: 6, taughtClassLessons: 2, pendingClassLessons: 4 });
   expect(result.items[0]).not.toHaveProperty('organizationId');
-  expect(result.assessments).toEqual({ classSubjectScopes: 2, publishedAssessments: 3, learnersWithPublishedScores: 2 });
+  expect(result.assessments).toEqual({ month: null, classSubjectScopes: 2, publishedAssessments: 3, learnersWithPublishedScores: 2 });
   expect(tx.assessment.count).toHaveBeenCalledWith({
     where: {
       OR: [
@@ -99,8 +99,46 @@ it('does not read deliveries for an empty assignment result', async () => {
   expect(Date.parse(result.generatedAt)).toBeLessThanOrEqual(Date.now());
   expect(tx.curriculumLessonDelivery.groupBy).not.toHaveBeenCalled();
   expect(tx.assessment.count).not.toHaveBeenCalled();
-  expect(result.assessments).toEqual({ classSubjectScopes: 0, publishedAssessments: 0, learnersWithPublishedScores: 0 });
+  expect(result.assessments).toEqual({ month: null, classSubjectScopes: 0, publishedAssessments: 0, learnersWithPublishedScores: 0 });
   expect(tx.assessmentResult.groupBy).not.toHaveBeenCalled();
+});
+for (const [month, until] of [['2026-12', '2027-01-01'], ['2024-02', '2024-03-01']]) {
+  it(`filters assessments only using calendar month ${month}`, async () => {
+    const { service, tx } = fixture();
+    const result = await service.oversight(actor, { assessmentMonth: month });
+    const assessedOn = {
+      gte: new Date(`${month}-01T00:00:00.000Z`),
+      lt: new Date(`${until}T00:00:00.000Z`),
+    };
+    expect(result.assessments.month).toBe(month);
+    expect(tx.assessment.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ assessedOn }),
+    });
+    expect(tx.assessmentResult.groupBy).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ assessment: expect.objectContaining({ assessedOn }) }),
+    }));
+    expect(tx.curriculumLessonDelivery.groupBy).toHaveBeenCalledWith({
+      by: ['assignmentId', 'classCurriculumId', 'lessonId'],
+      where: { OR: [{ orgId: 10n, assignmentId: 'a1', classCurriculumId: { in: ['c1', 'c2'] }, lesson: { versionId: 'v1' } }] },
+    });
+  });
+}
+for (const month of ['2026-00', '2026-13', '2026-1', '0000-01', '', '2026-01-01']) {
+  it(`rejects invalid assessment month ${month}`, async () => {
+    const { service, tx } = fixture();
+    await expect(service.oversight(actor, { assessmentMonth: month })).rejects.toThrow();
+    expect(tx.assessment.count).not.toHaveBeenCalled();
+  });
+}
+it('keeps the final supported SQL month within the DATE range', async () => {
+  const { service, tx } = fixture();
+  await service.oversight(actor, { assessmentMonth: '9999-12' });
+  expect(tx.assessment.count).toHaveBeenCalledWith({
+    where: expect.objectContaining({ assessedOn: {
+      gte: new Date('9999-12-01T00:00:00.000Z'),
+      lte: new Date('9999-12-31T00:00:00.000Z'),
+    } }),
+  });
 });
 it('shows assignment without adoption as zero coverage, not teaching completion', async () => {
   const { service, tx } = fixture();
