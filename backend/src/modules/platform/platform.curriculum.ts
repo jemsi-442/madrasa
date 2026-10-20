@@ -192,6 +192,11 @@ export class PlatformCurriculumService {
         const { createdBy, reviews, ...version } = item;
         return {
           ...version,
+          assignments: (item.assignments ?? []).map(assignment => ({
+            ...assignment,
+            organizationId: assignment.organizationId.toString(),
+            subjectId: assignment.subjectId?.toString() ?? null,
+          })),
           createdByName: typeof createdBy === 'string'
             ? accountNames.get(createdBy) ?? null
             : null,

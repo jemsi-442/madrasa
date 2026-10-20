@@ -5,6 +5,21 @@ import { curriculumInput, PlatformCurriculumService } from '../src/modules/platf
 const actor = { scope: 'platform' as const, accountId: 'reviewer', sessionId: 's' };
 const topic = { title: 'Reading', position: 1, objectives: [{ code: 'READ-1', description: 'Read a passage fluently', assessmentMethod: 'ORAL', criteria: 'Read with accurate pronunciation' }] };
 const input = { subject: 'Quran', version: '1.0', description: 'Recitation and revision', objectives: ['Recite clearly'] };
+it('serializes assigned school and mapped subject IDs without losing precision', async () => {
+  const { service, tx } = fixture();
+  tx.curriculumVersion.findMany.mockResolvedValue([{
+    id: 'v1', assignments: [
+      { id: 'a1', organizationId: 9007199254740993n, subjectId: 9007199254740995n },
+      { id: 'a2', organizationId: 2n, subjectId: null },
+    ],
+  }]);
+  const result = await service.list(actor, {});
+  expect(() => JSON.stringify(result)).not.toThrow();
+  expect(result.items[0]?.assignments).toEqual([
+    { id: 'a1', organizationId: '9007199254740993', subjectId: '9007199254740995' },
+    { id: 'a2', organizationId: '2', subjectId: null },
+  ]);
+});
 it('copies published content to an unassigned draft and records its source', async () => {
   const { service, tx } = fixture('SUPER_ADMIN', 'PUBLISHED');
   await service.clone(actor, 'v1', { version: '1.1', reason: 'Clarify learning objectives' });
