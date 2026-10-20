@@ -58,14 +58,21 @@ class _OversightState extends State<CurriculumOversightPage> {
   }
 
   int page = 1;
+  int requestGeneration = 0;
   late Future<dynamic> result = fetch();
   Future<dynamic> fetch() async {
+    final generation = ++requestGeneration;
     try {
       return await widget.load(
         '/curriculum/oversight?${Uri(queryParameters: {...applied, 'page': '$page'}).query}',
       );
     } on ApiException catch (error) {
-      if (error.statusCode == 401 && mounted) widget.onSessionExpired();
+      // A superseded request must not invalidate a newer successful report.
+      if (error.statusCode == 401 &&
+          mounted &&
+          generation == requestGeneration) {
+        widget.onSessionExpired();
+      }
       if (error.statusCode == 401 || error.statusCode == 403) {
         return _OversightFailure(error.statusCode);
       }

@@ -94,6 +94,52 @@ void main() {
       },
     );
   }
+  for (final leavePage in [false, true]) {
+    testWidgets('late unauthorized response ignored, disposed: $leavePage', (
+      tester,
+    ) async {
+      final old = Completer<dynamic>();
+      var requests = 0;
+      var expired = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumOversightPage(
+              onBack: () {},
+              onSessionExpired: () => expired++,
+              load: (_) async {
+                if (++requests == 1) return old.future;
+                return {
+                  'items': [],
+                  'hasMore': false,
+                  'generatedAt': '2026-10-20T12:30:00Z',
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      if (leavePage) {
+        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      } else {
+        await tester.ensureVisible(find.text('Refresh'));
+        await tester.tap(find.text('Refresh'));
+        await tester.pumpAndSettle();
+      }
+      old.completeError(ApiException('Internal server detail', 401));
+      await tester.pumpAndSettle();
+      expect(expired, 0);
+      expect(
+        find.text('Your session has expired. Sign in again.'),
+        findsNothing,
+      );
+      if (!leavePage) {
+        expect(find.textContaining('Report generated:'), findsOneWidget);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('refresh failure hides previous snapshot timestamp', (
     tester,
   ) async {
