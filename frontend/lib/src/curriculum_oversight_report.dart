@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
+import 'dashboard_components.dart' show StatusPill;
 import 'workspace_form_dialog.dart';
 
 /// A page-scoped snapshot, not institution totals or learner assessment.
@@ -123,12 +124,14 @@ class CurriculumOversightReport extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${row['madrasa']} · ${row['madrasaStatus']}',
+          '${row['madrasa']}',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w700,
             color: AfaqDesign.ink,
           ),
         ),
+        const SizedBox(height: 8),
+        StatusPill('${row['madrasaStatus'] ?? 'UNKNOWN'}'),
         const SizedBox(height: 6),
         Text(
           '${row['subject']} / ${row['level'] ?? 'Level not set'} / v${row['version']}',

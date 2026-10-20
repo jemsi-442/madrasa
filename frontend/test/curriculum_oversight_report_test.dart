@@ -1,8 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_oversight_report.dart';
+import 'package:mif_app/src/dashboard_components.dart' show StatusPill;
 
 void main() {
+  testWidgets('pending madrasa and unadopted version do not imply coverage', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CurriculumOversightReport(
+              rows: [
+                {
+                  'madrasa': 'Synthetic Pending',
+                  'madrasaStatus': 'PENDING_ACTIVATION',
+                  'subject': 'Arabic',
+                  'level': 'Level 1',
+                  'version': '1.0',
+                  'subjectActive': false,
+                  'adoptedClasses': 0,
+                  'taughtClassLessons': 0,
+                  'plannedClassLessons': 0,
+                  'pendingClassLessons': 0,
+                },
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Pending activation'), findsOneWidget);
+    expect(find.text('PENDING_ACTIVATION'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.textContaining('coverage is not applicable'), findsOneWidget);
+    expect(
+      find.textContaining('not evidence of current access'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [390.0, 1440.0]) {
     testWidgets('page-scoped oversight report at $width', (tester) async {
       tester.view.physicalSize = Size(width, 1100);
@@ -49,6 +88,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('This page only · All-time snapshot'), findsOneWidget);
       expect(find.text('On this page'), findsNWidgets(4));
+      expect(find.byType(StatusPill), findsNWidgets(2));
+      expect(find.text('Active'), findsOneWidget);
+      expect(find.text('Suspended'), findsOneWidget);
+      expect(find.text('Synthetic B · SUSPENDED'), findsNothing);
       for (final total in ['2', '5', '3', '9']) {
         expect(find.text(total), findsOneWidget);
       }
