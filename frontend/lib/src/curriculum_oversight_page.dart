@@ -278,7 +278,20 @@ class _OversightState extends State<CurriculumOversightPage> {
                 ),
                 const SizedBox(height: 12),
                 if (rows.isEmpty)
-                  const Text('No assigned frameworks match these filters.'),
+                  Text(
+                    page == 1
+                        ? 'No assigned frameworks match these filters.'
+                        : 'No records on this page. Assignments may have changed; return to the first page to check.',
+                  ),
+                if (rows.isEmpty && page > 1)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => reload(1),
+                      icon: const Icon(Icons.first_page),
+                      label: const Text('Back to first page'),
+                    ),
+                  ),
                 for (final row in rows)
                   Card(
                     child: Padding(

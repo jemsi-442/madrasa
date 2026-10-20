@@ -6,6 +6,70 @@ import 'package:mif_app/src/platform_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets('empty later page recovers with applied filters intact', (
+    tester,
+  ) async {
+    final queries = <Map<String, String>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurriculumOversightPage(
+            onBack: () {},
+            onSessionExpired: () {},
+            load: (path) async {
+              final query = Uri.parse(path).queryParameters;
+              queries.add(query);
+              return {
+                'hasMore': query['page'] == '1',
+                'items': query['page'] == '1'
+                    ? [
+                        {
+                          'madrasa': 'Synthetic Madrasa',
+                          'madrasaStatus': 'ACTIVE',
+                          'subject': 'Arabic',
+                          'level': 'L1',
+                          'version': '1.0',
+                          'subjectActive': true,
+                          'adoptedClasses': 1,
+                          'plannedClassLessons': 2,
+                          'taughtClassLessons': 1,
+                          'pendingClassLessons': 1,
+                        },
+                      ]
+                    : [],
+              };
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), 'Arabic');
+    await tester.ensureVisible(find.text('Apply filters'));
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), 'Unapplied');
+    await tester.ensureVisible(find.text('Next'));
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(queries.last, {'subject': 'Arabic', 'page': '2'});
+    expect(find.textContaining('No records on this page.'), findsOneWidget);
+    expect(
+      find.text('No assigned frameworks match these filters.'),
+      findsNothing,
+    );
+    await tester.ensureVisible(find.text('Back to first page'));
+    await tester.tap(find.text('Back to first page'));
+    await tester.pumpAndSettle();
+    expect(queries.last, {'subject': 'Arabic', 'page': '1'});
+    expect(find.text('Page 1'), findsOneWidget);
+    expect(find.text('Back to first page'), findsNothing);
+    expect(
+      find.textContaining('Filter changes are not applied yet'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
   for (var index = 0; index < 3; index++) {
     testWidgets('filter $index validates before replacing applied report', (
       tester,
