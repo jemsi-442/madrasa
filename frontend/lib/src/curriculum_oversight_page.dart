@@ -259,6 +259,14 @@ class _OversightState extends State<CurriculumOversightPage> {
                     onPressed: () => reload(page),
                     child: const Text('Try again'),
                   ),
+                  if (page > 1) ...[
+                    Text('Page $page could not be loaded.'),
+                    TextButton.icon(
+                      onPressed: () => reload(1),
+                      icon: const Icon(Icons.first_page),
+                      label: const Text('Back to first page'),
+                    ),
+                  ],
                 ],
               );
             }

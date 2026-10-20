@@ -6,6 +6,54 @@ import 'package:mif_app/src/platform_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets('failed later page retries and returns using applied filters', (
+    tester,
+  ) async {
+    final queries = <Map<String, String>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurriculumOversightPage(
+            onBack: () {},
+            onSessionExpired: () {},
+            load: (path) async {
+              final query = Uri.parse(path).queryParameters;
+              queries.add(query);
+              if (query['page'] == '2') throw Exception('Internal detail');
+              return {'items': [], 'hasMore': true};
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), 'Arabic');
+    await tester.ensureVisible(find.text('Apply filters'));
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), 'Unapplied');
+    await tester.ensureVisible(find.text('Next'));
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Page 2 could not be loaded.'), findsOneWidget);
+    expect(find.text('Internal detail'), findsNothing);
+    await tester.ensureVisible(find.text('Try again'));
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    expect(queries.last, {'subject': 'Arabic', 'page': '2'});
+    expect(queries.where((query) => query['page'] == '2'), hasLength(2));
+    await tester.ensureVisible(find.text('Back to first page'));
+    await tester.tap(find.text('Back to first page'));
+    await tester.pumpAndSettle();
+    expect(queries.last, {'subject': 'Arabic', 'page': '1'});
+    expect(find.text('Page 1'), findsOneWidget);
+    expect(find.text('Back to first page'), findsNothing);
+    expect(
+      find.textContaining('Filter changes are not applied yet'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('empty later page recovers with applied filters intact', (
     tester,
   ) async {
