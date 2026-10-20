@@ -53,6 +53,7 @@ void main() {
         expect(find.text(total), findsOneWidget);
       }
       expect(find.byType(LinearProgressIndicator), findsNWidgets(2));
+      expect(find.text('25%'), findsNWidgets(2));
       for (final progress in tester.widgetList<LinearProgressIndicator>(
         find.byType(LinearProgressIndicator),
       )) {

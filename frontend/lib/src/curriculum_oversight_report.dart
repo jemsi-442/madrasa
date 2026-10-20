@@ -4,8 +4,14 @@ import 'workspace_form_dialog.dart';
 
 /// A page-scoped snapshot, not institution totals or learner assessment.
 class CurriculumOversightReport extends StatelessWidget {
-  const CurriculumOversightReport({super.key, required this.rows});
+  const CurriculumOversightReport({
+    super.key,
+    required this.rows,
+    this.showSummary = true,
+    this.summaryOnly = false,
+  });
   final List rows;
+  final bool showSummary, summaryOnly;
 
   int count(Map row, String key) => (row[key] as num?)?.toInt() ?? 0;
   int total(String key) =>
@@ -76,12 +82,26 @@ class CurriculumOversightReport extends StatelessWidget {
           Semantics(
             label: 'Teacher-reported teaching coverage',
             value: '${(100 * taught / planned).round()} percent',
-            child: LinearProgressIndicator(
-              value: (taught / planned).clamp(0.0, 1.0),
-              color: AfaqDesign.blue,
-              backgroundColor: AfaqDesign.tableHeader,
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: (taught / planned).clamp(0.0, 1.0),
+                    color: AfaqDesign.blue,
+                    backgroundColor: AfaqDesign.tableHeader,
+                    minHeight: 6,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${(100 * taught / planned).round()}%',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AfaqDesign.blue,
+                  ),
+                ),
+              ],
             ),
           )
         else
@@ -289,38 +309,42 @@ class CurriculumOversightReport extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'This page only · All-time snapshot',
-            style: TextStyle(color: AfaqDesign.muted),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              for (final item in metrics) SizedBox(width: width, child: item),
-            ],
-          ),
-          const SizedBox(height: 24),
-          if (constraints.maxWidth >= 1050)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (showSummary) ...[
+            const Text(
+              'This page only · All-time snapshot',
+              style: TextStyle(color: AfaqDesign.muted),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                Expanded(flex: 2, child: table(context)),
-                const SizedBox(width: 24),
-                Expanded(child: quranPanel(context)),
+                for (final item in metrics) SizedBox(width: width, child: item),
               ],
-            )
-          else ...[
-            table(context),
-            const SizedBox(height: 20),
-            quranPanel(context),
+            ),
+            const SizedBox(height: 24),
           ],
-          const SizedBox(height: 20),
-          const WorkspaceFormNotice(
-            message:
-                'Read-only oversight. Teaching corrections remain with the responsible madrasa and teacher. Class adoption records are not a count of unique classes.',
-          ),
+          if (!summaryOnly) ...[
+            if (constraints.maxWidth >= 1050)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: table(context)),
+                  const SizedBox(width: 24),
+                  Expanded(child: quranPanel(context)),
+                ],
+              )
+            else ...[
+              table(context),
+              const SizedBox(height: 20),
+              quranPanel(context),
+            ],
+            const SizedBox(height: 20),
+            const WorkspaceFormNotice(
+              message:
+                  'Read-only oversight. Teaching corrections remain with the responsible madrasa and teacher. Class adoption records are not a count of unique classes.',
+            ),
+          ],
         ],
       );
     },

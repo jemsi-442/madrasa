@@ -6,6 +6,43 @@ import 'package:mif_app/src/platform_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets(
+    'summary precedes filters and hides while refreshing or failing',
+    (tester) async {
+      final refresh = Completer<dynamic>();
+      var calls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumOversightPage(
+              onBack: () {},
+              onSessionExpired: () {},
+              load: (_) async {
+                if (++calls > 1) return refresh.future;
+                return {'items': [], 'hasMore': false};
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('On this page'), findsNWidgets(4));
+      expect(
+        tester.getTopLeft(find.text('Framework assignments')).dy,
+        lessThan(tester.getTopLeft(find.text('Filter teaching records')).dy),
+      );
+      await tester.ensureVisible(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Refresh'));
+      await tester.pump();
+      expect(find.text('On this page'), findsNothing);
+      refresh.completeError(Exception('Synthetic connection failure'));
+      await tester.pumpAndSettle();
+      expect(find.text('On this page'), findsNothing);
+      expect(find.text('Could not load learning oversight.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('failed later page retries and returns using applied filters', (
     tester,
   ) async {

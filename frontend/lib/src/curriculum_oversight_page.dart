@@ -147,83 +147,123 @@ class _OversightState extends State<CurriculumOversightPage> {
           style: TextStyle(color: AfaqDesign.muted),
         ),
         const SizedBox(height: 16),
+        FutureBuilder<dynamic>(
+          future: result,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done ||
+                snapshot.data is! Map) {
+              return const SizedBox.shrink();
+            }
+            return CurriculumOversightReport(
+              rows: (snapshot.data as Map)['items'] as List,
+              summaryOnly: true,
+            );
+          },
+        ),
         const WorkspaceFormNotice(
           message:
               'Current class adoptions and teacher-reported teaching across assigned madrasas. Each lesson counts once per class and version. Not assessment or learner achievement. Totals are all-time, not monthly.',
         ),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (var i = 0; i < filters.length; i++)
-              SizedBox(
-                width: 220,
-                child: TextField(
-                  controller: filters[i],
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: filterLabels[i],
-                    errorText: validateFilters ? filterError(i) : null,
+        Container(
+          decoration: AfaqDesign.panelDecoration(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Filter teaching records',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Choose a madrasa, framework or adoption status, then apply.',
+                style: TextStyle(color: AfaqDesign.muted),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (var i = 0; i < filters.length; i++)
+                    SizedBox(
+                      width: 220,
+                      child: TextField(
+                        controller: filters[i],
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          labelText: filterLabels[i],
+                          errorText: validateFilters ? filterError(i) : null,
+                        ),
+                        onSubmitted: (_) => reload(1, apply: true),
+                      ),
+                    ),
+                  SizedBox(
+                    width: 280,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: adoption,
+                      key: ValueKey(adoption),
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Class adoption',
+                      ),
+                      items: [
+                        for (final entry in adoptionLabels.entries)
+                          DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => adoption = value ?? ''),
+                    ),
                   ),
-                  onSubmitted: (_) => reload(1, apply: true),
-                ),
-              ),
-            SizedBox(
-              width: 280,
-              child: DropdownButtonFormField<String>(
-                initialValue: adoption,
-                key: ValueKey(adoption),
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Class adoption'),
-                items: [
-                  for (final entry in adoptionLabels.entries)
-                    DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
+                  SizedBox(
+                    width: 250,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: status,
+                      key: ValueKey('madrasa-status-$status'),
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Madrasa status',
+                      ),
+                      items: [
+                        for (final entry in statusLabels.entries)
+                          DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => status = value ?? ''),
                     ),
+                  ),
+                  FilledButton(
+                    onPressed: () => reload(1, apply: true),
+                    child: const Text('Apply filters'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      for (final controller in filters) {
+                        controller.clear();
+                      }
+                      adoption = '';
+                      status = '';
+                      reload(1, apply: true);
+                    },
+                    child: const Text('Clear filters'),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => reload(1),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refresh'),
+                  ),
                 ],
-                onChanged: (value) => setState(() => adoption = value ?? ''),
               ),
-            ),
-            SizedBox(
-              width: 250,
-              child: DropdownButtonFormField<String>(
-                initialValue: status,
-                key: ValueKey('madrasa-status-$status'),
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Madrasa status'),
-                items: [
-                  for (final entry in statusLabels.entries)
-                    DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    ),
-                ],
-                onChanged: (value) => setState(() => status = value ?? ''),
-              ),
-            ),
-            FilledButton(
-              onPressed: () => reload(1, apply: true),
-              child: const Text('Apply filters'),
-            ),
-            TextButton(
-              onPressed: () {
-                for (final controller in filters) {
-                  controller.clear();
-                }
-                adoption = '';
-                status = '';
-                reload(1, apply: true);
-              },
-              child: const Text('Clear filters'),
-            ),
-            TextButton.icon(
-              onPressed: () => reload(1),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 20),
         Text(
@@ -311,7 +351,8 @@ class _OversightState extends State<CurriculumOversightPage> {
                       label: const Text('Back to first page'),
                     ),
                   ),
-                if (rows.isNotEmpty) CurriculumOversightReport(rows: rows),
+                if (rows.isNotEmpty)
+                  CurriculumOversightReport(rows: rows, showSummary: false),
                 const SizedBox(height: 16),
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,
