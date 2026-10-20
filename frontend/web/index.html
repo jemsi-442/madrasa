@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -17,6 +17,8 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <!-- Preserve Quran text; language changes are handled inside the app. -->
+  <meta name="google" content="notranslate">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Authentic Islamic education, modern skills, and a community that supports every learner.">
 
@@ -41,7 +43,7 @@
     @media (prefers-reduced-motion: reduce) { .loading-line { animation: none; } }
   </style>
 </head>
-<body>
+<body translate="no" class="notranslate">
   <div id="app-loading" role="status" aria-label="Opening Modern Islamic Foundation">
     <svg viewBox="0 0 100 100" aria-hidden="true">
       <path fill="#c39743" d="M50 2 73 26 50 49 27 26Z"/>

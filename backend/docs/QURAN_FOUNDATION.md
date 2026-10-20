@@ -100,7 +100,13 @@ and no session is submitted until the teacher explicitly saves.
 
 ## Not complete yet
 
-Live provider content and Arabic typography on physical devices remain unverified.
+Production connectivity was verified locally on 2026-10-20: metadata for 114
+surahs and sample verses from surahs 1, 3 and 114 passed the content checks.
+This was a read-only API check, not verification of every verse or browser rendering.
+Arabic typography on physical devices remains unverified.
+The web shell opts out of automatic browser translation using `translate="no"`
+and the Google `notranslate` meta tag. App-managed language selection is separate;
+these hints cannot guarantee that every browser extension respects them.
 This is not a complete Quran Reader. Audio,
 translations, resource attribution, permitted offline caching, and access for
 other Afaq roles are still pending. Content availability must not be treated as

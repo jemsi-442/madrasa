@@ -5,6 +5,12 @@ import { runInNewContext } from 'node:vm';
 
 const source = (await readFile(new URL('../frontend/web/flutter_bootstrap.js', import.meta.url), 'utf8'))
   .replace('{{flutter_js}}', '').replace('{{flutter_build_config}}', '');
+test('web shell opts out of automatic translation to preserve Quran text', async () => {
+  const html = await readFile(new URL('../frontend/web/index.html', import.meta.url), 'utf8');
+  assert.match(html, /<html\b[^>]*\btranslate="no"/);
+  assert.match(html, /<meta\s+name="google"\s+content="notranslate"\s*\/?>/);
+  assert.match(html, /<body\b[^>]*\btranslate="no"[^>]*\bclass="notranslate"/);
+});
 async function boot(serviceWorker) {
   const result = { loads: [], reloads: 0 };
   await runInNewContext(source, {
