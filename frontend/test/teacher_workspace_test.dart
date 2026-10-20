@@ -185,6 +185,91 @@ Future<void> choosePassage(WidgetTester tester) async {
 }
 
 void main() {
+  for (final providerAvailable in [true, false]) {
+    testWidgets(
+      'reader preserves session draft without saving (provider $providerAvailable)',
+      (tester) async {
+        screen(tester, 1672);
+        final saves = <Map<String, dynamic>>[];
+        final readerRequests = <String>[];
+        await tester.pumpWidget(
+          host(
+            TeacherQuranPage(
+              teacherId: '9',
+              initialClassId: '8',
+              initialStudent: learner,
+              load: (path) async {
+                if (!path.contains('/quran/content/')) return teacherLoad(path);
+                readerRequests.add(path);
+                if (!providerAvailable) {
+                  throw const ApiException('Provider unavailable', 503);
+                }
+                if (path.endsWith('/chapters')) {
+                  return {
+                    'limitedContent': true,
+                    'chapters': [
+                      {'id': 1, 'name_simple': 'Al-Fatihah'},
+                    ],
+                  };
+                }
+                return {
+                  'chapterId': 1,
+                  'verses': [
+                    {
+                      'verse_key': '1:1',
+                      // Official Quran Foundation verses-by-chapter example.
+                      'text_uthmani': 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
+                    },
+                  ],
+                  'pagination': {
+                    'current_page': 1,
+                    'next_page': null,
+                    'total_pages': 1,
+                  },
+                };
+              },
+              submit: (_, body) async {
+                saves.add(Map.of(body));
+                return {'id': 'synthetic-session'};
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await choosePassage(tester);
+        await tester.ensureVisible(find.text('Open Quran Reader'));
+        await tester.tap(find.text('Open Quran Reader'));
+        await tester.pumpAndSettle();
+        expect(find.text("Qur'an Reader"), findsOneWidget);
+        expect(saves, isEmpty);
+        expect(readerRequests.length, providerAvailable ? 2 : 1);
+        expect(
+          readerRequests.every(
+            (path) => !path.contains('studentId') && !path.contains('classId'),
+          ),
+          isTrue,
+        );
+        if (providerAvailable) {
+          expect(find.text('Ayah 1:1'), findsOneWidget);
+        } else {
+          expect(find.textContaining('No replacement text'), findsOneWidget);
+        }
+        await tester.tap(find.text('Close reader'));
+        await tester.pumpAndSettle();
+        expect(saves, isEmpty);
+        await tester.ensureVisible(find.text('Save progress'));
+        await tester.tap(find.text('Save progress'));
+        await tester.pumpAndSettle();
+        expect(saves, hasLength(1));
+        expect(saves.single, containsPair('ayahFrom', 11));
+        expect(saves.single, containsPair('ayahTo', 15));
+        expect(saves.single, containsPair('observation', 'INDEPENDENT'));
+        expect(saves.single, containsPair('studentId', '1'));
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'unavailable student is handled while Quran filters are loading',
     (tester) async {

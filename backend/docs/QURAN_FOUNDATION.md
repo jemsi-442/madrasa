@@ -57,9 +57,15 @@ selectable right-to-left verses and provider attribution. Pre-live shows its
 two-surah limitation. Failures show a safe error and retry, not replacement text.
 Reading does not submit observations or alter the teacher's current session.
 
-Flutter widget tests: `flutter test --no-pub test/quran_reader_test.dart`.
+Flutter widget tests:
+`flutter test --no-pub test/quran_reader_test.dart test/teacher_workspace_test.dart`.
 They cover narrow/desktop layouts, access failures, retries and closing during
-an in-flight request with mocked responses.
+an in-flight request with mocked responses. Navigation tests check that switching
+surahs clears old verses and failed pages can be retried or left safely.
+Workspace tests open and close the reader during an unsaved teacher session,
+with both available and unavailable provider responses. They verify that the
+passage and observation survive, no learner context is sent to content endpoints,
+and no session is submitted until the teacher explicitly saves.
 
 ## Not complete yet
 
