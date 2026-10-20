@@ -136,7 +136,14 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                               sending = false;
                               failure =
                                   error is ApiException &&
-                                      [403, 404, 422].contains(error.statusCode)
+                                      error.statusCode == 401
+                                  ? 'Your session has expired. Sign in again before recording teaching. This attempt has not been confirmed.'
+                                  : error is ApiException &&
+                                        [
+                                          403,
+                                          404,
+                                          422,
+                                        ].contains(error.statusCode)
                                   ? 'Could not record teaching. Check your class access and the adopted lesson before trying again.'
                                   : error is ApiException &&
                                         error.statusCode == 409

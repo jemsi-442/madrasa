@@ -6,6 +6,94 @@ import 'package:mif_app/src/school_curriculum_page.dart';
 
 void main() {
   testWidgets(
+    'expired teaching session asks for sign-in without claiming success',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var writes = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SchoolCurriculumPage(
+              isAdmin: false,
+              load: (_) async => {
+                'subjects': [],
+                'classes': [],
+                'assignments': [
+                  {
+                    'id': 'assignment-1',
+                    'version': {
+                      'subject': 'Arabic',
+                      'level': 'Level 1',
+                      'version': '1.0',
+                      'description': 'Synthetic example',
+                      'topics': [],
+                      'lessons': [
+                        {
+                          'id': 'lesson-1',
+                          'title': 'Reading words',
+                          'durationMinutes': 20,
+                          'activities': 'Guided practice',
+                          'objectives': [],
+                        },
+                      ],
+                    },
+                    'adoptions': [
+                      {
+                        'id': 'adoption-1',
+                        'history': [],
+                        'class': {
+                          'id': '1',
+                          'name': 'Class A',
+                          'academicYear': '2026',
+                        },
+                        'subject': {'name': 'Arabic'},
+                      },
+                    ],
+                  },
+                ],
+              },
+              submit: (_, body) async {
+                writes++;
+                throw const ApiException('Private authentication detail', 401);
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Shared lesson plans'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Shared lesson plans'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Record lesson taught'));
+      await tester.tap(find.text('Record lesson taught'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirm taught'));
+      await tester.pumpAndSettle();
+      expect(writes, 1);
+      expect(find.textContaining('Your session has expired.'), findsOneWidget);
+      expect(
+        find.textContaining('This attempt has not been confirmed.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('do not refresh'), findsNothing);
+      expect(find.text('Private authentication detail'), findsNothing);
+      expect(find.text('Recorded'), findsNothing);
+      expect(
+        find.textContaining('Teaching recorded successfully'),
+        findsNothing,
+      );
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(writes, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'teaching retries and confirmations stay scoped to selected class',
     (tester) async {
       tester.view.physicalSize = const Size(1440, 1100);
