@@ -372,13 +372,26 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         return const Center(child: CircularProgressIndicator());
       }
       if (snapshot.hasError) {
+        final error = snapshot.error;
+        final accessFailure =
+            error is ApiException && [401, 403].contains(error.statusCode);
         return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Could not load curriculum.'),
-              TextButton(onPressed: reload, child: const Text('Try again')),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  accessFailure
+                      ? error.statusCode == 401
+                            ? 'Your session has expired. Sign in again to view curriculum.'
+                            : 'Curriculum is not available for this account. Contact your madrasa administrator.'
+                      : 'Could not load curriculum.',
+                ),
+                if (!accessFailure)
+                  TextButton(onPressed: reload, child: const Text('Try again')),
+              ],
+            ),
           ),
         );
       }

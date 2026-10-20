@@ -1,8 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/school_curriculum_page.dart';
+import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final status in [401, 403]) {
+    testWidgets(
+      'curriculum refresh clears old view on access failure $status',
+      (tester) async {
+        var calls = 0;
+        Future<dynamic> load(String _) async {
+          if (++calls > 1) {
+            throw ApiException('Private server detail', status);
+          }
+          return {'assignments': [], 'classes': [], 'subjects': []};
+        }
+
+        Widget page(int refresh) => MaterialApp(
+          home: Scaffold(
+            body: SchoolCurriculumPage(
+              isAdmin: false,
+              load: load,
+              refreshToken: refresh,
+              submit: (_, body) async => {},
+            ),
+          ),
+        );
+        await tester.pumpWidget(page(0));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('No curriculum has been adopted'),
+          findsOneWidget,
+        );
+        await tester.pumpWidget(page(1));
+        await tester.pumpAndSettle();
+        expect(calls, 2);
+        expect(
+          find.textContaining(
+            status == 401
+                ? 'Your session has expired.'
+                : 'Curriculum is not available for this account.',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('No curriculum has been adopted'),
+          findsNothing,
+        );
+        expect(find.text('Try again'), findsNothing);
+        expect(find.text('Private server detail'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   for (final width in [390.0, 1440.0]) {
     for (final admin in [true, false]) {
       testWidgets('school curriculum at $width admin=$admin', (tester) async {
