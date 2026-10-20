@@ -62,7 +62,7 @@ export class PlatformCurriculumService {
           organization: { select: { name: true, status: true } },
           subject: { select: { isActive: true } },
           version: { select: { subject: true, level: true, version: true, _count: { select: { lessons: true } } } },
-          adoptions: { select: { id: true } },
+          adoptions: { select: { id: true, classId: true, subjectId: true } },
         },
       });
       const visible = rows.slice(0, 20);
@@ -74,8 +74,25 @@ export class PlatformCurriculumService {
       const deliveries = scopes.length ? await tx.curriculumLessonDelivery.groupBy({
         by: ['assignmentId', 'classCurriculumId', 'lessonId'], where: { OR: scopes },
       }) : [];
+      // Assessments belong to class/subject, not curriculum versions or objectives.
+      const assessmentScopes = [...new Map(visible.flatMap(row =>
+        row.adoptions.map(adoption => [
+          `${row.organizationId}:${adoption.classId}:${adoption.subjectId}`,
+          { orgId: row.organizationId, classId: adoption.classId, subjectId: adoption.subjectId },
+        ] as const),
+      )).values()];
+      const publishedAssessments = assessmentScopes.length ? await tx.assessment.count({
+        where: {
+          OR: assessmentScopes,
+          releases: { some: { retractedAt: null } },
+        },
+      }) : 0;
       return {
         generatedAt: new Date().toISOString(),
+        assessments: {
+          classSubjectScopes: assessmentScopes.length,
+          publishedAssessments,
+        },
         page: query.page, hasMore: rows.length > 20,
         items: visible.map(row => {
           const planned = row.adoptions.length * row.version._count.lessons;

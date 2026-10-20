@@ -10,9 +10,11 @@ class CurriculumOversightReport extends StatelessWidget {
     required this.rows,
     this.showSummary = true,
     this.summaryOnly = false,
+    this.assessments,
   });
   final List rows;
   final bool showSummary, summaryOnly;
+  final Map? assessments;
 
   int count(Map row, String key) => (row[key] as num?)?.toInt() ?? 0;
   int total(String key) =>
@@ -348,6 +350,38 @@ class CurriculumOversightReport extends StatelessWidget {
             const SizedBox(height: 24),
           ],
           if (!summaryOnly) ...[
+            if (assessments != null) ...[
+              panel(
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Published classroom assessments',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${count(assessments!, 'publishedAssessments')} assessments across ${count(assessments!, 'classSubjectScopes')} class-subject combinations',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'All-time, for current class adoptions on this page only. Each assessment is counted once if it has a non-retracted published release. Draft-only and fully retracted assessments are excluded.',
+                        style: TextStyle(color: AfaqDesign.muted),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'These assessments are linked to classes and subjects, not framework versions. This is not learner coverage, achievement or Qur\'an passage progress.',
+                        style: TextStyle(color: AfaqDesign.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
             if (constraints.maxWidth >= 1050)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

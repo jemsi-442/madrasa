@@ -601,7 +601,28 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       expect(repeatedTeaching.pendingLessons).toEqual([]);
       const teachingList = await school.list(teacherActor);
       expect(teachingList.assignments[0].adoptions[0].teachingCoverage).toEqual(repeatedTeaching.teachingCoverage);
+      for (const kind of ['draft', 'published', 'retracted', 'other-subject']) {
+        const assessment = await db.assessment.create({ data: {
+          orgId: organization.id, classId: classroom.id,
+          subjectId: kind === 'other-subject' ? alternativeSubject.id : subject.id,
+          createdById: assignedTeacher.id, clientId: randomUUID(),
+          title: `Synthetic oversight ${kind}`, assessedOn: new Date('2026-10-01'),
+          maxScore: 10,
+        } });
+        if (kind !== 'draft') {
+          for (const revision of [1, 2]) {
+            await db.assessmentRelease.create({ data: {
+              orgId: organization.id, assessmentId: assessment.id, revision,
+              publishedById: admin.id, snapshot: { synthetic: true },
+              retractedAt: kind === 'retracted' ? new Date() : null,
+            } });
+          }
+        }
+      }
       const oversight = await platform.oversight(platformActor, { madrasa: organization.name, subject: 'Arabic' });
+      expect(oversight.assessments).toEqual({
+        classSubjectScopes: 2, publishedAssessments: 1,
+      });
       expect(oversight.items.find(row => row.id === nextAssignment.assignments[0]!.id)).toMatchObject({
         adoptedClasses: 1, plannedClassLessons: 1, taughtClassLessons: 1, pendingClassLessons: 0,
       });
@@ -734,6 +755,8 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       })).resolves.toMatchObject({ assignmentId: nextAssignment.assignments[0]!.id });
     } finally {
       if (organizationId !== undefined) {
+        await db.assessmentRelease.deleteMany({ where: { orgId: organizationId } });
+        await db.assessment.deleteMany({ where: { orgId: organizationId } });
         await db.curriculumLessonDelivery.deleteMany({ where: { orgId: organizationId } });
         await db.classCurriculumHistory.deleteMany({ where: { orgId: organizationId } });
         await db.classCurriculum.deleteMany({ where: { orgId: organizationId } });

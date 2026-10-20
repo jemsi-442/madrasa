@@ -428,7 +428,11 @@ class _OversightState extends State<CurriculumOversightPage> {
                     ),
                   ),
                 if (rows.isNotEmpty)
-                  CurriculumOversightReport(rows: rows, showSummary: false),
+                  CurriculumOversightReport(
+                    rows: rows,
+                    showSummary: false,
+                    assessments: data['assessments'] as Map?,
+                  ),
                 const SizedBox(height: 16),
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,

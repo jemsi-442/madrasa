@@ -101,6 +101,10 @@ void main() {
             body: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: CurriculumOversightReport(
+                assessments: const {
+                  'publishedAssessments': 3,
+                  'classSubjectScopes': 5,
+                },
                 rows: [
                   {
                     'madrasa': 'Synthetic A',
@@ -134,6 +138,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('This page only · All-time snapshot'), findsOneWidget);
+      expect(find.text('Published classroom assessments'), findsOneWidget);
+      expect(
+        find.text('3 assessments across 5 class-subject combinations'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('not framework versions'), findsOneWidget);
       expect(find.text('On this page'), findsNWidgets(4));
       expect(find.byType(StatusPill), findsNWidgets(2));
       expect(find.text('Active'), findsOneWidget);

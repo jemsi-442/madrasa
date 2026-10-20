@@ -9,8 +9,9 @@ function fixture(role = 'SUPER_ADMIN', status = 'ACTIVE') {
       id: 'a1', organizationId: 10n, versionId: 'v1',
       organization: { name: 'Synthetic Madrasa', status: 'ACTIVE' }, subject: { isActive: true },
       version: { subject: 'Arabic', level: 'L1', version: '1.0', _count: { lessons: 3 } },
-      adoptions: [{ id: 'c1' }, { id: 'c2' }],
+      adoptions: [{ id: 'c1', classId: 11n, subjectId: 21n }, { id: 'c2', classId: 12n, subjectId: 21n }],
     }]) },
+    assessment: { count: vi.fn().mockResolvedValue(3) },
     curriculumLessonDelivery: { groupBy: vi.fn().mockResolvedValue([
       { assignmentId: 'a1', classCurriculumId: 'c1', lessonId: 'l1' },
       { assignmentId: 'a1', classCurriculumId: 'c2', lessonId: 'l1' },
@@ -23,6 +24,16 @@ it('reports distinct class lessons using only current scoped adoptions', async (
   const result = await service.oversight(actor, { page: 2, madrasa: 'Synthetic', subject: 'Arabic', level: 'L1' });
   expect(result.items[0]).toMatchObject({ adoptedClasses: 2, plannedClassLessons: 6, taughtClassLessons: 2, pendingClassLessons: 4 });
   expect(result.items[0]).not.toHaveProperty('organizationId');
+  expect(result.assessments).toEqual({ classSubjectScopes: 2, publishedAssessments: 3 });
+  expect(tx.assessment.count).toHaveBeenCalledWith({
+    where: {
+      OR: [
+        { orgId: 10n, classId: 11n, subjectId: 21n },
+        { orgId: 10n, classId: 12n, subjectId: 21n },
+      ],
+      releases: { some: { retractedAt: null } },
+    },
+  });
   expect(tx.curriculumLessonDelivery.groupBy).toHaveBeenCalledWith({
     by: ['assignmentId', 'classCurriculumId', 'lessonId'],
     where: { OR: [{ orgId: 10n, assignmentId: 'a1', classCurriculumId: { in: ['c1', 'c2'] }, lesson: { versionId: 'v1' } }] },
@@ -35,6 +46,7 @@ for (const role of ['IT_SECURITY', 'ACCOUNTANT']) it(`denies ${role} oversight`,
   const { service, tx } = fixture(role);
   await expect(service.oversight(actor, {})).rejects.toMatchObject({ statusCode: 403 });
   expect(tx.curriculumAssignment.findMany).not.toHaveBeenCalled();
+  expect(tx.assessment.count).not.toHaveBeenCalled();
 });
 it('rejects inactive accounts and invalid filters', async () => {
   await expect(fixture('SUPER_ADMIN', 'SUSPENDED').service.oversight(actor, {})).rejects.toMatchObject({ statusCode: 403 });
@@ -67,6 +79,8 @@ it('does not read deliveries for an empty assignment result', async () => {
   expect(Date.parse(result.generatedAt)).toBeGreaterThanOrEqual(before);
   expect(Date.parse(result.generatedAt)).toBeLessThanOrEqual(Date.now());
   expect(tx.curriculumLessonDelivery.groupBy).not.toHaveBeenCalled();
+  expect(tx.assessment.count).not.toHaveBeenCalled();
+  expect(result.assessments).toEqual({ classSubjectScopes: 0, publishedAssessments: 0 });
 });
 it('shows assignment without adoption as zero coverage, not teaching completion', async () => {
   const { service, tx } = fixture();
@@ -81,4 +95,27 @@ it('shows assignment without adoption as zero coverage, not teaching completion'
     plannedClassLessons: 0, taughtClassLessons: 0, pendingClassLessons: 0,
   });
   expect(tx.curriculumLessonDelivery.groupBy).not.toHaveBeenCalled();
+  expect(tx.assessment.count).not.toHaveBeenCalled();
+});
+it('deduplicates assessment scopes and excludes the pagination lookahead', async () => {
+  const { service, tx } = fixture();
+  const [row] = await tx.curriculumAssignment.findMany();
+  const visible = Array.from({ length: 20 }, (_, i) => ({ ...row!, id: `a${i}` }));
+  tx.curriculumAssignment.findMany.mockResolvedValue([
+    ...visible,
+    { ...row!, id: 'next-page', organizationId: 999n },
+  ]);
+  const result = await service.oversight(actor, {});
+  expect(result.hasMore).toBe(true);
+  expect(result.assessments.classSubjectScopes).toBe(2);
+  expect(tx.assessment.count).toHaveBeenCalledWith({
+    where: {
+      OR: [
+        { orgId: 10n, classId: 11n, subjectId: 21n },
+        { orgId: 10n, classId: 12n, subjectId: 21n },
+      ],
+      releases: { some: { retractedAt: null } },
+    },
+  });
+  expect(() => JSON.stringify(result)).not.toThrow();
 });
