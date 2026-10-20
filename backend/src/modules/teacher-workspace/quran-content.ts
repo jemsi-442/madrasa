@@ -128,7 +128,10 @@ export class QuranContentClient {
 
   private async loadChapters(): Promise<Chapters> {
     const parsed = chaptersSchema.safeParse(await this.content("/chapters"));
-    if (!parsed.success || new Set(parsed.data.chapters.map(chapter => chapter.id)).size !== parsed.data.chapters.length) {
+    if (!parsed.success ||
+        new Set(parsed.data.chapters.map(chapter => chapter.id)).size !== parsed.data.chapters.length ||
+        parsed.data.chapters.some(chapter =>
+          chapter.verses_count !== catalog.chapters.find(known => known.id === chapter.id)?.ayahCount)) {
       throw new HttpError(503, "Quran content is temporarily unavailable");
     }
     return parsed.data.chapters;

@@ -39,7 +39,9 @@ Official reference: https://api-docs.quran.foundation/docs/quickstart/
 
 Client Credentials tokens are held server-side and renewed before expiry.
 Concurrent chapter requests share a request; chapter metadata is cached in memory
-for 60 seconds. A provider 401 triggers one token renewal and one retry only.
+for 60 seconds. Duplicate surah IDs or verse counts that disagree with the
+verified local catalog are rejected without caching the response.
+A provider 401 triggers one token renewal and one retry only.
 Other upstream errors use a generic 503 without provider bodies or secrets.
 Requests have a ten-second timeout and reject redirects. URLs are fixed by
 environment; clients cannot supply an upstream URL. No learner data is sent.

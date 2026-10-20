@@ -81,6 +81,22 @@ it("rejects malformed chapter data without caching it", async () => {
   expect((await client.chapters()).chapters).toHaveLength(1);
   expect(http).toHaveBeenCalledTimes(3);
 });
+for (const [label, chapters] of [
+  ["incorrect verse count", [{ ...payload.chapters[0]!, verses_count: 8 }]],
+  ["duplicate surah", [payload.chapters[0]!, payload.chapters[0]!]],
+] as const) {
+  it(`rejects ${label} and recovers without caching invalid metadata`, async () => {
+    const http = vi.fn<typeof fetch>().mockResolvedValueOnce(token())
+      .mockResolvedValueOnce(new Response(JSON.stringify({ chapters })))
+      .mockResolvedValueOnce(content());
+    const client = new QuranContentClient(config, http);
+    await expect(client.chapters()).rejects.toMatchObject({
+      statusCode: 503, message: "Quran content is temporarily unavailable",
+    });
+    expect((await client.chapters()).chapters).toEqual(payload.chapters);
+    expect(http).toHaveBeenCalledTimes(3);
+  });
+}
 it("sanitises transport errors and clears failed token requests", async () => {
   const http = vi.fn<typeof fetch>().mockRejectedValueOnce(new Error("private transport detail"))
     .mockResolvedValueOnce(token()).mockResolvedValueOnce(content());
