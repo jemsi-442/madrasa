@@ -56,6 +56,22 @@ Exit codes: 0 success, 1 connection/content failure, 2 invalid configuration or
 arguments. A successful dry run does not prove the credentials work; even a live
 sample does not verify all surahs, audio or translations.
 
+## Disposable demo reload
+
+`scripts/reload-local-demo-api.mjs` now reads only the four `QF_` settings
+from `backend/.env` before stopping the existing demo API. Database, Redis,
+JWT and other inherited demo settings are preserved. Invalid Quran settings
+abort before stopping the API; missing `.env` retains inherited settings.
+An explicit `QF_ENABLED=false` disables content access.
+
+The existing Linux PID/ancestry and disposable-database safeguards still apply:
+this helper requires an API belonging to the specified original demo supervisor.
+It is not a general restart command for a detached watcher. This change does
+not add `.env` loading to the initial demo runner.
+
+Verify isolation with `node --test backend/scripts/local-demo-quran-env.test.mjs`
+from the repository root.
+
 ## Behaviour and verification
 
 Client Credentials tokens are held server-side and renewed before expiry.

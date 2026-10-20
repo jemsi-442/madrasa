@@ -3,6 +3,7 @@ import { readFile, readlink } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withQuranSettings } from './local-demo-quran-env.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '');
 const apiPid = Number(process.argv[2]);
@@ -27,13 +28,19 @@ async function main() {
   }
   if (ancestor !== supervisorPid) throw new Error('API does not belong to the specified demo supervisor.');
   const entries = (await readFile(`/proc/${apiPid}/environ`, 'utf8')).split('\0').filter(Boolean);
-  const env = Object.fromEntries(entries.map(entry => { const split = entry.indexOf('='); return [entry.slice(0, split), entry.slice(split + 1)]; }));
+  let env = Object.fromEntries(entries.map(entry => { const split = entry.indexOf('='); return [entry.slice(0, split), entry.slice(split + 1)]; }));
   const db = new URL(env.DATABASE_URL);
   const redis = new URL(env.REDIS_URL);
   if (env.NODE_ENV !== 'development' || env.DOTENV_CONFIG_PATH !== '/dev/null'
     || db.hostname !== '127.0.0.1' || db.pathname !== '/afaq_local_demo' || !db.port || db.port === '3306'
     || redis.hostname !== '127.0.0.1' || !redis.port || redis.port === '6379'
     || env.SNIPPE_MOCK_MODE !== 'true') throw new Error('Refusing non-disposable configuration.');
+
+  // Validate before stopping a healthy API. Missing .env retains inherited settings.
+  let localSettings = '';
+  try { localSettings = await readFile(resolve(root, '.env'), 'utf8'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  env = withQuranSettings(env, localSettings);
 
   process.kill(apiPid, 'SIGTERM');
   for (let attempt = 0; attempt < 100 && alive(apiPid); attempt++) await pause(100);
