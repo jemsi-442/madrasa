@@ -367,8 +367,21 @@ class CurriculumOversightReport extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
+                      if (assessments!['learnersWithPublishedScores']
+                          is num) ...[
+                        Text(
+                          '${count(assessments!, 'learnersWithPublishedScores')} learners with published scores',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Each learner is counted once per madrasa across these class-subject combinations, including a score of zero. This is not a pass count or a percentage of enrolled learners.',
+                          style: TextStyle(color: AfaqDesign.muted),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       const Text(
-                        'All-time, for current class adoptions on this page only. Each assessment is counted once if it has a non-retracted published release. Draft-only and fully retracted assessments are excluded.',
+                        'All-time, for current class adoptions on this page only. Each currently published assessment is counted once if it has a non-retracted release. Drafts and fully retracted assessments are excluded.',
                         style: TextStyle(color: AfaqDesign.muted),
                       ),
                       const SizedBox(height: 8),

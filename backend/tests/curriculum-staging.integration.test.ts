@@ -601,14 +601,28 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       expect(repeatedTeaching.pendingLessons).toEqual([]);
       const teachingList = await school.list(teacherActor);
       expect(teachingList.assignments[0].adoptions[0].teachingCoverage).toEqual(repeatedTeaching.teachingCoverage);
-      for (const kind of ['draft', 'published', 'retracted', 'other-subject']) {
+      const assessmentLearners = await Promise.all([1, 2, 3].map(index =>
+        db.student.create({ data: {
+          orgId: organization.id, branchId: branch.id, classId: classroom.id,
+          admissionNo: `SYN-ASSESS-${index}-${suffix}`,
+          fullName: `Synthetic Assessment Learner ${index}`,
+        } }),
+      ));
+      for (const kind of ['draft', 'published', 'published-again', 'retracted', 'other-subject']) {
         const assessment = await db.assessment.create({ data: {
           orgId: organization.id, classId: classroom.id,
           subjectId: kind === 'other-subject' ? alternativeSubject.id : subject.id,
           createdById: assignedTeacher.id, clientId: randomUUID(),
           title: `Synthetic oversight ${kind}`, assessedOn: new Date('2026-10-01'),
           maxScore: 10,
+          status: kind === 'draft' ? 'DRAFT' : 'PUBLISHED',
         } });
+        const roster = kind.startsWith('published')
+          ? assessmentLearners.slice(0, 2) : assessmentLearners.slice(2);
+        await db.assessmentResult.createMany({ data: roster.map((student, index) => ({
+          orgId: organization.id, assessmentId: assessment.id,
+          studentId: student.id, score: index === 0 ? 0 : 5, feedback: '',
+        })) });
         if (kind !== 'draft') {
           for (const revision of [1, 2]) {
             await db.assessmentRelease.create({ data: {
@@ -621,8 +635,10 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       }
       const oversight = await platform.oversight(platformActor, { madrasa: organization.name, subject: 'Arabic' });
       expect(oversight.assessments).toEqual({
-        classSubjectScopes: 2, publishedAssessments: 1,
+        classSubjectScopes: 2, publishedAssessments: 2, learnersWithPublishedScores: 2,
       });
+      expect(JSON.stringify(oversight)).not.toContain('Synthetic Assessment Learner');
+      expect(JSON.stringify(oversight)).not.toContain('studentId');
       expect(oversight.items.find(row => row.id === nextAssignment.assignments[0]!.id)).toMatchObject({
         adoptedClasses: 1, plannedClassLessons: 1, taughtClassLessons: 1, pendingClassLessons: 0,
       });
@@ -756,7 +772,9 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
     } finally {
       if (organizationId !== undefined) {
         await db.assessmentRelease.deleteMany({ where: { orgId: organizationId } });
+        await db.assessmentResult.deleteMany({ where: { orgId: organizationId } });
         await db.assessment.deleteMany({ where: { orgId: organizationId } });
+        await db.student.deleteMany({ where: { orgId: organizationId } });
         await db.curriculumLessonDelivery.deleteMany({ where: { orgId: organizationId } });
         await db.classCurriculumHistory.deleteMany({ where: { orgId: organizationId } });
         await db.classCurriculum.deleteMany({ where: { orgId: organizationId } });

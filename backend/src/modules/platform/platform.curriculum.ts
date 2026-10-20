@@ -81,17 +81,30 @@ export class PlatformCurriculumService {
           { orgId: row.organizationId, classId: adoption.classId, subjectId: adoption.subjectId },
         ] as const),
       )).values()];
+      const publishedScope: Prisma.AssessmentWhereInput = {
+        OR: assessmentScopes,
+        status: 'PUBLISHED',
+        releases: { some: { retractedAt: null } },
+      };
       const publishedAssessments = assessmentScopes.length ? await tx.assessment.count({
-        where: {
-          OR: assessmentScopes,
-          releases: { some: { retractedAt: null } },
-        },
+        where: publishedScope,
       }) : 0;
+      // Published results are locked until retraction; never read editable draft marks.
+      // Group by tenant as well as learner and return only the aggregate count.
+      const assessedLearners = assessmentScopes.length ? await tx.assessmentResult.groupBy({
+        by: ['orgId', 'studentId'],
+        where: {
+          orgId: { in: [...new Set(assessmentScopes.map(scope => scope.orgId))] },
+          score: { not: null },
+          assessment: publishedScope,
+        },
+      }) : [];
       return {
         generatedAt: new Date().toISOString(),
         assessments: {
           classSubjectScopes: assessmentScopes.length,
           publishedAssessments,
+          learnersWithPublishedScores: assessedLearners.length,
         },
         page: query.page, hasMore: rows.length > 20,
         items: visible.map(row => {

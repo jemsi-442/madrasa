@@ -104,6 +104,7 @@ void main() {
                 assessments: const {
                   'publishedAssessments': 3,
                   'classSubjectScopes': 5,
+                  'learnersWithPublishedScores': 2,
                 },
                 rows: [
                   {
@@ -144,6 +145,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('not framework versions'), findsOneWidget);
+      expect(find.text('2 learners with published scores'), findsOneWidget);
+      expect(find.textContaining('not a pass count'), findsOneWidget);
       expect(find.text('On this page'), findsNWidgets(4));
       expect(find.byType(StatusPill), findsNWidgets(2));
       expect(find.text('Active'), findsOneWidget);
