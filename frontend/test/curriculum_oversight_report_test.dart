@@ -4,6 +4,53 @@ import 'package:mif_app/src/curriculum_oversight_report.dart';
 import 'package:mif_app/src/dashboard_components.dart' show StatusPill;
 
 void main() {
+  for (final scenario in [
+    (0, 0, 0, 'Awaiting class adoption.'),
+    (1, 0, 0, 'No planned class-lessons.'),
+    (1, 4, 0, 'Awaiting teaching records.'),
+    (1, 4, 2, 'Teaching records are in progress.'),
+    (1, 4, 4, 'All planned class-lessons have teaching records.'),
+  ]) {
+    testWidgets('follow-up guidance: ${scenario.$4}', (tester) async {
+      tester.view.physicalSize = const Size(390, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: CurriculumOversightReport(
+                showSummary: false,
+                rows: [
+                  {
+                    'madrasa': 'Synthetic Madrasa',
+                    'madrasaStatus': 'ACTIVE',
+                    'subject': 'Arabic',
+                    'version': '1.0',
+                    'subjectActive': true,
+                    'adoptedClasses': scenario.$1,
+                    'plannedClassLessons': scenario.$2,
+                    'taughtClassLessons': scenario.$3,
+                    'pendingClassLessons': scenario.$2 - scenario.$3,
+                  },
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining(scenario.$4), findsOneWidget);
+      if (scenario.$3 == 4) {
+        expect(
+          find.textContaining('This does not confirm learner achievement.'),
+          findsOneWidget,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('pending madrasa and unadopted version do not imply coverage', (
     tester,
   ) async {

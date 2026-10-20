@@ -74,6 +74,24 @@ class CurriculumOversightReport extends StatelessWidget {
   Widget coverage(BuildContext context, Map row) {
     final planned = count(row, 'plannedClassLessons');
     final taught = count(row, 'taughtClassLessons');
+    final adopted = count(row, 'adoptedClasses');
+    final String nextStep;
+    if (adopted == 0) {
+      nextStep =
+          'Awaiting class adoption. The madrasa administrator must link this framework to a class.';
+    } else if (planned == 0) {
+      nextStep =
+          'No planned class-lessons. Check the adopted version and its lesson content.';
+    } else if (taught == 0) {
+      nextStep =
+          'Awaiting teaching records. Assigned teachers record lessons after teaching.';
+    } else if (taught < planned) {
+      nextStep =
+          'Teaching records are in progress. Follow up with the responsible madrasa on remaining lessons.';
+    } else {
+      nextStep =
+          'All planned class-lessons have teaching records. This does not confirm learner achievement.';
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -115,6 +133,8 @@ class CurriculumOversightReport extends StatelessWidget {
           '${count(row, 'pendingClassLessons')} class-lessons without teaching records',
           style: const TextStyle(fontSize: 13, color: AfaqDesign.muted),
         ),
+        const SizedBox(height: 10),
+        Text(nextStep, style: const TextStyle(color: AfaqDesign.ink)),
       ],
     );
   }
