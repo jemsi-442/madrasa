@@ -79,6 +79,7 @@ void main() {
       await tester.tap(find.text('Refresh'));
       await tester.pump();
       expect(find.text('On this page'), findsNothing);
+      expect(find.text('Loading learning oversight'), findsOneWidget);
       refresh.completeError(Exception('Synthetic connection failure'));
       await tester.pumpAndSettle();
       expect(find.text('On this page'), findsNothing);
@@ -364,6 +365,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Report generated:'), findsNothing);
     expect(find.text('Could not load learning oversight.'), findsOneWidget);
+    expect(find.text('Loading learning oversight'), findsNothing);
+    expect(
+      find.textContaining('this error does not mean the records were deleted'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
   testWidgets('late report cannot replace a newer applied filter', (

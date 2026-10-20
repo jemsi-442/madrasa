@@ -120,6 +120,35 @@ class _OversightState extends State<CurriculumOversightPage> {
     reload(1, apply: true);
   }
 
+  Widget statePanel({
+    required IconData icon,
+    required String title,
+    required String description,
+    List<Widget> actions = const [],
+    bool loading = false,
+  }) => Container(
+    decoration: AfaqDesign.panelDecoration(),
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: AfaqDesign.blue, size: 30),
+        const SizedBox(height: 12),
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text(description, style: const TextStyle(color: AfaqDesign.muted)),
+        if (loading) ...[
+          const SizedBox(height: 20),
+          const LinearProgressIndicator(),
+        ],
+        if (actions.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(spacing: 12, runSpacing: 8, children: actions),
+        ],
+      ],
+    ),
+  );
+
   @override
   void dispose() {
     for (final controller in filters) {
@@ -295,19 +324,34 @@ class _OversightState extends State<CurriculumOversightPage> {
           future: result,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const LinearProgressIndicator();
+              return statePanel(
+                icon: Icons.sync,
+                title: 'Loading learning oversight',
+                description:
+                    'Fetching the report for your applied filters. Previous figures are hidden until the request completes.',
+                loading: true,
+              );
             }
             if (snapshot.data is _OversightFailure) {
-              return Text(
-                (snapshot.data as _OversightFailure).status == 401
+              final expired =
+                  (snapshot.data as _OversightFailure).status == 401;
+              return statePanel(
+                icon: expired ? Icons.lock_clock_outlined : Icons.lock_outline,
+                title: expired
                     ? 'Your session has expired. Sign in again.'
                     : 'Learning Oversight is not available for this account.',
+                description: expired
+                    ? 'Sign in again to load current information.'
+                    : 'This report requires authorised platform curriculum access.',
               );
             }
             if (snapshot.data == null) {
-              return Column(
-                children: [
-                  const Text('Could not load learning oversight.'),
+              return statePanel(
+                icon: Icons.cloud_off_outlined,
+                title: 'Could not load learning oversight.',
+                description:
+                    'No current report is available. Retry to check for updates; this error does not mean the records were deleted.',
+                actions: [
                   TextButton(
                     onPressed: () => reload(page),
                     child: const Text('Try again'),
