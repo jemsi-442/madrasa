@@ -1666,7 +1666,13 @@ Omitting status includes all statuses, with each row labelled explicitly.
 The UI labels applied filters separately from unsubmitted edits; Refresh,
 retry and pagination retain the applied filter set. Clear filters resets both the
 inputs and applied set. Widget regression tests verify that a late earlier response
-cannot replace the latest report. Each row reports current class adoptions and distinct class/lesson teaching
+cannot replace the latest report or expire the session after a newer request.
+Text filters validate the server's trimmed length limits (madrasa/subject 120,
+level 80) before issuing a request, retaining the displayed report on invalid input.
+Empty later pages are distinguished from no matching assignments on page one.
+Empty or failed later pages offer a return to page one using the applied filters;
+retry stays on the failed page. Unsubmitted filter edits remain unapplied.
+Each row reports current class adoptions and distinct class/lesson teaching
 records for that assignment/version, not historical adoption totals. Repeated
 teaching counts once per class; replaced-version records are not transferred.
 Inactive madrasa/subject records are labelled, not represented as active access.
@@ -1682,6 +1688,13 @@ Migration `202610201000_curriculum_lesson_delivery` is supplied
 but has only been applied to the disposable test database.
 
 ### Curriculum foundation acceptance checkpoint (2026-10-20)
+
+Latest verification rerun: the targeted `curriculum-oversight`,
+`platform-curriculum` and `school-curriculum` backend suites passed 91 tests,
+the isolated fresh-install/curriculum runner passed 17 integration tests, and
+`npm run typecheck` passed. This verifies test services, not local application
+availability: the separate `http://127.0.0.1:4000/api/health` check could not
+connect during this run. No browser or physical-device acceptance is implied.
 
 Verified with `npm run test:platform:staging -- --fresh-install --curriculum`
 against disposable MariaDB and Redis (17 tests passed). The curriculum scenario
@@ -1700,13 +1713,14 @@ protection. TypeScript typecheck and analysis of the five curriculum UI files
 also passed. These are service/database and widget checks, not a browser-driven
 cross-role end-to-end test or a physical-device acceptance test.
 
-This closes the authoring/assignment/read-only classroom reference checkpoint,
-not the entire learning module. Before Learning Oversight can report real
-teaching or assessment coverage, implement teacher delivery records, assessed
-objective outcomes and their version-specific reporting links. Do not derive
-achievement or teaching coverage from opening a framework. Persistent offline
-learning events and their permission rechecks also remain separate work. No
-populated school database or production deployment was changed by this check.
+This originally closed the authoring/assignment/read-only classroom reference
+checkpoint, not the entire learning module. Subsequent increments added online
+teacher delivery records and version-specific teaching coverage as described
+above. Assessed objective outcomes and their reporting links are still unfinished;
+teacher-reported teaching is not evidence of learner achievement. Opening a
+framework is not a teaching event. Persistent offline learning events and their
+permission rechecks also remain separate work. No populated school database or
+production deployment was changed by this check.
 
 Migrations currently defined for these additions are
 `202610160300_curriculum_versions`, `202610162000_class_curriculum`,
