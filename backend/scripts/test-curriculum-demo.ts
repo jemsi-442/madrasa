@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { PlatformCurriculumService } from '../src/modules/platform/platform.curriculum';
 import { SchoolCurriculumService } from '../src/modules/learning/school-curriculum';
@@ -14,7 +15,9 @@ async function main() {
     const split = value.indexOf('='); return [value.slice(0, split), value.slice(split + 1)];
   }));
   const url = new URL(env.DATABASE_URL!);
-  if (url.pathname !== '/afaq_local_demo' || url.hostname !== '127.0.0.1' || url.port === '3306') throw Error('Unsafe database');
+  if (env.NODE_ENV !== 'development' || url.pathname !== '/afaq_local_demo'
+    || url.hostname !== '127.0.0.1' || !url.port || url.port === '3306'
+    || !args.includes(`--port=${url.port}`)) throw Error('Unsafe database');
   const db = new PrismaClient({ datasourceUrl: url.toString() });
   const rollback = new Error('Expected rollback');
   try {
@@ -52,7 +55,10 @@ async function main() {
       assert.equal(await tx.curriculumAssignment.count({ where: { versionId: draft.id } }), 1);
       const list = await service.list(actor, {});
       assert(list.items.some(row => row.id === draft.id && row.status === 'PUBLISHED'));
-      assert.equal(await tx.platformAuditEvent.count({ where: { entityId: draft.id } }), 9);
+      assert.equal(await tx.platformAuditEvent.count({ where: { entityId: draft.id } }), 8);
+      assert.equal(await tx.platformAuditEvent.count({
+        where: { entityId: draft.id, action: 'curriculum.assigned' },
+      }), 1);
       const history = await tx.curriculumReview.findMany({ where: { versionId: draft.id } });
       assert.equal(history.length, 1);
       assert.equal(history[0]?.action, 'publish');
@@ -96,15 +102,54 @@ async function main() {
       assert.equal(teaching.assignments[0].adoptions[0].class.id, classroom.id.toString());
       assert.equal((await schoolService.list(context(other))).assignments.length, 0);
       await assert.rejects(schoolService.adopt(context(teacher), adoptionInput));
+      const lesson = await tx.curriculumLesson.findFirstOrThrow({
+        where: { versionId: draft.id }, orderBy: { position: 'asc' },
+      });
+      const event = { classCurriculumId: adoption.id, assignmentId: assignment.id,
+        lessonId: lesson.id, clientEventId: randomUUID() };
+      await assert.rejects(schoolService.recordDelivery(context(other), event));
+      await assert.rejects(schoolService.recordDelivery(context(admin), event));
+      const delivery = await schoolService.recordDelivery(context(teacher), event);
+      assert.equal((await schoolService.recordDelivery(context(teacher), event)).id, delivery.id);
+      assert.equal(await tx.curriculumLessonDelivery.count({
+        where: { classCurriculumId: adoption.id },
+      }), 1);
+      assert.equal(await tx.auditLog.count({
+        where: { entityId: delivery.id, action: 'curriculum.lesson.taught' },
+      }), 1);
+      const afterTeaching = await schoolService.list(context(teacher));
+      assert.equal(afterTeaching.assignments[0].adoptions[0].teachingCoverage.taughtLessons, 1);
+      await assert.rejects(schoolService.deliveryHistory(context(other), {
+        classCurriculumId: adoption.id,
+      }));
       await service.transition(actor, copy.id, { action: 'publish' });
       await service.assign(actor, copy.id, { organizationId: school.id.toString() });
       const newer = await tx.curriculumAssignment.findFirstOrThrow({ where: { versionId: copy.id, organizationId: school.id } });
-      await assert.rejects(schoolService.adopt(context(admin), { ...adoptionInput, assignmentId: newer.id }));
+      await schoolService.adopt(context(admin), { ...adoptionInput, assignmentId: newer.id });
+      const afterUpgrade = await schoolService.list(context(teacher));
+      assert.equal(afterUpgrade.assignments.length, 1);
+      assert.equal(afterUpgrade.assignments[0].version.version, '1.1');
+      assert.equal(afterUpgrade.assignments[0].adoptions[0].teachingCoverage.taughtLessons, 0);
+      assert.equal(afterUpgrade.assignments[0].adoptions[0].history.length, 1);
+      assert.equal(await tx.curriculumLessonDelivery.count({
+        where: { classCurriculumId: adoption.id, assignmentId: assignment.id },
+      }), 1);
+      await assert.rejects(schoolService.recordDelivery(context(teacher), {
+        ...event, clientEventId: randomUUID(),
+      }));
       assert.equal(await tx.auditLog.count({ where: { entityId: adoption.id, action: 'curriculum.class.adopted' } }), 1);
       throw rollback;
     }, { timeout: 20000 });
   } catch (error) { if (error !== rollback) throw error; }
   finally { await db.$disconnect(); }
-  console.log('Curriculum database lifecycle passed; all test records rolled back.');
+  console.log('Curriculum lifecycle, teacher scope, delivery retry and version upgrade passed; all test records rolled back.');
 }
-main().catch(() => { console.error('Curriculum database lifecycle failed. Test transaction rolled back.'); process.exitCode = 1; });
+main().catch((error: unknown) => {
+  console.error('Curriculum database lifecycle failed. Test transaction rolled back.');
+  if (error instanceof Error) {
+    console.error(error.name);
+    const location = error.stack?.split('\n').find(line => line.includes('test-curriculum-demo.ts:') && line.trim().startsWith('at '));
+    if (location) console.error(location.trim());
+  }
+  process.exitCode = 1;
+});
