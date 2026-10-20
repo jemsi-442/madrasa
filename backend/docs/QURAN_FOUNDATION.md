@@ -72,6 +72,14 @@ Tests use mocked HTTP, synthetic metadata labels, and one verbatim verse example
 from the provider's documentation, never generated Quran text.
 Live provider verification still requires configured credentials.
 
+Run `npm test -- tests/quran-routes.test.ts tests/quran-check.test.ts` for
+HTTP permission boundaries and the private configuration command. Route tests
+use real authentication/role middleware with a mocked database and content client:
+anonymous requests, unavailable accounts, stale token versions and other school
+roles cannot call the provider. Platform tokens do not grant teacher access.
+Successful teacher responses are marked `no-store`; only chapter and pagination
+parameters reach the content client. These are not live-database integration tests.
+
 ## Teacher reader
 
 Teachers can select **Open Quran Reader** from their Quran workspace. The shared
