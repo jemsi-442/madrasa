@@ -614,6 +614,10 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       const unadoptedReport = await platform.oversight(platformActor, { madrasa: organization.name, adoption: 'without' });
       expect(unadoptedReport.items.map(row => row.id)).toContain(firstAssignment.assignments[0]!.id);
       expect(unadoptedReport.items.map(row => row.id)).not.toContain(nextAssignment.assignments[0]!.id);
+      const statusReport = await platform.oversight(platformActor, { madrasa: organization.name, status: organization.status, adoption: 'with' });
+      expect(statusReport.items.map(row => row.id)).toContain(nextAssignment.assignments[0]!.id);
+      const otherStatusReport = await platform.oversight(platformActor, { madrasa: organization.name, status: 'SUSPENDED' });
+      expect(otherStatusReport.items).toEqual([]);
       await expect(school.recordDelivery({ ...teacherActor, userId: otherTeacher.id.toString() }, {
         ...deliveryInput, clientEventId: randomUUID(),
       })).rejects.toMatchObject({ statusCode: 404 });

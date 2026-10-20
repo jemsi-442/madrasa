@@ -39,12 +39,16 @@ export class PlatformCurriculumService {
       subject: z.string().trim().min(1).max(120).optional(),
       level: z.string().trim().min(1).max(80).optional(),
       adoption: z.enum(['with', 'without']).optional(),
+      status: z.enum(['ACTIVE', 'TRIAL', 'SUSPENDED', 'PENDING_ACTIVATION']).optional(),
     }).strict().parse(input);
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
       const rows = await tx.curriculumAssignment.findMany({
         where: {
-          ...(query.madrasa ? { organization: { name: { contains: query.madrasa } } } : {}),
+          ...(query.madrasa || query.status ? { organization: {
+            ...(query.madrasa ? { name: { contains: query.madrasa } } : {}),
+            ...(query.status ? { status: query.status } : {}),
+          } } : {}),
           ...(query.adoption ? { adoptions: query.adoption === 'with' ? { some: {} } : { none: {} } } : {}),
           version: { status: 'PUBLISHED',
             ...(query.subject ? { subject: { contains: query.subject } } : {}),

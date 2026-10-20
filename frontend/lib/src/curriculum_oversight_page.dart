@@ -28,6 +28,14 @@ class _OversightState extends State<CurriculumOversightPage> {
   ];
   Map<String, String> applied = {};
   String adoption = '';
+  String status = '';
+  static const statusLabels = {
+    '': 'All madrasa statuses',
+    'ACTIVE': 'Active',
+    'TRIAL': 'Trial',
+    'SUSPENDED': 'Suspended',
+    'PENDING_ACTIVATION': 'Pending activation',
+  };
   static const adoptionLabels = {
     '': 'All assignments',
     'with': 'With class adoptions',
@@ -39,7 +47,8 @@ class _OversightState extends State<CurriculumOversightPage> {
     for (var i = 0; i < filters.length; i++) {
       if (filters[i].text.trim() != (applied[filterKeys[i]] ?? '')) return true;
     }
-    return adoption != (applied['adoption'] ?? '');
+    return adoption != (applied['adoption'] ?? '') ||
+        status != (applied['status'] ?? '');
   }
 
   int page = 1;
@@ -66,6 +75,7 @@ class _OversightState extends State<CurriculumOversightPage> {
       if (apply) {
         applied = {};
         if (adoption.isNotEmpty) applied['adoption'] = adoption;
+        if (status.isNotEmpty) applied['status'] = status;
         for (var i = 0; i < filters.length; i++) {
           final value = filters[i].text.trim();
           if (value.isNotEmpty) {
@@ -140,6 +150,23 @@ class _OversightState extends State<CurriculumOversightPage> {
                 onChanged: (value) => setState(() => adoption = value ?? ''),
               ),
             ),
+            SizedBox(
+              width: 250,
+              child: DropdownButtonFormField<String>(
+                initialValue: status,
+                key: ValueKey('madrasa-status-$status'),
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Madrasa status'),
+                items: [
+                  for (final entry in statusLabels.entries)
+                    DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                ],
+                onChanged: (value) => setState(() => status = value ?? ''),
+              ),
+            ),
             FilledButton(
               onPressed: () => reload(1, apply: true),
               child: const Text('Apply filters'),
@@ -150,6 +177,7 @@ class _OversightState extends State<CurriculumOversightPage> {
                   controller.clear();
                 }
                 adoption = '';
+                status = '';
                 reload(1, apply: true);
               },
               child: const Text('Clear filters'),
@@ -165,7 +193,11 @@ class _OversightState extends State<CurriculumOversightPage> {
         Text(
           applied.isEmpty
               ? 'Applied filters: All assigned frameworks'
-              : 'Applied filters: ${applied.entries.map((entry) => entry.key == 'adoption' ? 'Class adoption: ${adoptionLabels[entry.value]}' : '${filterLabels[filterKeys.indexOf(entry.key)]}: ${entry.value}').join(' / ')}',
+              : 'Applied filters: ${applied.entries.map((entry) => entry.key == 'adoption'
+                    ? 'Class adoption: ${adoptionLabels[entry.value]}'
+                    : entry.key == 'status'
+                    ? 'Madrasa status: ${statusLabels[entry.value]}'
+                    : '${filterLabels[filterKeys.indexOf(entry.key)]}: ${entry.value}').join(' / ')}',
           style: Theme.of(context).textTheme.labelLarge,
         ),
         if (hasUnappliedChanges)

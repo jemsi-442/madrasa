@@ -1659,6 +1659,10 @@ the database before pagination. Omitting it includes all assignments. A version
 without current adoptions may have been replaced; it is not automatically a
 late-onboarding madrasa. The UI explains this distinction and resets the adoption
 filter with Clear filters.
+Optional `status=ACTIVE|TRIAL|SUSPENDED|PENDING_ACTIVATION` restricts the
+madrasa's current status, combined with name and adoption filters before paging.
+The UI keeps the selection unapplied until Apply filters and resets it on Clear.
+Omitting status includes all statuses, with each row labelled explicitly.
 The UI labels applied filters separately from unsubmitted edits; Refresh,
 retry and pagination retain the applied filter set. Clear filters resets both the
 inputs and applied set. Widget regression tests verify that a late earlier response

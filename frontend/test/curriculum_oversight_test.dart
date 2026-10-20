@@ -248,9 +248,11 @@ void main() {
         find.text('Applied filters: All assigned frameworks'),
         findsOneWidget,
       );
-      await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
+      await tester.ensureVisible(
+        find.byType(DropdownButtonFormField<String>).first,
+      );
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.tap(find.byType(DropdownButtonFormField<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('No current class adoption').last);
       await tester.pumpAndSettle();
@@ -259,6 +261,24 @@ void main() {
       await tester.tap(find.text('Apply filters'));
       await tester.pumpAndSettle();
       expect(queries.last, {'adoption': 'without', 'page': '1'});
+      await tester.ensureVisible(
+        find.byType(DropdownButtonFormField<String>).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Active').last);
+      await tester.pumpAndSettle();
+      expect(queries.last, {'adoption': 'without', 'page': '1'});
+      await tester.ensureVisible(find.text('Apply filters'));
+      await tester.tap(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      expect(queries.last, {
+        'adoption': 'without',
+        'status': 'ACTIVE',
+        'page': '1',
+      });
+      expect(find.textContaining('Madrasa status: Active'), findsOneWidget);
       expect(find.textContaining('not delayed onboarding'), findsOneWidget);
       await tester.ensureVisible(find.text('Clear filters'));
       await tester.tap(find.text('Clear filters'));
