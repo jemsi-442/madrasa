@@ -40,6 +40,20 @@ Future<void> openReader(WidgetTester tester, PageLoader load) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> reveal(WidgetTester tester, String label) async {
+  await tester.scrollUntilVisible(
+    find.text(label),
+    120,
+    scrollable: find
+        .descendant(
+          of: find.byType(QuranReader),
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   for (final width in [390.0, 1440.0]) {
     testWidgets('reader renders at width $width with selectable RTL text', (
@@ -111,6 +125,84 @@ void main() {
       );
     });
   }
+
+  testWidgets(
+    'changing surah clears old verses and retries the selected surah',
+    (tester) async {
+      final requests = <String>[];
+      final pending = Completer<dynamic>();
+      var secondAttempts = 0;
+      await openReader(tester, (path) async {
+        requests.add(path);
+        if (path.contains('/2/verses')) {
+          secondAttempts++;
+          if (secondAttempts == 1) return pending.future;
+          throw const ApiException('private', 503);
+        }
+        return path.contains('/verses?') ? verses : chapters;
+      });
+      await tester.tap(find.byType(DropdownButtonFormField<int>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('2. Al-Baqarah').last);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text(ayah), findsNothing);
+      expect(find.text('Loading Quran content...'), findsOneWidget);
+      pending.completeError(const ApiException('private', 503));
+      await tester.pumpAndSettle();
+      expect(find.text(ayah), findsNothing);
+      await reveal(tester, 'Try again');
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(secondAttempts, 2);
+      expect(requests.last, endsWith('/2/verses?page=1&per_page=10'));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('failed next page hides old content and allows returning', (
+    tester,
+  ) async {
+    final requests = <String>[];
+    await openReader(tester, (path) async {
+      requests.add(path);
+      if (!path.contains('/verses?')) return chapters;
+      if (path.contains('page=2&')) throw const ApiException('private', 503);
+      // Synthetic pagination only; Quran text remains the official 1:1 fixture.
+      return {
+        ...verses,
+        'pagination': {'current_page': 1, 'next_page': 2, 'total_pages': 2},
+      };
+    });
+    await reveal(tester, 'Next');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text(ayah), findsNothing);
+    await reveal(tester, 'Try again');
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    expect(requests.last, endsWith('page=2&per_page=10'));
+    await reveal(tester, 'Previous page');
+    await tester.tap(find.text('Previous page'));
+    await tester.pumpAndSettle();
+    expect(requests.last, endsWith('page=1&per_page=10'));
+    expect(find.text(ayah), findsOneWidget);
+  });
+
+  testWidgets('invalid pagination cannot show content or loop navigation', (
+    tester,
+  ) async {
+    await openReader(tester, (path) async {
+      if (!path.contains('/verses?')) return chapters;
+      return {
+        ...verses,
+        'pagination': {'current_page': 1, 'next_page': 1, 'total_pages': 2},
+      };
+    });
+    expect(find.text(ayah), findsNothing);
+    expect(find.text('Next'), findsNothing);
+    await reveal(tester, 'Try again');
+    expect(find.text('Try again'), findsOneWidget);
+  });
 
   testWidgets('closing during pending request ignores late response', (
     tester,

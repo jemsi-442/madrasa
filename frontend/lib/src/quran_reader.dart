@@ -130,8 +130,14 @@ class _QuranReaderState extends State<QuranReader> {
               as Map;
       final rows = (data['verses'] as List).cast<Map>();
       final pagination = data['pagination'] as Map;
+      final returnedTotal = pagination['total_pages'];
+      final returnedNext = pagination['next_page'];
       if (data['chapterId'] != chapterId ||
           pagination['current_page'] != targetPage ||
+          returnedTotal is! int ||
+          returnedTotal < targetPage ||
+          returnedNext !=
+              (targetPage < returnedTotal ? targetPage + 1 : null) ||
           rows.isEmpty ||
           rows.any(
             (row) =>
@@ -143,8 +149,8 @@ class _QuranReaderState extends State<QuranReader> {
       if (!mounted || request != generation) return;
       setState(() {
         verses = rows;
-        nextPage = pagination['next_page'] as int?;
-        totalPages = pagination['total_pages'] as int;
+        nextPage = returnedNext as int?;
+        totalPages = returnedTotal;
         loading = false;
       });
     } catch (exception) {
@@ -205,10 +211,20 @@ class _QuranReaderState extends State<QuranReader> {
       ] else if (error != null) ...[
         WorkspaceFormNotice(message: error!),
         if (!accessFailure)
-          TextButton(
-            onPressed: () =>
-                chapters.isEmpty ? loadChapters() : loadVerses(page),
-            child: const Text('Try again'),
+          Wrap(
+            spacing: 12,
+            children: [
+              TextButton(
+                onPressed: () =>
+                    chapters.isEmpty ? loadChapters() : loadVerses(page),
+                child: const Text('Try again'),
+              ),
+              if (chapters.isNotEmpty && page > 1)
+                TextButton(
+                  onPressed: () => loadVerses(page - 1),
+                  child: const Text('Previous page'),
+                ),
+            ],
           ),
       ] else ...[
         for (final verse in verses)
