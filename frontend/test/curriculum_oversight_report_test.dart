@@ -101,6 +101,27 @@ void main() {
             body: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: CurriculumOversightReport(
+                quran: const {
+                  'classScopes': 3,
+                  'activities': [
+                    {
+                      'activity': 'READING',
+                      'sessions': 2,
+                      'independent': 1,
+                      'withSupport': 1,
+                      'needsPractice': 0,
+                    },
+                    {
+                      'activity': 'MEMORIZATION',
+                      'sessions': 1,
+                      'independent': 0,
+                      'withSupport': 0,
+                      'needsPractice': 1,
+                    },
+                    {'activity': 'REVISION', 'sessions': 0},
+                    {'activity': 'TAJWEED', 'sessions': 0},
+                  ],
+                },
                 assessments: const {
                   'month': '2026-10',
                   'publishedAssessments': 3,
@@ -176,8 +197,21 @@ void main() {
       expect(find.textContaining('inactive or not linked'), findsOneWidget);
       expect(
         find.textContaining('Not connected to this report yet.'),
+        findsNothing,
+      );
+      expect(find.text('2 recorded sessions'), findsOneWidget);
+      expect(find.text('1 recorded sessions'), findsOneWidget);
+      expect(find.text('0 recorded sessions'), findsNWidgets(2));
+      expect(
+        find.text('1 independent / 1 with support / 0 needs practice'),
         findsOneWidget,
       );
+      expect(find.text('Tajweed'), findsOneWidget);
+      expect(
+        find.textContaining('assessment month does not apply'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('not unique learners'), findsOneWidget);
       expect(find.text('450 / 520'), findsNothing);
       final table = tester.getTopLeft(find.text('Teaching record coverage'));
       final quran = tester.getTopLeft(find.text("Qur'an learning oversight"));

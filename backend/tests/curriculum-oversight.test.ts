@@ -12,6 +12,10 @@ function fixture(role = 'SUPER_ADMIN', status = 'ACTIVE') {
       adoptions: [{ id: 'c1', classId: 11n, subjectId: 21n }, { id: 'c2', classId: 12n, subjectId: 21n }],
     }]) },
     assessment: { count: vi.fn().mockResolvedValue(3) },
+    quranSession: { groupBy: vi.fn().mockResolvedValue([
+      { activity: 'READING', observation: 'INDEPENDENT', _count: { _all: 2 } },
+      { activity: 'REVISION', observation: 'NEEDS_PRACTICE', _count: { _all: 1 } },
+    ]) },
     assessmentResult: { groupBy: vi.fn().mockResolvedValue([
       { orgId: 10n, studentId: 31n }, { orgId: 10n, studentId: 32n },
     ]) },
@@ -52,6 +56,18 @@ it('reports distinct class lessons using only current scoped adoptions', async (
     },
   });
   expect(JSON.stringify(result)).not.toContain('studentId');
+  expect(tx.quranSession.groupBy).toHaveBeenCalledWith({
+    by: ['activity', 'observation'],
+    where: { OR: [{ orgId: 10n, classId: 11n }, { orgId: 10n, classId: 12n }], voidedAt: null },
+    _count: { _all: true },
+  });
+  expect(result.quran.classScopes).toBe(2);
+  expect(result.quran.activities).toEqual([
+    { activity: 'READING', sessions: 2, independent: 2, withSupport: 0, needsPractice: 0 },
+    { activity: 'MEMORIZATION', sessions: 0, independent: 0, withSupport: 0, needsPractice: 0 },
+    { activity: 'REVISION', sessions: 1, independent: 0, withSupport: 0, needsPractice: 1 },
+    { activity: 'TAJWEED', sessions: 0, independent: 0, withSupport: 0, needsPractice: 0 },
+  ]);
   expect(tx.curriculumLessonDelivery.groupBy).toHaveBeenCalledWith({
     by: ['assignmentId', 'classCurriculumId', 'lessonId'],
     where: { OR: [{ orgId: 10n, assignmentId: 'a1', classCurriculumId: { in: ['c1', 'c2'] }, lesson: { versionId: 'v1' } }] },
@@ -66,6 +82,7 @@ for (const role of ['IT_SECURITY', 'ACCOUNTANT']) it(`denies ${role} oversight`,
   expect(tx.curriculumAssignment.findMany).not.toHaveBeenCalled();
   expect(tx.assessment.count).not.toHaveBeenCalled();
   expect(tx.assessmentResult.groupBy).not.toHaveBeenCalled();
+  expect(tx.quranSession.groupBy).not.toHaveBeenCalled();
 });
 it('rejects inactive accounts and invalid filters', async () => {
   await expect(fixture('SUPER_ADMIN', 'SUSPENDED').service.oversight(actor, {})).rejects.toMatchObject({ statusCode: 403 });
@@ -100,6 +117,8 @@ it('does not read deliveries for an empty assignment result', async () => {
   expect(tx.curriculumLessonDelivery.groupBy).not.toHaveBeenCalled();
   expect(tx.assessment.count).not.toHaveBeenCalled();
   expect(result.assessments).toEqual({ month: null, classSubjectScopes: 0, publishedAssessments: 0, learnersWithPublishedScores: 0 });
+  expect(tx.quranSession.groupBy).not.toHaveBeenCalled();
+  expect(result.quran.classScopes).toBe(0);
   expect(tx.assessmentResult.groupBy).not.toHaveBeenCalled();
 });
 for (const [month, until] of [['2026-12', '2027-01-01'], ['2024-02', '2024-03-01']]) {
@@ -139,6 +158,20 @@ it('keeps the final supported SQL month within the DATE range', async () => {
       lte: new Date('9999-12-31T00:00:00.000Z'),
     } }),
   });
+});
+it('counts Quran class scope once across subjects and ignores assessment month', async () => {
+  const { service, tx } = fixture();
+  const rows = await tx.curriculumAssignment.findMany();
+  rows[0]!.adoptions[1] = { id: 'c2', classId: 11n, subjectId: 22n };
+  tx.curriculumAssignment.findMany.mockResolvedValue(rows);
+  const result = await service.oversight(actor, { assessmentMonth: '2026-10' });
+  expect(result.quran.classScopes).toBe(1);
+  expect(tx.quranSession.groupBy).toHaveBeenCalledWith({
+    by: ['activity', 'observation'],
+    where: { OR: [{ orgId: 10n, classId: 11n }], voidedAt: null },
+    _count: { _all: true },
+  });
+  expect(JSON.stringify(result.quran)).not.toContain('studentId');
 });
 it('shows assignment without adoption as zero coverage, not teaching completion', async () => {
   const { service, tx } = fixture();

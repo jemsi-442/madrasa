@@ -447,6 +447,7 @@ class _OversightState extends State<CurriculumOversightPage> {
                     rows: rows,
                     showSummary: false,
                     assessments: data['assessments'] as Map?,
+                    quran: data['quran'] as Map?,
                   ),
                 const SizedBox(height: 16),
                 Wrap(

@@ -4,6 +4,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { SchoolCurriculumService } from "../src/modules/learning/school-curriculum";
 import { PlatformCurriculumService } from "../src/modules/platform/platform.curriculum";
 import { classManagementRecord, manageClass } from "../src/modules/admin-panel/class-management";
+import { saveQuran, voidQuran } from "../src/modules/teacher-workspace/teacher.service";
+import { sessionInput } from "../src/modules/teacher-workspace/teacher.schemas";
 
 const enabled = process.env.PLATFORM_STAGING_RUN === "isolated";
 if (enabled && !/^mysql:\/\/root@127\.0\.0\.1:\d+\/afaq_platform_staging_[a-f0-9]+$/.test(process.env.DATABASE_URL ?? "")) {
@@ -608,6 +610,25 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
           fullName: `Synthetic Assessment Learner ${index}`,
         } }),
       ));
+      for (const activity of ['READING', 'MEMORIZATION', 'REVISION', 'TAJWEED'] as const) {
+        await saveQuran(teacherActor, sessionInput.parse({
+          clientId: randomUUID(), studentId: String(assessmentLearners[0]!.id),
+          classId: String(classroom.id), surahId: 1, ayahFrom: 1, ayahTo: 1,
+          activity, observation: 'WITH_SUPPORT', learnedOn: '2026-10-01',
+        }));
+      }
+      const voidRequest = sessionInput.parse({
+        clientId: randomUUID(), studentId: String(assessmentLearners[0]!.id),
+        classId: String(classroom.id), surahId: 1, ayahFrom: 1, ayahTo: 1,
+        activity: 'READING', observation: 'INDEPENDENT', learnedOn: '2026-10-01',
+      });
+      await saveQuran(teacherActor, voidRequest);
+      const voidedSession = await db.quranSession.findUniqueOrThrow({ where: {
+        orgId_teacherId_clientId: {
+          orgId: organization.id, teacherId: assignedTeacher.id, clientId: voidRequest.clientId,
+        },
+      } });
+      await voidQuran(teacherActor, String(voidedSession.id), 'Synthetic correction');
       for (const kind of ['draft', 'published', 'published-again', 'retracted', 'other-subject']) {
         const assessment = await db.assessment.create({ data: {
           orgId: organization.id, classId: classroom.id,
@@ -634,6 +655,10 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
         }
       }
       const oversight = await platform.oversight(platformActor, { madrasa: organization.name, subject: 'Arabic' });
+      expect(oversight.quran.classScopes).toBe(2);
+      for (const item of oversight.quran.activities) {
+        expect(item).toMatchObject({ sessions: 1, independent: 0, withSupport: 1, needsPractice: 0 });
+      }
       expect(oversight.assessments).toEqual({
         month: null, classSubjectScopes: 2, publishedAssessments: 2, learnersWithPublishedScores: 2,
       });
@@ -646,6 +671,7 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       });
       expect(november.assessments).toMatchObject({ month: '2026-11', publishedAssessments: 0, learnersWithPublishedScores: 0 });
       expect(november.items).toEqual(october.items);
+      expect(november.quran).toEqual(october.quran);
       expect(JSON.stringify(oversight)).not.toContain('Synthetic Assessment Learner');
       expect(JSON.stringify(oversight)).not.toContain('studentId');
       expect(oversight.items.find(row => row.id === nextAssignment.assignments[0]!.id)).toMatchObject({
@@ -780,6 +806,7 @@ describe.skipIf(!enabled)("real isolated curriculum workflow", () => {
       })).resolves.toMatchObject({ assignmentId: nextAssignment.assignments[0]!.id });
     } finally {
       if (organizationId !== undefined) {
+        await db.quranSession.deleteMany({ where: { orgId: organizationId } });
         await db.assessmentRelease.deleteMany({ where: { orgId: organizationId } });
         await db.assessmentResult.deleteMany({ where: { orgId: organizationId } });
         await db.assessment.deleteMany({ where: { orgId: organizationId } });

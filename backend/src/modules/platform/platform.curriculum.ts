@@ -109,8 +109,30 @@ export class PlatformCurriculumService {
           assessment: publishedScope,
         },
       }) : [];
+      // Quran sessions are class-scoped, not linked to subjects or curriculum versions.
+      const quranScopes = [...new Map(assessmentScopes.map(scope => [
+        `${scope.orgId}:${scope.classId}`, { orgId: scope.orgId, classId: scope.classId },
+      ])).values()];
+      const quranGroups = quranScopes.length ? await tx.quranSession.groupBy({
+        by: ['activity', 'observation'],
+        where: { OR: quranScopes, voidedAt: null },
+        _count: { _all: true },
+      }) : [];
       return {
         generatedAt: new Date().toISOString(),
+        quran: {
+          classScopes: quranScopes.length,
+          activities: ['READING', 'MEMORIZATION', 'REVISION', 'TAJWEED'].map(activity => {
+            const groups = quranGroups.filter(group => group.activity === activity);
+            const count = (observation: string) =>
+              groups.find(group => group.observation === observation)?._count._all ?? 0;
+            return {
+              activity, sessions: groups.reduce((sum, group) => sum + group._count._all, 0),
+              independent: count('INDEPENDENT'), withSupport: count('WITH_SUPPORT'),
+              needsPractice: count('NEEDS_PRACTICE'),
+            };
+          }),
+        },
         assessments: {
           month: query.assessmentMonth ?? null,
           classSubjectScopes: assessmentScopes.length,
