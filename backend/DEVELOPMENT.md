@@ -1665,7 +1665,12 @@ The UI keeps the selection unapplied until Apply filters and resets it on Clear.
 Omitting status includes all statuses, with each row labelled explicitly.
 The UI labels applied filters separately from unsubmitted edits; Refresh,
 retry and pagination retain the applied filter set. Clear filters resets both the
-inputs and applied set. Widget regression tests verify that a late earlier response
+inputs and applied set. The report uses responsive summary cards and a teaching
+coverage table. Summary totals are explicitly limited to the current page and
+count class adoption records, not unique classes or institution-wide totals.
+The Qur'an side panel explicitly marks passage assessment integration unavailable;
+it does not infer recitation, hifz or revision achievement from framework adoption.
+Widget regression tests verify that a late earlier response
 cannot replace the latest report or expire the session after a newer request.
 Text filters validate the server's trimmed length limits (madrasa/subject 120,
 level 80) before issuing a request, retaining the displayed report on invalid input.

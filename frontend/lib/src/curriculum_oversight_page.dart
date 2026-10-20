@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'api_client.dart';
 import 'workspace_form_dialog.dart';
+import 'curriculum_oversight_report.dart';
+import 'design_tokens.dart';
 
 class _OversightFailure {
   const _OversightFailure(this.status);
@@ -133,7 +135,16 @@ class _OversightState extends State<CurriculumOversightPage> {
         ),
         Text(
           'Learning Oversight',
-          style: Theme.of(context).textTheme.headlineMedium,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontFamily: AfaqDesign.bodyFont,
+            fontWeight: FontWeight.w800,
+            color: AfaqDesign.ink,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Monitor curriculum adoption and teacher-reported teaching across madrasas.',
+          style: TextStyle(color: AfaqDesign.muted),
         ),
         const SizedBox(height: 16),
         const WorkspaceFormNotice(
@@ -300,47 +311,8 @@ class _OversightState extends State<CurriculumOversightPage> {
                       label: const Text('Back to first page'),
                     ),
                   ),
-                for (final row in rows)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${row['madrasa']} · ${row['madrasaStatus']}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          Text(
-                            '${row['subject']} / ${row['level'] ?? 'Level not set'} / v${row['version']}',
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${row['adoptedClasses']} class adoption records',
-                          ),
-                          Text(
-                            '${row['taughtClassLessons']} / ${row['plannedClassLessons']} class-lessons recorded as taught',
-                          ),
-                          Text(
-                            '${row['pendingClassLessons']} class-lessons without teaching records',
-                          ),
-                          if (row['plannedClassLessons'] == 0)
-                            const Text(
-                              'Teaching coverage is not applicable without adopted classes and planned lessons.',
-                            ),
-                          if (row['subjectActive'] != true)
-                            const Text(
-                              'School subject is inactive or not linked. Adoption records do not confirm current teaching access.',
-                            ),
-                          if (row['madrasaStatus'] != 'ACTIVE' &&
-                              row['madrasaStatus'] != 'TRIAL')
-                            const Text(
-                              'Madrasa is not active. Records are retained for oversight, not evidence of current access.',
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+                if (rows.isNotEmpty) CurriculumOversightReport(rows: rows),
+                const SizedBox(height: 16),
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,
                   children: [

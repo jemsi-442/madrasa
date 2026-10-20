@@ -19,6 +19,7 @@ cd "$root_dir/frontend"
   test/curriculum_delivery_history_test.dart \
   test/school_curriculum_test.dart \
   test/curriculum_oversight_test.dart \
+  test/curriculum_oversight_report_test.dart \
   test/platform_onboarding_flow_test.dart \
   test/platform_progress_refresh_test.dart \
   test/platform_onboarding_progress_test.dart \
