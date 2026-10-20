@@ -44,6 +44,10 @@ teacherWorkspaceRouter.get("/quran/content/chapters", asyncHandler(async (req, r
   res.setHeader("Cache-Control", "no-store");
   res.json({ success: true, data: await quranContent.chapters() });
 }));
+teacherWorkspaceRouter.get("/quran/content/chapters/:chapter/verses", asyncHandler(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ success: true, data: await quranContent.verses(req.params.chapter, req.query) });
+}));
 teacherWorkspaceRouter.get("/quran", asyncHandler(async (req, res) => {
   res.json({ success: true, data: await studentQuran(req.authUser!, sessionQuery.parse(req.query)) });
 }));

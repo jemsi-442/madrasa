@@ -1,7 +1,15 @@
 # Quran Foundation content integration
 
-This first increment exposes chapters to authenticated, active school teachers:
-`GET /api/teacher-workspace/quran/content/chapters`.
+These endpoints expose provider content to authenticated, active school teachers:
+
+- `GET /api/teacher-workspace/quran/content/chapters`
+- `GET /api/teacher-workspace/quran/content/chapters/:chapter/verses?page=1&per_page=10`
+
+Verses use provider `text_uthmani` without rewriting it. Page size is 1-50.
+Verse keys, sequence, counts and pagination are checked against the existing
+verified catalog. Invalid or incomplete provider data returns 503, not invented
+replacement content. Pre-live requests outside surahs 1-2 fail explicitly.
+Verse responses are not persisted or cached by this implementation.
 It uses existing teacher authentication and tenant/account checks. It does not
 change the verified local catalog, student sessions, or login flow.
 
@@ -37,12 +45,13 @@ Requests have a ten-second timeout and reject redirects. URLs are fixed by
 environment; clients cannot supply an upstream URL. No learner data is sent.
 
 Run `npm test -- tests/quran-content.test.ts` from backend.
-Tests use mocked HTTP and synthetic metadata labels, never generated Quran text.
+Tests use mocked HTTP, synthetic metadata labels, and one verbatim verse example
+from the provider's documentation, never generated Quran text.
 Live provider verification still requires configured credentials.
 
 ## Not complete yet
 
-This is not a complete Quran Reader. Verse retrieval, rendering, audio,
+This is not a complete Quran Reader. Rendering, audio,
 translations, resource attribution, permitted offline caching, and access for
 other Afaq roles are still pending. Content availability must not be treated as
 student achievement. Reading must not automatically create teacher observations.

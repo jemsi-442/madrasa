@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { HttpError } from "../../shared/errors/http-error";
+import catalog from "./quran-catalog.json";
 
 type Config = {
   enabled: boolean;
@@ -20,6 +21,26 @@ const chaptersSchema = z.object({
   })).min(1).max(114),
 });
 type Chapters = z.infer<typeof chaptersSchema>["chapters"];
+const verseQuery = z.object({
+  page: z.coerce.number().int().positive().max(286).default(1),
+  per_page: z.coerce.number().int().min(1).max(50).default(10),
+}).strict();
+const versesSchema = z.object({
+  verses: z.array(z.object({
+    id: z.number().int().positive(),
+    verse_number: z.number().int().positive(),
+    verse_key: z.string(),
+    text_uthmani: z.string().min(1).max(10000)
+      .refine(text => text.trim().length > 0 && !/[<>]/.test(text)),
+  })).min(1).max(50),
+  pagination: z.object({
+    current_page: z.number().int().positive(),
+    per_page: z.number().int().positive(),
+    next_page: z.number().int().positive().nullable(),
+    total_pages: z.number().int().positive(),
+    total_records: z.number().int().positive(),
+  }),
+});
 
 /** Content only: no school identities, learner records or user OAuth tokens. */
 export class QuranContentClient {
@@ -79,10 +100,14 @@ export class QuranContentClient {
     finally { this.tokenRequest = undefined; }
   }
 
-  async chapters() {
+  private assertConfigured() {
     if (!this.config.enabled || !this.config.clientId || !this.config.clientSecret) {
       throw new HttpError(503, "Quran content is not configured");
     }
+  }
+
+  async chapters() {
+    this.assertConfigured();
     if (!this.cached || this.now() >= this.cached.until) {
       this.chaptersRequest ??= this.loadChapters();
       try {
@@ -102,9 +127,54 @@ export class QuranContentClient {
   }
 
   private async loadChapters(): Promise<Chapters> {
+    const parsed = chaptersSchema.safeParse(await this.content("/chapters"));
+    if (!parsed.success || new Set(parsed.data.chapters.map(chapter => chapter.id)).size !== parsed.data.chapters.length) {
+      throw new HttpError(503, "Quran content is temporarily unavailable");
+    }
+    return parsed.data.chapters;
+  }
+
+  async verses(chapterInput: unknown, input: unknown = {}) {
+    const chapter = z.coerce.number().int().min(1).max(114).parse(chapterInput);
+    const query = verseQuery.parse(input);
+    const total = catalog.chapters[chapter - 1]!.ayahCount;
+    const totalPages = Math.ceil(total / query.per_page);
+    if (query.page > totalPages) throw new HttpError(422, "Page is outside this surah");
+    this.assertConfigured();
+    if (this.config.environment === "prelive" && chapter > 2) {
+      throw new HttpError(503, "This surah is unavailable in the Quran test environment");
+    }
+    const params = new URLSearchParams({
+      page: String(query.page), per_page: String(query.per_page),
+      fields: "text_uthmani", words: "false",
+    });
+    const parsed = versesSchema.safeParse(
+      await this.content(`/verses/by_chapter/${chapter}?${params}`),
+    );
+    if (!parsed.success) throw new HttpError(503, "Quran content is temporarily unavailable");
+    const { verses, pagination } = parsed.data;
+    const offset = (query.page - 1) * query.per_page;
+    const next = query.page < totalPages ? query.page + 1 : null;
+    // Fail closed on gaps, duplicates or wrong mappings; never reconstruct Quran text.
+    if (pagination.current_page !== query.page || pagination.per_page !== query.per_page ||
+        pagination.total_records !== total || pagination.total_pages !== totalPages ||
+        pagination.next_page !== next || verses.length !== Math.min(query.per_page, total - offset) ||
+        new Set(verses.map(verse => verse.id)).size !== verses.length ||
+        verses.some((verse, index) => verse.verse_number !== offset + index + 1 ||
+          verse.verse_key !== `${chapter}:${verse.verse_number}`)) {
+      throw new HttpError(503, "Quran content is temporarily unavailable");
+    }
+    return {
+      provider: "Quran Foundation", environment: this.config.environment,
+      limitedContent: this.config.environment === "prelive",
+      chapterId: chapter, script: "text_uthmani", verses, pagination,
+    };
+  }
+
+  private async content(path: string): Promise<unknown> {
     for (let attempt = 0; attempt < 2; attempt++) {
       const token = await this.accessToken();
-      const response = await this.request(`${this.hosts.api}/content/api/v4/chapters`, {
+      const response = await this.request(`${this.hosts.api}/content/api/v4${path}`, {
         headers: { "x-auth-token": token, "x-client-id": this.config.clientId },
       });
       if (response.status === 401 && attempt === 0) {
@@ -112,11 +182,7 @@ export class QuranContentClient {
         continue;
       }
       if (!response.ok) throw new HttpError(503, "Quran content is temporarily unavailable");
-      const parsed = chaptersSchema.safeParse(await this.json(response));
-      if (!parsed.success || new Set(parsed.data.chapters.map(chapter => chapter.id)).size !== parsed.data.chapters.length) {
-        throw new HttpError(503, "Quran content is temporarily unavailable");
-      }
-      return parsed.data.chapters;
+      return this.json(response);
     }
     throw new HttpError(503, "Quran content is temporarily unavailable");
   }

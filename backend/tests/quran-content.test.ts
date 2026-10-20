@@ -91,3 +91,66 @@ it("sanitises transport errors and clears failed token requests", async () => {
   expect((await client.chapters()).chapters).toHaveLength(1);
   expect(http.mock.calls[0]![1]?.signal).toBeInstanceOf(AbortSignal);
 });
+
+// Verbatim 1:1 example from the provider, not generated Quran text:
+// https://api-docs.quran.foundation/docs/content_apis_versioned/4.0.0/verses-by-chapter-number/
+const versePayload = () => ({
+  verses: [{
+    id: 1, verse_number: 1, verse_key: "1:1",
+    text_uthmani: "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+  }],
+  pagination: { current_page: 1, per_page: 1, next_page: 2 as number | null, total_pages: 7, total_records: 7 },
+});
+it("returns provider Uthmani text unchanged with verified pagination", async () => {
+  const original = versePayload();
+  const http = vi.fn<typeof fetch>().mockResolvedValueOnce(token())
+    .mockResolvedValueOnce(new Response(JSON.stringify(original)));
+  const result = await new QuranContentClient(config, http).verses("1", { page: "1", per_page: "1" });
+  expect(result).toMatchObject({ ...original, chapterId: 1, script: "text_uthmani", limitedContent: true });
+  const url = new URL(String(http.mock.calls[1]![0]));
+  expect(url.pathname).toBe("/content/api/v4/verses/by_chapter/1");
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    page: "1", per_page: "1", fields: "text_uthmani", words: "false",
+  });
+});
+for (const [label, mutate] of [
+  ["wrong chapter key", (value: ReturnType<typeof versePayload>) => { value.verses[0]!.verse_key = "2:1"; }],
+  ["wrong verse number", (value: ReturnType<typeof versePayload>) => { value.verses[0]!.verse_number = 2; }],
+  ["missing text", (value: ReturnType<typeof versePayload>) => { value.verses[0]!.text_uthmani = ""; }],
+  ["missing verses", (value: ReturnType<typeof versePayload>) => { value.verses = []; }],
+  ["incorrect total", (value: ReturnType<typeof versePayload>) => { value.pagination.total_records = 8; }],
+  ["incorrect page", (value: ReturnType<typeof versePayload>) => { value.pagination.current_page = 2; }],
+  ["incorrect next page", (value: ReturnType<typeof versePayload>) => { value.pagination.next_page = null; }],
+] as const) {
+  it(`rejects provider ${label} instead of reconstructing content`, async () => {
+    const data = versePayload();
+    mutate(data);
+    const http = vi.fn<typeof fetch>().mockResolvedValueOnce(token())
+      .mockResolvedValueOnce(new Response(JSON.stringify(data)));
+    await expect(new QuranContentClient(config, http).verses(1, { per_page: 1 }))
+      .rejects.toMatchObject({ statusCode: 503, message: "Quran content is temporarily unavailable" });
+  });
+}
+for (const [chapter, query] of [
+  [0, {}], [115, {}], ["../../other", {}], [1, { per_page: 51 }],
+  [1, { page: 8, per_page: 1 }], [1, { page: 0 }], [1, { url: "https://example.com" }],
+] as const) {
+  it("rejects invalid verse requests before contacting provider", async () => {
+    const http = vi.fn<typeof fetch>();
+    await expect(new QuranContentClient(config, http).verses(chapter, query)).rejects.toThrow();
+    expect(http).not.toHaveBeenCalled();
+  });
+}
+it("does not pretend prelive includes the full Quran", async () => {
+  const http = vi.fn<typeof fetch>();
+  await expect(new QuranContentClient(config, http).verses(3)).rejects.toMatchObject({
+    statusCode: 503, message: "This surah is unavailable in the Quran test environment",
+  });
+  expect(http).not.toHaveBeenCalled();
+});
+it("keeps verses disabled without provider configuration", async () => {
+  const http = vi.fn<typeof fetch>();
+  await expect(new QuranContentClient({ ...config, enabled: false }, http).verses(1))
+    .rejects.toMatchObject({ statusCode: 503 });
+  expect(http).not.toHaveBeenCalled();
+});
