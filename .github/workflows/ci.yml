@@ -129,7 +129,7 @@ jobs:
         run: npm test
 
       - name: Demo Quran configuration isolation
-        run: node --test backend/scripts/local-demo-quran-env.test.mjs
+        run: node --test backend/scripts/local-demo-quran-env.test.mjs backend/scripts/local-demo-lifecycle.test.mjs
 
       - name: Start backend
         working-directory: backend

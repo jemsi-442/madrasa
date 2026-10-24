@@ -68,6 +68,8 @@ demo is intended, not to refresh a running demo with existing records.
 Invalid Quran settings stop startup before infrastructure is created. A missing
 file retains inherited provider settings. The wrapper preserves runner arguments
 and forwards termination signals so the runner can perform its normal cleanup.
+Repeated signals received by the launcher are not forwarded again during cleanup.
+Runner exit codes are preserved; signal exits use the corresponding shell status.
 Directly running the TypeScript runner bypasses this provider-settings loader.
 
 `scripts/reload-local-demo-api.mjs` now reads only the four `QF_` settings
@@ -80,7 +82,8 @@ The existing Linux PID/ancestry and disposable-database safeguards still apply:
 this helper requires an API belonging to the specified original demo supervisor.
 It is not a general restart command for a detached watcher.
 
-Verify isolation with `node --test backend/scripts/local-demo-quran-env.test.mjs`
+Verify isolation and launcher lifecycle with
+`node --test backend/scripts/local-demo-quran-env.test.mjs backend/scripts/local-demo-lifecycle.test.mjs`
 from the repository root.
 Startup preflight and settings isolation have automated tests. A full fresh-demo
 launch was not run for this change to avoid replacing the running demo experience.
