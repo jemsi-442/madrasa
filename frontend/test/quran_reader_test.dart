@@ -55,6 +55,53 @@ Future<void> reveal(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets(
+    'surah search filters locally and cancellation preserves reading',
+    (tester) async {
+      final requests = <String>[];
+      await openReader(tester, (path) async {
+        requests.add(path);
+        return path.contains('/verses?') ? verses : chapters;
+      });
+      await tester.tap(find.byTooltip('Search surahs'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'baqarah');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Al-Baqarah'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Al-Fatihah'), findsNothing);
+      await tester.enterText(find.byType(TextField), '3');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('No matching surahs'), findsOneWidget);
+      expect(requests, hasLength(2));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text(ayah), findsOneWidget);
+      expect(requests, hasLength(2));
+    },
+  );
+
+  testWidgets('numeric surah search opens the selected chapter at page one', (
+    tester,
+  ) async {
+    final requests = <String>[];
+    await openReader(tester, (path) async {
+      requests.add(path);
+      if (path.contains('/2/verses')) {
+        throw const ApiException('Unavailable', 503);
+      }
+      return path.contains('/verses?') ? verses : chapters;
+    });
+    await tester.tap(find.byTooltip('Search surahs'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), ' 2 ');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Al-Baqarah'));
+    await tester.pumpAndSettle();
+    expect(requests.last, endsWith('/2/verses?page=1&per_page=10'));
+    expect(find.text(ayah), findsNothing);
+    expect(find.text('Find a surah'), findsNothing);
+  });
+
   for (final width in [390.0, 1440.0]) {
     testWidgets('reader renders at width $width with selectable RTL text', (
       tester,
@@ -83,6 +130,12 @@ void main() {
       expect(requests.last, endsWith('/1/verses?page=1&per_page=10'));
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(find.byType(DropdownButtonFormField<int>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Search surahs'));
+      await tester.pumpAndSettle();
+      expect(find.text('Find a surah'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(DropdownButtonFormField<int>));
       await tester.pumpAndSettle();

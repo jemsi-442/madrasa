@@ -158,6 +158,16 @@ class _QuranReaderState extends State<QuranReader> {
     }
   }
 
+  Future<void> searchSurah() async {
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (_) => _SurahSearch(chapters: chapters),
+    );
+    if (!mounted || selected == null || selected == chapterId) return;
+    chapterId = selected;
+    await loadVerses(1);
+  }
+
   @override
   Widget build(BuildContext context) => ListView(
     controller: scroll,
@@ -183,7 +193,14 @@ class _QuranReaderState extends State<QuranReader> {
           key: ValueKey(chapterId),
           initialValue: chapterId,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Surah'),
+          decoration: InputDecoration(
+            labelText: 'Surah',
+            suffixIcon: IconButton(
+              tooltip: 'Search surahs',
+              onPressed: loading || accessFailure ? null : searchSurah,
+              icon: const Icon(Icons.search),
+            ),
+          ),
           items: [
             for (final chapter in chapters)
               DropdownMenuItem(
@@ -266,4 +283,83 @@ class _QuranReaderState extends State<QuranReader> {
       ],
     ],
   );
+}
+
+class _SurahSearch extends StatefulWidget {
+  const _SurahSearch({required this.chapters});
+  final List<Map> chapters;
+
+  @override
+  State<_SurahSearch> createState() => _SurahSearchState();
+}
+
+class _SurahSearchState extends State<_SurahSearch> {
+  String query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final term = query.trim().toLowerCase();
+    final number = int.tryParse(term);
+    final matches = widget.chapters
+        .where(
+          (chapter) =>
+              term.isEmpty ||
+              (number != null
+                  ? chapter['id'] == number
+                  : '${chapter['name_simple']} ${chapter['name_arabic'] ?? ''}'
+                        .toLowerCase()
+                        .contains(term)),
+        )
+        .toList();
+    return WorkspaceFormDialog(
+      title: const Text('Find a surah'),
+      icon: Icons.search,
+      content: SizedBox(
+        width: 560,
+        height: MediaQuery.sizeOf(context).height * .45,
+        child: Column(
+          children: [
+            TextField(
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Surah name or number',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) => setState(() => query = value),
+            ),
+            const SizedBox(height: 12),
+            Text('${matches.length} surahs found'),
+            const SizedBox(height: 8),
+            Expanded(
+              child: matches.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No matching surahs. Try another name or number.',
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: matches.length,
+                      itemBuilder: (context, index) {
+                        final chapter = matches[index];
+                        return ListTile(
+                          leading: Text('${chapter['id']}'),
+                          title: Text('${chapter['name_simple']}'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () =>
+                              Navigator.pop(context, chapter['id'] as int),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
 }

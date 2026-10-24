@@ -123,6 +123,10 @@ dialog loads chapters and paginated Uthmani text through the backend, with
 selectable right-to-left verses and provider attribution. Pre-live shows its
 two-surah limitation. Failures show a safe error and retry, not replacement text.
 Reading does not submit observations or alter the teacher's current session.
+Use the search icon beside the surah selector to find a chapter by its provider
+name or exact number. Search uses already-loaded metadata and makes no content
+requests until a different chapter is selected. Cancel preserves the current page;
+pre-live search remains limited to the two available surahs.
 
 Flutter widget tests:
 `flutter test --no-pub test/quran_reader_test.dart test/teacher_workspace_test.dart`.
