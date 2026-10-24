@@ -4,30 +4,47 @@ import 'dashboard_components.dart' show PageLoader;
 import 'design_tokens.dart';
 import 'workspace_form_dialog.dart';
 
-Future<void> showQuranReader(BuildContext context, PageLoader load) =>
-    showDialog<void>(
-      context: context,
-      builder: (context) => WorkspaceFormDialog(
-        title: const Text("Qur'an Reader"),
-        icon: Icons.menu_book_outlined,
-        content: SizedBox(
-          width: 900,
-          height: MediaQuery.sizeOf(context).height * .6,
-          child: QuranReader(load: load),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close reader'),
-          ),
-        ],
+Future<void> showQuranReader(
+  BuildContext context,
+  PageLoader load, {
+  int? initialChapterId,
+  int? ayahFrom,
+  int? ayahTo,
+}) => showDialog<void>(
+  context: context,
+  builder: (context) => WorkspaceFormDialog(
+    title: const Text("Qur'an Reader"),
+    icon: Icons.menu_book_outlined,
+    content: SizedBox(
+      width: 900,
+      height: MediaQuery.sizeOf(context).height * .6,
+      child: QuranReader(
+        load: load,
+        initialChapterId: initialChapterId,
+        ayahFrom: ayahFrom,
+        ayahTo: ayahTo,
       ),
-    );
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Close reader'),
+      ),
+    ],
+  ),
+);
 
 /// Read-only provider content. Deliberately has no student or submission context.
 class QuranReader extends StatefulWidget {
-  const QuranReader({super.key, required this.load});
+  const QuranReader({
+    super.key,
+    required this.load,
+    this.initialChapterId,
+    this.ayahFrom,
+    this.ayahTo,
+  });
   final PageLoader load;
+  final int? initialChapterId, ayahFrom, ayahTo;
 
   @override
   State<QuranReader> createState() => _QuranReaderState();
@@ -41,6 +58,18 @@ class _QuranReaderState extends State<QuranReader> {
   bool loading = true, limited = false;
   String? error;
   bool accessFailure = false;
+  String? passageNotice;
+
+  int get passagePage => ((widget.ayahFrom ?? 1) - 1) ~/ 10 + 1;
+
+  bool selectedVerse(Map verse) {
+    final number = verse['verse_number'];
+    return chapterId == widget.initialChapterId &&
+        widget.ayahFrom != null &&
+        number is int &&
+        number >= widget.ayahFrom! &&
+        number <= (widget.ayahTo ?? widget.ayahFrom!);
+  }
 
   @override
   void initState() {
@@ -100,12 +129,31 @@ class _QuranReaderState extends State<QuranReader> {
         throw const FormatException('No available chapters');
       }
       if (!mounted || request != generation) return;
+      final requested = widget.initialChapterId;
+      final chosen = requested == null
+          ? available.first
+          : available.where((row) => row['id'] == requested).firstOrNull;
+      final start = widget.ayahFrom;
+      final end = widget.ayahTo ?? start;
+      final count = chosen?['verses_count'];
+      final invalidPassage =
+          start != null &&
+          (start < 1 || end! < start || count is! int || end > count);
       setState(() {
         chapters = available;
         limited = isLimited;
-        chapterId = available.first['id'] as int;
+        chapterId = chosen?['id'] as int?;
+        passageNotice = chosen == null
+            ? 'The tracker surah is unavailable in this environment. Choose another surah to read without changing your tracker.'
+            : invalidPassage
+            ? 'The tracker passage is outside the available surah. Check the selected ayahs in the tracker.'
+            : null;
+        if (invalidPassage) chapterId = null;
+        loading = false;
       });
-      await loadVerses(1);
+      if (chapterId != null) {
+        await loadVerses(requested == null ? 1 : passagePage);
+      }
     } catch (exception) {
       failed(exception, request);
     }
@@ -120,6 +168,7 @@ class _QuranReaderState extends State<QuranReader> {
       accessFailure = false;
       verses = [];
       nextPage = null;
+      passageNotice = null;
     });
     if (scroll.hasClients) scroll.jumpTo(0);
     try {
@@ -221,10 +270,19 @@ class _QuranReaderState extends State<QuranReader> {
         ),
       ],
       const SizedBox(height: 20),
+      if (widget.initialChapterId != null && widget.ayahFrom != null) ...[
+        Text(
+          'Tracker passage: ${widget.initialChapterId}:${widget.ayahFrom}'
+          ' - ${widget.initialChapterId}:${widget.ayahTo ?? widget.ayahFrom}',
+        ),
+        const SizedBox(height: 12),
+      ],
       if (loading) ...[
         const LinearProgressIndicator(),
         const SizedBox(height: 12),
         const Text('Loading Quran content...'),
+      ] else if (passageNotice != null) ...[
+        WorkspaceFormNotice(message: passageNotice!),
       ] else if (error != null) ...[
         WorkspaceFormNotice(message: error!),
         if (!accessFailure)
@@ -233,7 +291,7 @@ class _QuranReaderState extends State<QuranReader> {
             children: [
               TextButton(
                 onPressed: () =>
-                    chapters.isEmpty ? loadChapters() : loadVerses(page),
+                    chapterId == null ? loadChapters() : loadVerses(page),
                 child: const Text('Try again'),
               ),
               if (chapters.isNotEmpty && page > 1)
@@ -252,6 +310,16 @@ class _QuranReaderState extends State<QuranReader> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (selectedVerse(verse)) ...[
+                  const Text(
+                    'Selected in tracker',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AfaqDesign.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 Text(
                   'Ayah ${verse['verse_key']}',
                   style: const TextStyle(color: AfaqDesign.muted),

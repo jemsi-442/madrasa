@@ -206,27 +206,13 @@ void main() {
                 }
                 if (path.endsWith('/chapters')) {
                   return {
-                    'limitedContent': true,
+                    'limitedContent': false,
                     'chapters': [
-                      {'id': 1, 'name_simple': 'Al-Fatihah'},
+                      {'id': 67, 'name_simple': 'Al-Mulk', 'verses_count': 30},
                     ],
                   };
                 }
-                return {
-                  'chapterId': 1,
-                  'verses': [
-                    {
-                      'verse_key': '1:1',
-                      // Official Quran Foundation verses-by-chapter example.
-                      'text_uthmani': 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
-                    },
-                  ],
-                  'pagination': {
-                    'current_page': 1,
-                    'next_page': null,
-                    'total_pages': 1,
-                  },
-                };
+                throw const ApiException('Provider unavailable', 503);
               },
               submit: (_, body) async {
                 saves.add(Map.of(body));
@@ -250,10 +236,12 @@ void main() {
           isTrue,
         );
         if (providerAvailable) {
-          expect(find.text('Ayah 1:1'), findsOneWidget);
-        } else {
-          expect(find.textContaining('No replacement text'), findsOneWidget);
+          expect(
+            readerRequests.last,
+            endsWith('/67/verses?page=2&per_page=10'),
+          );
         }
+        expect(find.text('Tracker passage: 67:11 - 67:15'), findsOneWidget);
         await tester.tap(find.text('Close reader'));
         await tester.pumpAndSettle();
         expect(saves, isEmpty);

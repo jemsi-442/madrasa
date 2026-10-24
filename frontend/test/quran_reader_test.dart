@@ -10,7 +10,7 @@ const ayah = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّ�
 final chapters = {
   'limitedContent': true,
   'chapters': [
-    {'id': 1, 'name_simple': 'Al-Fatihah'},
+    {'id': 1, 'name_simple': 'Al-Fatihah', 'verses_count': 7},
     {'id': 2, 'name_simple': 'Al-Baqarah'},
     {'id': 3, 'name_simple': 'Ali Imran'},
   ],
@@ -18,18 +18,30 @@ final chapters = {
 final verses = {
   'chapterId': 1,
   'verses': [
-    {'verse_key': '1:1', 'text_uthmani': ayah},
+    {'verse_key': '1:1', 'verse_number': 1, 'text_uthmani': ayah},
   ],
   'pagination': {'current_page': 1, 'next_page': null, 'total_pages': 1},
 };
 
-Future<void> openReader(WidgetTester tester, PageLoader load) async {
+Future<void> openReader(
+  WidgetTester tester,
+  PageLoader load, {
+  int? initialChapterId,
+  int? ayahFrom,
+  int? ayahTo,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
-            onPressed: () => showQuranReader(context, load),
+            onPressed: () => showQuranReader(
+              context,
+              load,
+              initialChapterId: initialChapterId,
+              ayahFrom: ayahFrom,
+              ayahTo: ayahTo,
+            ),
             child: const Text('Read'),
           ),
         ),
@@ -55,6 +67,68 @@ Future<void> reveal(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets(
+    'tracker passage opens and marks its provider verse without writes',
+    (tester) async {
+      final paths = <String>[];
+      await openReader(
+        tester,
+        (path) async {
+          paths.add(path);
+          return path.contains('/verses?') ? verses : chapters;
+        },
+        initialChapterId: 1,
+        ayahFrom: 1,
+        ayahTo: 1,
+      );
+      expect(paths.last, endsWith('/1/verses?page=1&per_page=10'));
+      await reveal(tester, 'Selected in tracker');
+      expect(find.text('Selected in tracker'), findsOneWidget);
+      expect(find.text(ayah), findsOneWidget);
+    },
+  );
+
+  testWidgets('unavailable tracker surah never silently opens another chapter', (
+    tester,
+  ) async {
+    final paths = <String>[];
+    await openReader(
+      tester,
+      (path) async {
+        paths.add(path);
+        return chapters;
+      },
+      initialChapterId: 67,
+      ayahFrom: 11,
+      ayahTo: 15,
+    );
+    expect(paths, hasLength(1));
+    await reveal(
+      tester,
+      'The tracker surah is unavailable in this environment. Choose another surah to read without changing your tracker.',
+    );
+    expect(find.byType(SelectableText), findsNothing);
+  });
+
+  testWidgets('invalid tracker range makes no verse request', (tester) async {
+    final paths = <String>[];
+    await openReader(
+      tester,
+      (path) async {
+        paths.add(path);
+        return chapters;
+      },
+      initialChapterId: 1,
+      ayahFrom: 1,
+      ayahTo: 8,
+    );
+    expect(paths, hasLength(1));
+    await reveal(
+      tester,
+      'The tracker passage is outside the available surah. Check the selected ayahs in the tracker.',
+    );
+    expect(find.byType(SelectableText), findsNothing);
+  });
   testWidgets(
     'surah search filters locally and cancellation preserves reading',
     (tester) async {

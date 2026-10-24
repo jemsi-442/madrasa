@@ -298,7 +298,13 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
             child: OutlinedButton.icon(
               onPressed: busy
                   ? null
-                  : () => showQuranReader(context, widget.load),
+                  : () => showQuranReader(
+                      context,
+                      widget.load,
+                      initialChapterId: surah,
+                      ayahFrom: from,
+                      ayahTo: to ?? from,
+                    ),
               icon: const Icon(Icons.menu_book_outlined),
               label: const Text('Open Quran Reader'),
             ),

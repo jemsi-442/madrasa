@@ -123,6 +123,15 @@ dialog loads chapters and paginated Uthmani text through the backend, with
 selectable right-to-left verses and provider attribution. Pre-live shows its
 two-surah limitation. Failures show a safe error and retry, not replacement text.
 Reading does not submit observations or alter the teacher's current session.
+Opening from the tracker now passes its selected surah and optional ayah range.
+The reader loads the ten-verse page containing the first selected ayah, labels
+the tracker passage, and marks matching provider verse numbers as selected.
+Ranges spanning pages remain marked as the teacher navigates with Next/Previous.
+Only surah/ayah context crosses into the reader, not student identity or notes.
+If the requested surah is unavailable (including pre-live restrictions), it shows
+an explicit notice instead of silently opening another surah. Invalid ranges
+are rejected against provider chapter counts before requesting verses.
+Browsing elsewhere in the reader never changes the tracker draft or saves progress.
 Use the search icon beside the surah selector to find a chapter by its provider
 name or exact number. Search uses already-loaded metadata and makes no content
 requests until a different chapter is selected. Cancel preserves the current page;
