@@ -87,6 +87,10 @@ Verify isolation and launcher lifecycle with
 from the repository root.
 Startup preflight and settings isolation have automated tests. A full fresh-demo
 launch was not run for this change to avoid replacing the running demo experience.
+On 2026-10-24, real isolated Node subprocess tests also passed for repeated
+SIGINT and SIGTERM: the worker completed cleanup, the launcher exited successfully,
+and the worker PID was no longer running. These fixtures use no database or secrets;
+they do not constitute a full MariaDB/Redis demo shutdown test.
 
 ## Behaviour and verification
 
