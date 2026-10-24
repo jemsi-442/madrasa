@@ -1,4 +1,15 @@
 import { parse } from 'dotenv';
+import { readFile } from 'node:fs/promises';
+
+export async function prepareDemoEnvironment(args, inherited, file, read = readFile) {
+  if (args[0] !== '--start' || inherited.NODE_ENV === 'production') {
+    throw new Error('Use --start for a disposable local demo, never production.');
+  }
+  let source = '';
+  try { source = await read(file, 'utf8'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  return withQuranSettings(inherited, source);
+}
 
 // Only provider settings may cross from the normal backend into the demo.
 export function withQuranSettings(inherited, source) {

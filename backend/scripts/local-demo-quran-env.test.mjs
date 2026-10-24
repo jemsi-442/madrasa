@@ -1,11 +1,38 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { withQuranSettings } from './local-demo-quran-env.mjs';
+import { withQuranSettings, prepareDemoEnvironment } from './local-demo-quran-env.mjs';
 
 const original = {
   DATABASE_URL: 'isolated-demo', JWT_SECRET: 'synthetic-existing',
   DOTENV_CONFIG_PATH: '/dev/null', QF_ENABLED: 'false',
 };
+test('startup imports provider settings only from the chosen file', async () => {
+  const env = await prepareDemoEnvironment(['--start'], original, '/synthetic/.env', async (file, encoding) => {
+    assert.equal(file, '/synthetic/.env');
+    assert.equal(encoding, 'utf8');
+    return 'QF_ENABLED=false\nDATABASE_URL=unrelated\nJWT_SECRET=unrelated';
+  });
+  assert.equal(env.DATABASE_URL, original.DATABASE_URL);
+  assert.equal(env.JWT_SECRET, original.JWT_SECRET);
+  assert.equal(env.QF_ENABLED, 'false');
+});
+test('startup rejects production or missing start flag before reading files', async () => {
+  const neverRead = async () => assert.fail('must not read settings');
+  await assert.rejects(prepareDemoEnvironment([], original, '/unused', neverRead));
+  await assert.rejects(prepareDemoEnvironment(['--start'], { ...original, NODE_ENV: 'production' }, '/unused', neverRead));
+});
+test('startup tolerates a missing env file but not a permissions error', async () => {
+  assert.deepEqual(await prepareDemoEnvironment(['--start'], original, '/missing', async () => {
+    throw Object.assign(new Error(), { code: 'ENOENT' });
+  }), original);
+  await assert.rejects(prepareDemoEnvironment(['--start'], original, '/denied', async () => {
+    throw Object.assign(new Error(), { code: 'EACCES' });
+  }));
+});
+test('startup rejects incomplete provider settings before starting infrastructure', async () => {
+  await assert.rejects(prepareDemoEnvironment(['--start'], original, '/invalid', async () => 'QF_ENABLED=true'),
+    { message: 'Invalid Quran configuration; values redacted.' });
+});
 test('imports only Quran settings and does not mutate inherited configuration', () => {
   const result = withQuranSettings(original, [
     'QF_ENABLED=true', 'QF_ENV=production',

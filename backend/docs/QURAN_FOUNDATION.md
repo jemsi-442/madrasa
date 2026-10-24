@@ -56,7 +56,19 @@ Exit codes: 0 success, 1 connection/content failure, 2 invalid configuration or
 arguments. A successful dry run does not prove the credentials work; even a live
 sample does not verify all surahs, audio or translations.
 
-## Disposable demo reload
+## Disposable demo startup and reload
+
+`npm run platform:demo -- --start` now uses `scripts/start-local-demo.mjs`.
+Before launching the existing demo runner it reads only `QF_ENABLED`, `QF_ENV`,
+`QF_CLIENT_ID` and `QF_CLIENT_SECRET` from `backend/.env`. Other file settings
+(including database URLs and signing keys) are never imported. The runner still
+creates its isolated infrastructure. Use this command only when a new disposable
+demo is intended, not to refresh a running demo with existing records.
+
+Invalid Quran settings stop startup before infrastructure is created. A missing
+file retains inherited provider settings. The wrapper preserves runner arguments
+and forwards termination signals so the runner can perform its normal cleanup.
+Directly running the TypeScript runner bypasses this provider-settings loader.
 
 `scripts/reload-local-demo-api.mjs` now reads only the four `QF_` settings
 from `backend/.env` before stopping the existing demo API. Database, Redis,
@@ -66,11 +78,12 @@ An explicit `QF_ENABLED=false` disables content access.
 
 The existing Linux PID/ancestry and disposable-database safeguards still apply:
 this helper requires an API belonging to the specified original demo supervisor.
-It is not a general restart command for a detached watcher. This change does
-not add `.env` loading to the initial demo runner.
+It is not a general restart command for a detached watcher.
 
 Verify isolation with `node --test backend/scripts/local-demo-quran-env.test.mjs`
 from the repository root.
+Startup preflight and settings isolation have automated tests. A full fresh-demo
+launch was not run for this change to avoid replacing the running demo experience.
 
 ## Behaviour and verification
 
