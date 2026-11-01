@@ -1,10 +1,18 @@
-# Modern Islamic Foundation Flutter App
+# Afaq Flutter App
 
 This is the only active frontend. It targets web, Android, and iOS and talks to the existing Express API.
 
 ## Run locally
 
 ### Shared visual system
+
+Date inputs use `lib/src/date_selection.dart`: `showAfaqDatePicker` for days,
+`showAfaqMonthPicker` for month-only filters, and `AfaqYearField` for years.
+Use `AdminField(kind: 'date')` or `kind: 'datetime'` in shared forms rather than
+plain text date fields. Keep existing domain limits (for example, no future
+attendance); birth dates allow years from 1900 through today. Date-only and
+month-only API values remain `YYYY-MM-DD` and `YYYY-MM`; datetime fields retain
+UTC serialization. Cancel must preserve the previous value.
 
 Use `lib/src/design_tokens.dart` (`AfaqDesign`) for shared colors, fonts and
 radii. `lib/src/design_theme.dart` owns `buildAfaqTheme()` and the control theme
