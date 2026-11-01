@@ -13,8 +13,7 @@ const acceptanceSchema = z.object({
   password: z.string().min(12).max(72).refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password must not exceed 72 UTF-8 bytes"),
 }).strict();
 
-// Internal lifecycle only: no HTTP route until secure delivery and rate limits exist.
-// The raw token is returned solely for a future trusted delivery adapter, never IT UI.
+// The raw token is returned solely to the trusted delivery adapter, never IT UI.
 export async function issueSchoolAdminInvitation(db: PrismaClient, actor: PlatformContext, applicationId: unknown) {
   const id = platformAccountIdSchema.parse(applicationId);
   if (actor.scope !== "platform") throw new HttpError(401, "Platform authentication required");
