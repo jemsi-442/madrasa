@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { env } from "../src/config/env";
@@ -127,6 +128,25 @@ describe("daily attendance register", () => {
     expect((await save("2026-01-07", [mark(first, { version: 1 })], { correctionReason: "Stale register" })).status).toBe(409);
     expect((await read("2026-01-07", classId, "ADMIN", true)).body.data).toHaveLength(2);
   });
+  it("persists teacher attendance across a fresh connection and repeated API reads", async () => {
+    const date = "2026-01-10";
+    expect((await save(date, [mark()], {}, "TEACHER")).status).toBe(200);
+    const reader = new PrismaClient();
+    try {
+      expect(await reader.attendanceRecord.findFirst({ where: { orgId, studentId: first, date: new Date(date) } }))
+        .toMatchObject({ classId, status: "PRESENT", version: 1 });
+      for (let reload = 0; reload < 2; reload++) {
+        const response = await read(date, classId, "TEACHER");
+        expect(response.status).toBe(200);
+        expect(response.body.data.items.find((row: { id: string }) => row.id === String(first)).attendance)
+          .toMatchObject({ status: "PRESENT", version: 1, checkInTime: "07:45" });
+      }
+      expect(await reader.attendanceRecord.count({ where: { orgId, studentId: first, date: new Date(date) } })).toBe(1);
+    } finally {
+      await reader.$disconnect();
+    }
+  });
+
   it("uses the Tanzania school day at midnight rollover", () => {
     expect(schoolDate(new Date("2026-09-25T21:01:00Z"))).toBe("2026-09-26");
     expect(schoolDate(new Date("2026-09-25T20:59:00Z"))).toBe("2026-09-25");
