@@ -5,7 +5,72 @@ import 'package:mif_app/src/curriculum_oversight_page.dart';
 import 'package:mif_app/src/platform_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
+Future<void> openTools(WidgetTester tester) async {
+  final tools = find.text('Filters & details');
+  if (tools.evaluate().isNotEmpty) {
+    await tester.ensureVisible(tools);
+    await tester.tap(tools);
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+}
+
+Future<void> settleWithTools(WidgetTester tester) async {
+  await tester.pumpAndSettle();
+  await openTools(tester);
+}
+
+Future<void> expandFilters(WidgetTester tester) async {
+  await openTools(tester);
+  final more = find.text('More filters');
+  if (more.evaluate().isNotEmpty) {
+    await tester.ensureVisible(more);
+    await tester.tap(more);
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+}
+
 void main() {
+  testWidgets(
+    'applied filters remain visible when tools close and can be removed',
+    (tester) async {
+      final requests = <Uri>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CurriculumOversightPage(
+              onBack: () {},
+              onSessionExpired: () {},
+              load: (path) async {
+                requests.add(Uri.parse(path));
+                return {'items': [], 'hasMore': false};
+              },
+            ),
+          ),
+        ),
+      );
+      await settleWithTools(tester);
+      await tester.enterText(find.byType(TextField).first, 'Synthetic');
+      await tester.ensureVisible(find.text('Apply filters'));
+      await tester.tap(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['madrasa'], 'Synthetic');
+      await tester.ensureVisible(find.text('Hide filters & details'));
+      await tester.tap(find.text('Hide filters & details'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byType(InputChip), findsOneWidget);
+      final remove = find.descendant(
+        of: find.byType(InputChip),
+        matching: find.byTooltip('Delete'),
+      );
+      await tester.ensureVisible(remove);
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters.containsKey('madrasa'), isFalse);
+      expect(find.byType(InputChip), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final field in [(3, 'assessmentMonth'), (4, 'quranMonth')]) {
     testWidgets('${field.$2} validates, applies and survives refresh', (
       tester,
@@ -25,37 +90,38 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       final month = find.byType(TextField).at(field.$1);
+      await expandFilters(tester);
       await tester.enterText(month, '2026-13');
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.ensureVisible(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.length, 1);
       expect(
         find.text('Use YYYY-MM, or leave blank for all time.'),
         findsOneWidget,
       );
       await tester.enterText(month, '2026-10');
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.ensureVisible(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last[field.$2], '2026-10');
       await tester.enterText(month, '2026-11');
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.ensureVisible(find.text('Refresh'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Refresh'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last[field.$2], '2026-10');
       await tester.ensureVisible(find.text('Clear filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Clear filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'page': '1'});
       expect(tester.widget<TextField>(month).controller!.text, isEmpty);
       expect(tester.takeException(), isNull);
@@ -79,22 +145,22 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(find.textContaining('Publish a framework'), findsOneWidget);
     expect(find.text('Show all assignments'), findsNothing);
     await tester.enterText(find.byType(TextField).first, 'Synthetic unmatched');
     await tester.ensureVisible(find.text('Apply filters'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     await tester.tap(find.text('Apply filters'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(
       find.textContaining('does not mean the frameworks were deleted'),
       findsOneWidget,
     );
     await tester.ensureVisible(find.text('Show all assignments'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     await tester.tap(find.text('Show all assignments'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(queries.last, {'page': '1'});
     expect(
       tester.widget<TextField>(find.byType(TextField).first).controller!.text,
@@ -123,20 +189,20 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(find.text('On this page'), findsNWidgets(4));
       expect(
         tester.getTopLeft(find.text('Framework assignments')).dy,
-        lessThan(tester.getTopLeft(find.text('Filter teaching records')).dy),
+        lessThan(tester.getTopLeft(find.text('Report filters')).dy),
       );
       await tester.ensureVisible(find.text('Refresh'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Refresh'));
       await tester.pump();
       expect(find.text('On this page'), findsNothing);
       expect(find.text('Loading learning oversight'), findsOneWidget);
       refresh.completeError(Exception('Synthetic connection failure'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(find.text('On this page'), findsNothing);
       expect(find.text('Could not load learning oversight.'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -162,25 +228,26 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
+    await expandFilters(tester);
     await tester.enterText(find.byType(TextField).at(1), 'Arabic');
     await tester.ensureVisible(find.text('Apply filters'));
     await tester.tap(find.text('Apply filters'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     await tester.enterText(find.byType(TextField).at(1), 'Unapplied');
     await tester.ensureVisible(find.text('Next'));
     await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(find.text('Page 2 could not be loaded.'), findsOneWidget);
     expect(find.text('Internal detail'), findsNothing);
     await tester.ensureVisible(find.text('Try again'));
     await tester.tap(find.text('Try again'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(queries.last, {'subject': 'Arabic', 'page': '2'});
     expect(queries.where((query) => query['page'] == '2'), hasLength(2));
     await tester.ensureVisible(find.text('Back to first page'));
     await tester.tap(find.text('Back to first page'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(queries.last, {'subject': 'Arabic', 'page': '1'});
     expect(find.text('Page 1'), findsOneWidget);
     expect(find.text('Back to first page'), findsNothing);
@@ -227,15 +294,16 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
+    await expandFilters(tester);
     await tester.enterText(find.byType(TextField).at(1), 'Arabic');
     await tester.ensureVisible(find.text('Apply filters'));
     await tester.tap(find.text('Apply filters'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     await tester.enterText(find.byType(TextField).at(1), 'Unapplied');
     await tester.ensureVisible(find.text('Next'));
     await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(queries.last, {'subject': 'Arabic', 'page': '2'});
     expect(find.textContaining('No records on this page.'), findsOneWidget);
     expect(
@@ -244,7 +312,7 @@ void main() {
     );
     await tester.ensureVisible(find.text('Back to first page'));
     await tester.tap(find.text('Back to first page'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(queries.last, {'subject': 'Arabic', 'page': '1'});
     expect(find.text('Page 1'), findsOneWidget);
     expect(find.text('Back to first page'), findsNothing);
@@ -278,14 +346,15 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
+      await expandFilters(tester);
       await tester.enterText(
         find.byType(TextField).at(index),
         'x' * (limit + 1),
       );
       await tester.ensureVisible(find.text('Apply filters'));
       await tester.tap(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries, hasLength(1));
       expect(find.text('Use at most $limit characters.'), findsOneWidget);
       expect(
@@ -298,13 +367,13 @@ void main() {
         '  ${'x' * limit}  ',
       );
       await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries, hasLength(2));
       expect(queries.last[['madrasa', 'subject', 'level'][index]], 'x' * limit);
       expect(find.text('Use at most $limit characters.'), findsNothing);
       await tester.ensureVisible(find.text('Clear filters'));
       await tester.tap(find.text('Clear filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'page': '1'});
       expect(tester.takeException(), isNull);
     });
@@ -326,7 +395,7 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        await settleWithTools(tester);
         expect(
           find.text(
             status == 401
@@ -371,12 +440,13 @@ void main() {
       if (leavePage) {
         await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       } else {
+        await openTools(tester);
         await tester.ensureVisible(find.text('Refresh'));
         await tester.tap(find.text('Refresh'));
-        await tester.pumpAndSettle();
+        await settleWithTools(tester);
       }
       old.completeError(ApiException('Internal server detail', 401));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(expired, 0);
       expect(
         find.text('Your session has expired. Sign in again.'),
@@ -410,14 +480,29 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
+    expect(find.text('Report generated: 2026-10-20 12:30 UTC'), findsOneWidget);
+    final timestamp = find.text('Report generated: 2026-10-20 12:30 UTC');
+    final snapshotNote = find.text(
+      'Snapshot only, not live monitoring. Refresh to check for updates.',
+    );
     expect(
-      find.text('Report generated: 2026-10-20T12:30:00.000Z (UTC)'),
-      findsOneWidget,
+      tester.getTopLeft(timestamp).dy,
+      greaterThan(
+        tester
+            .getBottomLeft(
+              find.text('Applied filters: All assigned frameworks'),
+            )
+            .dy,
+      ),
+    );
+    expect(
+      tester.getTopLeft(snapshotNote).dy - tester.getBottomLeft(timestamp).dy,
+      greaterThanOrEqualTo(6),
     );
     await tester.ensureVisible(find.text('Refresh'));
     await tester.tap(find.text('Refresh'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(find.textContaining('Report generated:'), findsNothing);
     expect(find.text('Could not load learning oversight.'), findsOneWidget);
     expect(find.text('Loading learning oversight'), findsNothing);
@@ -452,13 +537,14 @@ void main() {
       ),
     );
     await tester.pump();
+    await expandFilters(tester);
     await tester.enterText(find.byType(TextField).at(1), 'Arabic');
     await tester.ensureVisible(find.text('Apply filters'));
     await tester.tap(find.text('Apply filters'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(find.text('Applied filters: Subject: Arabic'), findsOneWidget);
     old.complete({'items': [], 'hasMore': true});
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(
       tester
           .widget<TextButton>(find.widgetWithText(TextButton, 'Next'))
@@ -491,17 +577,17 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     await tester.ensureVisible(find.text('Learning Oversight'));
     await tester.tap(find.text('Learning Oversight'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(paths.last, '/curriculum/oversight?page=1');
     expect(
       find.text('No assigned frameworks match these filters.'),
       findsOneWidget,
     );
     await tester.tap(find.text('Back to curriculum'));
-    await tester.pumpAndSettle();
+    await settleWithTools(tester);
     expect(find.text('Shared subject library'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -550,11 +636,15 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(find.text('Could not load learning oversight.'), findsOneWidget);
       await tester.ensureVisible(find.text('Try again'));
       await tester.tap(find.text('Try again'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
+      expect(find.text('2 / 6 class-lessons recorded as taught'), findsNothing);
+      await tester.ensureVisible(find.text('Framework and assessment details'));
+      await tester.tap(find.text('Framework and assessment details'));
+      await settleWithTools(tester);
       expect(
         find.text('2 / 6 class-lessons recorded as taught'),
         findsOneWidget,
@@ -570,7 +660,7 @@ void main() {
       await tester.enterText(find.byType(TextField).first, 'Synthetic');
       await tester.ensureVisible(find.text('Apply filters'));
       await tester.tap(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'madrasa': 'Synthetic', 'page': '1'});
       expect(find.text('Applied filters: Madrasa: Synthetic'), findsOneWidget);
       await tester.enterText(find.byType(TextField).first, 'Unapplied Madrasa');
@@ -580,19 +670,19 @@ void main() {
         findsOneWidget,
       );
       await tester.ensureVisible(find.text('Refresh'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Refresh'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'madrasa': 'Synthetic', 'page': '1'});
       await tester.ensureVisible(find.text('Next'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'madrasa': 'Synthetic', 'page': '2'});
       await tester.ensureVisible(find.text('Clear filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Clear filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'page': '1'});
       expect(
         find.textContaining('Filter changes are not applied yet'),
@@ -602,41 +692,42 @@ void main() {
         find.text('Applied filters: All assigned frameworks'),
         findsOneWidget,
       );
+      await expandFilters(tester);
       await tester.ensureVisible(
         find.byType(DropdownButtonFormField<String>).first,
       );
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.byType(DropdownButtonFormField<String>).first);
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('No current class adoption').last);
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'page': '1'});
       await tester.ensureVisible(find.text('Apply filters'));
       await tester.tap(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'adoption': 'without', 'page': '1'});
       await tester.ensureVisible(
         find.byType(DropdownButtonFormField<String>).last,
       );
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.byType(DropdownButtonFormField<String>).last);
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       await tester.tap(find.text('Active').last);
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'adoption': 'without', 'page': '1'});
       await tester.ensureVisible(find.text('Apply filters'));
       await tester.tap(find.text('Apply filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {
         'adoption': 'without',
         'status': 'ACTIVE',
         'page': '1',
       });
-      expect(find.textContaining('Madrasa status: Active'), findsOneWidget);
+      expect(find.text('Madrasa status: Active'), findsOneWidget);
       expect(find.textContaining('not delayed onboarding'), findsOneWidget);
       await tester.ensureVisible(find.text('Clear filters'));
       await tester.tap(find.text('Clear filters'));
-      await tester.pumpAndSettle();
+      await settleWithTools(tester);
       expect(queries.last, {'page': '1'});
       expect(find.textContaining('not delayed onboarding'), findsNothing);
       expect(tester.takeException(), isNull);
