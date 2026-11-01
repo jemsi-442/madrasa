@@ -16,6 +16,13 @@ function fixture(role = 'IT_SECURITY') {
   return { tx, transaction, application, service: new PlatformGovernanceService({ $transaction: transaction } as unknown as PrismaClient) };
 }
 describe('pending school provisioning', () => {
+  it('copies approved structured location into the organization', async () => {
+    const f = fixture();
+    const location = { country: 'Tanzania', region: 'Synthetic Region', ward: 'Synthetic Ward' };
+    f.tx.tenantApplication.findUnique.mockResolvedValue({ ...f.application, location });
+    await f.service.provisionPendingSchool(actor, 'application');
+    expect(f.tx.organization.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ location }) }));
+  });
   it('uses approved details and commits an inactive school, application link and audit together', async () => {
     const f = fixture();
     expect(await f.service.provisionPendingSchool(actor, 'application')).toEqual({ organizationId: '9', status: 'PENDING_ACTIVATION', created: true });
