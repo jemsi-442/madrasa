@@ -89,7 +89,7 @@ class _LessonPlaybackFrameState extends State<LessonPlaybackFrame> {
                                     : widget.audio
                                     ? Icons.graphic_eq
                                     : Icons.play_circle_outline,
-                                size: 48,
+                                size: 52,
                                 color: playbackAccent,
                               ),
                               const SizedBox(height: 12),
@@ -139,7 +139,7 @@ class _LessonPlaybackFrameState extends State<LessonPlaybackFrame> {
                           foregroundColor: playbackAccent,
                           padding: const EdgeInsets.all(18),
                         ),
-                        icon: const Icon(Icons.play_arrow, size: 40),
+                        icon: const Icon(Icons.play_arrow, size: 44),
                       ),
                     ),
                   if (widget.buffering && !widget.failed)
