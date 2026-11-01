@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
@@ -52,9 +53,9 @@ class LessonContents extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         for (final entry in groups.entries)
-        ExpansionTile(
-          shape: const Border(),
-          collapsedShape: const Border(),
+          ExpansionTile(
+            shape: const Border(),
+            collapsedShape: const Border(),
             key: ValueKey('module-${entry.key}-$currentId'),
             initiallyExpanded: entry.value.any(
               (lesson) => recordText(lesson['id']) == currentId,
@@ -124,7 +125,7 @@ class LessonContents extends StatelessWidget {
                                     : active
                                     ? Icons.play_circle_outline
                                     : Icons.menu_book_outlined,
-                                size: 19,
+                                size: AfaqDesign.iconSmall,
                                 color: !allowed
                                     ? muted
                                     : done
