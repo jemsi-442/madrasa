@@ -1,4 +1,19 @@
 import type { Request, Response } from "express";
+import { reportCsvRows, tabularReportPdf } from '../../shared/utils/tabular-report-pdf';
+
+export const pdfReportHandler = (kind: 'students' | 'payments' | 'attendance' | 'finance') => async (req: Request, res: Response) => {
+  // Reuse the existing export services: tenant/class scope and role checks remain unchanged.
+  const report = kind === 'students' ? await exportStudentsReport(req.authUser!, studentsExportQuerySchema.parse(req.query))
+    : kind === 'payments' ? await exportPaymentsReport(req.authUser!, paymentsExportQuerySchema.parse(req.query))
+    : kind === 'attendance' ? await exportAttendanceReport(req.authUser!, attendanceExportQuerySchema.parse(req.query))
+    : await exportMonthlyFinanceSummaryReport(req.authUser!, monthlyFinanceSummaryQuerySchema.parse(req.query));
+  const rows = reportCsvRows(report.content);
+  const titles = { students: 'Student directory', payments: 'Payment report', attendance: 'Attendance report', finance: 'Annual financial report' };
+  const period = kind === 'finance' ? `Year ${report.fileName.match(/(\d{4})\.csv$/)?.[1] ?? ''} | ` : '';
+  const pdf = await tabularReportPdf(titles[kind], `${period}Generated ${new Date().toISOString().slice(0, 10)} | Current authorized school scope`, rows[0] ?? [], rows.slice(1));
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ success: true, data: { fileName: report.fileName.replace(/\.csv$/, '.pdf'), base64: pdf.toString('base64') } });
+};
 
 import {
   attendanceSummaryQuerySchema,
