@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'foundation_ui.dart';
@@ -35,7 +36,7 @@ class FinanceSectionHeading extends StatelessWidget {
                   color: accent.withValues(alpha: .09),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: accent, size: 24),
+                child: Icon(icon, color: accent, size: AfaqDesign.iconSize),
               ),
             ),
             const SizedBox(width: 16),
@@ -183,7 +184,7 @@ class FinanceEmptyState extends StatelessWidget {
     ),
     child: Column(
       children: [
-        const Icon(Icons.folder_open_outlined, color: gold, size: 32),
+        const Icon(Icons.folder_open_outlined, color: gold, size: 36),
         const SizedBox(height: 12),
         const Text(
           'No records to display',
