@@ -12,7 +12,6 @@ const activationSchema = z.object({
   approvalReason: z.string().trim().min(10).max(500),
 }).strict();
 
-// Internal only until invitation delivery/acceptance and the review UI are connected.
 // Office approval references independent IT evidence; it cannot submit technical attestations.
 export async function activateSchool(db: PrismaClient, actor: PlatformContext, applicationId: unknown, input: unknown) {
   const id = platformAccountIdSchema.parse(applicationId);
