@@ -1,3 +1,4 @@
+import 'date_selection.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart' show shortDate;
 import 'dashboard_components.dart';
@@ -43,22 +44,14 @@ class _ParentAcademicsState extends State<ParentAcademics> {
         children: [
           SizedBox(
             width: 220,
-            child: DropdownButtonFormField<int>(
-              initialValue: year,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Assessment year'),
-              items: [
-                for (var y = DateTime.now().year; y >= 2000; y--)
-                  DropdownMenuItem(value: y, child: Text('$y')),
-              ],
-              onChanged: (v) {
-                if (v != null) {
-                  setState(() {
-                    year = v;
-                    page = 1;
-                  });
-                }
-              },
+            child: AfaqYearField(
+              label: 'Assessment year',
+              value: year,
+              lastYear: DateTime.now().year,
+              onChanged: (value) => setState(() {
+                year = value;
+                page = 1;
+              }),
             ),
           ),
           const TeacherTag('Published results only'),
