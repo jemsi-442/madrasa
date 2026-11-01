@@ -15,6 +15,16 @@ import 'package:mif_app/src/shared_feedback.dart';
 import 'package:mif_app/src/public_shell.dart';
 
 void main() {
+  test('shared themes provide larger icons and button icons', () {
+    final theme = buildAfaqTheme();
+    expect(theme.iconTheme.size, AfaqDesign.iconSize);
+    expect(theme.primaryIconTheme.size, AfaqDesign.iconSize);
+    expect(theme.iconButtonTheme.style!.iconSize!.resolve({}), 28);
+    expect(theme.filledButtonTheme.style!.iconSize!.resolve({}), 24);
+    expect(theme.outlinedButtonTheme.style!.iconSize!.resolve({}), 24);
+    expect(theme.textButtonTheme.style!.iconSize!.resolve({}), 24);
+  });
+
   testWidgets(
     'shared refresh keeps its place and blocks repeat requests while loading',
     (tester) async {
@@ -338,7 +348,7 @@ void main() {
         expect(find.byType(WorkspaceSidebar), findsOneWidget);
         expect(find.byType(WorkspaceHeaderSurface), findsOneWidget);
         expect(find.text('System health'), findsNothing);
-        await tester.tap(find.text('Company accounts'));
+        await tester.tap(find.text('Users & Permissions'));
         await tester.pump();
         expect(selections, busy ? 0 : 1);
         expect(tester.takeException(), isNull);
