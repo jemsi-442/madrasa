@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'admin_forms.dart';
@@ -197,7 +198,7 @@ class _ClassRecordActionsState extends State<ClassRecordActions> {
             height: 18,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        : const Icon(Icons.more_vert, size: 20),
+        : const Icon(Icons.more_vert, size: AfaqDesign.iconSmall),
   );
 }
 
