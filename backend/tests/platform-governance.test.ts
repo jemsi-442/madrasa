@@ -8,7 +8,7 @@ import { tenantApplicationSchema } from "../src/modules/platform/platform.schema
 import { PlatformGovernanceService, type PlatformContext } from "../src/modules/platform/platform.service";
 
 const actor: PlatformContext = { scope: "platform", accountId: "reviewer", sessionId: "c222bd7e-bdbd-4698-b666-67b6b5e2d658" };
-const input = { schoolName: "Afaq School", requestedCode: "afaq-school", adminEmail: "admin@example.test" };
+const input = { schoolName: "Afaq School", requestedCode: "afaq-school", adminEmail: "admin@example.test", location: { country: 'Tanzania', region: 'Synthetic Region', district: 'Synthetic District', ward: 'Synthetic Ward' } };
 const decision = { decision: "APPROVED", reason: "School ownership verified" };
 const secret = "test-platform-secret-not-for-use-in-production";
 
