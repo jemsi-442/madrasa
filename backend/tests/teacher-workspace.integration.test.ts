@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../src/shared/db/prisma";
@@ -24,6 +25,72 @@ describe("teacher workspace", () => {
     observation: "INDEPENDENT", learnedOn: "2026-09-01", ...extra,
   });
   const progress = () => get(`/api/teacher-workspace/quran?studentId=${student}&surahId=67`);
+  it('separates two timetable periods and validates class, date and cancellation', async () => {
+    const slots = [];
+    for (const startsAt of ['08:00', '10:00']) {
+      slots.push(await prisma.classTimetableSlot.create({ data: {
+        orgId, classId, weekday: 2, startsAt, endsAt: startsAt === '08:00' ? '09:00' : '11:00',
+        validFrom: new Date('2026-09-01'), validUntil: new Date('2026-09-01'),
+        subject: 'Synthetic Quran period', createdById: admin,
+      } }));
+    }
+    const first = slots[0]!, second = slots[1]!;
+    const data = input({ timetableSlotId: String(first.id), activity: 'READING' });
+    const saved = await save(data);
+    expect(saved.status).toBe(200);
+    expect(saved.body.data.timetableSlotId).toBe(String(first.id));
+    const roster = (id?: string) => get(`/api/teacher-workspace/quran/roster?${new URLSearchParams({
+      classId: String(classId), learnedOn: '2026-09-01', surahId: '67',
+      ayahFrom: '1', ayahTo: '10', activity: 'READING', ...(id ? { timetableSlotId: id } : {}),
+    })}`);
+    expect((await roster(String(first.id))).body.data.recorded).toBe(1);
+    expect((await roster(String(second.id))).body.data.recorded).toBe(0);
+    expect((await roster()).body.data.recorded).toBe(0);
+    expect((await save(input({ timetableSlotId: String(first.id), learnedOn: '2026-09-02' }))).status).toBe(422);
+    const otherChild = await prisma.student.findFirstOrThrow({ where: { orgId, classId: secondClass } });
+    expect((await save(input({ timetableSlotId: String(first.id), classId: String(secondClass), studentId: String(otherChild.id) }))).status).toBe(422);
+    await prisma.classTimetableSlot.update({ where: { id: first.id }, data: { cancelledAt: new Date() } });
+    expect((await save(input({ timetableSlotId: String(first.id) }))).status).toBe(422);
+    expect((await save(data)).status).toBe(200); // Confirmed retries preserve the original record.
+    await prisma.quranSession.deleteMany({ where: { orgId, timetableSlotId: { in: slots.map(s => s.id) } } });
+    await prisma.classTimetableSlot.deleteMany({ where: { orgId, id: { in: slots.map(s => s.id) } } });
+  });
+  it('counts exact saved passages, excludes corrections and enforces roster scope', async () => {
+    const fields = { classId: String(classId), learnedOn: '2026-08-19',
+      surahId: '67', ayahFrom: '11', ayahTo: '15', activity: 'READING' };
+    const roster = (extra = {}, role = 'TEACHER') => get(
+      `/api/teacher-workspace/quran/roster?${new URLSearchParams({ ...fields, ...extra })}`, role);
+    let response = await roster();
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({ total: 1, recorded: 0, remaining: 1 });
+    expect(response.body.data.nextStudent.id).toBe(String(student));
+    const skipped = await roster({ skipIds: String(student) });
+    expect(skipped.body.data).toMatchObject({ total: 1, recorded: 0, remaining: 1, nextStudent: null });
+    expect((await roster({ skipIds: 'invalid-id' })).status).toBe(422);
+    const saved = await save(input({ learnedOn: fields.learnedOn,
+      activity: 'READING', ayahFrom: 11, ayahTo: 15, observation: 'NEEDS_PRACTICE' }));
+    expect(saved.status).toBe(200);
+    response = await roster();
+    expect(response.body.data).toMatchObject({ recorded: 1, remaining: 0, nextStudent: null });
+    expect(response.body.data.items[0].recorded).toBe(true);
+    const summary = await roster({ summary: 'true', ayahTo: '16' });
+    expect(summary.body.data).toMatchObject({ recorded: 1, needsSupport: 1, remaining: 0 });
+    expect(summary.body.data.items[0]).toMatchObject({ needsSupport: true });
+    expect(summary.body.data.items[0].latestSession.id).toBe(saved.body.data.id);
+    for (const extra of [{ activity: 'REVISION' }, { ayahTo: '16' }, { learnedOn: '2026-08-18' }]) {
+      expect((await roster(extra)).body.data.recorded).toBe(0);
+    }
+    const corrected = await post(`/api/teacher-workspace/quran/sessions/${saved.body.data.id}/void`,
+      { reason: 'Synthetic roster correction' });
+    expect(corrected.status).toBe(200);
+    expect((await roster()).body.data.remaining).toBe(1);
+    expect((await roster({ summary: 'true' })).body.data.needsSupport).toBe(0);
+    expect((await roster({ classId: String(outsideClass) })).status).toBe(404);
+    expect((await roster({ classId: String(privateClass) })).status).toBe(404);
+    expect((await roster({}, 'ADMIN')).status).toBe(403);
+    expect((await roster({ ayahTo: '999' })).status).toBe(422);
+    await prisma.quranSession.deleteMany({ where: { orgId, learnedOn: new Date(fields.learnedOn) } });
+  });
   const save = (data: object) => post("/api/teacher-workspace/quran/sessions", data);
   const slot = (extra = {}) => ({
     weekday: 1, startsAt: "08:00", endsAt: "08:45", validFrom: "2026-09-01",
@@ -134,6 +201,100 @@ describe("teacher workspace", () => {
     expect((await progress()).body.data.memorisedAyahs).not.toContain(11);
     expect(await prisma.quranSession.findUnique({ where: { id: BigInt(id) } })).toMatchObject({ voidReason: "Incorrect learner passage" });
   });
+  it("persists a teacher session across fresh database reads and API reloads", async () => {
+    const data = input({ ayahFrom: 20, ayahTo: 21, activity: "READING" });
+    const saved = await save(data);
+    expect(saved.status).toBe(200);
+    const reader = new PrismaClient();
+    try {
+      expect(await reader.quranSession.findUnique({ where: { id: BigInt(saved.body.data.id) } }))
+        .toMatchObject({ orgId, studentId: student, classId, clientId: data.clientId, activity: "READING" });
+      const refreshed = await progress();
+      expect(refreshed.status).toBe(200);
+      expect((await save(data)).body.data.id).toBe(saved.body.data.id);
+      expect(await reader.quranSession.count({ where: { orgId, clientId: data.clientId } })).toBe(1);
+      expect(refreshed.body.data.memorisedAyahs).not.toContain(20);
+    } finally {
+      await reader.$disconnect();
+    }
+  });
+
+  it("preserves correction history and overlapping progress without resurrecting voided saves", async () => {
+    const data = input({ ayahFrom: 22, ayahTo: 24 });
+    const first = await save(data);
+    const overlapping = await save(input({ ayahFrom: 24, ayahTo: 25 }));
+    expect(first.status).toBe(200);
+    expect(overlapping.status).toBe(200);
+    const id = BigInt(first.body.data.id);
+    const original = await prisma.quranSession.findUniqueOrThrow({ where: { id } });
+    const path = `/api/teacher-workspace/quran/sessions/${id}/void`;
+    const reason = "Selected the wrong passage during synthetic practice";
+    expect((await api.post(path).set("Authorization", `Bearer ${token("TEACHER", otherTeacher)}`)
+      .send({ reason })).status).toBe(404);
+    expect(await prisma.quranSession.findUniqueOrThrow({ where: { id } })).toEqual(original);
+    expect((await post(path, { reason })).status).toBe(200);
+    const corrected = await prisma.quranSession.findUniqueOrThrow({ where: { id } });
+    expect(corrected.voidedAt).toBeInstanceOf(Date);
+    expect(corrected).toEqual({ ...original, voidedAt: corrected.voidedAt, voidReason: reason });
+    expect((await post(path, { reason: "A repeated request must not replace the original reason" })).status).toBe(200);
+    expect(await prisma.quranSession.findUniqueOrThrow({ where: { id } })).toEqual(corrected);
+    const replay = await save(data);
+    expect(replay.status).toBe(200);
+    expect(replay.body.data).toMatchObject({ id: String(id), voidReason: reason });
+    expect(replay.body.data.voidedAt).not.toBeNull();
+    const refreshed = await progress();
+    expect(refreshed.status).toBe(200);
+    expect(refreshed.body.data.memorisedAyahs).toEqual(expect.arrayContaining([24, 25]));
+    expect(refreshed.body.data.memorisedAyahs).not.toContain(22);
+    expect(refreshed.body.data.memorisedAyahs).not.toContain(23);
+    expect(refreshed.body.data.sessions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: String(id), voidReason: reason, voidedAt: expect.any(String) }),
+      expect.objectContaining({ id: overlapping.body.data.id, voidedAt: null }),
+    ]));
+    expect(await prisma.quranSession.count({ where: { orgId, teacherId: teacher, clientId: data.clientId } })).toBe(1);
+    expect(await prisma.auditLog.count({ where: { orgId, action: "quran.session.voided", entityId: String(id) } })).toBe(1);
+  });
+
+  it.each([
+    ["class reassignment", 404],
+    ["student transfer", 404],
+    ["account disabling", 403],
+  ] as const)("rechecks permissions on a committed Quran retry after %s", async (change, expectedStatus) => {
+    const data = input({ ayahFrom: 26, ayahTo: 27, activity: "READING" });
+    const originalToken = token();
+    const retry = () => api.post("/api/teacher-workspace/quran/sessions")
+      .set("Authorization", `Bearer ${originalToken}`).send(data);
+    const saved = await retry();
+    expect(saved.status).toBe(200);
+    const id = BigInt(saved.body.data.id);
+    const original = await prisma.quranSession.findUniqueOrThrow({ where: { id } });
+    try {
+      if (change === "class reassignment")
+        await prisma.class.update({ where: { id: classId }, data: { teacherId: otherTeacher } });
+      else if (change === "student transfer")
+        await prisma.student.update({ where: { id: student }, data: { classId: outsideClass } });
+      else
+        await prisma.user.update({ where: { id: teacher }, data: { status: "DISABLED" } });
+
+      const denied = await retry();
+      expect(denied.status).toBe(expectedStatus);
+      expect(denied.body.data).toBeUndefined();
+      expect(await prisma.quranSession.findUniqueOrThrow({ where: { id } })).toEqual(original);
+      expect(await prisma.quranSession.count({ where: { orgId, teacherId: teacher, clientId: data.clientId } })).toBe(1);
+      expect(await prisma.auditLog.count({ where: {
+        orgId, action: "quran.session.recorded", entityId: String(id),
+      } })).toBe(1);
+    } finally {
+      await prisma.class.update({ where: { id: classId }, data: { teacherId: teacher } });
+      await prisma.student.update({ where: { id: student }, data: { classId } });
+      await prisma.user.update({ where: { id: teacher }, data: { status: "ACTIVE" } });
+    }
+    const restored = await retry();
+    expect(restored.status).toBe(200);
+    expect(restored.body.data.id).toBe(String(id));
+    expect(await prisma.quranSession.count({ where: { orgId, teacherId: teacher, clientId: data.clientId } })).toBe(1);
+  });
+
   it("keeps follow-ups retryable, scoped, resolvable and reflected in the dashboard", async () => {
     const data = { clientId: randomUUID(), studentId: String(student), classId: String(classId), note: "Practise reading at home" };
     const first = await post("/api/teacher-workspace/support", data);
