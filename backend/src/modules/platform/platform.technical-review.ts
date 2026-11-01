@@ -50,7 +50,7 @@ export function technicalReviewFingerprint(application: Application): string {
   return createHash("sha256").update(JSON.stringify(state)).digest("hex");
 }
 
-// Internal only. Attestations are human evidence review, not automated security tests.
+// Attestations are human evidence review, not automated security tests.
 export async function recordTechnicalReview(db: PrismaClient, actor: PlatformContext, applicationId: unknown, input: unknown) {
   const id = platformAccountIdSchema.parse(applicationId);
   const data = technicalReviewSchema.parse(input);
