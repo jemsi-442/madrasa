@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'live_data.dart';
 import 'browser_state.dart';
 import 'platform_console.dart';
 
@@ -162,13 +163,22 @@ class AppState extends ChangeNotifier {
 
   Future<AuthSession>? _refreshing;
 
-  Future<dynamic> load(String path) => _request(path);
+  Future<dynamic> load(String path) {
+    if (!liveDataPath(path)) return _request(path);
+    final owner = _authVersion;
+    return liveRead(() {
+      if (owner != _authVersion) {
+        throw const ApiException('Session changed.', 409);
+      }
+      return _request(path);
+    });
+  }
 
   Future<dynamic> submit(String path, Map<String, dynamic> body) =>
-      _request(path, method: 'POST', body: body);
+      dataWrite(() => _request(path, method: 'POST', body: body));
 
   Future<dynamic> update(String path, Map<String, dynamic> body) =>
-      _request(path, method: 'PATCH', body: body);
+      dataWrite(() => _request(path, method: 'PATCH', body: body));
 
   Future<String> exportCsv(String path) async =>
       await _request(path, expectCsv: true) as String;
