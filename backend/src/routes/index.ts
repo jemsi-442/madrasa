@@ -4,6 +4,8 @@ import { env } from "../config/env";
 import { prisma } from "../shared/db/prisma";
 import { createPlatformRouter } from "../modules/platform/platform.routes";
 import { createSchoolInvitationRouter } from "../modules/platform/platform.invitation-routes";
+import { createInvitationDelivery } from '../modules/platform/platform.invitation-delivery';
+import { createSchoolInvitationLimiter } from '../modules/platform/platform.invitation-limit';
 import { createPlatformLoginLimiter } from "../modules/platform/platform.login-limit";
 import { createPlatformHealthReader } from "../modules/platform/platform.health";
 import { studentReportsRouter } from "../modules/student-reports/student-reports.routes";
@@ -33,14 +35,17 @@ import { publicRouter } from "./public.route";
 
 export const apiRouter = Router();
 
-// Remains locked until secure invitation delivery is configured and reviewed.
-apiRouter.use("/school-invitations", createSchoolInvitationRouter(prisma));
+const invitationLimiter = createSchoolInvitationLimiter(env.REDIS_URL, env.PLATFORM_JWT_SECRET);
+const invitationDelivery = createInvitationDelivery(process.env, invitationLimiter);
+apiRouter.use("/school-invitations", createSchoolInvitationRouter(prisma, {
+  enabled: Boolean(invitationDelivery), consumeLimit: invitationLimiter,
+}));
 
 apiRouter.use("/platform", createPlatformRouter(prisma, env.PLATFORM_JWT_SECRET, [env.JWT_SECRET, env.JWT_REFRESH_SECRET], {
   passwordOnly: true,
   encryptionKey: env.PLATFORM_MFA_ENCRYPTION_KEY,
   consumeLimit: createPlatformLoginLimiter(env.REDIS_URL, env.PLATFORM_JWT_SECRET),
-}, createPlatformHealthReader(prisma, env.REDIS_URL)));
+}, createPlatformHealthReader(prisma, env.REDIS_URL), invitationDelivery));
 
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/assessments", assessmentsRouter);
