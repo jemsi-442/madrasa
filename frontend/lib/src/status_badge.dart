@@ -25,7 +25,7 @@ class AfaqStatusBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
-          Icon(icon, color: color, size: 16),
+          Icon(icon, color: color, size: AfaqDesign.iconSmall),
           const SizedBox(width: 6),
         ],
         Flexible(
