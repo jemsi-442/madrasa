@@ -81,6 +81,13 @@ ThemeData afaqControlTheme(ThemeData base) {
     borderSide: const BorderSide(color: line),
   );
   return base.copyWith(
+    iconTheme: base.iconTheme.copyWith(size: AfaqDesign.iconSize),
+    primaryIconTheme: base.primaryIconTheme.copyWith(size: AfaqDesign.iconSize),
+    iconButtonTheme: IconButtonThemeData(
+      style: (base.iconButtonTheme.style ?? const ButtonStyle()).copyWith(
+        iconSize: const WidgetStatePropertyAll(AfaqDesign.iconSize),
+      ),
+    ),
     dialogTheme: DialogThemeData(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
@@ -125,6 +132,7 @@ ThemeData afaqControlTheme(ThemeData base) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
+        iconSize: AfaqDesign.iconSmall,
         backgroundColor: AfaqDesign.actionGold,
         foregroundColor: Colors.white,
         minimumSize: const Size(0, 44),
@@ -140,6 +148,7 @@ ThemeData afaqControlTheme(ThemeData base) {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
+        iconSize: AfaqDesign.iconSmall,
         foregroundColor: ink,
         side: const BorderSide(color: line),
         shape: shape,
@@ -148,7 +157,11 @@ ThemeData afaqControlTheme(ThemeData base) {
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: blue, shape: shape),
+      style: TextButton.styleFrom(
+        foregroundColor: blue,
+        shape: shape,
+        iconSize: AfaqDesign.iconSmall,
+      ),
     ),
     inputDecorationTheme: base.inputDecorationTheme.copyWith(
       filled: true,
