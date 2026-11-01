@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import morgan from "morgan";
+import { requestLog } from "../shared/middleware/request-log";
 
 import { allowedBrowserOrigin } from "../modules/auth/browser-session";
 import { env } from "../config/env";
@@ -20,7 +20,7 @@ export const createApp = () => {
     const allowed = !!origin && allowedBrowserOrigin(origin);
     callback(null, { origin: allowed ? origin : false, credentials: allowed });
   }));
-  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
+  app.use(requestLog());
 
   // Snippe webhook signature verification depends on the exact raw body.
   app.use("/api/webhooks/snippe", express.raw({ type: "*/*" }));
