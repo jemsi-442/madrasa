@@ -1,5 +1,27 @@
 # MMS Backend Development Setup
 
+## Company Account Read Access
+
+### Institution Overview
+
+The Superadmin overview includes registered madrasa and learner totals, active
+teacher accounts, and the current UTC month's lesson deliveries and non-void Quran
+observations. "Madrasas with records" deduplicates madrasas across these two
+sources; it is not a monthly submission count or learner attainment measure.
+The directory preview shows the first six registered madrasas by name. Confirmed
+monthly donation receipts and commitments due that month are separate and grouped
+by currency. Open support notes are current, not restricted to the reporting month.
+Monthly submission tracking and individual madrasa deep links from this preview
+are not implemented; use View all madrasas to open the directory.
+
+IT Security can open Company accounts and inspect account access history.
+The server rechecks the active platform account and grants `platform.account.read`;
+directory responses exclude password hashes and MFA secrets. This is read-only:
+IT has not been granted disable/restore or curriculum-edit permissions.
+Superadmin navigation no longer exposes company accounts, audit history or sessions.
+Legacy Superadmin backend lifecycle permissions are unchanged pending a separate
+account-administration policy; they have not been transferred to IT.
+
 ## 1. Purpose
 
 This guide starts the local development infrastructure for MMS backend.
@@ -1756,3 +1778,259 @@ same isolated, freshly migrated database instead of the possibly stale local
 `.env` database, use `npm run test:platform:staging -- --fresh-install --all-tests`.
 To isolate class-scope relation checks, use
 `npm run test:platform:staging -- --fresh-install --class-management`.
+
+## Superadmin Donors & Funds
+
+`GET /api/platform/funds?month=2026-10&currency=TZS&page=1` requires an
+active, verified platform session with `fundraising.oversight.read` (SUPER_ADMIN
+only). It is read-only and aggregates registered madrasa fundraising records;
+it is not an institution bank ledger. No schema migration or demo reset is needed.
+
+Monthly commitments use pledge due dates. Receipts use received dates, exclude
+voided donations, and remain separate from commitments. Outstanding amounts use
+payments linked to each pledge before the following UTC month, capped at zero per
+pledge. Currencies are never added together. Donor counts are unique within each
+madrasa, not recurring-donor counts. The directory is paginated in batches of 10;
+summary totals cover the entire selected month and currency, not just that page.
+
+The frontend's CSV exports these summary totals, not the paginated directory.
+Institution expenditure, available balance, approval requests and a full ledger
+report are not integrated. Do not infer them from donation receipts. Backend tests:
+`npm test -- tests/platform-funds.test.ts`; frontend tests:
+`flutter test test/platform_funds_page_test.dart`.
+
+### Donation receipt SMS (Meseji)
+
+The first increment is transactional thank-you SMS, not fundraising campaigns.
+Review and apply migration `202611010100_donation_sms` using the normal migration
+process before enabling it. No production migration is authorized by this change.
+Set `SMS_PROVIDER=meseji`, `MESEJI_API_KEY`, the approved `MESEJI_SENDER_ID`,
+`SMS_ENABLED=true` and `DONATION_SMS_ENABLED=true`, then restart the API.
+Sending is deliberately disabled by default. No existing donations are backfilled.
+The adapter uses the official HTTPS Meseji endpoint; it does not forward keys to
+arbitrary configured hosts. Secrets stay on the backend.
+
+New received donations create a unique outbox record in the same transaction.
+HTTP retries return the existing donation without creating another notification.
+The API worker checks the queue every 30 seconds, rechecks receipt/organization
+eligibility and reads the donor phone at dispatch. Invalid numbers, voided
+donations, inactive madrasas and notifications older than 24 hours are skipped.
+The worker uses an atomic claim so multiple API instances cannot send one pending
+record concurrently. A missing queue table is a deployment error: keep the flag
+off until the migration is applied.
+
+`ACCEPTED` means queued by Meseji, not delivered to the phone. Timeouts, malformed
+responses, provider 5xx and interrupted workers become `UNKNOWN`, not automatic
+retries: the published provider contract does not document an idempotency key.
+Known rejections become `FAILED`. Provider reconciliation and a reviewed retry
+action are still pending; never reset UNKNOWN/SENDING jobs to PENDING blindly.
+No SMS content, phone numbers or API secrets are logged.
+
+Superadmin sees the latest 20 statuses via `/api/platform/funds/messages`.
+The panel is read-only. When the service is disabled, its UI initially displays a
+clearly labelled Demo preview with synthetic receipt activity and an example
+reminder schedule. View live status switches back to the actual API state;
+preview does not write data, enable delivery, or create scheduled jobs. A failed
+API request is shown as an error, not silently replaced with sample records.
+Scheduled pledge reminders, opt-in/opt-out controls and
+delivery confirmation polling are not enabled in this increment. These require
+separate implementation before contacting donors with reminder campaigns.
+Tests: `npm test -- tests/donation-sms.test.ts tests/platform-funds.test.ts`.
+
+### Manual donor messages
+
+Donors & Funds now opens a manual workspace with Compose, Sent messages and
+Drafts. The old automatic receipt preview is no longer the main messaging UI.
+Superadmins can search donors by name/madrasa, record or withdraw SMS consent,
+write a message, save a draft and review the exact recipients before queueing.
+The UI shows stored text, recipient name/number/madrasa, author and recipient
+status. History and drafts are scoped to the signed-in superadmin. IT and school
+roles cannot use these platform endpoints. Consent changes and queued messages
+are recorded in the platform audit trail.
+
+Migration `202611010200_manual_donor_messages` adds consent fields and durable
+message/recipient records. It and the receipt SMS migration have been applied to
+the shared LOCAL development database only, with no reset or demo data deletion.
+No production migration has been run.
+
+Routes under `/api/platform/funds/messaging`:
+- GET `?tab=drafts|sent&page=1`: own saved messages and recipient outcomes.
+- GET `/recipients?q=...&page=1`: active-madrasa donors and eligibility.
+- POST `/recipients/:id/consent`: `{optedIn, note}`; requires an actual donor decision.
+- POST `/drafts`: `{id?, revision?, body, donorIds}`; maximum 100 recipients and 1000 characters.
+- POST `/:id/send`: `{revision}` after review; replay does not enqueue twice.
+
+Only opted-in donors with valid phone numbers are eligible. Duplicate phone
+numbers in one selection are rejected. Queued messages are immutable. Phone,
+consent, school status and sender access are rechecked at dispatch; changed or
+withdrawn recipients are skipped. UNKNOWN results are not blindly retried.
+Provider acceptance is not a delivery confirmation; delivery polling, reviewed
+retries and scheduled reminders remain unfinished. Long messages may cost more
+than one SMS; the UI does not promise a provider price or exact segment count.
+
+Manual dispatch additionally requires `DONOR_MANUAL_SMS_ENABLED=true`, the shared
+`SMS_ENABLED=true`, Meseji credentials and an approved sender ID. Both feature
+flags remain false in local development. Drafting and history work without
+enabling dispatch. No real SMS was sent during implementation/testing.
+
+Tests: `npm test -- tests/manual-donor-messages.test.ts` and
+`flutter test test/donor_messaging_workspace_test.dart` (from frontend).
+Local database integration check (synthetic changes rolled back, no sends):
+`node --import tsx scripts/check-manual-donor-messages.mjs --confirm-local-development`.
+# RodSMS and Meseji selection
+
+## Branded financial PDF
+
+### Shared report branding and export coverage
+
+PDFs embed the real Afaq logo derived from `frontend/assets/3.svg`; see
+`backend/assets/branding/README.md` for regeneration. Keep backend assets in
+deployment packages. Student learning PDFs, funds summaries and the new
+tabular exports share navy/gold branding with repeating headers and footers.
+
+Web download buttons are available in Donors & Funds, Madrasa directory,
+annual finance reports and existing published student report views. CSV remains
+available for spreadsheet use. Additional scoped PDF APIs reuse existing CSV
+export services and their permission checks:
+
+Student registry, payment activity and the daily attendance register now also
+offer the shared PDF download button. Student search/class/status and payment
+search/status/channel/invoice filters are applied server-side. Attendance uses
+the selected class/day plus name/status filters; it exports saved attendance
+only, not unmarked students or another class's records. CSV exports keep the
+same filtering rules. Uploaded lesson documents remain original files and are
+not rewritten as Afaq reports.
+
+- `/api/reports/students/pdf`
+- `/api/reports/payments/pdf`
+- `/api/reports/attendance/pdf`
+- `/api/reports/finance/monthly-summary/pdf`
+- `/api/platform/madrasas/pdf`
+
+These return JSON `{ success, data: { fileName, base64 } }`. Existing filter
+parameters are unchanged. Madrasa PDF export uses the existing 5000-record
+limit and rejects larger selections. Institution-wide aggregated reports are
+not yet implemented. Native Android/iOS PDF file saving remains unsupported by
+the existing shared download adapter; this change does not claim native support.
+
+`GET /api/platform/funds/pdf?month=2026-10&currency=TZS&page=1` returns
+the same permission-checked snapshot as the funds overview, rendered as an
+Afaq navy/gold A4 PDF (base64 and filename). The web dashboard offers Download
+PDF alongside CSV. Summary totals cover the selected month; the detail table
+contains only the requested directory page and explicitly states that scope.
+No donor contact data is exported. Headers and page-number footers repeat.
+This is a financial summary, not the full Institutional Reports module shown
+in the design reference, and not a bank balance/expenditure report.
+
+For a synthetic two-page visual fixture, run
+`AFAQ_PDF_PREVIEW=true npx vitest run tests/platform-funds-pdf.test.ts` from
+backend. It writes `/tmp/afaq-financial-summary-preview.pdf` without DB access.
+
+Both donor-message workers support `SMS_PROVIDER=meseji` or
+`SMS_PROVIDER=rodsms`. Meseji remains the existing default. For RodSMS, set
+`RODSMS_API_KEY` in the private backend `.env` and keep
+`RODSMS_SENDER_ID="AFAQ"` (uppercase, approved in the RodSMS account).
+Restart the backend after changing provider or credentials. Never put keys in
+Flutter, example files, or Git.
+
+Sending also requires `SMS_ENABLED=true` and the relevant feature flag:
+`DONOR_MANUAL_SMS_ENABLED=true` for manually composed donor messages or
+`DONATION_SMS_ENABLED=true` for donation receipts. Leave these off until ready
+for billable sends. Existing consent and server permission checks still apply.
+
+The RodSMS adapter uses `POST https://www.rodsms.com/api/v1/messages` with
+Bearer authentication, as documented at https://www.rodsms.com/docs.
+Accepted means queued, not delivered. Delivery polling/webhooks are not yet
+connected. Timeouts and uncertain responses are not retried or sent through
+the other provider. History uses provider-neutral status labels; existing
+records do not contain a separate provider field. Pending jobs use the selected
+provider when the worker starts, so drain the queue before switching providers.
+
+RodSMS requests include an `Idempotency-Key`. Queue workers derive a stable key
+from the persisted message/recipient or receipt record, keeping manual messages
+and receipts separate. This provides provider-side duplicate protection in
+addition to atomic queue claims. Uncertain jobs still require investigation;
+automatic retries and cross-provider fallback remain disabled.
+
+Run `cd backend && npm run sms:check` to check RodSMS configuration, credit
+balance and whether the configured sender ID is approved and active. This
+uses only GET requests, sends no SMS, and does not change feature flags.
+The API key needs `sms:read` for this check; a successful check does not
+verify `sms:send`. No API keys or raw provider responses are printed.
+RodSMS currently documents handset delivery status as `not_available`;
+queued or network-submitted messages must not be labelled delivered.
+
+## Institutional Reports
+
+### Shared runtime updates and form safety
+
+`live_data.dart` registers authenticated read callbacks at the school AppState
+and platform API boundaries. Shared `PageResult` consumers (including school,
+teacher, family and finance screens), school curriculum and oversight result
+panels can refresh without remounting their page. Successful or failed write
+completion requests revalidation; timers also check every 30 seconds while active.
+Requests do not replay mutations, PDF downloads or exports. Session ownership,
+out-of-order results and permission failures are checked before applying data.
+
+The policy is deliberately conservative: a result subtree containing a Form,
+editable text, checkbox, dropdown, radio or slider does not auto-refresh, even
+after focus leaves the field. Modal dialogs pause background result updates.
+An in-flight response is discarded if an editor opened before it returned.
+Save/reload remains owned by that form, with existing conflict handling intact.
+This prevents a background update from replacing an unsaved draft; it does not
+add offline persistence or protect against manually closing/reloading the browser.
+
+Coverage is not yet universal: manually loaded state pages and futures assembled
+with `Future.wait` or other wrappers that discard the registered read callback
+still need explicit integration. Search controls inside a result also pause it
+under this conservative rule. Do not remove those safeguards to force updates.
+Tests: `frontend/test/live_data_test.dart` covers timers, write invalidation,
+permission loss, inline drafts, modal drafts and an in-flight editor race.
+
+The custom madrasa directory now uses lifecycle-aware polling and shared write
+notifications too. It preserves filters and pagination, defers while search
+text differs from the applied query, and pauses for profiles, dialogs, exports
+and writes. Late replies are discarded after a filter change or profile opens.
+Connection errors retain rows with a stale notice; access errors clear them and
+stop polling. Tests: `frontend/test/madrasa_automatic_updates_test.dart`.
+
+The Report screen checks source data and history every 30 seconds while active,
+and on app resume. It preserves form selections, history page and saved draft IDs.
+Polling pauses during saves and when another route/dialog is open; requests do
+not overlap. Transient failures retain the last data with a stale notice and
+retry on the next interval. Authentication/permission failures clear the data
+and stop automatic requests. Persisted report snapshots/PDFs are never rewritten
+by this refresh. This is runtime data polling, separate from development hot
+reload. Donors & Funds now shares the same lifecycle-aware update scheduler:
+its financial overview refreshes without resetting month, currency, page or the
+message composer. Transient errors keep the current data and show a stale notice;
+401/403 removes the financial data and stops polling. Out-of-order filter
+responses are ignored. This does not automatically send SMS or refresh the SMS
+history; other dashboard screens have not yet been migrated.
+
+Superadmin navigation now includes Institutional Reports. Select a month,
+madrasa scope and sections, preview the source-record summary, then generate
+a persisted draft. Recent reports download the saved snapshot as an Afaq-branded
+PDF; they do not silently query newer classroom data. Generation has a stable
+request ID for safe retries and records an audit event. All endpoints recheck
+the active platform account and the superadmin-only `institution.reports.manage`
+permission. School and IT roles cannot use them.
+
+Endpoints under `/api/platform/institution-reports`: `GET /options`,
+`POST /preview`, `POST /`, `GET /?page=1`, and `GET /:id/pdf`.
+The new `202611020100_institutional_reports` migration adds snapshot storage.
+It was applied to the shared local development database only; no data was reset.
+
+Current scope: attendance record counts, recorded curriculum lessons taught,
+non-voided Quran observations, confirmed donation receipts separated by currency,
+and support notes open at the month-end boundary. Monthly timestamps use UTC.
+Readiness means source records exist, **not** that a monthly report was submitted.
+Counts are not unique learners or attainment. Zero records does not prove no
+activity. Formal monthly submissions/approval, teacher-feedback narratives and
+responsibility assignments are not implemented in this report. Only monthly
+summary PDF is available; native Android/iOS PDF saving remains unconnected.
+
+Checks: `npx vitest run tests/institutional-reports.test.ts tests/tabular-report-pdf.test.ts`
+from backend; `flutter test --no-pub test/institutional_reports_page_test.dart`
+from frontend. Synthetic fixtures only. The local HTTP smoke check also verified
+preview, generation, idempotent retry, saved history and PDF download.
