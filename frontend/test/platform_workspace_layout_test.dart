@@ -344,11 +344,9 @@ void main() {
         expect(find.byType(PlatformWorkspaceShell), findsOneWidget);
         expect(
           find.text(
-            role == 'SUPER_ADMIN'
-                ? 'Welcome, Demo Operator!'
-                : 'Assalamu alaikum, Demo Operator',
+            role == 'SUPER_ADMIN' ? 'Welcome, Demo Operator!' : 'Demo Operator',
           ),
-          findsOneWidget,
+          findsWidgets,
         );
         expect(
           paths,
@@ -368,7 +366,9 @@ void main() {
           expect(find.text('Audit trail'), findsNothing);
           expect(find.text('My sessions'), findsNothing);
           expect(find.text('Madrassa setup'), findsNothing);
-          await tester.tap(find.text('Company accounts'));
+          await tester.tap(find.text('Users & Permissions'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.widgetWithText(ChoiceChip, 'Company accounts'));
           await tester.pumpAndSettle();
           expect(paths, contains('/api/platform/accounts'));
           expect(paths, isNot(contains('/api/platform/health')));
