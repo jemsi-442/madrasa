@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'live_data.dart';
 import 'admin_forms.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
@@ -365,7 +366,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<dynamic>(
+  Widget build(BuildContext context) => LiveDataBuilder(
     future: future,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
