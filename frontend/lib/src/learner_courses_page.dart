@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'dashboard_components.dart';
@@ -146,7 +147,7 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
         const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: () => openCourse(course),
-          icon: const Icon(Icons.arrow_forward, size: 18),
+          icon: const Icon(Icons.arrow_forward, size: AfaqDesign.iconSmall),
           label: const Text('View lessons'),
         ),
       ],
@@ -262,7 +263,7 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
                                       const Icon(
                                         Icons.check_circle,
                                         color: Colors.white,
-                                        size: 18,
+                                        size: AfaqDesign.iconSmall,
                                       ),
                                   ],
                                 ),
@@ -344,14 +345,20 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
                 ),
                 ChoiceChip(
                   label: const Text('Grid'),
-                  avatar: const Icon(Icons.grid_view, size: 18),
+                  avatar: const Icon(
+                    Icons.grid_view,
+                    size: AfaqDesign.iconSmall,
+                  ),
                   selected: grid,
                   showCheckmark: false,
                   onSelected: (_) => setState(() => grid = true),
                 ),
                 ChoiceChip(
                   label: const Text('List'),
-                  avatar: const Icon(Icons.view_list_outlined, size: 18),
+                  avatar: const Icon(
+                    Icons.view_list_outlined,
+                    size: AfaqDesign.iconSmall,
+                  ),
                   selected: !grid,
                   showCheckmark: false,
                   onSelected: (_) => setState(() => grid = false),
@@ -524,7 +531,10 @@ class _LearnerLearningHomeState extends State<LearnerLearningHome> {
                 ),
                 TextButton.icon(
                   onPressed: widget.onBrowse,
-                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  icon: const Icon(
+                    Icons.arrow_forward,
+                    size: AfaqDesign.iconSmall,
+                  ),
                   label: const Text('All courses'),
                 ),
               ],
