@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'madrasa_location_fields.dart';
+import 'madrasa_review_summary.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -17,6 +19,11 @@ import 'platform_madrasas_page.dart';
 import 'platform_staff_page.dart';
 import 'platform_curriculum_page.dart';
 import 'curriculum_oversight_page.dart';
+import 'platform_funds_page.dart';
+import 'institutional_reports_page.dart';
+import 'live_data.dart';
+import 'it_workspace_visuals.dart';
+import 'platform_system_health_page.dart';
 import 'workspace_form_dialog.dart';
 import 'workspace_details_dialog.dart';
 
@@ -64,7 +71,22 @@ class PlatformApi {
     _client.close();
   }
 
-  Future<dynamic> call(String path, {Map<String, dynamic>? body}) async {
+  Future<dynamic> call(String path, {Map<String, dynamic>? body}) {
+    if (body != null && path.endsWith('/preview')) {
+      return _call(path, body: body);
+    }
+    if (body != null) return dataWrite(() => _call(path, body: body));
+    if (!liveDataPath(path)) return _call(path);
+    final owner = sessionVersion;
+    return liveRead(() {
+      if (owner != sessionVersion) {
+        throw const ApiException('Session changed.', 409);
+      }
+      return _call(path);
+    });
+  }
+
+  Future<dynamic> _call(String path, {Map<String, dynamic>? body}) async {
     final version = sessionVersion;
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (path != '/login') {
@@ -232,7 +254,13 @@ class _AccountHistoryDialogState extends State<_AccountHistoryDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${widget.fullName}\nPage $page. Times are UTC.'),
+            Text(
+              widget.fullName,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text('Page $page. Times are UTC.'),
+            const SizedBox(height: 6),
             const Text(
               'Newest first. New activity may shift records between pages.',
             ),
@@ -258,8 +286,17 @@ class _AccountHistoryDialogState extends State<_AccountHistoryDialog> {
                     : 'Access restored',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              SelectableText(
-                'By account: ${event['actorId']}\n${event['createdAt']}',
+              const SizedBox(height: 12),
+              ItRecordDetails(
+                values: {
+                  'Changed by': event['actorId'],
+                  'Recorded (UTC)': event['createdAt'],
+                },
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Reason',
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               SelectableText(
@@ -328,6 +365,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool staffView = false;
   bool curriculumView = false;
   bool oversightView = false;
+  bool fundsView = false;
+  bool reportsView = false;
   bool setupView = false;
   String applicationStatus = '';
   String applicationScope = '';
@@ -448,7 +487,14 @@ class _PlatformConsoleState extends State<PlatformConsole> {
 
   Future<void> load() async {
     if (!mounted) return;
-    if (madrasasView || staffView || curriculumView || oversightView) return;
+    if (madrasasView ||
+        staffView ||
+        curriculumView ||
+        oversightView ||
+        fundsView ||
+        reportsView) {
+      return;
+    }
     // Never present a previous access/audit snapshot as a successful refresh.
     setState(() => records = []);
     if (homeView) {
@@ -460,17 +506,6 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         await api.call(office ? '/overview' : '/health') as Map,
       );
       if (!mounted || api.user == null || api.sessionVersion != version) return;
-      if (office) {
-        try {
-          final recent = await api.call(
-            '/tenant-applications?page=1&pageSize=5',
-          );
-          result['recentApplications'] = recent as List;
-        } catch (_) {
-          if (api.user == null || api.sessionVersion != version) rethrow;
-          result['recentApplicationsUnavailable'] = true;
-        }
-      }
       if (mounted && api.user != null && api.sessionVersion == version) {
         setState(() {
           if (isAdmin) {
@@ -585,6 +620,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     String? actorId,
     String? technicalReviewId,
   }) => run(() async {
+    if (isAdmin) return;
     audit = true;
     healthView = false;
     sessionsView = false;
@@ -629,13 +665,22 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     }
     final viewHistory = await sessionDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => WorkspaceFormDialog(
         title: const Text('Onboarding progress'),
         content: SizedBox(
-          width: 520,
+          width: 680,
           child: SingleChildScrollView(
             child: RefreshableOnboardingProgress(
               initialData: data,
+              sendInvitation: () async {
+                final result =
+                    await api.call(
+                          '/tenant-applications/${Uri.encodeComponent(record['id'] as String)}/send-invitation',
+                          body: {},
+                        )
+                        as Map;
+                return result['status'] as String;
+              },
               sessionIsCurrent: () =>
                   api.user != null && api.sessionVersion == version,
               load: () async => visibleProgress(
@@ -648,12 +693,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              isAdmin ? 'View office history' : 'View application history',
+          if (!isAdmin)
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('View application history'),
             ),
-          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
@@ -796,22 +840,29 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     }
   });
 
-  Future<void> applicationDialog({
+  Future<bool?> applicationDialog({
     Map<String, dynamic>? record,
     String? decision,
   }) async {
+    var saved = false;
     final version = api.sessionVersion;
     final name = TextEditingController();
-    final schoolCode = TextEditingController();
     final adminEmail = TextEditingController();
     final reason = TextEditingController();
+    final location = <String, String>{};
     final key = GlobalKey<FormState>();
     final body = await sessionDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => WorkspaceFormDialog(
-        title: Text(record == null ? 'Add Madrasa' : 'Review madrasa'),
+        title: Text(
+          record == null
+              ? 'Add Madrasa'
+              : decision == 'APPROVED'
+              ? 'Approve madrasa'
+              : 'Decline madrasa',
+        ),
         content: SizedBox(
-          width: 440,
+          width: record == null ? 700 : 680,
           child: SingleChildScrollView(
             child: Form(
               key: key,
@@ -829,19 +880,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                           (v?.trim().length ?? 0) < 2 ? 'Enter a name.' : null,
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(
-                      controller: schoolCode,
-                      maxLength: 50,
-                      decoration: const InputDecoration(
-                        labelText: 'Unique code (e.g. afaq-school)',
-                      ),
-                      validator: (v) =>
-                          !RegExp(
-                                r'^[a-z0-9]+(?:-[a-z0-9]+)*$',
-                              ).hasMatch(v ?? '') ||
-                              (v?.length ?? 0) < 3
-                          ? 'Use lowercase letters, numbers and hyphens.'
-                          : null,
+                    const Text(
+                      'Afaq code is assigned automatically when saved (for example AFQ-000001).',
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -854,18 +894,14 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                       validator: (v) =>
                           !(v ?? '').contains('@') ? 'Enter an email.' : null,
                     ),
+                    MadrasaLocationFields(
+                      values: location,
+                      loadSuggestions: (path) => api.call(path),
+                    ),
                   ] else ...[
-                    SelectableText(
-                      '${record['schoolName']}\nCode: ${record['requestedCode']}\nNominated admin: ${record['adminEmail']}\nApplication ID: ${record['id']}',
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      decision == 'APPROVED'
-                          ? 'Approval records the review only. It does not activate the madrassa or create school accounts.'
-                          : 'Rejection closes this request. It does not delete school data or disable an existing madrassa.',
-                    ),
-                    const Text(
-                      'This decision cannot be edited after confirmation.',
+                    MadrasaReviewSummary(
+                      record: record,
+                      approving: decision == 'APPROVED',
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -899,14 +935,21 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                 record == null
                     ? {
                         'schoolName': name.text.trim(),
-                        'requestedCode': schoolCode.text,
                         'adminEmail': adminEmail.text.trim(),
+                        'location': {
+                          for (final entry in location.entries)
+                            if (entry.value.isNotEmpty) entry.key: entry.value,
+                        },
                       }
                     : {'decision': decision, 'reason': reason.text.trim()},
               );
             },
             child: Text(
-              record == null ? 'Save for approval' : 'Confirm decision',
+              record == null
+                  ? 'Save for approval'
+                  : decision == 'APPROVED'
+                  ? 'Confirm approval'
+                  : 'Confirm decline',
             ),
           ),
         ],
@@ -915,7 +958,6 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     // The closing dialog may still animate with these controllers attached.
     await Future<void>.delayed(const Duration(milliseconds: 300));
     name.dispose();
-    schoolCode.dispose();
     adminEmail.dispose();
     reason.dispose();
     if (body != null &&
@@ -932,6 +974,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                 : '/tenant-applications/${record['id']}/review',
             body: body,
           );
+          saved = true;
         } catch (e) {
           if (e is ApiException && e.statusCode < 500) rethrow;
           throw const ApiException(
@@ -956,6 +999,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         }
       });
     }
+    return body == null ? null : saved;
   }
 
   @override
@@ -979,6 +1023,10 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       ? PlatformPage.curriculum
       : oversightView
       ? PlatformPage.oversight
+      : fundsView
+      ? PlatformPage.funds
+      : reportsView
+      ? PlatformPage.reports
       : setupView
       ? PlatformPage.setup
       : healthView
@@ -1001,11 +1049,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           PlatformPage.staff,
           PlatformPage.curriculum,
           PlatformPage.oversight,
-          PlatformPage.accounts,
-          PlatformPage.history,
+          PlatformPage.funds,
+          PlatformPage.reports,
         }.contains(destination)
       : api.user?['role'] == 'IT_SECURITY' &&
             {
+              PlatformPage.accounts,
               PlatformPage.home,
               PlatformPage.health,
               PlatformPage.setup,
@@ -1028,6 +1077,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       staffView = destination == PlatformPage.staff;
       curriculumView = destination == PlatformPage.curriculum;
       oversightView = destination == PlatformPage.oversight;
+      fundsView = destination == PlatformPage.funds;
+      reportsView = destination == PlatformPage.reports;
       setupView = destination == PlatformPage.setup;
       healthView = destination == PlatformPage.health;
       sessionsView = destination == PlatformPage.sessions;
@@ -1041,7 +1092,9 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           !madrasasView &&
           !staffView &&
           !curriculumView &&
-          !oversightView) {
+          !oversightView &&
+          !fundsView &&
+          !reportsView) {
         await load();
       }
     });
@@ -1088,10 +1141,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
-          padding: EdgeInsets.all(constraints.maxWidth < 600 ? 16 : 40),
+          padding: EdgeInsets.all(constraints.maxWidth < 600 ? 16 : 28),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
+              constraints: BoxConstraints(
+                maxWidth: api.user == null ? 1100 : double.infinity,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1403,7 +1458,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                     else ...[
                       Text(
                         accountsView
-                            ? 'Company accounts only. School users are managed separately. Super Admin can disable active IT accounts; Super Admin accounts are protected.'
+                            ? 'Read-only company directory. School users are managed separately.'
                             : sessionsView
                             ? 'Your active sessions. Times are UTC. Only sessions belonging to your account are shown.'
                             : audit
@@ -1662,10 +1717,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    Text(
-                                      audit
-                                          ? '${record['actorRole']} / ${record['entityType']}\n${record['createdAt']}'
-                                          : '${record['requestedCode']} / ${record['status']}\nAdmin: ${record['adminEmail']}',
+                                    ItRecordDetails(
+                                      values: {
+                                        'Actor role': record['actorRole'],
+                                        'Record type': record['entityType'],
+                                        'Recorded (UTC)': record['createdAt'],
+                                      },
                                     ),
                                   ],
                                   if (audit)
@@ -1676,9 +1733,22 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                       children: [
                                         Align(
                                           alignment: Alignment.centerLeft,
-                                          child: SelectableText(
-                                            'Event ID: ${record['id']}\nAccount ID: ${record['actorId']}\nEntity ID: ${record['entityId']}'
-                                            '${record['metadata'] is Map && (record['metadata'] as Map).isNotEmpty ? '\nStatus details: ${jsonEncode(record['metadata'])}' : ''}',
+                                          child: ItRecordDetails(
+                                            values: {
+                                              'Event ID': record['id'],
+                                              'Account ID': record['actorId'],
+                                              'Entity ID': record['entityId'],
+                                              if (record['metadata'] is Map)
+                                                for (final entry
+                                                    in (record['metadata']
+                                                            as Map)
+                                                        .entries)
+                                                  'Detail: ${entry.key}':
+                                                      entry.value is Map ||
+                                                          entry.value is List
+                                                      ? jsonEncode(entry.value)
+                                                      : entry.value,
+                                            },
                                           ),
                                         ),
                                       ],
@@ -1898,7 +1968,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           enabled: !busy,
           onSignOut: () => requestLogout(false),
           onSignOutAll: () => requestLogout(true),
-          onSessions: () => navigateTo(PlatformPage.sessions),
+          onSessions: isAdmin ? null : () => navigateTo(PlatformPage.sessions),
           onChangePassword: () async {
             final changed = await showSchoolPasswordDialog(
               context,
@@ -1911,7 +1981,27 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           },
         ),
       ],
-      child: oversightView
+      child: healthView && !isAdmin
+          ? PlatformSystemHealthPage(
+              snapshot: health,
+              busy: busy,
+              error: error,
+              onRefresh: () => run(load),
+            )
+          : reportsView
+          ? InstitutionalReportsPage(
+              load: (path) => api.call(path),
+              post: (path, body) => api.call(path, body: body),
+            )
+          : fundsView
+          ? PlatformFundsPage(
+              load: (path) => api.call(path),
+              post: (path, body) => api.call(path, body: body),
+              onSessionExpired: () {
+                if (mounted) setState(() {});
+              },
+            )
+          : oversightView
           ? CurriculumOversightPage(
               key: ValueKey(version),
               load: (path) => api.call(path),
@@ -1955,17 +2045,14 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                 }
               },
               onOnboarding: (id) => showOnboardingProgress({'id': id}),
-              onHistory: (id) {
-                setState(() => madrasasView = false);
-                openApplicationAudit(id);
-              },
               onReview: (record, decision) async {
-                await applicationDialog(
+                final saved = await applicationDialog(
                   record: {
                     'id': record['applicationId'],
                     'schoolName': record['name'],
                     'requestedCode': record['code'],
                     'adminEmail': record['adminEmail'],
+                    'location': record['location'],
                   },
                   decision: decision,
                 );
@@ -1975,6 +2062,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                     SnackBar(content: Text(error ?? confirmation!)),
                   );
                 }
+                return saved;
               },
               onSessionExpired: () {
                 if (mounted) setState(() {});
@@ -2253,10 +2341,13 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               'Account responsibilities are unavailable. Refresh before taking action.',
           }),
           const SizedBox(height: 8),
-          SelectableText(
-            'Account ID: ${record['id']}\nCreated (UTC): ${record['createdAt']}',
+          ItRecordDetails(
+            values: {
+              'Account ID': record['id'],
+              'Created (UTC)': record['createdAt'],
+            },
           ),
-          if (api.user?['role'] == 'SUPER_ADMIN')
+          if (api.user?['role'] == 'IT_SECURITY' || isAdmin)
             TextButton.icon(
               onPressed: busy ? null : () => accountAccessHistory(record),
               icon: const Icon(Icons.history),
@@ -2301,8 +2392,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          SelectableText(
-            'ID: ${record['id']}\nSigned in: ${record['createdAt']}\nExpires: ${record['expiresAt']}',
+          ItRecordDetails(
+            values: {
+              'Session ID': record['id'],
+              'Signed in (UTC)': record['createdAt'],
+              'Expires (UTC)': record['expiresAt'],
+            },
           ),
           const SizedBox(height: 12),
           OutlinedButton(
@@ -2476,8 +2571,12 @@ class _PlatformHealthPanelState extends State<PlatformHealthPanel> {
                           : 'This snapshot is at least 60 seconds old. Current service availability is unknown. Use Refresh for a new check.',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  Text(
-                    'Checked: ${snapshot['checkedAt']} (UTC). Results may be cached for 5 seconds.',
+                  const SizedBox(height: 14),
+                  ItRecordDetails(
+                    values: {
+                      'Last checked (UTC)': snapshot['checkedAt'],
+                      'Cache window': 'Up to 5 seconds',
+                    },
                   ),
                 ],
               ],
