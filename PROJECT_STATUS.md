@@ -1,4 +1,4 @@
-# MODERN ISLAMIC FOUNDATION Project Status
+# Afaq Project Status
 
 Last updated: `2026-10-16`
 
