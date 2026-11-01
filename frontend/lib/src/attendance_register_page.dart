@@ -1,9 +1,11 @@
+import 'date_selection.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'attendance_register_editor.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'teacher_ui.dart';
+import 'report_preview.dart';
 
 const attendanceKinds = [
   ('PRESENT', 'Present', forest, Icons.check_circle_outline),
@@ -83,7 +85,7 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
   }
 
   Future<void> pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showAfaqDatePicker(
       context: context,
       initialDate: date,
       firstDate: DateTime(2000),
@@ -189,6 +191,22 @@ class _AttendanceRegisterPageState extends State<AttendanceRegisterPage> {
                     widget.teacherMode
                         ? 'The school office has not assigned any classes yet.'
                         : 'Create a class before taking attendance.',
+                  ),
+                if (classId.isNotEmpty)
+                  ReportPdfButton(
+                    load: widget.load,
+                    enabled: !['UNMARKED', 'ELSEWHERE'].contains(status),
+                    path: Uri(
+                      path: '/api/reports/attendance/pdf',
+                      queryParameters: {
+                        'classId': classId,
+                        'dateFrom': attendanceDay(date),
+                        'dateTo': attendanceDay(date),
+                        if (search.trim().isNotEmpty) 'search': search.trim(),
+                        if (attendanceKinds.any((kind) => kind.$1 == status))
+                          'status': status,
+                      },
+                    ).toString(),
                   ),
               ],
             );
