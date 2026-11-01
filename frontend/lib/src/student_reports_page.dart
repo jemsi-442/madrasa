@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'api_client.dart';
@@ -442,7 +443,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
                                             : () => open('${r['id']}'),
                                         icon: const Icon(
                                           Icons.visibility_outlined,
-                                          size: 18,
+                                          size: AfaqDesign.iconSmall,
                                         ),
                                         label: const Text('Preview'),
                                       ),
