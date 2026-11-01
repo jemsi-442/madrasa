@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'admin_forms.dart';
@@ -233,7 +234,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                       selectedAsset?['id'] == asset['id']
                           ? Icons.check_circle_outline
                           : Icons.arrow_forward,
-                      size: 17,
+                      size: AfaqDesign.iconSmall,
                     ),
                     label: Text(
                       !['OPEN', 'PREVIEW'].contains(asset['accessState'])
@@ -268,7 +269,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Icon(Icons.text_fields, size: 19, color: muted),
+              const Icon(
+                Icons.text_fields,
+                size: AfaqDesign.iconSmall,
+                color: muted,
+              ),
               Text(
                 '${readingSize.toInt()}px',
                 style: const TextStyle(color: muted, fontSize: 12),
@@ -278,14 +283,14 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                 onPressed: readingSize <= 14
                     ? null
                     : () => setState(() => readingSize -= 2),
-                icon: const Icon(Icons.remove, size: 18),
+                icon: const Icon(Icons.remove, size: AfaqDesign.iconSmall),
               ),
               IconButton(
                 tooltip: 'Larger lesson text',
                 onPressed: readingSize >= 24
                     ? null
                     : () => setState(() => readingSize += 2),
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(Icons.add, size: AfaqDesign.iconSmall),
               ),
               TextButton(
                 onPressed: () => setState(() => readingSize = 16),
