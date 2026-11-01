@@ -192,7 +192,7 @@ class _PlatformStaffPageState extends State<PlatformStaffPage> {
             const SizedBox(width: 12),
             Icon(
               allowed ? Icons.check : Icons.remove,
-              size: 20,
+              size: AfaqDesign.iconSmall,
               color: allowed ? const Color(0xff28875a) : AfaqDesign.muted,
             ),
           ],
@@ -290,6 +290,7 @@ class _PlatformStaffPageState extends State<PlatformStaffPage> {
                   ),
                   DropdownButton<String>(
                     value: role,
+                    isExpanded: filters.maxWidth < 600,
                     items: [
                       const DropdownMenuItem(
                         value: '',
@@ -587,9 +588,7 @@ class _PlatformStaffPageState extends State<PlatformStaffPage> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Review staff roles and assigned madrasas. Company accounts remain separate.',
-            ),
+            const Text('Review staff roles and assigned madrasas.'),
             const SizedBox(height: 20),
             LayoutBuilder(
               builder: (_, size) {
