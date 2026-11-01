@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api_client.dart';
 import 'platform_onboarding_progress.dart';
+import 'it_workspace_visuals.dart';
 
 class PlatformProvisioningPanel extends StatefulWidget {
   const PlatformProvisioningPanel({
@@ -220,237 +221,261 @@ class _PlatformProvisioningPanelState extends State<PlatformProvisioningPanel> {
       ? const Text(
           'Session changed or expired. Close this window and sign in again.',
         )
-      : Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Approved applications only. Creation keeps the madrassa inactive. Admin invitations and activation are not available yet.',
-            ),
-            const SizedBox(height: 12),
-            if (busy) const LinearProgressIndicator(),
-            if (message != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Semantics(liveRegion: true, child: Text(message!)),
+      : SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const ItPageHeading(
+                title: 'Madrasa setup',
+                description:
+                    'Prepare approved madrasas, review technical checks and continue administrator onboarding.',
               ),
-            if (progress != null) ...[
-              const SizedBox(height: 16),
-              RefreshableOnboardingProgress(
-                initialData: progress!,
-                sessionIsCurrent: widget.sessionIsCurrent,
-                load: () async => Map<String, dynamic>.from(
-                  await widget.call(
-                        '/tenant-applications/${Uri.encodeComponent(progressRecord!['id'] as String)}/onboarding-progress',
-                      )
-                      as Map,
+              const SizedBox(height: 12),
+              if (busy) const LinearProgressIndicator(),
+              if (message != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Semantics(liveRegion: true, child: Text(message!)),
                 ),
-              ),
-              if (widget.onViewHistory != null)
+              if (progress != null) ...[
+                const SizedBox(height: 16),
+                RefreshableOnboardingProgress(
+                  initialData: progress!,
+                  sendInvitation: () async {
+                    final result =
+                        await widget.call(
+                              '/tenant-applications/${Uri.encodeComponent(progressRecord!['id'] as String)}/send-invitation',
+                              body: {},
+                            )
+                            as Map;
+                    return result['status'] as String;
+                  },
+                  sessionIsCurrent: widget.sessionIsCurrent,
+                  load: () async => Map<String, dynamic>.from(
+                    await widget.call(
+                          '/tenant-applications/${Uri.encodeComponent(progressRecord!['id'] as String)}/onboarding-progress',
+                        )
+                        as Map,
+                  ),
+                ),
+                if (widget.onViewHistory != null)
+                  TextButton(
+                    onPressed: busy || !current
+                        ? null
+                        : () => widget.onViewHistory!(
+                            progressRecord!['id'] as String,
+                          ),
+                    child: const Text('View application history'),
+                  ),
                 TextButton(
-                  onPressed: busy || !current
-                      ? null
-                      : () => widget.onViewHistory!(
-                          progressRecord!['id'] as String,
-                        ),
-                  child: const Text('View application history'),
-                ),
-              TextButton(
-                onPressed: busy ? null : () => load(page),
-                child: const Text('Back to queue'),
-              ),
-            ] else if (followUpRecord != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                '${followUpRecord!['schoolName']} / ${followUpRecord!['requestedCode']}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Check the current application before taking another action. These links only read progress and history; they do not retry creation or send an invitation.',
-              ),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: busy
-                        ? null
-                        : () => viewProgress(followUpRecord!),
-                    icon: const Icon(Icons.fact_check_outlined),
-                    label: const Text('Check current progress'),
-                  ),
-                  if (widget.onViewHistory != null)
-                    TextButton(
-                      onPressed: busy || !current
-                          ? null
-                          : () => widget.onViewHistory!(
-                              followUpRecord!['id'] as String,
-                            ),
-                      child: const Text('View application history'),
-                    ),
-                  TextButton(
-                    onPressed: busy ? null : () => load(page),
-                    child: const Text('Back to queue'),
-                  ),
-                ],
-              ),
-            ] else if (selected != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                'Confirm inactive madrassa',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Text(
-                '${selected!['schoolName']}\nCode: ${selected!['requestedCode']}',
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'This reserves the school code and records your action in the audit trail. It does not create a school admin or grant school access.',
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => setState(() {
-                            selected = null;
-                          }),
-                    child: const Text('Cancel setup'),
-                  ),
-                  FilledButton(
-                    onPressed: busy ? null : provision,
-                    child: const Text('Create inactive madrassa'),
-                  ),
-                ],
-              ),
-            ] else ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final filter in const {
-                    '': 'All approved',
-                    'pending': 'Awaiting setup',
-                    'created': 'Created madrassas',
-                  }.entries)
-                    ChoiceChip(
-                      label: Text(filter.value),
-                      selected: setup == filter.key,
-                      onSelected: busy
-                          ? null
-                          : (_) => load(1, setupFilter: filter.key),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: searchController,
-                enabled: !busy,
-                maxLength: 100,
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                  labelText: 'Search madrassa name or code',
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onSubmitted: (value) => load(1, query: value),
-              ),
-              Wrap(
-                spacing: 12,
-                children: [
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => load(1, query: searchController.text),
-                    child: const Text('Search madrassas'),
-                  ),
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () {
-                            searchController.clear();
-                            load(1, query: '');
-                          },
-                    child: const Text('Clear search'),
-                  ),
-                ],
-              ),
-              if (search.isNotEmpty) Text('Results for "$search"'),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
                   onPressed: busy ? null : () => load(page),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh queue'),
+                  child: const Text('Back to queue'),
                 ),
-              ),
-              if (!busy && records.isEmpty && message == null)
+              ] else if (followUpRecord != null) ...[
+                const SizedBox(height: 16),
                 Text(
-                  setup.isNotEmpty
-                      ? 'No approved madrassas match these filters on this page.'
-                      : search.isEmpty
-                      ? 'No approved applications on this page.'
-                      : 'No approved madrassas match this search on this page.',
+                  '${followUpRecord!['schoolName']} / ${followUpRecord!['requestedCode']}',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-              for (final record in records)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${record['schoolName']}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text('Code: ${record['requestedCode']}'),
-                        TextButton(
-                          onPressed: busy ? null : () => viewProgress(record),
-                          child: const Text('Onboarding progress'),
-                        ),
-                        if (widget.onViewHistory != null)
-                          TextButton(
-                            onPressed: busy || !current
-                                ? null
-                                : () => widget.onViewHistory!(
-                                    record['id'] as String,
-                                  ),
-                            child: const Text('View application history'),
-                          ),
-                        if (record['organization'] != null)
+                const SizedBox(height: 8),
+                const Text(
+                  'Check the current application before taking another action. These links only read progress and history; they do not retry creation or send an invitation.',
+                ),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => viewProgress(followUpRecord!),
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: const Text('Check current progress'),
+                    ),
+                    if (widget.onViewHistory != null)
+                      TextButton(
+                        onPressed: busy || !current
+                            ? null
+                            : () => widget.onViewHistory!(
+                                followUpRecord!['id'] as String,
+                              ),
+                        child: const Text('View application history'),
+                      ),
+                    TextButton(
+                      onPressed: busy ? null : () => load(page),
+                      child: const Text('Back to queue'),
+                    ),
+                  ],
+                ),
+              ] else if (selected != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Confirm inactive madrassa',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  '${selected!['schoolName']}\nCode: ${selected!['requestedCode']}',
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'This reserves the school code and records your action in the audit trail. It does not create a school admin or grant school access.',
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => setState(() {
+                              selected = null;
+                            }),
+                      child: const Text('Cancel setup'),
+                    ),
+                    FilledButton(
+                      onPressed: busy ? null : provision,
+                      child: const Text('Create inactive madrassa'),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final filter in const {
+                      '': 'All approved',
+                      'pending': 'Awaiting setup',
+                      'created': 'Created madrassas',
+                    }.entries)
+                      ChoiceChip(
+                        label: Text(filter.value),
+                        selected: setup == filter.key,
+                        onSelected: busy
+                            ? null
+                            : (_) => load(1, setupFilter: filter.key),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: searchController,
+                  enabled: !busy,
+                  maxLength: 100,
+                  textInputAction: TextInputAction.search,
+                  decoration: const InputDecoration(
+                    labelText: 'Search madrassa name or code',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onSubmitted: (value) => load(1, query: value),
+                ),
+                Wrap(
+                  spacing: 12,
+                  children: [
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => load(1, query: searchController.text),
+                      child: const Text('Search madrassas'),
+                    ),
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () {
+                              searchController.clear();
+                              load(1, query: '');
+                            },
+                      child: const Text('Clear search'),
+                    ),
+                  ],
+                ),
+                if (search.isNotEmpty) Text('Results for "$search"'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: busy ? null : () => load(page),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refresh queue'),
+                  ),
+                ),
+                if (!busy && records.isEmpty && message == null)
+                  Text(
+                    setup.isNotEmpty
+                        ? 'No approved madrassas match these filters on this page.'
+                        : search.isEmpty
+                        ? 'No approved applications on this page.'
+                        : 'No approved madrassas match this search on this page.',
+                  ),
+                for (final record in records)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(22),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            'School status: ${record['organization']['status']}',
-                          )
-                        else
-                          OutlinedButton(
-                            onPressed: busy ? null : () => inspect(record),
-                            child: const Text('Review setup'),
+                            '${record['schoolName']}',
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                      ],
+                          const SizedBox(height: 16),
+                          ItRecordDetails(
+                            values: {
+                              'Afaq code': record['requestedCode'],
+                              'Setup status': record['organization'] == null
+                                  ? 'Awaiting setup'
+                                  : record['organization']['status'],
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: busy ? null : () => viewProgress(record),
+                            child: const Text('Onboarding progress'),
+                          ),
+                          if (widget.onViewHistory != null)
+                            TextButton(
+                              onPressed: busy || !current
+                                  ? null
+                                  : () => widget.onViewHistory!(
+                                      record['id'] as String,
+                                    ),
+                              child: const Text('View application history'),
+                            ),
+                          if (record['organization'] != null)
+                            Text(
+                              'School status: ${record['organization']['status']}',
+                            )
+                          else
+                            OutlinedButton(
+                              onPressed: busy ? null : () => inspect(record),
+                              child: const Text('Review setup'),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
+                Wrap(
+                  spacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: busy || page <= 1
+                          ? null
+                          : () => load(page - 1),
+                      child: const Text('Previous page'),
+                    ),
+                    Text('Page $page'),
+                    TextButton(
+                      onPressed: busy || records.length < 20 || page >= 10000
+                          ? null
+                          : () => load(page + 1),
+                      child: const Text('Next page'),
+                    ),
+                  ],
                 ),
-              Wrap(
-                spacing: 12,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: busy || page <= 1 ? null : () => load(page - 1),
-                    child: const Text('Previous page'),
-                  ),
-                  Text('Page $page'),
-                  TextButton(
-                    onPressed: busy || records.length < 20 || page >= 10000
-                        ? null
-                        : () => load(page + 1),
-                    child: const Text('Next page'),
-                  ),
-                ],
-              ),
+              ],
             ],
-          ],
+          ),
         );
 }
