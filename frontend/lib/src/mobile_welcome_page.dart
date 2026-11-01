@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'public_entry_visuals.dart';
@@ -41,7 +42,7 @@ class MobileWelcomeScreen extends StatelessWidget {
                                   onPressed: () => onNavigate('/contact'),
                                   icon: const Icon(
                                     Icons.help_outline_rounded,
-                                    size: 20,
+                                    size: AfaqDesign.iconSmall,
                                   ),
                                   style: IconButton.styleFrom(
                                     side: const BorderSide(color: publicBorder),
@@ -55,9 +56,7 @@ class MobileWelcomeScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  const EntryEyebrow(
-                                    'ASSALAMU ALAIKUM. WELCOME HOME.',
-                                  ),
+                                  const EntryEyebrow('WELCOME HOME.'),
                                   const SizedBox(height: 10),
                                   Text(
                                     'Rooted in faith.\nReady for tomorrow.',
@@ -122,7 +121,7 @@ class MobileWelcomeScreen extends StatelessWidget {
                               ),
                               icon: const Icon(
                                 Icons.family_restroom_outlined,
-                                size: 20,
+                                size: AfaqDesign.iconSmall,
                               ),
                               label: const Text('Need access as a parent?'),
                             ),
