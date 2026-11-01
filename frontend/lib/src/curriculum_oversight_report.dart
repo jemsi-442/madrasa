@@ -3,6 +3,106 @@ import 'design_tokens.dart';
 import 'dashboard_components.dart' show StatusPill;
 import 'workspace_form_dialog.dart';
 
+class _QuranTabs extends StatefulWidget {
+  const _QuranTabs({required this.buildActivity});
+  final Widget Function(String) buildActivity;
+  @override
+  State<_QuranTabs> createState() => _QuranTabsState();
+}
+
+class _QuranTabsState extends State<_QuranTabs> {
+  String selected = 'READING';
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final entry in const {
+            'READING': 'Recitation',
+            'MEMORIZATION': 'Hifz',
+            'REVISION': 'Revision',
+            'TAJWEED': 'Tajweed',
+          }.entries)
+            ChoiceChip(
+              label: Text(entry.value),
+              selected: selected == entry.key,
+              onSelected: (_) => setState(() => selected = entry.key),
+            ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      widget.buildActivity(selected),
+      const SizedBox(height: 16),
+    ],
+  );
+}
+
+class InstitutionLearningSummary extends StatelessWidget {
+  const InstitutionLearningSummary({super.key, required this.data});
+  final Map data;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: AfaqDesign.panelDecoration(),
+    padding: const EdgeInsets.all(22),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Institution learning coverage',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${data['madrasas']} madrasas matching name/status filters | ${data['month'] ?? 'All time'}',
+        ),
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 32,
+          runSpacing: 20,
+          children: [
+            for (final metric in const {
+              'eligible': 'Active learners',
+              'recorded': 'With Quran records',
+              'unrecorded': 'Without Quran records',
+              'needingSupport': 'Support observed',
+            }.entries)
+              SizedBox(
+                width: 180,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${data[metric.key]}',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    Text(metric.value),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const ExpansionTile(
+          title: Text('How these totals are counted'),
+          children: [
+            Text(
+              'All matching madrasas, including those without curriculum assignments. Subject, level, adoption and assignment pages do not filter these totals. Each active learner is counted once; voided records are excluded.',
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Support means at least one support observation in this period, not an unresolved task. Missing records do not mean absence or failure. Read-only: corrections remain with the responsible teacher.',
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 /// A page-scoped snapshot, not institution totals or learner assessment.
 class CurriculumOversightReport extends StatelessWidget {
   const CurriculumOversightReport({
@@ -12,11 +112,14 @@ class CurriculumOversightReport extends StatelessWidget {
     this.summaryOnly = false,
     this.assessments,
     this.quran,
+    this.compact = false,
+    this.showQuran = true,
   });
   final List rows;
   final bool showSummary, summaryOnly;
   final Map? assessments;
   final Map? quran;
+  final bool compact, showQuran;
 
   int count(Map row, String key) => (row[key] as num?)?.toInt() ?? 0;
   int total(String key) =>
@@ -68,7 +171,7 @@ class CurriculumOversightReport extends StatelessWidget {
               color: color.withValues(alpha: .1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: AfaqDesign.iconSize),
           ),
         ],
       ),
@@ -260,7 +363,7 @@ class CurriculumOversightReport extends StatelessWidget {
           const Icon(
             Icons.menu_book_outlined,
             color: AfaqDesign.gold,
-            size: 28,
+            size: AfaqDesign.iconSize,
           ),
           const SizedBox(height: 16),
           Text(
@@ -275,32 +378,60 @@ class CurriculumOversightReport extends StatelessWidget {
             )
           else
             Text(
-              'Teacher-recorded sessions across ${count(quran!, 'classScopes')} currently adopted classes on this page. ${quran!['month'] == null ? 'All-time' : 'Learning month: ${quran!['month']} (learning date, not entry date)'}; assessment month does not apply. Voided sessions are excluded.',
+              compact
+                  ? '${count(quran!, 'classScopes')} adopted classes on this assignment page | ${quran!['month'] ?? 'All time'} by learning date. Excludes voided sessions.'
+                  : 'Teacher-recorded sessions across ${count(quran!, 'classScopes')} currently adopted classes on this page. ${quran!['month'] == null ? 'All-time' : 'Learning month: ${quran!['month']} (learning date, not entry date)'}; assessment month does not apply. Voided sessions are excluded.',
               style: const TextStyle(color: AfaqDesign.muted),
             ),
           const SizedBox(height: 20),
-          for (final entry in const {
-            'READING': 'Recitation',
-            'MEMORIZATION': 'Hifz',
-            'REVISION': 'Revision',
-            'TAJWEED': 'Tajweed',
-          }.entries) ...[
-            Text(entry.value, style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 6),
-            if (quran == null)
-              const Text(
-                'Requires verified passage assessment records.',
-                style: TextStyle(color: AfaqDesign.muted),
-              )
-            else
-              quranActivity(context, entry.key),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
-              child: Divider(),
+          if (quran?['learners'] is Map) ...[
+            Text(
+              '${count(quran!['learners'] as Map, 'recorded')} / ${count(quran!['learners'] as Map, 'eligible')} current learners recorded',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
+            const SizedBox(height: 8),
+            Text(
+              '${count(quran!['learners'] as Map, 'unrecorded')} without records / ${count(quran!['learners'] as Map, 'needingSupport')} needing support',
+            ),
+            const SizedBox(height: 8),
+            if (!compact)
+              const Text(
+                'Active learners in the current classes on this page, counted once. Support means at least one non-voided support observation in the selected period, not an unresolved task. No record does not mean absence or failure.',
+                style: TextStyle(color: AfaqDesign.muted),
+              ),
+            const SizedBox(height: 20),
           ],
-          const Text(
-            "Sessions may repeat the same learner and passage. Observations are not unique learners, ayah coverage or mastery of the Qur'an. These class records are not attributed to the selected subject or framework version.",
+          if (compact)
+            _QuranTabs(
+              buildActivity: (activity) => quran == null
+                  ? const Text('No verified records available.')
+                  : quranActivity(context, activity),
+            )
+          else
+            for (final entry in const {
+              'READING': 'Recitation',
+              'MEMORIZATION': 'Hifz',
+              'REVISION': 'Revision',
+              'TAJWEED': 'Tajweed',
+            }.entries) ...[
+              Text(entry.value, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
+              if (quran == null)
+                const Text(
+                  'Requires verified passage assessment records.',
+                  style: TextStyle(color: AfaqDesign.muted),
+                )
+              else
+                quranActivity(context, entry.key),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Divider(),
+              ),
+            ],
+          Text(
+            compact
+                ? 'Sessions can repeat learners and passages; they are not ayah coverage or mastery. Support observations are not unresolved tasks. These class records are not tied to a framework version.'
+                : "Sessions may repeat the same learner and passage. Observations are not unique learners, ayah coverage or mastery of the Qur'an. These class records are not attributed to the selected subject or framework version.",
             style: TextStyle(color: AfaqDesign.muted),
           ),
         ],
@@ -432,7 +563,9 @@ class CurriculumOversightReport extends StatelessWidget {
               ),
               const SizedBox(height: 20),
             ],
-            if (constraints.maxWidth >= 1050)
+            if (!showQuran)
+              table(context)
+            else if (constraints.maxWidth >= 1050)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
