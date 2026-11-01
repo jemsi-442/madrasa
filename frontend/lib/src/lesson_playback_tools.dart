@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 const playbackAccent = Color(0xFFFFAA45);
@@ -70,7 +71,7 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
     onPressed: action,
     color: selected ? playbackAccent : Colors.white,
     disabledColor: Colors.white24,
-    icon: Icon(icon, size: 21),
+    icon: Icon(icon, size: AfaqDesign.iconSize),
   );
 
   Widget speedMenu() => Semantics(
