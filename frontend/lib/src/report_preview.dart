@@ -34,7 +34,7 @@ class _ReportPdfButtonState extends State<ReportPdfButton> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Download unavailable. Refresh to check whether this report is still published.',
+              'PDF unavailable. Refresh and check your access before trying again.',
             ),
           ),
         );
@@ -80,7 +80,7 @@ class LearningReportPreview extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(Icons.school_outlined, color: gold, size: 34),
+            const Icon(Icons.school_outlined, color: gold, size: 38),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
