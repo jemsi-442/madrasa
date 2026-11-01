@@ -1,39 +1,28 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'foundation_ui.dart';
 
-Map<int, String> workspaceGroups(String role) => switch (role) {
-  'ADMIN' => const {
-    0: 'Overview',
-    1: 'School management',
-    6: 'Finance & giving',
-    8: 'Online learning',
-    10: 'Results',
-  },
-  'ACCOUNTANT' => const {0: 'Overview', 1: 'Collections', 4: 'Finance tools'},
-  'TEACHER' => const {
-    0: 'Overview',
-    1: 'Teaching',
-    6: 'Communication',
-    8: 'Results',
-  },
-  'PARENT' => const {
-    0: 'Overview',
-    1: 'My family',
-    4: 'School & support',
-    8: 'Results',
-  },
-  'LEARNER' => const {
-    0: 'Overview',
-    1: 'Online learning',
-    3: 'Account & updates',
-    5: 'School records',
-  },
-  _ => const {},
-};
+// Presentation order is separate from stable page IDs used by links/history.
+List<int>? workspacePageOrder(String role) =>
+    role == 'TEACHER' ? const [0, 1, 2, 10, 5, 4, 3, 8, 9, 6, 7] : null;
 
 List<int> relatedWorkspacePages(String role, int page) {
   if (page == 0) return const [];
+  // Teaching suggestions move toward recording, reporting and communication.
+  // Returning to an earlier task belongs to Back or the sidebar, not Next.
+  if (role == 'TEACHER') {
+    return switch (page) {
+      10 => const [5],
+      1 => const [2, 4],
+      2 => const [4, 8],
+      4 => const [3, 8],
+      3 => const [8, 9],
+      8 => const [9, 7],
+      9 => const [7],
+      _ => const [],
+    };
+  }
   final journeys = switch (role) {
     'ADMIN' => const [
       [1, 2, 5],
@@ -47,13 +36,6 @@ List<int> relatedWorkspacePages(String role, int page) {
       [3, 1],
       [5, 6],
       [7, 1],
-    ],
-    'TEACHER' => const [
-      [1, 2, 3],
-      [1, 4],
-      [8, 9],
-      [7, 2],
-      [5, 6],
     ],
     'PARENT' => const [
       [1, 2, 3],
@@ -115,7 +97,10 @@ class WorkspaceTrail extends StatelessWidget {
               child: TextButton.icon(
                 key: const ValueKey('workspace-back'),
                 onPressed: onBack,
-                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  size: AfaqDesign.iconSmall,
+                ),
                 label: const Text('Back'),
                 style: TextButton.styleFrom(
                   foregroundColor: ink,
@@ -132,9 +117,14 @@ class WorkspaceTrail extends StatelessWidget {
             key: const ValueKey('workspace-home'),
             tooltip: 'Go to $homeTitle',
             onPressed: atHome ? null : onHome,
-            icon: const Icon(Icons.home_outlined, size: 20),
+            icon: const Icon(Icons.home_outlined, size: AfaqDesign.iconSmall),
           ),
-          if (!atHome) const Icon(Icons.chevron_right, color: muted, size: 18),
+          if (!atHome)
+            const Icon(
+              Icons.chevron_right,
+              color: muted,
+              size: AfaqDesign.iconSmall,
+            ),
           const SizedBox(width: 6),
           Expanded(
             child: Semantics(
@@ -189,11 +179,6 @@ class WorkspaceNextSteps extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Related pages for your next task.',
-            style: TextStyle(color: muted, fontSize: 12),
-          ),
           const SizedBox(height: 12),
           for (final page in pages)
             Padding(
@@ -211,13 +196,9 @@ class WorkspaceNextSteps extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  subtitle: Text(
-                    page.purpose,
-                    style: const TextStyle(color: muted, fontSize: 12),
-                  ),
                   trailing: const Icon(
                     Icons.arrow_forward_rounded,
-                    size: 18,
+                    size: AfaqDesign.iconSmall,
                     color: muted,
                   ),
                   onTap: () => onSelect(page.index),
