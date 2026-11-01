@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/api_client.dart';
 import 'package:mif_app/src/platform_console.dart';
+import 'helpers/platform_navigation.dart';
 
 Map<String, dynamic> loginResponse(String role) => {
   'accessToken': 'platform-token',
@@ -79,35 +80,56 @@ void main() {
     });
   }
 
-  testWidgets('IT sees audit only and session expiry returns to login', (
-    tester,
-  ) async {
-    final calls = <String>[];
-    final api = PlatformApi(
-      client: MockClient((req) async {
-        calls.add(req.url.path);
-        return success(
-          req.url.path.endsWith('/login') ? loginResponse('IT_SECURITY') : [],
-        );
-      }),
-    );
-    await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-    final inputs = find.byType(TextFormField);
-    await tester.enterText(inputs.at(0), 'it@example.test');
-    await tester.enterText(inputs.at(1), 'private-password');
-    await tester.enterText(inputs.at(2), '123456');
-    await tester.ensureVisible(find.text('Verify and sign in'));
-    await tester.tap(find.text('Verify and sign in'));
-    await tester.pumpAndSettle();
-    expect(find.text('Audit trail'), findsOneWidget);
-    expect(find.text('Request madrassa'), findsNothing);
-    expect(calls, contains('/api/platform/audit-events'));
-    expect(calls, isNot(contains('/api/platform/tenant-applications')));
-    await tester.pump(const Duration(minutes: 16));
-    await tester.pumpAndSettle();
-    expect(find.text('Platform sign in'), findsOneWidget);
-    expect(api.user, isNull);
-    await tester.pumpWidget(const SizedBox());
-    api.close();
-  });
+  for (final width in [390.0, 1280.0]) {
+    testWidgets('IT audit navigation and session expiry work at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final calls = <String>[];
+      final api = PlatformApi(
+        client: MockClient((req) async {
+          calls.add(req.url.path);
+          if (req.url.path.endsWith('/health')) {
+            return success({
+              'status': 'healthy',
+              'checkedAt': DateTime.now().toUtc().toIso8601String(),
+              'checks': <dynamic>[],
+            });
+          }
+          return success(
+            req.url.path.endsWith('/login') ? loginResponse('IT_SECURITY') : [],
+          );
+        }),
+      );
+      await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
+      final inputs = find.byType(TextFormField);
+      await tester.enterText(inputs.at(0), 'it@example.test');
+      await tester.enterText(inputs.at(1), 'private-password');
+      await tester.enterText(inputs.at(2), '123456');
+      await tester.ensureVisible(find.text('Verify and sign in'));
+      await tester.tap(find.text('Verify and sign in'));
+      await tester.pumpAndSettle();
+      expect(find.text('Security activity'), findsOneWidget);
+      await openPlatformPage(tester, 'System health');
+      expect(find.text('Service availability'), findsOneWidget);
+      expect(find.text('Core services available'), findsOneWidget);
+      await openPlatformPage(tester, 'Audit trail');
+      expect(find.text('Security activity'), findsOneWidget);
+      expect(find.text('Request madrassa'), findsNothing);
+      expect(calls, contains('/api/platform/audit-events'));
+      expect(calls, contains('/api/platform/health'));
+      expect(calls, isNot(contains('/api/platform/curriculum')));
+      expect(calls, isNot(contains('/api/platform/accounts')));
+      expect(calls, isNot(contains('/api/platform/tenant-applications')));
+      await tester.pump(const Duration(minutes: 16));
+      await tester.pumpAndSettle();
+      expect(find.text('Platform sign in'), findsOneWidget);
+      expect(api.user, isNull);
+      await tester.pumpWidget(const SizedBox());
+      api.close();
+    });
+  }
 }
