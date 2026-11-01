@@ -4,6 +4,7 @@ import 'shared_feedback.dart';
 import 'status_badge.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'workspace_details_dialog.dart';
 
 typedef TeacherNavigate =
     void Function(int page, {String? classId, Map<String, dynamic>? student});
@@ -168,56 +169,154 @@ class LearningHistory extends StatelessWidget {
   final void Function(Map<String, dynamic>)? onVoid;
   final String? teacherId;
   @override
-  Widget build(BuildContext context) => sessions.isEmpty
-      ? const EmptyRecords('No learning sessions recorded yet.')
-      : RecordTable(
-          minWidth: 700,
-          columns: const [
-            'Date',
-            'Activity',
-            'Ayahs',
-            'Observation',
-            'Recorded by',
-            '',
-          ],
-          rows: [
-            for (final s in sessions)
-              DataRow(
-                cells: [
-                  DataCell(Text(shortDate(s['learnedOn']))),
-                  DataCell(
-                    Text(learningActivities[s['activity']] ?? 'Learning'),
-                  ),
-                  DataCell(Text('${s['ayahFrom']}-${s['ayahTo']}')),
-                  DataCell(
-                    TeacherTag(
-                      s['voidedAt'] != null
-                          ? 'Voided'
-                          : learningObservations[s['observation']] ??
-                                'Recorded',
-                      color: s['voidedAt'] != null
-                          ? muted
-                          : s['observation'] == 'INDEPENDENT'
-                          ? forest
-                          : gold,
-                    ),
-                  ),
-                  DataCell(
-                    Text(recordText(recordMap(s['teacher'])['fullName'])),
-                  ),
-                  DataCell(
-                    s['voidedAt'] == null &&
-                            '${s['teacherId']}' == teacherId &&
-                            onVoid != null
-                        ? IconButton(
-                            tooltip: 'Correct this record',
-                            onPressed: () => onVoid!(s),
-                            icon: const Icon(Icons.edit_note),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ],
+  Widget build(BuildContext context) {
+    if (sessions.isEmpty) {
+      return const EmptyRecords('No learning sessions recorded yet.');
+    }
+    final table = RecordTable(
+      minWidth: 700,
+      columns: const [
+        'Date',
+        'Activity',
+        'Ayahs',
+        'Observation',
+        'Recorded by',
+        '',
+      ],
+      rows: [
+        for (final s in sessions)
+          DataRow(
+            cells: [
+              DataCell(
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(shortDate(s['learnedOn'])),
+                    if (s['timetableSlot'] != null)
+                      Text(
+                        '${recordMap(s['timetableSlot'])['startsAt']}-${recordMap(s['timetableSlot'])['endsAt']}',
+                        style: const TextStyle(fontSize: 11, color: muted),
+                      ),
+                  ],
+                ),
               ),
+              DataCell(Text(learningActivities[s['activity']] ?? 'Learning')),
+              DataCell(Text('${s['ayahFrom']}-${s['ayahTo']}')),
+              DataCell(
+                TeacherTag(
+                  s['voidedAt'] != null
+                      ? 'Voided'
+                      : learningObservations[s['observation']] ?? 'Recorded',
+                  color: s['voidedAt'] != null
+                      ? muted
+                      : s['observation'] == 'INDEPENDENT'
+                      ? forest
+                      : gold,
+                ),
+              ),
+              DataCell(Text(recordText(recordMap(s['teacher'])['fullName']))),
+              DataCell(
+                s['voidedAt'] != null
+                    ? IconButton(
+                        tooltip: 'View correction details',
+                        icon: const Icon(Icons.info_outline),
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (_) => WorkspaceDetailsDialog(
+                            title: 'Learning record correction',
+                            icon: Icons.history,
+                            fields: [
+                              ('Passage', passageLabel(s)),
+                              (
+                                'Activity',
+                                learningActivities[s['activity']] ?? 'Learning',
+                              ),
+                              (
+                                'Original observation',
+                                learningObservations[s['observation']] ??
+                                    'Not recorded',
+                              ),
+                              ('Learning date', shortDate(s['learnedOn'])),
+                              (
+                                'Recorded by',
+                                recordText(recordMap(s['teacher'])['fullName']),
+                              ),
+                              ('Voided on', shortDate(s['voidedAt'])),
+                            ],
+                            sections: [
+                              (
+                                'Reason for correction',
+                                recordText(
+                                  s['voidReason'],
+                                  'No correction reason recorded.',
+                                ),
+                              ),
+                              (
+                                'History retained',
+                                'This entry is voided and no longer contributes to memorised ayahs. The original learning record remains in history.',
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : '${s['teacherId']}' == teacherId && onVoid != null
+                    ? IconButton(
+                        tooltip: 'Correct this record',
+                        onPressed: () => onVoid!(s),
+                        icon: const Icon(Icons.edit_note),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 700) return table;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < table.rows.length; index++) ...[
+              if (index > 0) const Divider(height: 32),
+              Padding(
+                key: ValueKey('learning-history-card-${sessions[index]['id']}'),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: table.rows[index].cells[0].child),
+                        table.rows[index].cells[5].child,
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    for (var field = 1; field < 5; field++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              table.columns[field],
+                              style: Theme.of(
+                                context,
+                              ).textTheme.labelSmall?.copyWith(color: muted),
+                            ),
+                            const SizedBox(height: 4),
+                            table.rows[index].cells[field].child,
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ],
         );
+      },
+    );
+  }
 }
