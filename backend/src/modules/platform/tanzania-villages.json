@@ -1,0 +1,26 @@
+{
+  "coverage": "Small, non-exhaustive reference list. Suggestions are not address validation; manual entries remain allowed.",
+  "checkedAt": "2026-10-30",
+  "entries": [
+    {
+      "region": "Pwani", "district": "Kisarawe", "ward": "Chole", "village": "Kwala",
+      "source": "https://www.kisarawedc.go.tz/videos/63"
+    },
+    {
+      "region": "Pwani", "district": "Kisarawe", "ward": "Kiluvya", "village": "Tondoroni",
+      "source": "https://polis.bunge.go.tz/members/395/contributions"
+    },
+    {
+      "region": "Pwani", "district": "Kisarawe", "ward": "Maneromango", "village": "Msegamo",
+      "source": "https://kisarawedc.go.tz/storage/app/media/uploaded-files/ZIARA%20NAIBU%20WAZIRI-%20AFYA.pdf"
+    },
+    {
+      "region": "Lindi", "district": "Kilwa", "ward": "Mandawa", "village": "Kiwawa",
+      "source": "https://www.lands.go.tz/index.php/news/mradi-wa-pamoja-tuhifadhi-bahari-yetu-wawezesha-wananchi-kijiji-cha-kiwawa-kupata-hati-426-za-kimila"
+    },
+    {
+      "region": "Tabora", "district": "Sikonge", "ward": "Kisanga", "village": "Kisanga",
+      "source": "https://www.moh.go.tz/storage/app/uploads/public/67f/658/0eb/67f6580ebe509383710047.pdf"
+    }
+  ]
+}
