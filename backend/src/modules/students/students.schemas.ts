@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { residenceLocationSchema } from '../../shared/validation/location';
 
 const numericId = z.string().regex(/^\d+$/, "must be a numeric string");
 const paginationSchema = z.object({
@@ -12,6 +13,7 @@ export const guardianInputSchema = z.object({
   email: z.string().email("email must be valid").optional(),
   relationship: z.string().min(2, "relationship must be at least 2 characters").optional(),
   address: z.string().min(2, "address must be at least 2 characters").optional(),
+  residenceLocation: residenceLocationSchema.optional(),
 });
 
 export const createGuardianSchema = guardianInputSchema;
