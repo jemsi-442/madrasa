@@ -69,7 +69,7 @@ class LessonPlayerEntry extends StatelessWidget {
                 Icon(
                   audio ? Icons.headphones_outlined : Icons.ondemand_video,
                   color: playbackAccent,
-                  size: 44,
+                  size: 48,
                 ),
                 const SizedBox(height: 14),
                 Text(
