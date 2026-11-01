@@ -179,7 +179,7 @@ class _SchoolInvitationPageState extends State<SchoolInvitationPage> {
                               const Icon(
                                 Icons.verified_user_outlined,
                                 color: forest,
-                                size: 40,
+                                size: 44,
                               ),
                               const SizedBox(height: 16),
                               const Text(
@@ -220,7 +220,7 @@ class _SchoolInvitationPageState extends State<SchoolInvitationPage> {
                                 ),
                                 const SizedBox(height: 12),
                                 const Text(
-                                  'Testing stage: email invitations and acceptance are not enabled in the current deployment. This page does not bypass that restriction.',
+                                  'Enter the private code from your invitation email, then choose your password. The code can only be used once.',
                                 ),
                                 const SizedBox(height: 20),
                                 TextFormField(
