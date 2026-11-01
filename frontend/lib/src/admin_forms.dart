@@ -1,3 +1,4 @@
+import 'date_selection.dart';
 import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'workspace_form_dialog.dart';
+import 'madrasa_location_fields.dart';
 
 typedef PageSubmitter =
     Future<dynamic> Function(String path, Map<String, dynamic> body);
@@ -29,11 +31,15 @@ class AdminField {
     this.lookupLabel = 'fullName',
     this.lookupSubtitle,
     this.initial,
+    this.initialLocation,
+    this.minLength,
   });
   final String name, label, kind, lookupLabel;
   final bool required;
   final Map<String, String>? options;
   final String? lookupPath, lookupSubtitle, initial;
+  final Map<String, String>? initialLocation;
+  final int? minLength;
 }
 
 Future<bool> showAdminForm(
@@ -91,6 +97,11 @@ class _AdminFormState extends State<_AdminForm> {
       f.name: TextEditingController(text: f.initial),
   };
   final values = <String, String>{};
+  late final locations = <String, Map<String, String>>{
+    for (final f in widget.fields)
+      if (f.kind == 'location')
+        f.name: Map<String, String>.from(f.initialLocation ?? {}),
+  };
   bool busy = false;
   String? error;
   @override
@@ -110,7 +121,14 @@ class _AdminFormState extends State<_AdminForm> {
     try {
       await widget.onSave({
         for (final f in widget.fields)
-          if ((values[f.name] ?? controllers[f.name]!.text).trim().isNotEmpty)
+          if (f.kind == 'location' &&
+              (locations[f.name]?.values.any((v) => v.isNotEmpty) ?? false))
+            f.name: {
+              for (final entry in locations[f.name]!.entries)
+                if (entry.value.isNotEmpty) entry.key: entry.value,
+            }
+          else if (f.kind != 'location' &&
+              (values[f.name] ?? controllers[f.name]!.text).trim().isNotEmpty)
             f.name: f.kind == 'password'
                 ? controllers[f.name]!.text
                 : (values[f.name] ?? controllers[f.name]!.text).trim(),
@@ -153,18 +171,25 @@ class _AdminFormState extends State<_AdminForm> {
       }
       return;
     }
-    final day = await showDatePicker(
+    final existing = DateTime.tryParse(
+      values[f.name] ?? controllers[f.name]!.text,
+    );
+    final initial = f.kind == 'datetime' ? existing?.toLocal() : existing;
+    final day = await showAfaqDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      initialDate: initial ?? DateTime.now(),
+      firstDate: DateTime(f.name == 'dob' ? 1900 : 2000),
+      lastDate: f.name == 'dob' ? DateTime.now() : DateTime(2100, 12, 31),
+      helpText: f.label,
     );
     if (day == null || !mounted) return;
     DateTime selected = day;
     if (f.kind == 'datetime') {
       final time = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now(),
+        initialTime: initial == null
+            ? TimeOfDay.now()
+            : TimeOfDay.fromDateTime(initial),
       );
       if (time == null || !mounted) return;
       selected = DateTime(day.year, day.month, day.day, time.hour, time.minute);
@@ -198,7 +223,42 @@ class _AdminFormState extends State<_AdminForm> {
                 for (final f in widget.fields)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 18),
-                    child: f.options != null
+                    child: f.kind == 'location'
+                        ? IgnorePointer(
+                            ignoring: busy,
+                            child: ExpansionTile(
+                              initiallyExpanded:
+                                  f.required ||
+                                  (f.initialLocation?.isNotEmpty ?? false),
+                              maintainState: true,
+                              title: Text(
+                                '${f.label}${f.required ? '' : ' (optional)'}',
+                              ),
+                              children: [
+                                LocationFields(
+                                  title: f.label,
+                                  requiredFields: f.required
+                                      ? const {
+                                          'country',
+                                          'region',
+                                          'district',
+                                          'ward',
+                                        }
+                                      : const {},
+                                  values: locations.putIfAbsent(
+                                    f.name,
+                                    () => {},
+                                  ),
+                                  loadSuggestions: widget.load == null
+                                      ? null
+                                      : (path) => widget.load!(
+                                          '/api/organizations$path',
+                                        ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : f.options != null
                         ? DropdownButtonFormField<String>(
                             initialValue: f.initial,
                             isExpanded: true,
@@ -250,7 +310,40 @@ class _AdminFormState extends State<_AdminForm> {
                               suffixIcon: f.lookupPath != null
                                   ? const Icon(Icons.expand_more)
                                   : f.kind.startsWith('date')
-                                  ? const Icon(Icons.calendar_today_outlined)
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (!f.required &&
+                                            controllers[f.name]!
+                                                .text
+                                                .isNotEmpty)
+                                          IconButton(
+                                            tooltip:
+                                                'Clear ${f.label.toLowerCase()}',
+                                            icon: const Icon(
+                                              Icons.close,
+                                              size: 18,
+                                            ),
+                                            onPressed: busy
+                                                ? null
+                                                : () => setState(() {
+                                                    values[f.name] = '';
+                                                    controllers[f.name]!
+                                                        .clear();
+                                                  }),
+                                          ),
+                                        IconButton(
+                                          tooltip:
+                                              'Choose ${f.label.toLowerCase()}',
+                                          icon: const Icon(
+                                            Icons.calendar_today_outlined,
+                                          ),
+                                          onPressed: busy
+                                              ? null
+                                              : () => pick(f),
+                                        ),
+                                      ],
+                                    )
                                   : null,
                             ),
                             validator: (raw) {
@@ -259,6 +352,10 @@ class _AdminFormState extends State<_AdminForm> {
                                 return 'Enter ${f.label.toLowerCase()}';
                               }
                               if (v.isEmpty) return null;
+                              if (f.minLength != null &&
+                                  v.length < f.minLength!) {
+                                return 'Enter at least ${f.minLength} characters';
+                              }
                               if (f.kind == 'integer' &&
                                   (!RegExp(r'^[1-9]\d*$').hasMatch(v) ||
                                       int.tryParse(v) == null)) {
