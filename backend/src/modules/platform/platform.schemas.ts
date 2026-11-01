@@ -8,10 +8,16 @@ export const platformRestoreAccountSchema = platformDisableAccountSchema.extend(
   suspensionEventId: z.string().min(1).max(30),
 });
 
+import { locationSchema } from '../../shared/validation/location';
+export const madrasaLocationSchema = locationSchema;
+
 export const tenantApplicationSchema = z.object({
+  location: madrasaLocationSchema,
   schoolName: z.string().trim().min(2).max(150),
   requestedCode: z.string().trim().toLowerCase().min(3).max(50)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, digits and single hyphens"),
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, digits and single hyphens")
+    .refine(code => !/^afq-\d+$/.test(code), 'Numbered Afaq codes are assigned by the server').optional(),
+  governmentRegistrationNumber: z.string().trim().min(1).max(100).optional(),
   adminEmail: z.string().trim().toLowerCase().email().max(150),
 }).strict();
 
