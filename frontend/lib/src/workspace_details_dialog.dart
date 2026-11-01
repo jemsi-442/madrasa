@@ -29,7 +29,11 @@ class WorkspaceDetailsSection extends StatelessWidget {
                 color: AfaqDesign.actionGold.withValues(alpha: .09),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: AfaqDesign.actionGold, size: 21),
+              child: Icon(
+                icon,
+                color: AfaqDesign.actionGold,
+                size: AfaqDesign.iconSize,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -141,7 +145,7 @@ class WorkspaceRecordDetails extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 17, color: color),
+          Icon(icon, size: AfaqDesign.iconSmall, color: color),
           const SizedBox(width: 7),
           Flexible(
             child: SelectableText(
@@ -282,7 +286,7 @@ class WorkspaceDetailsDialog extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.visibility_outlined,
-                    size: 17,
+                    size: AfaqDesign.iconSmall,
                     color: AfaqDesign.muted,
                   ),
                   SizedBox(width: 8),
@@ -319,7 +323,7 @@ class WorkspaceDetailsDialog extends StatelessWidget {
         [
           TextButton.icon(
             onPressed: () => copyDetails(context),
-            icon: const Icon(Icons.copy_outlined, size: 18),
+            icon: const Icon(Icons.copy_outlined, size: AfaqDesign.iconSmall),
             label: const Text('Copy details'),
           ),
           OutlinedButton(
