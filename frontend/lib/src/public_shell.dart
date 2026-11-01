@@ -49,7 +49,10 @@ ThemeData publicTheme(BuildContext context) => Theme.of(context).copyWith(
     ),
   ),
   textButtonTheme: TextButtonThemeData(
-    style: TextButton.styleFrom(foregroundColor: publicInk),
+    style: TextButton.styleFrom(
+      foregroundColor: publicInk,
+      iconSize: AfaqDesign.iconSmall,
+    ),
   ),
 );
 
@@ -59,11 +62,15 @@ class PublicBrand extends StatelessWidget {
     this.light = false,
     this.stacked = false,
     this.compact = false,
+    this.markOnly = false,
+    this.wordmarkSize,
   });
 
   final bool light;
   final bool stacked;
   final bool compact;
+  final bool markOnly;
+  final double? wordmarkSize;
 
   @override
   Widget build(BuildContext context) {
@@ -78,17 +85,19 @@ class PublicBrand extends StatelessWidget {
       painter: _BrandPainter(light: light),
     );
     final name = Text(
-      'Modern Islamic\nFoundation',
+      publicBrandName,
       textAlign: stacked ? TextAlign.center : TextAlign.left,
       style: TextStyle(
         color: light ? Colors.white : publicInk,
         fontFamily: AfaqDesign.bodyFont,
         fontWeight: FontWeight.w700,
-        fontSize: stacked
-            ? 28
-            : compact
-            ? 13
-            : 17,
+        fontSize:
+            wordmarkSize ??
+            (stacked
+                ? 28
+                : compact
+                ? 13
+                : 17),
         height: 1.12,
         letterSpacing: -0.5,
       ),
@@ -96,7 +105,9 @@ class PublicBrand extends StatelessWidget {
     return Semantics(
       label: publicBrandName,
       excludeSemantics: true,
-      child: stacked
+      child: markOnly
+          ? Center(child: mark)
+          : stacked
           ? Column(
               mainAxisSize: MainAxisSize.min,
               children: [mark, const SizedBox(height: 14), name],
@@ -297,7 +308,7 @@ class GoldAction extends StatelessWidget {
                 Flexible(child: Text(label, textAlign: TextAlign.center)),
                 if (icon != null) ...[
                   const SizedBox(width: 14),
-                  Icon(icon, size: 20),
+                  Icon(icon, size: AfaqDesign.iconSmall),
                 ],
               ],
             ),
@@ -494,7 +505,10 @@ class AuthFrame extends StatelessWidget {
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.white,
                         ),
-                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          size: AfaqDesign.iconSmall,
+                        ),
                         label: const Text('Home'),
                       ),
                     ],
@@ -680,7 +694,7 @@ class _StoryFeature extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 27),
     child: Row(
       children: [
-        Icon(icon, color: Colors.white, size: 27),
+        Icon(icon, color: Colors.white, size: AfaqDesign.iconSize),
         const SizedBox(width: 17),
         Expanded(
           child: Column(
