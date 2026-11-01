@@ -224,7 +224,7 @@ void main() {
         expect(find.text('IT sign-off withdrawn'), findsNothing);
         expect(find.text('Inactive madrassa created'), findsNothing);
         expect(find.text('System health'), findsNothing);
-        expect(find.text('My sessions'), findsNothing);
+        expect(find.widgetWithText(ChoiceChip, 'My sessions'), findsOneWidget);
       }
       await tester.ensureVisible(find.text('Madrassa approved').last);
       await tester.tap(find.text('Madrassa approved').last);
@@ -277,7 +277,7 @@ void main() {
         expect(find.text('Activity by account: operator'), findsNothing);
       } else {
         expect(find.text('View actor activity'), findsNothing);
-        expect(find.text('Office activity'), findsOneWidget);
+        expect(find.widgetWithText(ChoiceChip, 'Activity log'), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
