@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'dashboard_components.dart';
@@ -310,7 +311,7 @@ class _DonationsPageState extends State<DonationsPage> {
                           backgroundColor: blue.withValues(alpha: .08),
                           child: const Icon(
                             Icons.volunteer_activism_outlined,
-                            size: 20,
+                            size: AfaqDesign.iconSmall,
                             color: ink,
                           ),
                         ),
