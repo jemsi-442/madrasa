@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PlatformGovernanceService } from '../src/modules/platform/platform.service';
+import { hasPlatformPermission } from '../src/modules/platform/platform.permissions';
 const actor = { scope: 'platform' as const, accountId: 'admin', sessionId: 'session' };
 function fixture(role = 'SUPER_ADMIN') {
   const tx = {
@@ -10,6 +11,21 @@ function fixture(role = 'SUPER_ADMIN') {
   return { tx, service: new PlatformGovernanceService({ $transaction: async (run: (tx: unknown) => unknown) => run(tx) } as unknown as PrismaClient) };
 }
 describe('restricted account access history', () => {
+  it('IT account access does not grant lifecycle or curriculum changes', () => {
+    expect(hasPlatformPermission('IT_SECURITY', 'platform.account.read')).toBe(true);
+    for (const permission of ['platform.account.disable.it', 'platform.account.restore.it', 'curriculum.manage'] as const) {
+      expect(hasPlatformPermission('IT_SECURITY', permission)).toBe(false);
+    }
+  });
+  it('IT directory selects only public account fields', async () => {
+    const f = fixture('IT_SECURITY');
+    Object.assign(f.tx.platformAccount, { findMany: vi.fn().mockResolvedValue([]) });
+    await expect(f.service.listAccounts(actor, { role: 'IT_SECURITY', status: 'ACTIVE' })).resolves.toEqual([]);
+    expect((f.tx.platformAccount as any).findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { role: 'IT_SECURITY', status: 'ACTIVE' },
+      select: { id: true, fullName: true, email: true, role: true, status: true, createdAt: true },
+    }));
+  });
   it('bounds history to one platform account and approved event types', async () => {
     const f = fixture();
     const events = await f.service.accountAccessHistory(actor, 'it', { page: 2, pageSize: 10 });
@@ -22,7 +38,13 @@ describe('restricted account access history', () => {
     expect(JSON.stringify(events)).not.toContain('secret');
     expect(JSON.stringify(events)).not.toContain('password');
   });
-  it.each(['IT_SECURITY', 'ADMIN', 'UNKNOWN'])('denies role %s', async (role) => {
+  it('allows IT to inspect sanitized access history', async () => {
+    const f = fixture('IT_SECURITY');
+    const events = await f.service.accountAccessHistory(actor, 'it');
+    expect(events[0]).toMatchObject({ reason: 'Reviewed suspension' });
+    expect(JSON.stringify(events)).not.toContain('secret');
+  });
+  it.each(['ADMIN', 'ACCOUNTANT', 'TEACHER', 'UNKNOWN'])('denies role %s', async (role) => {
     const f = fixture(role);
     await expect(f.service.accountAccessHistory(actor, 'it')).rejects.toMatchObject({ statusCode: 403 });
     expect(f.tx.platformAuditEvent.findMany).not.toHaveBeenCalled();
