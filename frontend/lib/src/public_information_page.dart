@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'public_shell.dart';
@@ -61,7 +62,10 @@ class PublicInformationScreen extends StatelessWidget {
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.white,
                         ),
-                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          size: AfaqDesign.iconSmall,
+                        ),
                         label: const Text('Home'),
                       ),
                     ],
@@ -86,7 +90,7 @@ class PublicInformationScreen extends StatelessWidget {
                                   ? Icons.privacy_tip_outlined
                                   : Icons.description_outlined,
                               color: publicGold,
-                              size: 36,
+                              size: 40,
                             ),
                             const SizedBox(height: 20),
                             Semantics(
@@ -136,7 +140,7 @@ class PublicInformationScreen extends StatelessWidget {
                                     onPressed: () => onNavigate('/contact'),
                                     icon: const Icon(
                                       Icons.mail_outline_rounded,
-                                      size: 19,
+                                      size: AfaqDesign.iconSmall,
                                     ),
                                     label: const Text('Contact Office'),
                                   ),
