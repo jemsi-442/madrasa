@@ -1,3 +1,5 @@
+import 'date_selection.dart';
+import 'design_tokens.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
@@ -8,6 +10,7 @@ import 'foundation_ui.dart';
 import 'teacher_students_page.dart';
 import 'teacher_ui.dart';
 import 'quran_reader.dart';
+import 'workspace_form_dialog.dart';
 
 class TeacherQuranPage extends StatefulWidget {
   const TeacherQuranPage({
@@ -18,12 +21,14 @@ class TeacherQuranPage extends StatefulWidget {
     this.initialClassId,
     this.initialStudent,
     this.onContextChanged,
+    this.initialPeriod,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final String teacherId;
   final String? initialClassId;
   final Map<String, dynamic>? initialStudent;
+  final Map<String, dynamic>? initialPeriod;
   final void Function(String classId, Map<String, dynamic>? student)?
   onContextChanged;
   @override
@@ -31,16 +36,94 @@ class TeacherQuranPage extends StatefulWidget {
 }
 
 class TeacherQuranPageState extends State<TeacherQuranPage> {
+  static const accessDeniedMessage =
+      'This student is no longer available to your account. Refresh your class list.';
   late String classId = widget.initialClassId ?? '';
   late Map<String, dynamic>? student = widget.initialStudent;
+  late Map<String, dynamic>? period = widget.initialPeriod;
   int surah = 67, juz = 29, page = 1, filterEpoch = 0;
   int? from, to;
   bool choosingEnd = false, busy = false;
+  bool saveAccessDenied = false;
   String activity = 'MEMORIZATION';
   String? observation, error;
-  DateTime date = schoolToday();
+  late DateTime date =
+      DateTime.tryParse('${period?['learnedOn']}') ?? schoolToday();
   final note = TextEditingController();
   Map<String, dynamic>? pending;
+  Map<String, dynamic>? savedPassage;
+  final Map<String, Set<String>> skippedByPassage = {};
+  final formAnchor = GlobalKey();
+  final historyAnchor = GlobalKey();
+  bool revealFormOnLoad = false;
+  bool revealHistoryOnLoad = false;
+  Map<String, dynamic> get currentPassage => {
+    'classId': classId,
+    'learnedOn': attendanceDay(date),
+    'surahId': surah,
+    'ayahFrom': from ?? 1,
+    'ayahTo': to ?? from ?? 1,
+    'activity': activity,
+    if (period != null) 'timetableSlotId': '${period!['id']}',
+  };
+
+  Future<void> showPeriodSummary() async {
+    if (locked || classId.isEmpty) return;
+    final selected = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => WorkspaceFormDialog(
+        title: const Text('Period summary'),
+        icon: Icons.fact_check_outlined,
+        content: SizedBox(
+          width: 640,
+          height: MediaQuery.sizeOf(context).height * .6,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${attendanceDay(date)}${period == null ? ' | Unscheduled records' : ' | ${period!['startsAt']}-${period!['endsAt']}'}',
+                ),
+                const Text(
+                  'Saved records only. Skipped students remain unrecorded. Closing this summary does not mark the period complete.',
+                ),
+                PassageRoster(
+                  load: widget.load,
+                  passage: currentPassage,
+                  summary: true,
+                  onReview: (item) => Navigator.pop(dialogContext, item),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close summary'),
+          ),
+        ],
+      ),
+    );
+    if (selected == null || !mounted || !await confirmLeave() || !mounted) {
+      return;
+    }
+    setState(() {
+      clearDraft();
+      student = selected;
+      revealHistoryOnLoad = true;
+      final latest = recordMap(selected['latestSession']);
+      saveAccessDenied = false;
+      if (latest['surahId'] != null) {
+        surah = recordNumber(latest['surahId']).toInt();
+        juz = 0;
+      }
+      page = 1;
+      progress = fetchProgress();
+    });
+    widget.onContextChanged?.call(classId, student);
+  }
+
   late Future<dynamic> boot = initialize();
   Future<dynamic>? progress;
   bool get dirty =>
@@ -77,12 +160,13 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
     progress = fetchProgress();
   });
   void clearDraft() {
+    savedPassage = null;
     from = null;
     to = null;
     choosingEnd = false;
     note.clear();
     observation = null;
-    error = null;
+    error = saveAccessDenied ? accessDeniedMessage : null;
     pending = null;
   }
 
@@ -95,7 +179,9 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
           builder: (context) => AlertDialog(
             title: const Text('Leave this learning session?'),
             content: Text(
-              pending != null
+              saveAccessDenied
+                  ? 'Current access does not allow this draft to be saved. Leave this draft and refresh your classes. Check the learning history before recording the session again.'
+                  : pending != null
                   ? 'This save has not been confirmed. Retry with the same details, or leave and check the learning history before recording it again.'
                   : 'Your changes have not been saved. Stay here to finish the session.',
             ),
@@ -117,14 +203,32 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
   }
 
   void refreshPage() => setState(() {
+    saveAccessDenied = false;
     clearDraft();
     boot = initialize();
     if (student != null) progress = fetchProgress();
   });
+  Future<void> refreshClassAccess() async {
+    if (!await confirmLeave() || !mounted) return;
+    setState(() {
+      classId = '';
+      period = null;
+      student = null;
+      progress = null;
+      page = 1;
+      saveAccessDenied = false;
+      clearDraft();
+      boot = initialize();
+    });
+    widget.onContextChanged?.call('', null);
+  }
+
   Future<void> changeClass(String value) async {
     if (!await confirmLeave() || !mounted) return;
     setState(() {
       classId = value;
+      if (value != period?['classId']) period = null;
+      saveAccessDenied = false;
       student = null;
       widget.onContextChanged?.call(classId, null);
       progress = null;
@@ -139,11 +243,81 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
     if (selected == null || !mounted) return;
     setState(() {
       student = selected;
+      saveAccessDenied = false;
       widget.onContextChanged?.call(classId, student);
       clearDraft();
       page = 1;
       progress = fetchProgress();
     });
+  }
+
+  Future<void> recordNextStudent({
+    bool skip = false,
+    bool revisit = false,
+  }) async {
+    final previous = skip
+        ? currentPassage
+        : savedPassage ?? (revisit ? currentPassage : null);
+    if (previous == null || locked) return;
+    if (skip && (student == null || from == null || to == null)) return;
+    if (!await confirmLeave() || !mounted) return;
+    final round = passageRosterPath(previous, 1);
+    final skipped = revisit ? <String>{} : {...?skippedByPassage[round]};
+    if (skip) skipped.add('${student!['id']}');
+    setState(() => busy = true);
+    Map<String, dynamic> selected;
+    try {
+      final roster = recordMap(
+        await widget.load(passageRosterPath(previous, 1, skipIds: skipped)),
+      );
+      if (!mounted) return;
+      skippedByPassage[round] = skipped;
+      selected = recordMap(roster['nextStudent']);
+      if (selected.isEmpty && recordNumber(roster['remaining']) > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unrecorded students remain. Use Review skipped students to return to them.',
+            ),
+          ),
+        );
+        return;
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not refresh the class roster. Try again.'),
+          ),
+        );
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+    if (selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'All current students have a record for this passage and date.',
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      clearDraft();
+      student = selected;
+      saveAccessDenied = false;
+      revealFormOnLoad = true;
+      from = previous['ayahFrom'] as int;
+      to = previous['ayahTo'] as int;
+      activity = previous['activity'] as String;
+      date = DateTime.parse(previous['learnedOn'] as String);
+      page = 1;
+      progress = fetchProgress();
+    });
+    widget.onContextChanged?.call(classId, student);
   }
 
   Future<void> changePassage({
@@ -170,7 +344,7 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
   }
 
   Future<void> pickDate() async {
-    final selected = await showDatePicker(
+    final selected = await showAfaqDatePicker(
       context: context,
       initialDate: date,
       firstDate: DateTime(2000),
@@ -192,6 +366,7 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
   });
   Future<void> save() async {
     if (busy ||
+        saveAccessDenied ||
         from == null ||
         to == null ||
         observation == null ||
@@ -209,6 +384,7 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
       'observation': observation,
       'learnedOn': attendanceDay(date),
       'note': note.text.trim(),
+      if (period != null) 'timetableSlotId': '${period!['id']}',
     };
     setState(() {
       busy = true;
@@ -217,8 +393,11 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
     try {
       await widget.submit('/api/teacher-workspace/quran/sessions', pending!);
       if (!mounted) return;
+      final confirmed = Map<String, dynamic>.of(pending!);
       setState(() {
         clearDraft();
+        savedPassage = confirmed;
+        revealFormOnLoad = true;
         page = 1;
         progress = fetchProgress();
       });
@@ -230,9 +409,10 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
       setState(() {
         if (e is ApiException && [403, 404, 422].contains(e.statusCode)) {
           pending = null;
+          saveAccessDenied = e.statusCode != 422;
           error = e.statusCode == 422
               ? 'Check the session date and selected ayahs, then try again.'
-              : 'This student is no longer available to your account. Refresh your class list.';
+              : accessDeniedMessage;
         } else {
           error =
               'We could not confirm this save. Keep this page open and retry with the same details.';
@@ -293,6 +473,15 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (classId.isNotEmpty)
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: locked ? null : showPeriodSummary,
+                icon: const Icon(Icons.fact_check_outlined),
+                label: const Text('Period summary'),
+              ),
+            ),
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
@@ -358,7 +547,10 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
                         onPressed: classId.isEmpty || locked
                             ? null
                             : chooseStudent,
-                        icon: const Icon(Icons.person_outline, size: 18),
+                        icon: const Icon(
+                          Icons.person_outline,
+                          size: AfaqDesign.iconSmall,
+                        ),
                         label: Text(
                           student == null
                               ? 'Choose a student'
@@ -439,6 +631,24 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
               builder: (value) {
                 final record = recordMap(value),
                     learner = recordMap(record['student']);
+                if (revealFormOnLoad || revealHistoryOnLoad) {
+                  final anchor = revealHistoryOnLoad
+                      ? historyAnchor
+                      : formAnchor;
+                  revealFormOnLoad = false;
+                  revealHistoryOnLoad = false;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    final target = anchor.currentContext;
+                    if (target != null && target.mounted) {
+                      Scrollable.ensureVisible(
+                        target,
+                        alignment: 0,
+                        duration: const Duration(milliseconds: 150),
+                      );
+                    }
+                  });
+                }
                 final memorised = (record['memorisedAyahs'] as List? ?? [])
                     .map((v) => recordNumber(v).toInt())
                     .toSet();
@@ -590,6 +800,7 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
                       ),
                       const SizedBox(height: 20),
                       SurfacePanel(
+                        key: historyAnchor,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -620,16 +831,66 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
                     ],
                   ),
                   second: SurfacePanel(
+                    key: formAnchor,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const PanelHeading('Record a learning session'),
+                        if (period != null) ...[
+                          TeacherNotice(
+                            '${period!['subject']} | ${period!['startsAt']}-${period!['endsAt']} | ${period!['learnedOn']}',
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         StudentIdentity(
                           learner,
                           subtitle:
                               '${recordMap(learner['currentClass'])['name']} | ${learner['admissionNo']}',
                         ),
                         const SizedBox(height: 22),
+                        if (savedPassage != null) ...[
+                          TeacherNotice(
+                            'Saved: ayahs ${savedPassage!['ayahFrom']}-${savedPassage!['ayahTo']}. Continue with a new observation for the next student.',
+                          ),
+                          PassageRoster(
+                            key: ValueKey(savedPassage!['clientId']),
+                            load: widget.load,
+                            passage: savedPassage!,
+                          ),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: locked ? null : recordNextStudent,
+                            icon: const Icon(Icons.person_add_alt_1_outlined),
+                            label: const Text('Record next student'),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                        if (from != null && student != null) ...[
+                          OutlinedButton.icon(
+                            onPressed: locked
+                                ? null
+                                : () => recordNextStudent(skip: true),
+                            icon: const Icon(Icons.skip_next_outlined),
+                            label: const Text('Skip for now'),
+                          ),
+                          const Text(
+                            'Temporary on this page only. No result or absence is saved.',
+                            style: TextStyle(color: muted, fontSize: 12),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (skippedByPassage[passageRosterPath(
+                                  savedPassage ?? currentPassage,
+                                  1,
+                                )]
+                                ?.isNotEmpty ??
+                            false)
+                          TextButton(
+                            onPressed: locked
+                                ? null
+                                : () => recordNextStudent(revisit: true),
+                            child: const Text('Review skipped students'),
+                          ),
                         const Text(
                           'Activity',
                           style: TextStyle(
@@ -735,10 +996,10 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
                         ),
                         const SizedBox(height: 20),
                         OutlinedButton.icon(
-                          onPressed: locked ? null : pickDate,
+                          onPressed: locked || period != null ? null : pickDate,
                           icon: const Icon(
                             Icons.calendar_today_outlined,
-                            size: 17,
+                            size: AfaqDesign.iconSmall,
                           ),
                           label: Text(shortDate(attendanceDay(date))),
                         ),
@@ -760,13 +1021,24 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
                           TeacherNotice(error!, warning: true),
                           const SizedBox(height: 16),
                         ],
-                        const TeacherNotice(
-                          'Keep this page open until your save is confirmed. An internet connection is required.',
-                          warning: true,
-                        ),
+                        if (saveAccessDenied)
+                          OutlinedButton.icon(
+                            onPressed: busy ? null : refreshClassAccess,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Refresh class list'),
+                          )
+                        else
+                          const TeacherNotice(
+                            'Keep this page open until your save is confirmed. An internet connection is required.',
+                            warning: true,
+                          ),
                         const SizedBox(height: 18),
                         FilledButton.icon(
-                          onPressed: busy || from == null || observation == null
+                          onPressed:
+                              busy ||
+                                  saveAccessDenied ||
+                                  from == null ||
+                                  observation == null
                               ? null
                               : save,
                           icon: busy
@@ -778,7 +1050,10 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.check, size: 18),
+                              : const Icon(
+                                  Icons.check,
+                                  size: AfaqDesign.iconSmall,
+                                ),
                           label: Text(
                             busy
                                 ? 'Saving...'
@@ -793,6 +1068,101 @@ class TeacherQuranPageState extends State<TeacherQuranPage> {
                 );
               },
             ),
+        ],
+      );
+    },
+  );
+}
+
+String passageRosterPath(
+  Map<String, dynamic> passage,
+  int page, {
+  Set<String> skipIds = const {},
+  bool summary = false,
+}) =>
+    '/api/teacher-workspace/quran/roster?${Uri(queryParameters: {
+      for (final key in ['classId', 'learnedOn', 'surahId', 'ayahFrom', 'ayahTo', 'activity']) key: '${passage[key]}',
+      'page': '$page',
+      if (skipIds.isNotEmpty) 'skipIds': skipIds.join(','),
+      if (summary) 'summary': 'true',
+      if (passage['timetableSlotId'] != null) 'timetableSlotId': '${passage['timetableSlotId']}',
+    }).query}';
+
+class PassageRoster extends StatefulWidget {
+  const PassageRoster({
+    super.key,
+    required this.load,
+    required this.passage,
+    this.summary = false,
+    this.onReview,
+  });
+  final PageLoader load;
+  final Map<String, dynamic> passage;
+  final bool summary;
+  final void Function(Map<String, dynamic>)? onReview;
+  @override
+  State<PassageRoster> createState() => _PassageRosterState();
+}
+
+class _PassageRosterState extends State<PassageRoster> {
+  int page = 1;
+  late Future<dynamic> future = fetch();
+  Future<dynamic> fetch() => widget.load(
+    passageRosterPath(widget.passage, page, summary: widget.summary),
+  );
+  void reload() => setState(() => future = fetch());
+  @override
+  Widget build(BuildContext context) => PageResult(
+    future: future,
+    onRetry: reload,
+    builder: (value) {
+      final data = recordMap(value);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 12),
+          Text(
+            '${data['recorded']} recorded / ${data['total']} students | ${data['remaining']} remaining',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            widget.summary
+                ? '${data['needsSupport'] ?? 0} ${(data['needsSupport'] ?? 0) == 1 ? 'student has' : 'students have'} at least one saved observation needing support in this period.'
+                : widget.passage['timetableSlotId'] != null
+                ? 'This timetable period, passage and activity. Recorded does not mean mastered.'
+                : 'Unscheduled records for this date, passage and activity. Recorded does not mean mastered.',
+          ),
+          ExpansionTile(
+            key: PageStorageKey(
+              passageRosterPath(widget.passage, 1, summary: widget.summary),
+            ),
+            initiallyExpanded: widget.summary,
+            title: const Text('Class recording list'),
+            children: [
+              for (final item in recordList(data['items']))
+                ListTile(
+                  title: Text('${item['fullName']}'),
+                  subtitle: Text('${item['admissionNo']}'),
+                  onTap: widget.onReview == null
+                      ? null
+                      : () => widget.onReview!(item),
+                  trailing: Text(
+                    item['needsSupport'] == true
+                        ? 'Needs support'
+                        : item['recorded'] == true
+                        ? 'Recorded'
+                        : 'Remaining',
+                  ),
+                ),
+              DirectoryPager(
+                meta: recordMap(data['meta']),
+                onPage: (value) {
+                  page = value;
+                  reload();
+                },
+              ),
+            ],
+          ),
         ],
       );
     },
