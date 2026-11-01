@@ -36,8 +36,7 @@ void main() {
     await api.login('admin@example.test', 'password', '123456');
     await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Company accounts'));
-    await tester.tap(find.text('Company accounts'));
+    await openPlatformPage(tester, 'Company accounts');
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const ValueKey('Account role-')));
     await tester.tap(find.byKey(const ValueKey('Account role-')));
@@ -55,10 +54,9 @@ void main() {
       'role': 'IT_SECURITY',
       'status': 'DISABLED',
     });
-    await tester.ensureVisible(find.text('Office history'));
-    await tester.tap(find.text('Office history'));
+    await openPlatformPage(tester, 'Office history');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Company accounts'));
+    await openPlatformPage(tester, 'Company accounts');
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Clear account filters'));
     await tester.tap(find.text('Clear account filters'));
@@ -111,8 +109,7 @@ void main() {
     await api.login('admin@example.test', 'password', '123456');
     await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Company accounts'));
-    await tester.tap(find.text('Company accounts'));
+    await openPlatformPage(tester, 'Company accounts');
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Disable IT account'));
     await tester.tap(find.text('Disable IT account'));
