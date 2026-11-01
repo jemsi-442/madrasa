@@ -140,7 +140,7 @@ class _FamilyRegistrationScreenState extends State<FamilyRegistrationScreen> {
               children: [
                 const Icon(
                   Icons.fact_check_outlined,
-                  size: 48,
+                  size: 52,
                   color: publicGold,
                 ),
                 const SizedBox(height: 20),
