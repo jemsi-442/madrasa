@@ -121,11 +121,60 @@ export class PlatformCurriculumService {
         },
         _count: { _all: true },
       }) : [];
+      const learnerScope: Prisma.StudentWhereInput = { status: 'ACTIVE', OR: quranScopes };
+      const recordedScope: Prisma.StudentWhereInput = {
+        status: 'ACTIVE',
+        OR: quranScopes.map(scope => ({ ...scope, quranSessions: { some: {
+          ...scope, voidedAt: null,
+          ...(query.quranMonth ? { learnedOn: monthRange(query.quranMonth) } : {}),
+        } } })),
+      };
+      const supportScope: Prisma.StudentWhereInput = {
+        status: 'ACTIVE',
+        OR: quranScopes.map(scope => ({ ...scope, quranSessions: { some: {
+          ...scope, voidedAt: null, observation: { in: ['WITH_SUPPORT', 'NEEDS_PRACTICE'] },
+          ...(query.quranMonth ? { learnedOn: monthRange(query.quranMonth) } : {}),
+        } } })),
+      };
+      // Count current learners once, even when sessions or framework assignments repeat.
+      const eligibleLearners = quranScopes.length ? await tx.student.count({ where: learnerScope }) : 0;
+      const recordedLearners = quranScopes.length ? await tx.student.count({ where: recordedScope }) : 0;
+      const learnersNeedingSupport = quranScopes.length ? await tx.student.count({ where: supportScope }) : 0;
+      const organizationFilter: Prisma.OrganizationWhereInput = {
+        ...(query.madrasa ? { name: { contains: query.madrasa } } : {}),
+        ...(query.status ? { status: query.status } : {}),
+      };
+      const institutionLearners: Prisma.StudentWhereInput = {
+        status: 'ACTIVE', organization: organizationFilter,
+      };
+      const institutionSessions: Prisma.QuranSessionWhereInput = {
+        voidedAt: null,
+        ...(query.quranMonth ? { learnedOn: monthRange(query.quranMonth) } : {}),
+      };
+      const madrasaCount = await tx.organization.count({ where: organizationFilter });
+      const institutionEligible = await tx.student.count({ where: institutionLearners });
+      const institutionRecorded = await tx.student.count({ where: {
+        ...institutionLearners, quranSessions: { some: institutionSessions },
+      } });
+      const institutionSupport = await tx.student.count({ where: {
+        ...institutionLearners, quranSessions: { some: {
+          ...institutionSessions, observation: { in: ['WITH_SUPPORT', 'NEEDS_PRACTICE'] },
+        } },
+      } });
       return {
         generatedAt: new Date().toISOString(),
+        institution: {
+          month: query.quranMonth ?? null, madrasas: madrasaCount,
+          eligible: institutionEligible, recorded: institutionRecorded,
+          unrecorded: institutionEligible - institutionRecorded, needingSupport: institutionSupport,
+        },
         quran: {
           month: query.quranMonth ?? null,
           classScopes: quranScopes.length,
+          learners: {
+            eligible: eligibleLearners, recorded: recordedLearners,
+            unrecorded: eligibleLearners - recordedLearners, needingSupport: learnersNeedingSupport,
+          },
           activities: ['READING', 'MEMORIZATION', 'REVISION', 'TAJWEED'].map(activity => {
             const groups = quranGroups.filter(group => group.activity === activity);
             const count = (observation: string) =>
@@ -156,7 +205,51 @@ export class PlatformCurriculumService {
           };
         }),
       };
-    });
+    }, { isolationLevel: 'RepeatableRead' });
+  }
+
+  async madrasaOversight(actor: PlatformContext, input: unknown) {
+    const query = z.object({
+      page: z.coerce.number().int().min(1).max(10000).default(1),
+      madrasa: z.string().trim().min(1).max(120).optional(),
+      status: z.enum(['ACTIVE', 'TRIAL', 'SUSPENDED', 'PENDING_ACTIVATION']).optional(),
+      quranMonth: oversightMonth.optional(),
+    }).strict().parse(input);
+    return this.db.$transaction(async tx => {
+      await this.authorize(tx, actor);
+      const organizations = await tx.organization.findMany({
+        where: {
+          ...(query.madrasa ? { name: { contains: query.madrasa } } : {}),
+          ...(query.status ? { status: query.status } : {}),
+        },
+        select: { id: true, name: true, status: true },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }], skip: (query.page - 1) * 20, take: 21,
+      });
+      const visible = organizations.slice(0, 20);
+      const where: Prisma.StudentWhereInput = { status: 'ACTIVE', orgId: { in: visible.map(row => row.id) } };
+      const session: Prisma.QuranSessionWhereInput = {
+        voidedAt: null, ...(query.quranMonth ? { learnedOn: monthRange(query.quranMonth) } : {}),
+      };
+      const count = (filter: Prisma.StudentWhereInput) => visible.length
+        ? tx.student.groupBy({ by: ['orgId'], where: filter, _count: { _all: true } })
+        : Promise.resolve([]);
+      const eligible = await count(where);
+      const recorded = await count({ ...where, quranSessions: { some: session } });
+      const support = await count({ ...where, quranSessions: { some: {
+        ...session, observation: { in: ['WITH_SUPPORT', 'NEEDS_PRACTICE'] },
+      } } });
+      return {
+        page: query.page, hasMore: organizations.length > 20, month: query.quranMonth ?? null,
+        generatedAt: new Date().toISOString(),
+        items: visible.map(org => {
+          const total = eligible.find(row => row.orgId === org.id)?._count._all ?? 0;
+          const reviewed = recorded.find(row => row.orgId === org.id)?._count._all ?? 0;
+          return { id: String(org.id), name: org.name, status: org.status,
+            eligible: total, recorded: reviewed, unrecorded: total - reviewed,
+            needingSupport: support.find(row => row.orgId === org.id)?._count._all ?? 0 };
+        }),
+      };
+    }, { isolationLevel: 'RepeatableRead' });
   }
 
   private async beginDraftEdit(
