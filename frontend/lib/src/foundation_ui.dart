@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
+import 'brand.dart';
 
 const ink = AfaqDesign.ink;
 const gold = AfaqDesign.gold;
@@ -28,13 +29,13 @@ class BrandMark extends StatelessWidget {
             width: compact ? 43 : 54,
             height: compact ? 43 : 54,
             fit: BoxFit.cover,
-            semanticLabel: 'Modern Islamic Foundation logo',
+            semanticLabel: '$appBrandName logo',
           ),
         ),
         const SizedBox(width: 11),
         Flexible(
           child: Text(
-            'MODERN ISLAMIC\nFOUNDATION',
+            appBrandName,
             style: TextStyle(
               color: light ? Colors.white : ink,
               fontSize: compact ? 11 : 13,
@@ -185,7 +186,7 @@ class DashboardMetric extends StatelessWidget {
           color: accent.withValues(alpha: 0.11),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: accent, size: compact ? 23 : 27),
+        child: Icon(icon, color: accent, size: AfaqDesign.iconSize),
       );
       final content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,7 +208,10 @@ class DashboardMetric extends StatelessWidget {
             label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: ink, fontSize: AfaqDesign.secondarySize),
+            style: const TextStyle(
+              color: ink,
+              fontSize: AfaqDesign.secondarySize,
+            ),
           ),
           if (note != null) ...[
             const SizedBox(height: 8),
@@ -215,7 +219,10 @@ class DashboardMetric extends StatelessWidget {
               note!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: muted, fontSize: AfaqDesign.secondarySize),
+              style: const TextStyle(
+                color: muted,
+                fontSize: AfaqDesign.secondarySize,
+              ),
             ),
           ],
         ],
