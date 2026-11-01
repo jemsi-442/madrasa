@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'dashboard_components.dart';
@@ -12,6 +13,7 @@ class TeacherStudentsPage extends StatefulWidget {
     required this.onOpen,
     this.initialClassId,
     this.initialStudent,
+    this.openInitialProfile = true,
     this.onClassChanged,
     this.refreshToken = 0,
   });
@@ -21,6 +23,7 @@ class TeacherStudentsPage extends StatefulWidget {
   final String? initialClassId;
   final ValueChanged<String>? onClassChanged;
   final Map<String, dynamic>? initialStudent;
+  final bool openInitialProfile;
   final int refreshToken;
   @override
   State<TeacherStudentsPage> createState() => _TeacherStudentsPageState();
@@ -47,7 +50,7 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialStudent != null) {
+    if (widget.openInitialProfile && widget.initialStudent != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) profile(widget.initialStudent!);
       });
@@ -271,7 +274,10 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
                             DataCell(
                               OutlinedButton.icon(
                                 onPressed: () => profile(s),
-                                icon: const Icon(Icons.chevron_right, size: 18),
+                                icon: const Icon(
+                                  Icons.chevron_right,
+                                  size: AfaqDesign.iconSmall,
+                                ),
                                 label: const Text('View profile'),
                               ),
                             ),
