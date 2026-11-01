@@ -16,6 +16,9 @@ abstract final class AfaqDesign {
   static const purple = Color(0xFF7168AA);
   static const bodyFont = 'Lato';
   static const bodySize = 16.0;
+  static const iconSmall = 24.0;
+  static const iconSize = 28.0;
+  static const sidebarIconSize = 32.0;
   static const secondarySize = 14.0;
   static const labelSize = 15.0;
   static const displayFont = 'NotoSerifDisplay';
