@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'dashboard_components.dart';
@@ -216,7 +217,7 @@ class AdminOverview extends StatelessWidget {
                               ? Icons.favorite_outline
                               : Icons.person_outline,
                           color: forest,
-                          size: 19,
+                          size: AfaqDesign.iconSmall,
                         ),
                       ),
                       title: Text(
