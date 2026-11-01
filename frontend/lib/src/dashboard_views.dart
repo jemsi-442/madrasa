@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'foundation_ui.dart';
@@ -129,7 +130,7 @@ class _QuickLinks extends StatelessWidget {
             children: items.map((item) {
               return OutlinedButton.icon(
                 onPressed: () => onOpen(item.$1),
-                icon: Icon(item.$3, size: 19),
+                icon: Icon(item.$3, size: AfaqDesign.iconSmall),
                 label: Text(item.$2),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: ink,
