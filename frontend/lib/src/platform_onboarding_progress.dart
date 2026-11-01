@@ -10,12 +10,14 @@ class RefreshableOnboardingProgress extends StatefulWidget {
     required this.load,
     required this.sessionIsCurrent,
     this.now,
+    this.sendInvitation,
   });
 
   final Map<String, dynamic> initialData;
   final Future<Map<String, dynamic>> Function() load;
   final bool Function() sessionIsCurrent;
   final DateTime Function()? now;
+  final Future<String> Function()? sendInvitation;
 
   @override
   State<RefreshableOnboardingProgress> createState() =>
@@ -27,6 +29,8 @@ class _RefreshableOnboardingProgressState
   Map<String, dynamic>? data;
   bool busy = false;
   bool failed = false;
+  bool confirmed = false;
+  String? deliveryMessage;
   Timer? freshnessTimer;
 
   bool get snapshotIsCurrent {
@@ -57,6 +61,7 @@ class _RefreshableOnboardingProgressState
     setState(() {
       busy = true;
       failed = false;
+      confirmed = false;
       data = null;
     });
     try {
@@ -71,6 +76,48 @@ class _RefreshableOnboardingProgressState
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> sendInvitation() async {
+    if (busy ||
+        !confirmed ||
+        !snapshotIsCurrent ||
+        !widget.sessionIsCurrent()) {
+      return;
+    }
+    setState(() {
+      busy = true;
+      deliveryMessage = null;
+    });
+    try {
+      final status = await widget.sendInvitation!();
+      if (!mounted || !widget.sessionIsCurrent()) return;
+      setState(
+        () => deliveryMessage = switch (status) {
+          'SMTP_ACCEPTED' =>
+            'Email accepted by the mail server. Inbox delivery is not yet confirmed.',
+          'REJECTED' =>
+            'The mail server rejected this invitation. Check the administrator email before retrying.',
+          _ =>
+            'Delivery could not be confirmed. Check the inbox before resending.',
+        },
+      );
+    } catch (_) {
+      if (mounted && widget.sessionIsCurrent()) {
+        setState(
+          () => deliveryMessage =
+              'Delivery could not be confirmed. Check email configuration and the inbox before retrying.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          busy = false;
+          confirmed = false;
+        });
+      }
+    }
+    if (mounted && widget.sessionIsCurrent()) await refresh();
   }
 
   @override
@@ -90,6 +137,29 @@ class _RefreshableOnboardingProgressState
           label: const Text('Refresh progress'),
         ),
         if (busy) const LinearProgressIndicator(),
+        if (deliveryMessage != null)
+          Semantics(liveRegion: true, child: Text(deliveryMessage!)),
+        if (data?['canSendInvitation'] == true &&
+            snapshotIsCurrent &&
+            widget.sendInvitation != null) ...[
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: confirmed,
+            onChanged: busy
+                ? null
+                : (value) => setState(() => confirmed = value ?? false),
+            title: const Text('Send to the approved administrator email'),
+            subtitle: const Text(
+              'Resending replaces the previous invitation code. Check the inbox first.',
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: busy || !confirmed ? null : sendInvitation,
+            icon: const Icon(Icons.mail_outline),
+            label: const Text('Send invitation email'),
+          ),
+          const SizedBox(height: 16),
+        ],
         if (failed)
           Semantics(
             liveRegion: true,
@@ -115,6 +185,19 @@ class _RefreshableOnboardingProgressState
 class PlatformOnboardingProgress extends StatelessWidget {
   const PlatformOnboardingProgress({super.key, required this.data});
   final Map<String, dynamic> data;
+
+  String get stageLabel => switch (data['stage']) {
+    'PROVISIONING_PENDING' => 'Awaiting IT setup',
+    'INVITATION_PENDING' => 'Invitation needed',
+    'INVITATION_EXPIRED' => 'Invitation expired',
+    'ACCEPTANCE_PENDING' => 'Awaiting administrator',
+    'ACTIVATION_REVIEW_PENDING' =>
+      data['nextResponsibility'] == 'OFFICE_APPROVAL'
+          ? 'Awaiting office activation'
+          : 'Awaiting IT review',
+    'ACTIVE' => 'Active',
+    _ => 'Review required',
+  };
 
   String get responsibleNext => switch (data['stage']) {
     'PROVISIONING_PENDING' => 'IT team',
@@ -154,7 +237,8 @@ class PlatformOnboardingProgress extends StatelessWidget {
         child: WorkspaceRecordDetails(
           fields: [
             ('Madrasa', '${data['schoolName']}'),
-            ('Registration code', '${data['requestedCode']}'),
+            ('Afaq code', '${data['requestedCode'] ?? 'Not recorded'}'),
+            ('Current stage', stageLabel),
           ],
         ),
       ),
@@ -174,86 +258,89 @@ class PlatformOnboardingProgress extends StatelessWidget {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
+            Text('Next step', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 6),
             Text(switch (data['stage']) {
               'ACTIVE' =>
-                'Onboarding is complete. The madrassa administrator manages daily school operations; IT handles technical support.',
+                'Onboarding is complete. The administrator can manage daily madrasa operations.',
               'ACTIVATION_REVIEW_PENDING'
                   when data['nextResponsibility'] == 'OFFICE_APPROVAL' =>
-                'The original requester cannot give final approval. Office approval does not replace IT preparation.',
+                'Waiting for independent office approval. The original requester cannot give final approval. Activation is not available in this screen.',
               'PROVISIONING_PENDING' =>
-                'IT prepares the inactive school after office approval. Creating it does not enable school access.',
-              'INVITATION_PENDING' ||
-              'INVITATION_EXPIRED' ||
+                'IT must create the inactive madrasa. This does not enable school access.',
+              'INVITATION_PENDING' =>
+                'IT must send the invitation to the approved administrator email.',
+              'INVITATION_EXPIRED' =>
+                'IT must send a replacement invitation. The old code has expired.',
               'ACCEPTANCE_PENDING' =>
-                'An invitation record is not proof of delivery. Do not ask the administrator to share a password or invitation token.',
+                'Waiting for admin acceptance. An invitation record does not confirm email delivery.',
               'ACTIVATION_REVIEW_PENDING' =>
-                'Wait for IT preparation before independent office approval. School access remains disabled.',
+                'Waiting for IT to complete preparation before office approval. School access remains disabled.',
               _ =>
-                'Ask IT to investigate the current state. Office users should not attempt technical repairs or bypass approval.',
+                'Ask IT to investigate the current state. Do not bypass onboarding checks.',
             }),
             if (invitationDeliveryBlocked) ...[
               const SizedBox(height: 8),
               const Text(
-                'Delivery setup pending: email delivery is not connected. IT must complete the approved delivery workflow before asking the administrator to accept.',
+                'Delivery setup pending: Email delivery is not connected. Configure SMTP before sending or requesting acceptance.',
               ),
             ],
           ],
         ),
       ),
-      const SizedBox(height: 12),
-      Text(switch (data['stage']) {
-        'PROVISIONING_PENDING' => 'Next: IT must create the inactive madrassa.',
-        'INVITATION_PENDING' =>
-          'Waiting for an admin invitation. Email delivery is not connected yet.',
-        'INVITATION_EXPIRED' =>
-          'The invitation expired before acceptance. A replacement is needed through the approved delivery workflow.',
-        'ACCEPTANCE_PENDING' =>
-          'Waiting for admin acceptance. An invitation record does not confirm email delivery.',
-        'ACTIVATION_REVIEW_PENDING' =>
-          data['nextResponsibility'] == 'OFFICE_APPROVAL'
-              ? 'Preparation is complete. Waiting for independent office approval. Activation is not available in this screen.'
-              : 'Acceptance recorded. Waiting for IT to complete preparation before office approval.',
-        'ACTIVE' =>
-          'Activation is recorded and the first administrator is active.',
-        _ =>
-          'Review required: the current school or account state needs investigation. Do not bypass onboarding checks.',
-      }),
       const SizedBox(height: 16),
-      for (final step in (data['steps'] as List? ?? []))
-        Padding(
-          padding: const EdgeInsets.only(bottom: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                step['completed'] == true
-                    ? Icons.check_circle_outline
-                    : Icons.radio_button_unchecked,
-                color: step['completed'] == true
-                    ? const Color(0xff278258)
-                    : Colors.grey,
+      WorkspaceDetailsSection(
+        title: 'Setup checklist',
+        icon: Icons.checklist_outlined,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if ((data['steps'] as List? ?? []).isEmpty)
+              const Text(
+                'Checklist unavailable. Refresh progress to check again.',
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+            for (final step in (data['steps'] as List? ?? []))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${step['label']}'),
-                    Text(
+                    Icon(
                       step['completed'] == true
-                          ? timestamp(step['at'])
-                          : 'Pending',
+                          ? Icons.check_circle_outline
+                          : Icons.radio_button_unchecked,
+                      color: step['completed'] == true
+                          ? const Color(0xff278258)
+                          : Colors.grey,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${step['label']}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            step['completed'] == true
+                                ? timestamp(step['at'])
+                                : 'Pending',
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            if (data['invitationExpiresAt'] != null)
+              Text(
+                'Invitation expiry (UTC): ${timestamp(data['invitationExpiresAt'])}',
+              ),
+          ],
         ),
-      if (data['invitationExpiresAt'] != null)
-        Text(
-          'Invitation expiry (UTC): ${timestamp(data['invitationExpiresAt'])}',
-        ),
+      ),
       const SizedBox(height: 12),
       if (data['activationReview'] is Map) ...[
         const Divider(),
@@ -320,8 +407,10 @@ class PlatformOnboardingProgress extends StatelessWidget {
             ),
         ],
         const SizedBox(height: 12),
-        const Text(
-          'Activation is not available here. Email delivery and the live invitation acceptance workflow are not connected. Passing these checks does not grant school access.',
+        Text(
+          data['deliveryConfigured'] == true
+              ? 'Activation is not available here. IT review and independent activation are still required after invitation acceptance.'
+              : 'Activation is not available here. Email delivery and the live invitation acceptance workflow are not connected. Passing these checks does not grant school access.',
         ),
         const Divider(),
       ],
