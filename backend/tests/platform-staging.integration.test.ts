@@ -83,7 +83,7 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     const secondAccount = await db.platformAccount.findFirstOrThrow({ where: { email: { not: "first@example.test" } } });
     const second = await loginPlatform(db, signing, options, { email: secondAccount.email, password, code: code(secondSecret) }, "staging-client");
     const reviewer = await verifyPlatformAccess(db, second.accessToken, signing);
-    const application = await service.createApplication(requester, { schoolName: "Staging School", requestedCode: "staging-school", adminEmail: "school@example.test" });
+    const application = await service.createApplication(requester, { schoolName: "Staging School", requestedCode: "staging-school", adminEmail: "school@example.test", location: { country: 'Tanzania', region: 'Synthetic Region', district: 'Synthetic District', ward: 'Synthetic Ward' } });
     await expect(service.reviewApplication(requester, application.id, { decision: "APPROVED", reason: "Verified ownership evidence" }))
       .rejects.toMatchObject({ statusCode: 403 });
     await service.reviewApplication(reviewer, application.id, { decision: "APPROVED", reason: "Verified ownership evidence" });
@@ -142,6 +142,7 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     try {
       await expect(service.createApplication({ scope: "platform", accountId: account.id, sessionId: "internal-rollback-test" }, {
         schoolName: "Rollback School", requestedCode: "rollback-school", adminEmail: "rollback@example.test",
+        location: { country: 'Tanzania', region: 'Synthetic Region', district: 'Synthetic District', ward: 'Synthetic Ward' },
       })).rejects.toThrow();
       expect(await db.tenantApplication.count({ where: { requestedCode: "rollback-school" } })).toBe(0);
     } finally { await db.$executeRawUnsafe("DROP TRIGGER staging_fail_audit"); }
@@ -175,6 +176,7 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     const reviewer = { ...requester, accountId: accounts[1]!.id };
     const application = await service.createApplication(requester, {
       schoolName: "Concurrent School", requestedCode: "concurrent-school", adminEmail: "concurrent@example.test",
+      location: { country: 'Tanzania', region: 'Synthetic Region', district: 'Synthetic District', ward: 'Synthetic Ward' },
     });
     const results = await Promise.allSettled([
       service.reviewApplication(reviewer, application.id, { decision: "APPROVED", reason: "Ownership evidence verified" }),
@@ -242,6 +244,7 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     const context = (accountId: string) => ({ scope: 'platform' as const, accountId, sessionId: 'isolated-service-test' });
     const application = await service.createApplication(context(admins[0]!.id), {
       schoolName: 'Pending School', requestedCode: 'pending-school', adminEmail: 'pending@example.test',
+      location: { country: 'Tanzania', region: 'Synthetic Region', district: 'Synthetic District', ward: 'Synthetic Ward' },
     });
     await service.reviewApplication(context(admins[1]!.id), application.id, { decision: 'APPROVED', reason: 'Independent evidence checked' });
     await db.$executeRawUnsafe("CREATE TRIGGER staging_fail_provision_audit BEFORE INSERT ON platform_audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected audit failure'");
@@ -420,6 +423,7 @@ describe.skipIf(!enabled)("real isolated platform staging", () => {
     const operator = await login('http-operator', 'IT_SECURITY');
     const created = await request(app).post('/api/platform/tenant-applications').set('Authorization', requester).send({
       schoolName: 'HTTP Journey School', requestedCode: 'http-journey-school', adminEmail: 'http-admin@example.test',
+      location: { country: 'Tanzania', region: 'Synthetic Region', district: 'Synthetic District', ward: 'Synthetic Ward' },
     });
     expect(created.status).toBe(201);
     const id = created.body.data.id as string;
