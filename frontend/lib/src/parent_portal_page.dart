@@ -1139,7 +1139,7 @@ class _FamilyBanner extends StatelessWidget {
       runSpacing: 12,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Icon(Icons.menu_book_outlined, color: gold, size: 32),
+        Icon(Icons.menu_book_outlined, color: gold, size: 36),
         Text(
           'Knowledge. Character. Brighter lives.',
           style: TextStyle(
