@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -311,7 +312,10 @@ class _FinanceOperationsPageState extends State<FinanceOperationsPage> {
                   else
                     OutlinedButton.icon(
                       onPressed: chooseDates,
-                      icon: const Icon(Icons.date_range_outlined, size: 18),
+                      icon: const Icon(
+                        Icons.date_range_outlined,
+                        size: AfaqDesign.iconSmall,
+                      ),
                       label: const Text('Choose date range'),
                     ),
                   if (dates != null)
@@ -332,7 +336,10 @@ class _FinanceOperationsPageState extends State<FinanceOperationsPage> {
                           result = fetch();
                         });
                       },
-                      icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+                      icon: const Icon(
+                        Icons.filter_alt_off_outlined,
+                        size: AfaqDesign.iconSmall,
+                      ),
                       label: const Text('Clear filters'),
                     ),
                 ],
@@ -477,7 +484,7 @@ class _FinanceOperationsPageState extends State<FinanceOperationsPage> {
                                           onPressed: () => details(row),
                                           icon: const Icon(
                                             Icons.chevron_right,
-                                            size: 16,
+                                            size: AfaqDesign.iconSmall,
                                           ),
                                           label: const Text('Details'),
                                         ),
