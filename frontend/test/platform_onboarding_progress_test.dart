@@ -4,6 +4,122 @@ import 'package:mif_app/src/platform_onboarding_progress.dart';
 import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
+  testWidgets('refresh requires fresh confirmation before invitation sending', (
+    tester,
+  ) async {
+    final data = <String, dynamic>{
+      'schoolName': 'Synthetic School',
+      'requestedCode': 'AFQ-000001',
+      'stage': 'INVITATION_PENDING',
+      'canSendInvitation': true,
+      'deliveryConfigured': true,
+      'checkedAt': DateTime.now().toIso8601String(),
+    };
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: RefreshableOnboardingProgress(
+              initialData: data,
+              sessionIsCurrent: () => true,
+              load: () async => data,
+              sendInvitation: () async => 'SMTP_ACCEPTED',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byWidgetPredicate((w) => w is FilledButton),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(find.text('Refresh progress'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byWidgetPredicate((w) => w is FilledButton),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(find.text('Afaq code'), findsOneWidget);
+    expect(find.text('Invitation needed'), findsOneWidget);
+    expect(find.text('Setup checklist'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets(
+    'invitation send requires confirmation and refreshes without exposing a code',
+    (tester) async {
+      var sent = 0;
+      var refreshed = 0;
+      final data = <String, dynamic>{
+        'schoolName': 'Synthetic School',
+        'requestedCode': 'synthetic',
+        'stage': 'INVITATION_PENDING',
+        'canSendInvitation': true,
+        'deliveryConfigured': true,
+        'checkedAt': DateTime.now().toIso8601String(),
+      };
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: RefreshableOnboardingProgress(
+                initialData: data,
+                sessionIsCurrent: () => true,
+                load: () async {
+                  refreshed++;
+                  return {...data, 'stage': 'ACCEPTANCE_PENDING'};
+                },
+                sendInvitation: () async {
+                  sent++;
+                  return 'SMTP_ACCEPTED';
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byWidgetPredicate((w) => w is FilledButton),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pump();
+      await tester.tap(find.text('Send invitation email'));
+      await tester.pumpAndSettle();
+      expect(sent, 1);
+      expect(refreshed, 1);
+      expect(
+        find.textContaining('Inbox delivery is not yet confirmed'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byWidgetPredicate((w) => w is FilledButton),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   for (final entry in [
     ('PROVISIONING_PENDING', null, false, 'IT team'),
     ('INVITATION_PENDING', null, false, 'IT team'),
@@ -49,6 +165,13 @@ void main() {
         ),
       );
       expect(find.text('Responsible next: ${entry.$4}'), findsOneWidget);
+      expect(find.text('Next step'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'An invitation record does not confirm email delivery.',
+        ),
+        entry.$1 == 'ACCEPTANCE_PENDING' ? findsOneWidget : findsNothing,
+      );
       final blocked =
           !entry.$3 &&
           [
@@ -109,13 +232,15 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PlatformOnboardingProgress(
-              data: {
-                'schoolName': 'School',
-                'requestedCode': 'school',
-                'stage': 'ACTIVATION_REVIEW_PENDING',
-                'nextResponsibility': ready ? 'OFFICE_APPROVAL' : 'IT_REVIEW',
-              },
+            body: SingleChildScrollView(
+              child: PlatformOnboardingProgress(
+                data: {
+                  'schoolName': 'School',
+                  'requestedCode': 'school',
+                  'stage': 'ACTIVATION_REVIEW_PENDING',
+                  'nextResponsibility': ready ? 'OFFICE_APPROVAL' : 'IT_REVIEW',
+                },
+              ),
             ),
           ),
         ),
