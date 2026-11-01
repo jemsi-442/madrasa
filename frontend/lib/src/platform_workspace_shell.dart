@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'status_badge.dart';
-import 'shared_feedback.dart';
 import 'app_layout.dart';
 import 'design_tokens.dart';
 import 'workspace_chrome.dart';
 import 'platform_office_dashboard.dart';
+import 'platform_it_dashboard.dart';
+import 'it_workspace_visuals.dart';
 
 const _navy = AfaqDesign.ink;
-const _gold = AfaqDesign.gold;
 
 enum PlatformPage {
   home,
@@ -15,6 +15,8 @@ enum PlatformPage {
   staff,
   curriculum,
   oversight,
+  funds,
+  reports,
   applications,
   accounts,
   history,
@@ -125,6 +127,30 @@ class PlatformTaskIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!isAdmin) {
+      final text = switch (page) {
+        PlatformPage.accounts => (
+          'Company accounts',
+          'Account status and access history. Read-only company directory.',
+        ),
+        PlatformPage.history => (
+          'Audit trail',
+          'Find recorded events and inspect their context.',
+        ),
+        PlatformPage.sessions => (
+          'My sessions',
+          'Review devices signed in to your account.',
+        ),
+        PlatformPage.health => (
+          'System health',
+          'Database and Redis connectivity at the latest check.',
+        ),
+        _ => ('', ''),
+      };
+      if (text.$1.isNotEmpty) {
+        return ItPageHeading(title: text.$1, description: text.$2);
+      }
+    }
     final (heading, description, icon) = switch (page) {
       PlatformPage.applications => (
         'A clear path for every madrassa',
@@ -169,7 +195,7 @@ class PlatformTaskIntro extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: _navy, size: 28),
+          Icon(icon, color: _navy, size: AfaqDesign.iconSize),
           const SizedBox(height: 14),
           Text(
             heading,
@@ -259,9 +285,10 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
       (PlatformPage.staff, 'Users & Permissions', Icons.people_outline),
       (PlatformPage.curriculum, 'Curriculum &', Icons.menu_book_outlined),
       (PlatformPage.oversight, 'Learning Oversight', Icons.insights_outlined),
-      (PlatformPage.accounts, 'Company accounts', Icons.badge_outlined),
-      (PlatformPage.history, 'Office history', Icons.history_rounded),
+      (PlatformPage.funds, 'Donors & Funds', Icons.favorite_border),
+      (PlatformPage.reports, 'Report', Icons.description_outlined),
     ] else ...[
+      (PlatformPage.accounts, 'Company accounts', Icons.badge_outlined),
       (PlatformPage.health, 'System health', Icons.monitor_heart_outlined),
       (PlatformPage.history, 'Audit trail', Icons.policy_outlined),
       (PlatformPage.setup, 'Madrassa setup', Icons.domain_add_outlined),
@@ -275,24 +302,29 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
     PlatformPage.staff => 'Users & Permissions',
     PlatformPage.curriculum => 'Curriculum & Subjects',
     PlatformPage.oversight => 'Learning Oversight',
+    PlatformPage.funds => 'Donors & Funds',
+    PlatformPage.reports => 'Institutional Reports',
     PlatformPage.applications => 'Madrasas / Applications',
-    PlatformPage.accounts => 'People & access',
-    PlatformPage.history => isAdmin ? 'Office activity' : 'Security activity',
+    PlatformPage.accounts => 'Company accounts',
+    PlatformPage.history =>
+      isAdmin ? 'Settings & Security' : 'Security activity',
     PlatformPage.setup => 'School provisioning',
     PlatformPage.health => 'Service availability',
-    PlatformPage.sessions => 'Your signed-in devices',
+    PlatformPage.sessions =>
+      isAdmin ? 'Settings & Security' : 'Your signed-in devices',
+  };
+
+  PlatformPage get navigationPage => switch (page) {
+    PlatformPage.applications => PlatformPage.madrasas,
+    PlatformPage.accounts when isAdmin => PlatformPage.staff,
+    PlatformPage.sessions when isAdmin => PlatformPage.history,
+    _ => page,
   };
 
   Widget navigation(BuildContext context, {required bool drawer}) =>
       WorkspaceSidebar(
         items: [for (final item in destinations) (item.$2, item.$3)],
-        selected: destinations.indexWhere(
-          (item) =>
-              item.$1 ==
-              (page == PlatformPage.applications
-                  ? PlatformPage.madrasas
-                  : page),
-        ),
+        selected: destinations.indexWhere((item) => item.$1 == navigationPage),
         roleLabel: isAdmin ? 'Company office' : 'IT operations',
         enabled: !busy,
         collapsed: !drawer && collapsed,
@@ -383,7 +415,9 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
                       ),
                     ),
                   ),
-                  Expanded(child: child),
+                  Expanded(
+                    child: isAdmin ? child : ItWorkspaceSurface(child: child),
+                  ),
                   const WorkspaceFooter(),
                 ],
               ),
@@ -429,138 +463,23 @@ class PlatformOverview extends StatelessWidget {
           error: error,
           onRefresh: onRefresh,
           onApplications: () => onNavigate(PlatformPage.applications),
-          onAccounts: () => onNavigate(PlatformPage.accounts),
-          onHistory: () => onNavigate(PlatformPage.history),
+          onLearning: () => onNavigate(PlatformPage.oversight),
+          onFunds: () => onNavigate(PlatformPage.funds),
+          onReports: () => onNavigate(PlatformPage.reports),
           onReview: onReviewPending,
           onApproved: onApproved,
         );
       }
-      final small = constraints.maxWidth < 650;
-      return SingleChildScrollView(
-        padding: EdgeInsets.all(small ? 20 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'YOUR OPERATIONS DESK',
-              style: const TextStyle(
-                color: _gold,
-                fontSize: 11,
-                letterSpacing: 2,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Assalamu alaikum, $name',
-              style: TextStyle(
-                fontFamily: 'NotoSerifDisplay',
-                fontSize: small ? 27 : 36,
-                color: _navy,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              isAdmin
-                  ? 'Review madrassa requests, coordinate onboarding and manage company access.'
-                  : 'Check service availability, review recorded activity and prepare approved madrassas.',
-              style: const TextStyle(color: Color(0xff667984), height: 1.6),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    snapshot == null
-                        ? 'No snapshot loaded'
-                        : 'Snapshot: ${snapshot!['checkedAt'] ?? 'Time not supplied'}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xff667984),
-                    ),
-                  ),
-                ),
-                WorkspaceRefreshButton(
-                  tooltip: 'Refresh overview',
-                  onRefresh: onRefresh,
-                  loading: busy,
-                ),
-              ],
-            ),
-            if (busy) const LinearProgressIndicator(),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    error!,
-                    style: const TextStyle(color: Color(0xffa32e2e)),
-                  ),
-                ),
-              ),
-            if (healthPanel != null) healthPanel!,
-            const SizedBox(height: 28),
-            const Text(
-              'Quick actions',
-              style: TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
-                color: _navy,
-              ),
-            ),
-            const SizedBox(height: 14),
-            LayoutBuilder(
-              builder: (context, bounds) {
-                final columns = bounds.maxWidth >= 900
-                    ? 3
-                    : bounds.maxWidth >= 580
-                    ? 2
-                    : 1;
-                return Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: [
-                    for (final item in [
-                      (
-                        PlatformPage.history,
-                        'Review security activity',
-                        'Inspect recorded events. An audit log is not a threat-detection verdict.',
-                        Icons.policy_outlined,
-                      ),
-                      (
-                        PlatformPage.setup,
-                        'Prepare approved madrassas',
-                        'Continue technical setup after the office approval process.',
-                        Icons.domain_add_outlined,
-                      ),
-                      (
-                        PlatformPage.sessions,
-                        'Review your sessions',
-                        'Manage your own signed-in devices and access.',
-                        Icons.devices_outlined,
-                      ),
-                    ])
-                      SizedBox(
-                        width: (bounds.maxWidth - (columns - 1) * 16) / columns,
-                        child: AfaqActionTile(
-                          title: item.$2,
-                          subtitle: item.$3,
-                          icon: item.$4,
-                          onTap: busy ? null : () => onNavigate(item.$1),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'School academic and financial records remain outside this workspace.',
-              style: const TextStyle(color: Color(0xff667984), fontSize: 12),
-            ),
-          ],
-        ),
+      return PlatformItDashboard(
+        snapshot: snapshot,
+        busy: busy,
+        error: error,
+        onRefresh: onRefresh,
+        onHealth: () => onNavigate(PlatformPage.health),
+        onSetup: () => onNavigate(PlatformPage.setup),
+        onAccounts: () => onNavigate(PlatformPage.accounts),
+        onAudit: () => onNavigate(PlatformPage.history),
+        onSessions: () => onNavigate(PlatformPage.sessions),
       );
     },
   );
