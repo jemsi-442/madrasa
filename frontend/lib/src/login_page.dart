@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -85,7 +86,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 autocorrect: false,
                 decoration: const InputDecoration(
                   hintText: 'Enter your email or username',
-                  prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
+                  prefixIcon: Icon(
+                    Icons.mail_outline_rounded,
+                    size: AfaqDesign.iconSmall,
+                  ),
                 ),
                 validator: (value) => value?.trim().isEmpty ?? true
                     ? 'Enter your email or username.'
@@ -106,7 +110,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 onFieldSubmitted: (_) => submit(),
                 decoration: InputDecoration(
                   hintText: 'Enter your password',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                  prefixIcon: const Icon(
+                    Icons.lock_outline_rounded,
+                    size: AfaqDesign.iconSmall,
+                  ),
                   suffixIcon: IconButton(
                     tooltip: revealPassword ? 'Hide password' : 'Show password',
                     onPressed: () =>
@@ -115,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       revealPassword
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      size: 20,
+                      size: AfaqDesign.iconSmall,
                     ),
                   ),
                 ),
