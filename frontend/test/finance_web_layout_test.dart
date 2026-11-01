@@ -185,7 +185,7 @@ void main() {
   });
 
   testWidgets(
-    'sidebar group headings preserve navigation and hide when collapsed',
+    'sidebar stays ungrouped and preserves navigation when collapsed',
     (tester) async {
       var selected = -1;
       Widget sidebar(bool collapsed) => MaterialApp(
@@ -201,17 +201,49 @@ void main() {
               onSelect: (value) => selected = value,
               roleLabel: 'Finance',
               collapsed: collapsed,
-              groups: const {0: 'Overview', 1: 'Collections'},
             ),
           ),
         ),
       );
       await tester.pumpWidget(sidebar(false));
-      expect(find.text('OVERVIEW'), findsOneWidget);
-      expect(find.text('COLLECTIONS'), findsOneWidget);
+      expect(find.text('FINANCE'), findsNothing);
+      expect(find.text('OVERVIEW'), findsNothing);
+      expect(find.text('COLLECTIONS'), findsNothing);
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Invoices'), findsOneWidget);
+      expect(tester.widget<Icon>(find.byIcon(Icons.home)).size, 32);
+      expect(tester.widget<Icon>(find.byIcon(Icons.receipt_long)).size, 32);
+      final labelColor = tester.widget<Text>(find.text('Home')).style!.color!;
+      final selectedSurface = tester
+          .widget<Material>(
+            find
+                .ancestor(
+                  of: find.byKey(const ValueKey('nav-0')),
+                  matching: find.byType(Material),
+                )
+                .first,
+          )
+          .color!;
+      final contrast =
+          (selectedSurface.computeLuminance() + 0.05) /
+          (labelColor.computeLuminance() + 0.05);
+      expect(contrast, greaterThanOrEqualTo(4.5));
+      expect(
+        tester.getSize(find.byKey(const ValueKey('nav-1'))).height,
+        greaterThanOrEqualTo(48),
+      );
+      expect(find.byIcon(Icons.circle), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('nav-1')));
       expect(selected, 1);
       await tester.pumpWidget(sidebar(true));
+      expect(tester.widget<Icon>(find.byIcon(Icons.home)).size, 32);
+      expect(tester.widget<Icon>(find.byIcon(Icons.receipt_long)).size, 32);
+      expect(find.byTooltip('Home (current page)'), findsOneWidget);
+      expect(find.byTooltip('Invoices'), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('nav-1'))).height,
+        greaterThanOrEqualTo(48),
+      );
       expect(find.text('OVERVIEW'), findsNothing);
       expect(find.text('COLLECTIONS'), findsNothing);
       expect(tester.takeException(), isNull);
