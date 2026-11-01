@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart' show shortDate;
 import 'dashboard_components.dart';
@@ -68,7 +69,7 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
   );
   Widget link(String label, int index) => TextButton.icon(
     onPressed: () => widget.onOpen(index),
-    icon: const Icon(Icons.arrow_forward, size: 17),
+    icon: const Icon(Icons.arrow_forward, size: AfaqDesign.iconSmall),
     label: Text(label),
   );
   Widget metric(
@@ -246,7 +247,11 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
                                 padding: const EdgeInsets.all(18),
                                 child: Row(
                                   children: [
-                                    Icon(item.$4, color: item.$5, size: 28),
+                                    Icon(
+                                      item.$4,
+                                      color: item.$5,
+                                      size: AfaqDesign.iconSize,
+                                    ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
@@ -270,7 +275,10 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
                                         ],
                                       ),
                                     ),
-                                    const Icon(Icons.chevron_right, size: 18),
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      size: AfaqDesign.iconSmall,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -345,7 +353,7 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
                 runSpacing: 12,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Icon(Icons.description_outlined, color: gold, size: 32),
+                  const Icon(Icons.description_outlined, color: gold, size: 36),
                   Text(
                     recordText(
                       recordMap(
