@@ -1,0 +1,35 @@
+Tanzania postal-directory autocomplete data
+
+Source: https://github.com/mwemanoor/tz-locations
+Package: tz-locations 1.0.2 (npm), accessed 2026-10-30.
+Upstream source: https://www.tanzaniapostcode.com
+Transformation: retain names grouped by parent slugs; deduplicate and sort.
+Rebuild: node scripts/build-tanzania-locations.mjs /path/to/tz-locations-1.0.2.tgz
+
+This community-maintained postal directory is not an authoritative current
+administrative-boundary registry. It includes postal districts/CBD entries.
+Suggestions are optional, not validation. It does not distinguish villages
+from hamlets. A separate, non-exhaustive village reference list is maintained
+in tanzania-villages.json, with a source URL for every entry. Saved entries
+and manual input remain available for all areas, including hamlets.
+
+MIT License
+Copyright (c) 2026 Mwema Noor
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
