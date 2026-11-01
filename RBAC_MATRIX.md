@@ -1,8 +1,8 @@
-# MODERN ISLAMIC FOUNDATION RBAC Matrix
+# Afaq RBAC Matrix
 
 Last updated: `2026-09-25`
 
-This document is the intended access reference for the MODERN ISLAMIC FOUNDATION platform.
+This document is the intended access reference for the Afaq platform.
 
 **Flutter migration note:** Frontend URL/page tables below describe the former React implementation and desired access boundaries, not currently shipped Flutter routes. The active Flutter app has role-specific read-only navigation only. Backend route and ownership checks remain enforceable; each Flutter workflow must be checked against this matrix as it is rebuilt.
 
