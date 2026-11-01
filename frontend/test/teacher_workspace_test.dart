@@ -6,6 +6,7 @@ import 'package:mif_app/src/attendance_register_page.dart';
 import 'package:mif_app/src/teacher_teaching_pages.dart';
 import 'package:mif_app/src/teacher_students_page.dart';
 import 'package:mif_app/src/teacher_quran_page.dart';
+import 'package:mif_app/src/teacher_ui.dart';
 import 'package:mif_app/src/workspace.dart';
 
 final learner = <String, dynamic>{
@@ -45,6 +46,16 @@ final classes = <Map<String, dynamic>>[
 const meta = {'page': 1, 'totalPages': 1, 'totalItems': 1};
 
 Future<dynamic> teacherLoad(String path) async {
+  if (path.contains('/quran/roster?')) {
+    return {
+      'items': [],
+      'total': 1,
+      'recorded': 1,
+      'remaining': 0,
+      'nextStudent': null,
+      'meta': meta,
+    };
+  }
   if (path == '/api/teacher-workspace/classes') return classes;
   if (path.contains('/overview')) {
     return {
@@ -391,6 +402,9 @@ void main() {
     await tester.tap(find.text('Attendance'));
     expect(destination, 4);
     expect(selected, '8');
+    await tester.tap(find.text('My courses'));
+    expect(destination, 5);
+    expect(selected, '8');
   });
   testWidgets('Quran save retry keeps the exact payload and operation ID', (
     tester,
@@ -421,17 +435,587 @@ void main() {
     await tester.tap(find.text('Save progress'));
     await tester.pumpAndSettle();
     expect(find.textContaining('could not confirm this save'), findsOneWidget);
+    expect(find.text('Record next student'), findsNothing);
     expect(saves.single, containsPair('ayahFrom', 11));
     expect(saves.single, containsPair('ayahTo', 15));
     expect(saves.single, containsPair('observation', 'INDEPENDENT'));
     expect(saves.single, containsPair('studentId', '1'));
+    expect(saves.single['clientId'], isA<String>());
+    expect(saves.single['clientId'], isNotEmpty);
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const ValueKey('ayah-11')))
+          .onPressed,
+      isNull,
+      reason: 'An unconfirmed save must keep the original passage locked.',
+    );
+    expect(
+      tester
+          .widget<DropdownButtonFormField<String>>(
+            find.byKey(const ValueKey('observation-INDEPENDENT')),
+          )
+          .onChanged,
+      isNull,
+    );
     await tester.ensureVisible(find.text('Retry save'));
     await tester.tap(find.text('Retry save'));
     await tester.pumpAndSettle();
+    expect(saves, hasLength(2));
     expect(saves[1], saves[0]);
     expect(find.text('Learning session saved.'), findsOneWidget);
     expect(find.text('Synced'), findsNothing);
   });
+  testWidgets('timetable opens a dated period without creating a record', (
+    tester,
+  ) async {
+    screen(tester, 1672);
+    Map<String, dynamic>? selected;
+    await tester.pumpWidget(
+      host(
+        TeacherOverviewPage(
+          load: teacherLoad,
+          onOpen: (_, {classId, student}) {},
+          onOpenPeriod: (value) => selected = value,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('record-period-1')));
+    await tester.tap(find.byKey(const ValueKey('record-period-1')));
+    expect(selected!['id'], '1');
+    expect(selected!['classId'], '8');
+    expect(selected!['learnedOn'], attendanceDay(DateTime.now()));
+  });
+  for (final width in [390.0, 1672.0]) {
+    testWidgets(
+      'scheduled Quran save retains period and reveals form at $width',
+      (tester) async {
+        screen(tester, width);
+        final key = GlobalKey<TeacherQuranPageState>();
+        Map<String, dynamic>? saved;
+        await tester.pumpWidget(
+          host(
+            TeacherQuranPage(
+              key: key,
+              teacherId: '9',
+              initialClassId: '8',
+              initialStudent: learner,
+              initialPeriod: {
+                'id': '44',
+                'classId': '8',
+                'learnedOn': '2026-09-01',
+                'subject': 'Synthetic lesson',
+                'startsAt': '08:00',
+                'endsAt': '09:00',
+              },
+              load: teacherLoad,
+              submit: (_, body) async {
+                saved = Map.of(body);
+                return {};
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await choosePassage(tester);
+        await key.currentState!.save();
+        await tester.pumpAndSettle();
+        final formTop = tester
+            .getTopLeft(find.byKey(key.currentState!.formAnchor))
+            .dy;
+        expect(formTop, greaterThanOrEqualTo(0));
+        expect(formTop, lessThan(300));
+        expect(saved!['timetableSlotId'], '44');
+        expect(saved!['learnedOn'], '2026-09-01');
+        expect(
+          Uri.parse(
+            passageRosterPath(saved!, 1),
+          ).queryParameters['timetableSlotId'],
+          '44',
+        );
+        await key.currentState!.changeClass('');
+        await tester.pumpAndSettle();
+        expect(key.currentState!.period, isNull);
+      },
+    );
+  }
+  testWidgets('next student retains passage but never copies results', (
+    tester,
+  ) async {
+    screen(tester, 1672);
+    final nextLearner = {...learner, 'id': '2', 'fullName': 'Demo Learner Two'};
+    final saves = <Map<String, dynamic>>[];
+    final key = GlobalKey<TeacherQuranPageState>();
+    await tester.pumpWidget(
+      host(
+        TeacherQuranPage(
+          key: key,
+          teacherId: '9',
+          initialClassId: '8',
+          initialStudent: learner,
+          load: (path) async {
+            if (path.contains('/quran/roster?')) {
+              expect(Uri.parse(path).queryParameters['classId'], '8');
+              return {
+                'items': [
+                  {...nextLearner, 'recorded': false},
+                ],
+                'total': 2,
+                'recorded': 1,
+                'remaining': 1,
+                'nextStudent': nextLearner,
+                'meta': meta,
+              };
+            }
+            if (path.contains('/students?')) {
+              expect(Uri.parse(path).queryParameters['classId'], '8');
+              return {
+                'items': [nextLearner],
+                'meta': meta,
+              };
+            }
+            final data = await teacherLoad(path);
+            if (path.contains('/quran?') &&
+                Uri.parse(path).queryParameters['studentId'] == '2') {
+              return {...data as Map<String, dynamic>, 'student': nextLearner};
+            }
+            return data;
+          },
+          submit: (path, body) async {
+            saves.add(Map.of(body));
+            return {'id': 'synthetic-session'};
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await choosePassage(tester);
+    key.currentState!.note.text = 'Synthetic first learner note';
+    await tester.ensureVisible(find.text('Save progress'));
+    await tester.tap(find.text('Save progress'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Record next student'));
+    expect(find.text('1 recorded / 2 students | 1 remaining'), findsOneWidget);
+    await tester.tap(find.text('Record next student'));
+    await tester.pumpAndSettle();
+    final state = key.currentState!;
+    expect(state.classId, '8');
+    expect(state.student!['id'], '2');
+    expect(state.from, 11);
+    expect(state.to, 15);
+    expect(state.observation, isNull);
+    expect(state.note.text, isEmpty);
+    expect(state.pending, isNull);
+    expect(saves, hasLength(1));
+    await state.save();
+    expect(saves, hasLength(1), reason: 'A fresh observation is required.');
+  });
+  testWidgets(
+    'skip confirms draft loss, advances without writing and can revisit',
+    (tester) async {
+      screen(tester, 1672);
+      final key = GlobalKey<TeacherQuranPageState>();
+      var writes = 0;
+      final paths = <String>[];
+      final second = {...learner, 'id': '2', 'fullName': 'Demo Learner Two'};
+      await tester.pumpWidget(
+        host(
+          TeacherQuranPage(
+            key: key,
+            teacherId: '9',
+            initialClassId: '8',
+            initialStudent: learner,
+            load: (path) async {
+              if (path.contains('/quran/roster?')) {
+                paths.add(path);
+                final skip = Uri.parse(path).queryParameters['skipIds'];
+                return {
+                  'total': 2,
+                  'recorded': 0,
+                  'remaining': 2,
+                  'nextStudent': skip == null ? learner : second,
+                };
+              }
+              if (path.contains('/quran?') &&
+                  Uri.parse(path).queryParameters['studentId'] == '2') {
+                return {
+                  ...await teacherLoad(path) as Map<String, dynamic>,
+                  'student': second,
+                };
+              }
+              return teacherLoad(path);
+            },
+            submit: (_, _) async {
+              writes++;
+              return {};
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await choosePassage(tester);
+      await tester.ensureVisible(find.text('Skip for now'));
+      await tester.tap(find.text('Skip for now'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Stay here'));
+      await tester.pumpAndSettle();
+      expect(paths, isEmpty);
+      expect(key.currentState!.observation, 'INDEPENDENT');
+      await tester.ensureVisible(find.text('Skip for now'));
+      await tester.tap(find.text('Skip for now'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Leave session'));
+      await tester.pumpAndSettle();
+      expect(Uri.parse(paths.single).queryParameters['skipIds'], '1');
+      expect(key.currentState!.student!['id'], '2');
+      expect(key.currentState!.from, 11);
+      expect(key.currentState!.observation, isNull);
+      expect(writes, 0);
+      await tester.ensureVisible(find.text('Review skipped students'));
+      await tester.tap(find.text('Review skipped students'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Leave session'));
+      await tester.pumpAndSettle();
+      expect(
+        Uri.parse(paths.last).queryParameters.containsKey('skipIds'),
+        isFalse,
+      );
+      expect(key.currentState!.student!['id'], '1');
+      expect(writes, 0);
+    },
+  );
+
+  testWidgets(
+    'period summary reads all passages and opens student history without saving',
+    (tester) async {
+      screen(tester, 390);
+      final key = GlobalKey<TeacherQuranPageState>();
+      var writes = 0;
+      await tester.pumpWidget(
+        host(
+          TeacherQuranPage(
+            key: key,
+            teacherId: '9',
+            initialClassId: '8',
+            initialStudent: learner,
+            load: (path) async {
+              if (path.contains('/quran/roster?')) {
+                expect(Uri.parse(path).queryParameters['summary'], 'true');
+                return {
+                  'total': 1,
+                  'recorded': 1,
+                  'remaining': 0,
+                  'needsSupport': 1,
+                  'meta': meta,
+                  'items': [
+                    {
+                      ...learner,
+                      'fullName': 'Demo Summary Learner',
+                      'recorded': true,
+                      'needsSupport': true,
+                      'latestSession': {'id': '42', 'surahId': 112},
+                    },
+                  ],
+                };
+              }
+              return teacherLoad(path);
+            },
+            submit: (_, _) async {
+              writes++;
+              return {};
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Period summary'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('1 student has at least one'), findsOneWidget);
+      await tester.ensureVisible(find.text('Demo Summary Learner'));
+      await tester.tap(find.text('Demo Summary Learner'));
+      await tester.pumpAndSettle();
+      expect(key.currentState!.surah, 112);
+      expect(key.currentState!.juz, 0);
+      final historyTop = tester
+          .getTopLeft(find.byKey(key.currentState!.historyAnchor))
+          .dy;
+      expect(historyTop, greaterThanOrEqualTo(0));
+      expect(historyTop, lessThan(300));
+      expect(writes, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'roster expansion storage does not read the workspace scroll offset',
+    (tester) async {
+      final bucket = PageStorageBucket();
+      await tester.pumpWidget(
+        host(
+          PageStorage(
+            bucket: bucket,
+            child: Builder(
+              key: const PageStorageKey('teacher-workspace-scroll'),
+              builder: (context) {
+                bucket.writeState(context, 440.0);
+                return PassageRoster(
+                  load: teacherLoad,
+                  passage: const {
+                    'classId': '8',
+                    'learnedOn': '2026-09-01',
+                    'surahId': 67,
+                    'ayahFrom': 11,
+                    'ayahTo': 15,
+                    'activity': 'READING',
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Class recording list'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+  for (final unavailable in [false, true]) {
+    testWidgets(
+      'next student handles ${unavailable ? 'unavailable roster' : 'completed roster'} without saving',
+      (tester) async {
+        screen(tester, 1672);
+        final key = GlobalKey<TeacherQuranPageState>();
+        var saves = 0;
+        await tester.pumpWidget(
+          host(
+            TeacherQuranPage(
+              key: key,
+              teacherId: '9',
+              initialClassId: '8',
+              initialStudent: learner,
+              load: (path) async {
+                if (unavailable && path.contains('/quran/roster?')) {
+                  throw const ApiException('Access changed', 404);
+                }
+                return teacherLoad(path);
+              },
+              submit: (_, _) async {
+                saves++;
+                return {};
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        key.currentState!.savedPassage = {
+          'studentId': '1',
+          'classId': '8',
+          'surahId': 67,
+          'ayahFrom': 11,
+          'ayahTo': 15,
+          'activity': 'READING',
+          'learnedOn': '2026-09-01',
+        };
+        await key.currentState!.recordNextStudent();
+        await tester.pumpAndSettle();
+        expect(key.currentState!.student!['id'], '1');
+        expect(key.currentState!.busy, isFalse);
+        expect(saves, 0);
+        expect(
+          find.text(
+            unavailable
+                ? 'Could not refresh the class roster. Try again.'
+                : 'All current students have a record for this passage and date.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+  }
+  for (final status in [403, 404, 422]) {
+    testWidgets('Quran retry handles a definitive $status response', (
+      tester,
+    ) async {
+      screen(tester, 1672);
+      final saves = <Map<String, dynamic>>[];
+      final key = GlobalKey<TeacherQuranPageState>();
+      await tester.pumpWidget(
+        host(
+          TeacherQuranPage(
+            key: key,
+            load: teacherLoad,
+            teacherId: '9',
+            initialClassId: '8',
+            initialStudent: learner,
+            submit: (_, body) async {
+              saves.add(Map.of(body));
+              throw ApiException(
+                'Synthetic failure',
+                saves.length == 1 ? 0 : status,
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await choosePassage(tester);
+      await tester.ensureVisible(find.text('Save progress'));
+      await tester.tap(find.text('Save progress'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Retry save'));
+      await tester.tap(find.text('Retry save'));
+      await tester.pumpAndSettle();
+      expect(saves, hasLength(2));
+      expect(saves[1], saves[0]);
+      expect(find.text('Retry save'), findsNothing);
+      expect(find.text('Learning session saved.'), findsNothing);
+      final saveButton = tester.widget<FilledButton>(
+        find.ancestor(
+          of: find.text('Save progress'),
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        ),
+      );
+      if (status == 422) {
+        expect(find.textContaining('Check the session date'), findsOneWidget);
+        expect(saveButton.onPressed, isNotNull);
+      } else {
+        expect(find.textContaining('no longer available'), findsOneWidget);
+        expect(
+          find.textContaining('Keep this page open until your save'),
+          findsNothing,
+        );
+        expect(saveButton.onPressed, isNull);
+        await key.currentState!.save();
+        expect(
+          saves,
+          hasLength(2),
+          reason: 'The save guard must also block direct callbacks.',
+        );
+        await tester.ensureVisible(find.text('Refresh class list'));
+        await tester.tap(find.text('Refresh class list'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Check the learning history'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('Stay here'));
+        await tester.pumpAndSettle();
+        expect(key.currentState!.from, 11);
+        expect(key.currentState!.to, 15);
+        expect(key.currentState!.saveAccessDenied, isTrue);
+        expect(saves, hasLength(2));
+        await tester.ensureVisible(find.text('Refresh class list'));
+        await tester.tap(find.text('Refresh class list'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Leave session'));
+        await tester.pumpAndSettle();
+        expect(key.currentState!.classId, isEmpty);
+        expect(key.currentState!.student, isNull);
+        expect(key.currentState!.progress, isNull);
+        expect(key.currentState!.from, isNull);
+        expect(find.text('Choose a class'), findsOneWidget);
+        expect(find.text('Save progress'), findsNothing);
+        expect(saves, hasLength(2));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final width in [390.0, 1440.0]) {
+    testWidgets(
+      'voided learning history exposes read-only correction details at $width',
+      (tester) async {
+        screen(tester, width);
+        var corrections = 0;
+        const reason =
+            'Synthetic correction: the selected passage belonged to a different practice session.';
+        await tester.pumpWidget(
+          host(
+            LearningHistory(
+              [
+                {
+                  'id': '91',
+                  'teacherId': '9',
+                  'surahId': 67,
+                  'ayahFrom': 11,
+                  'ayahTo': 15,
+                  'activity': 'MEMORIZATION',
+                  'observation': 'INDEPENDENT',
+                  'learnedOn': '2026-09-01',
+                  'voidedAt': '2026-09-02T10:00:00.000Z',
+                  'voidReason': reason,
+                  'teacher': {'fullName': 'Synthetic Teacher'},
+                },
+              ],
+              teacherId: '9',
+              onVoid: (_) => corrections++,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Correct this record'), findsNothing);
+        final details = find.byTooltip('View correction details');
+        await tester.ensureVisible(details);
+        await tester.tap(details);
+        await tester.pumpAndSettle();
+        expect(find.text('Learning record correction'), findsOneWidget);
+        expect(find.text('Surah 67 | 11-15'), findsOneWidget);
+        expect(find.text(reason), findsOneWidget);
+        expect(find.text('Original observation'), findsOneWidget);
+        expect(find.text('Void this entry'), findsNothing);
+        expect(corrections, 0);
+        expect(tester.takeException(), isNull);
+        await tester.ensureVisible(find.text('Close'));
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+        expect(find.text('Learning record correction'), findsNothing);
+      },
+    );
+  }
+
+  testWidgets(
+    'mobile history keeps observations and permitted actions in view',
+    (tester) async {
+      screen(tester, 390);
+      String? corrected;
+      await tester.pumpWidget(
+        host(
+          LearningHistory(
+            [
+              for (final id in ['91', '92'])
+                {
+                  'id': id,
+                  'teacherId': id == '91' ? '9' : '10',
+                  'learnedOn': '2026-09-01',
+                  'activity': 'MEMORIZATION',
+                  'ayahFrom': 11,
+                  'ayahTo': 15,
+                  'observation': 'NEEDS_PRACTICE',
+                  'teacher': {'fullName': 'Synthetic Teacher'},
+                  'timetableSlot': {'startsAt': '08:00', 'endsAt': '08:45'},
+                },
+            ],
+            teacherId: '9',
+            onVoid: (record) => corrected = record['id'] as String,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(DataTable), findsNothing);
+      expect(find.text('08:00-08:45'), findsNWidgets(2));
+      final action = find.byTooltip('Correct this record');
+      expect(action, findsOneWidget);
+      final bounds = tester.getRect(action);
+      expect(bounds.left, greaterThanOrEqualTo(0));
+      expect(bounds.right, lessThanOrEqualTo(390));
+      await tester.tap(action);
+      expect(corrected, '91');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('unsaved Quran selection requires confirmation before leaving', (
     tester,
   ) async {
