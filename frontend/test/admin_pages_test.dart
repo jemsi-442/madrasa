@@ -79,6 +79,29 @@ void main() {
     }
   });
 
+  test('school curriculum navigation is limited to admins and teachers', () {
+    for (final role in ['ADMIN', 'TEACHER']) {
+      expect(
+        sectionsForRole(role).any((section) => section.title == 'Curriculum'),
+        isTrue,
+        reason: '$role needs the school curriculum workspace',
+      );
+    }
+    for (final role in [
+      'ACCOUNTANT',
+      'IT_SECURITY',
+      'SUPER_ADMIN',
+      'PARENT',
+      'LEARNER',
+    ]) {
+      expect(
+        sectionsForRole(role).any((section) => section.title == 'Curriculum'),
+        isFalse,
+        reason: '$role must not see the school curriculum workspace',
+      );
+    }
+  });
+
   test(
     'submission keys are distinct UUIDs and money is formatted accurately',
     () {
