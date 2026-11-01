@@ -18,6 +18,21 @@ export const sessionQuery = z.object({
   surahId: z.coerce.number().int().min(1).max(114),
   page: z.coerce.number().int().min(1).max(100000).default(1),
 }).strict();
+export const passageRosterQuery = z.object({
+  summary: z.enum(['true', 'false']).default('false'),
+  skipIds: z.string().max(10000).regex(/^(?:[1-9]\d{0,17}(?:,[1-9]\d{0,17})*)?$/).default(''),
+  timetableSlotId: recordId.optional(),
+  classId: recordId,
+  learnedOn: schoolDay,
+  surahId: z.coerce.number().int().min(1).max(114),
+  ayahFrom: z.coerce.number().int().min(1),
+  ayahTo: z.coerce.number().int().min(1),
+  activity: z.enum(["READING", "MEMORIZATION", "REVISION", "TAJWEED"]),
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+}).strict().refine(input => input.ayahFrom <= input.ayahTo &&
+  input.ayahTo <= (catalog.chapters[input.surahId - 1]?.ayahCount ?? 0),
+{ message: "Select ayahs within this surah", path: ["ayahTo"] });
+export type PassageRosterQuery = z.infer<typeof passageRosterQuery>;
 export const sessionInput = z.object({
   clientId: z.string().uuid(),
   studentId: recordId,
@@ -29,6 +44,7 @@ export const sessionInput = z.object({
   observation: z.enum(["INDEPENDENT", "WITH_SUPPORT", "NEEDS_PRACTICE"]),
   learnedOn: schoolDay,
   note: z.string().trim().max(1000).default(""),
+  timetableSlotId: recordId.optional(),
 }).strict().refine(input => input.ayahFrom <= input.ayahTo &&
   input.ayahTo <= (catalog.chapters[input.surahId - 1]?.ayahCount ?? 0),
 { message: "Select ayahs within this surah", path: ["ayahTo"] });
