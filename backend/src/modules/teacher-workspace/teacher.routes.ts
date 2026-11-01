@@ -9,6 +9,8 @@ import { directoryQuery, recordId, sessionInput, sessionQuery, supportInput, tim
 import { addSupport, resolveSupport, saveQuran, studentQuran, teacherClasses, teacherOverview, teacherStudentProfile, teacherStudents, voidQuran } from "./teacher.service";
 import { cancelTimetable, createTimetable, getTimetable } from "./timetable.service";
 import catalog from "./quran-catalog.json";
+import { passageRosterQuery } from "./teacher.schemas";
+import { passageRoster } from "./teacher.service";
 import { env } from "../../config/env";
 import { QuranContentClient } from "./quran-content";
 
@@ -50,6 +52,10 @@ teacherWorkspaceRouter.get("/quran/content/chapters/:chapter/verses", asyncHandl
 }));
 teacherWorkspaceRouter.get("/quran", asyncHandler(async (req, res) => {
   res.json({ success: true, data: await studentQuran(req.authUser!, sessionQuery.parse(req.query)) });
+}));
+teacherWorkspaceRouter.get("/quran/roster", asyncHandler(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ success: true, data: await passageRoster(req.authUser!, passageRosterQuery.parse(req.query)) });
 }));
 teacherWorkspaceRouter.post("/quran/sessions", asyncHandler(async (req, res) => {
   res.json({ success: true, data: await saveQuran(req.authUser!, sessionInput.parse(req.body)) });
