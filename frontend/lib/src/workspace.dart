@@ -26,6 +26,7 @@ import 'admin_overview.dart';
 import 'donations_page.dart';
 import 'teacher_teaching_pages.dart';
 import 'teacher_students_page.dart';
+import 'teacher_courses_page.dart';
 import 'teacher_quran_page.dart';
 import 'parent_portal_page.dart';
 import 'family_messages_page.dart';
@@ -383,16 +384,20 @@ class _WorkspaceVisit {
     this.student,
     this.childId,
     this.finance,
+    this.period,
   });
   final int index;
   final String? classId, childId;
   final Map<String, dynamic>? student;
+  final Map<String, dynamic>? period;
   final FinanceDestination? finance;
 
   bool sameAs(_WorkspaceVisit other) =>
       index == other.index &&
       classId == other.classId &&
       student?['id'] == other.student?['id'] &&
+      period?['id'] == other.period?['id'] &&
+      period?['learnedOn'] == other.period?['learnedOn'] &&
       childId == other.childId &&
       finance?.key == other.finance?.key;
 }
@@ -419,10 +424,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   final messagesKey = GlobalKey<FamilyMessagesPageState>();
   final quranKey = GlobalKey<TeacherQuranPageState>();
+  TeacherCourseLocation? teachingCourseLocation;
   String? teachingClassId;
+  Map<String, dynamic>? teachingPeriod;
   String? familyChildId;
   FinanceDestination financeDestination = const FinanceDestination(0);
   Map<String, dynamic>? teachingStudent;
+  bool openTeachingProfile = false;
 
   bool get dedicated =>
       sections[selectedIndex].path == '/api/student-reports' ||
@@ -430,6 +438,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       sections[selectedIndex].path == '/api/family-messages/conversations' ||
       widget.state.session?.role == 'PARENT' ||
       widget.state.session?.role == 'ACCOUNTANT' ||
+      (widget.state.session?.role == 'TEACHER' && selectedIndex == 5) ||
       (widget.state.session?.role == 'LEARNER' &&
           (selectedIndex <= 1 || selectedIndex >= 5)) ||
       (widget.state.session?.role == 'TEACHER' && selectedIndex <= 4) ||
@@ -481,6 +490,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     selectedIndex,
     classId: teachingClassId,
     student: teachingStudent,
+    period: teachingPeriod,
     childId: familyChildId,
     finance: widget.state.session?.role == 'ACCOUNTANT'
         ? financeDestination
@@ -517,6 +527,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         selectedIndex = visit.index;
         teachingClassId = visit.classId;
         teachingStudent = visit.student;
+        teachingPeriod = visit.period;
+        openTeachingProfile =
+            !back && visit.index == 2 && visit.student != null;
         familyChildId = visit.childId;
         financeDestination = visit.finance ?? FinanceDestination(visit.index);
         widget.state.rememberSection(sections[selectedIndex].path);
@@ -555,7 +568,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     int index, {
     String? classId,
     Map<String, dynamic>? student,
-  }) => navigate(_WorkspaceVisit(index, classId: classId, student: student));
+  }) {
+    if (index == 5) teachingCourseLocation = null;
+    navigate(_WorkspaceVisit(index, classId: classId, student: student));
+  }
 
   void openFinance(FinanceDestination destination) =>
       navigate(_WorkspaceVisit(destination.page, finance: destination));
@@ -632,6 +648,29 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   Widget pageContent(AuthSession session) {
+    if (session.role == 'TEACHER' && selectedIndex == 5) {
+      return TeacherCoursesPage(
+        load: widget.state.load,
+        apiBaseUrl: widget.state.api.baseUrl,
+        refreshToken: refreshToken,
+        initialLocation: teachingCourseLocation,
+        classId: teachingClassId,
+        onRecordLearning: (location, target) {
+          final index = target == TeacherLearningDestination.quran
+              ? 3
+              : sections.indexWhere(
+                  (section) => section.path == '/api/assessments',
+                );
+          if (index < 0) return;
+          teachingCourseLocation = location;
+          openTeacher(
+            index,
+            classId: teachingClassId,
+            student: teachingStudent,
+          );
+        },
+      );
+    }
     final section = sections[selectedIndex];
     if (session.role == 'ACCOUNTANT') {
       if (selectedIndex == 6) {
@@ -734,6 +773,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         0 => TeacherOverviewPage(
           load: widget.state.load,
           onOpen: openTeacher,
+          onOpenPeriod: (period) => navigate(
+            _WorkspaceVisit(3, classId: '${period['classId']}', period: period),
+          ),
           refreshToken: refreshToken,
         ),
         1 => TeacherClassesPage(
@@ -750,6 +792,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           onOpen: openTeacher,
           initialClassId: teachingClassId,
           initialStudent: teachingStudent,
+          openInitialProfile: openTeachingProfile,
           onClassChanged: rememberClass,
           refreshToken: refreshToken,
         ),
@@ -760,7 +803,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           teacherId: session.userId,
           initialClassId: teachingClassId,
           initialStudent: teachingStudent,
+          initialPeriod: teachingPeriod,
           onContextChanged: (classId, student) {
+            if (classId != teachingPeriod?['classId']) teachingPeriod = null;
             rememberClass(classId);
             teachingStudent = student;
           },
@@ -900,7 +945,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           onClose: primary
               ? () => scaffoldKey.currentState?.closeDrawer()
               : null,
-          groups: workspaceGroups(session.role),
+          pageOrder: workspacePageOrder(session.role),
         );
 
     final scaffold = Scaffold(
@@ -1041,112 +1086,92 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              if (session.role == 'TEACHER' ||
-                                                  session.role ==
-                                                      'ACCOUNTANT') ...[
-                                                Text(
-                                                  session.role == 'ACCOUNTANT'
-                                                      ? 'MY FINANCE WORKSPACE'
-                                                      : 'MY TEACHING WORKSPACE',
-                                                  style: const TextStyle(
-                                                    color: gold,
-                                                    letterSpacing: 1.6,
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 12),
-                                              ],
-                                              Text(
-                                                selectedIndex == 0
-                                                    ? session.role == 'PARENT'
-                                                          ? 'Welcome back, $firstName!'
-                                                          : 'Assalamu alaikum, $firstName'
-                                                    : section.title,
-                                                style: TextStyle(
-                                                  fontFamily:
-                                                      AfaqDesign.bodyFont,
-                                                  fontSize: narrow ? 26 : 30,
-                                                  fontWeight: FontWeight.w700,
-                                                  height: 1.2,
-                                                  color: ink,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                section.purpose,
-                                                style: const TextStyle(
-                                                  color: muted,
-                                                  fontSize: 14,
-                                                  height: 1.5,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        if (!narrow &&
-                                            session.role == 'TEACHER' &&
-                                            selectedIndex == 0)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 20,
-                                              top: 12,
-                                            ),
-                                            child: FilledButton.icon(
-                                              onPressed: () => openTeacher(4),
-                                              icon: const Icon(
-                                                Icons.calendar_month_outlined,
-                                                size: 18,
-                                              ),
-                                              label: const Text(
-                                                'Take attendance',
-                                              ),
-                                            ),
-                                          ),
-                                        if (!narrow &&
-                                            session.role != 'TEACHER' &&
-                                            session.role != 'PARENT' &&
-                                            MediaQuery.sizeOf(context).width >=
-                                                1280)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 24,
-                                              top: 6,
-                                            ),
-                                            child: Row(
+                                    if (selectedIndex == 0)
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                const Icon(
-                                                  Icons.calendar_today_outlined,
-                                                  color: gold,
-                                                  size: 21,
-                                                ),
-                                                const SizedBox(width: 10),
                                                 Text(
-                                                  MaterialLocalizations.of(
-                                                    context,
-                                                  ).formatFullDate(
-                                                    DateTime.now(),
-                                                  ),
-                                                  style: const TextStyle(
-                                                    color: muted,
-                                                    fontSize: 12,
+                                                  selectedIndex == 0
+                                                      ? session.role == 'PARENT'
+                                                            ? 'Welcome back, $firstName!'
+                                                            : firstName
+                                                      : section.title,
+                                                  style: TextStyle(
+                                                    fontFamily:
+                                                        AfaqDesign.bodyFont,
+                                                    fontSize: narrow ? 26 : 30,
+                                                    fontWeight: FontWeight.w700,
+                                                    height: 1.2,
+                                                    color: ink,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 24),
+                                          if (!narrow &&
+                                              session.role == 'TEACHER' &&
+                                              selectedIndex == 0)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 20,
+                                                top: 12,
+                                              ),
+                                              child: FilledButton.icon(
+                                                onPressed: () => openTeacher(4),
+                                                icon: const Icon(
+                                                  Icons.calendar_month_outlined,
+                                                  size: AfaqDesign.iconSmall,
+                                                ),
+                                                label: const Text(
+                                                  'Take attendance',
+                                                ),
+                                              ),
+                                            ),
+                                          if (!narrow &&
+                                              session.role != 'TEACHER' &&
+                                              session.role != 'PARENT' &&
+                                              MediaQuery.sizeOf(
+                                                    context,
+                                                  ).width >=
+                                                  1280)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 24,
+                                                top: 6,
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons
+                                                        .calendar_today_outlined,
+                                                    color: gold,
+                                                    size: AfaqDesign.iconSize,
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Text(
+                                                    MaterialLocalizations.of(
+                                                      context,
+                                                    ).formatFullDate(
+                                                      DateTime.now(),
+                                                    ),
+                                                    style: const TextStyle(
+                                                      color: muted,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    if (selectedIndex == 0)
+                                      const SizedBox(height: 24),
                                     KeyedSubtree(
                                       key: ValueKey('page-$selectedIndex'),
                                       child: pageContent(session),
@@ -1480,7 +1505,7 @@ class RecordCard extends StatelessWidget {
               color: blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(icon, color: blue, size: 23),
+            child: Icon(icon, color: blue, size: AfaqDesign.iconSize),
           ),
           const SizedBox(width: 15),
           Expanded(
