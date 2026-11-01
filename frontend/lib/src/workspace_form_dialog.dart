@@ -44,7 +44,11 @@ class WorkspaceFormDialog extends StatelessWidget {
               color: const Color(0xfff5ecd7),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AfaqDesign.actionGold, size: 26),
+            child: Icon(
+              icon,
+              color: AfaqDesign.actionGold,
+              size: AfaqDesign.iconSize,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -152,7 +156,7 @@ class WorkspaceFormNotice extends StatelessWidget {
         children: [
           Icon(
             isError ? Icons.error_outline : Icons.info_outline,
-            size: 20,
+            size: AfaqDesign.iconSmall,
             color: isError ? const Color(0xffb42318) : AfaqDesign.blue,
           ),
           const SizedBox(width: 10),
