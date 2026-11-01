@@ -276,10 +276,13 @@ class WorkspaceRefreshButton extends StatelessWidget {
           )
         : const Icon(Icons.refresh_rounded, color: ink);
     if (label != null) {
-      return OutlinedButton.icon(
-        onPressed: loading ? null : onRefresh,
-        icon: icon,
-        label: Text(label!),
+      return Tooltip(
+        message: tooltip,
+        child: OutlinedButton.icon(
+          onPressed: loading ? null : onRefresh,
+          icon: icon,
+          label: Text(label!),
+        ),
       );
     }
     return IconButton(
