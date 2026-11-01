@@ -67,7 +67,7 @@ class CourseCover extends StatelessWidget {
                       color: Colors.white.withValues(alpha: .8),
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: Icon(icon, color: accent, size: 32),
+                    child: Icon(icon, color: accent, size: 36),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
