@@ -125,6 +125,12 @@ Future<bool> createStudentForm(
         const AdminField('guardianName', 'Guardian name'),
         const AdminField('guardianPhone', 'Guardian phone number'),
         const AdminField(
+          'guardianResidence',
+          'Guardian residence',
+          kind: 'location',
+          required: false,
+        ),
+        const AdminField(
           'relationship',
           'Relationship',
           options: {
@@ -142,6 +148,8 @@ Future<bool> createStudentForm(
           'fullName': body.remove('guardianName'),
           'phone': body.remove('guardianPhone'),
           'relationship': body.remove('relationship'),
+          if (body.containsKey('guardianResidence'))
+            'residenceLocation': body.remove('guardianResidence'),
         };
       }
       await submit('/api/students', body);
