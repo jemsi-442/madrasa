@@ -5,7 +5,8 @@ import { HttpError } from "../../shared/errors/http-error";
 import { jsonRecord } from "../../shared/utils/json-record";
 import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import { attendanceConflict, schoolDate } from "../attendance/register.service";
-import { assignedStudent, classScope, studentScope } from "./teacher.access";
+import { assignedClass, assignedStudent, classScope, studentScope } from "./teacher.access";
+import type { PassageRosterQuery } from "./teacher.schemas";
 import type { DirectoryQuery, SessionInput, SessionQuery, SupportInput } from "./teacher.schemas";
 import catalog from "./quran-catalog.json";
 
@@ -16,7 +17,64 @@ const writeConflict = (error: unknown): never => {
 
 const pageMeta = (page: number, size: number, total: number) =>
   ({ page, pageSize: size, totalItems: total, totalPages: Math.ceil(total / size) });
+
+async function checkPeriod(tx: Prisma.TransactionClient, actor: AuthenticatedUser,
+  input: { timetableSlotId?: string | undefined; classId: string; learnedOn: string }, lock = false) {
+  if (!input.timetableSlotId) return;
+  if (lock) await tx.$queryRaw`SELECT id FROM class_timetable_slots
+    WHERE org_id = ${BigInt(actor.orgId)} AND id = ${BigInt(input.timetableSlotId)} FOR UPDATE`;
+  const day = new Date(input.learnedOn);
+  const slot = await tx.classTimetableSlot.findFirst({ where: {
+    id: BigInt(input.timetableSlotId), orgId: BigInt(actor.orgId),
+    classId: BigInt(input.classId), cancelledAt: null,
+    weekday: day.getUTCDay() || 7, validFrom: { lte: day }, validUntil: { gte: day },
+  } });
+  if (!slot) throw new HttpError(422, "The timetable period is not available for this class and date");
+}
+
+export const passageRoster = async (actor: AuthenticatedUser, query: PassageRosterQuery) => {
+  if (actor.role !== "TEACHER") throw new HttpError(403, "Not permitted");
+  return prisma.$transaction(async tx => {
+    await assignedClass(tx, actor, query.classId);
+    await checkPeriod(tx, actor, query);
+    const scope = { ...studentScope(actor), classId: BigInt(query.classId) };
+    const session = {
+      orgId: BigInt(actor.orgId), teacherId: BigInt(actor.userId),
+      classId: BigInt(query.classId), learnedOn: new Date(query.learnedOn),
+      ...(query.summary === 'true' ? {} : {
+        surahId: query.surahId, ayahFrom: query.ayahFrom, ayahTo: query.ayahTo,
+        activity: query.activity,
+      }), voidedAt: null,
+      timetableSlotId: query.timetableSlotId ? BigInt(query.timetableSlotId) : null,
+    } satisfies Prisma.QuranSessionWhereInput;
+    const select = { id: true, fullName: true, admissionNo: true, classId: true };
+    const orderBy = [{ fullName: "asc" as const }, { id: "asc" as const }];
+    const total = await tx.student.count({ where: scope });
+    const recorded = await tx.student.count({ where: { ...scope, quranSessions: { some: session } } });
+    const supportSession = { ...session, observation: { in: ['WITH_SUPPORT', 'NEEDS_PRACTICE'] } } satisfies Prisma.QuranSessionWhereInput;
+    const needsSupport = await tx.student.count({ where: { ...scope, quranSessions: { some: supportSession } } });
+    const items = await tx.student.findMany({ where: scope, orderBy,
+      skip: (query.page - 1) * 20, take: 20,
+      select: { ...select, quranSessions: { where: session, orderBy: { id: 'desc' }, take: 1,
+        select: { id: true, surahId: true, observation: true } } },
+    });
+    const supportIds = new Set((await tx.student.findMany({ where: {
+      ...scope, id: { in: items.map(item => item.id) }, quranSessions: { some: supportSession },
+    }, select: { id: true } })).map(item => String(item.id)));
+    const nextStudent = await tx.student.findFirst({
+      where: { ...scope, id: { notIn: query.skipIds.split(',').filter(Boolean).map(BigInt) },
+        quranSessions: { none: session } }, orderBy, select,
+    });
+    return jsonRecord({ items: items.map(({ quranSessions, ...item }) => ({
+      ...item, recorded: quranSessions.length > 0,
+      needsSupport: supportIds.has(String(item.id)), latestSession: quranSessions[0] ?? null,
+    })), total, recorded, needsSupport, remaining: total - recorded, nextStudent,
+    meta: pageMeta(query.page, 20, total) });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+};
 const sessionFields = {
+  timetableSlotId: true,
+  timetableSlot: { select: { subject: true, startsAt: true, endsAt: true } },
   id: true, surahId: true, ayahFrom: true, ayahTo: true, learnedOn: true, createdAt: true,
   activity: true, observation: true, note: true, voidedAt: true, voidReason: true,
   teacherId: true, teacher: { select: { fullName: true } },
@@ -137,9 +195,11 @@ export const saveQuran = async (actor: AuthenticatedUser, input: SessionInput) =
       if (existing.requestHash !== requestHash) throw new HttpError(409, "This save was already used for different details");
       return jsonRecord(existing);
     }
+    await checkPeriod(tx, actor, input, true);
     const saved = await tx.quranSession.create({ data: {
       ...input, studentId: student.id, classId: student.classId!, orgId, teacherId,
       learnedOn: new Date(input.learnedOn), note: input.note || null, requestHash,
+      timetableSlotId: input.timetableSlotId ? BigInt(input.timetableSlotId) : null,
     } });
     await tx.auditLog.create({ data: { orgId, actorUserId: teacherId, action: "quran.session.recorded",
       entityType: "QuranSession", entityId: String(saved.id),
