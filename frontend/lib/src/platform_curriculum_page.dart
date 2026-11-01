@@ -2116,9 +2116,10 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                     onSubmitted: (_) => searchCurriculum(),
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      labelText:
-                          'Search subjects, topics, objectives and lessons',
-                      hintText: 'Try a topic, objective code or lesson title',
+                      labelText: 'Search curriculum',
+                      hintText: 'Subject, topic or lesson',
+                      helperText: 'You can also search by objective code.',
+                      helperMaxLines: 2,
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: searchController.text.isEmpty
                           ? null
@@ -2160,12 +2161,13 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                   ),
                 ),
               ),
-              Text(
-                activeQuery.isEmpty
-                    ? '$total versions'
-                    : '$total search results',
-                style: const TextStyle(color: AfaqDesign.muted),
-              ),
+              if (total > 0)
+                Text(
+                  activeQuery.isEmpty
+                      ? '$total versions'
+                      : '$total search results',
+                  style: const TextStyle(color: AfaqDesign.muted),
+                ),
             ],
           ),
           const SizedBox(height: 20),
@@ -2185,11 +2187,59 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    activeQuery.isEmpty
-                        ? 'No frameworks to display. Create a framework to begin.'
-                        : 'No frameworks match "$activeQuery".',
+                  const Icon(
+                    Icons.menu_book_outlined,
+                    size: 32,
+                    color: AfaqDesign.gold,
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    focusedId != null
+                        ? 'Framework unavailable'
+                        : activeQuery.isNotEmpty
+                        ? 'No matching frameworks'
+                        : draftsOnly
+                        ? 'No unpublished frameworks'
+                        : 'No frameworks yet',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AfaqDesign.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    focusedId != null
+                        ? 'This framework is no longer available. Return to the library to choose another.'
+                        : activeQuery.isNotEmpty
+                        ? 'No frameworks match "$activeQuery".'
+                        : draftsOnly
+                        ? 'There are no drafts to continue. Published versions are still available in the subject library.'
+                        : 'Use New framework to add your first subject and learning objectives.',
+                    style: const TextStyle(
+                      color: AfaqDesign.muted,
+                      height: 1.5,
+                    ),
+                  ),
+                  if (draftsOnly &&
+                      activeQuery.isEmpty &&
+                      focusedId == null) ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () {
+                              setState(() {
+                                draftsOnly = false;
+                                tab = 0;
+                                page = 1;
+                              });
+                              load();
+                            },
+                      icon: const Icon(Icons.menu_book_outlined),
+                      label: const Text('View subject library'),
+                    ),
+                  ],
                   if (activeQuery.isNotEmpty)
                     TextButton.icon(
                       onPressed: busy
@@ -2213,7 +2263,8 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Text(
-                        'Grouped by subject. Levels and versions below are from this page; use pagination to see more.',
+                        'Browse subjects, levels and versions.',
+                        style: TextStyle(color: AfaqDesign.muted, height: 1.5),
                       ),
                       const SizedBox(height: 16),
                       Wrap(
@@ -2262,36 +2313,35 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
               },
             ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Text(
-                total == 0
-                    ? 'No results'
-                    : 'Showing ${(page - 1) * 24 + 1}-${page * 24 < total ? page * 24 : total} of $total',
-              ),
-              const Spacer(),
-              IconButton(
-                tooltip: 'Previous page',
-                onPressed: busy || page == 1
-                    ? null
-                    : () {
-                        page--;
-                        load();
-                      },
-                icon: const Icon(Icons.chevron_left),
-              ),
-              IconButton(
-                tooltip: 'Next page',
-                onPressed: busy || page * 24 >= total
-                    ? null
-                    : () {
-                        page++;
-                        load();
-                      },
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
-          ),
+          if (total > 0 && !busy && error == null)
+            Row(
+              children: [
+                Text(
+                  'Showing ${(page - 1) * 24 + 1}-${page * 24 < total ? page * 24 : total} of $total',
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Previous page',
+                  onPressed: busy || page == 1
+                      ? null
+                      : () {
+                          page--;
+                          load();
+                        },
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                IconButton(
+                  tooltip: 'Next page',
+                  onPressed: busy || page * 24 >= total
+                      ? null
+                      : () {
+                          page++;
+                          load();
+                        },
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
         ],
       );
       final releaseRow = focusedId != null
@@ -2307,8 +2357,47 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
             ),
             const SizedBox(height: 20),
             if (releaseRow == null)
-              const Text(
-                'Create or choose a framework to see its release progress.',
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your publishing steps',
+                    style: TextStyle(color: AfaqDesign.muted, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  for (final step in [
+                    (1, 'Draft content'),
+                    (2, 'Publish when ready'),
+                    (3, 'Assign to madrasas'),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: const Color(0xfff8f0da),
+                            child: Text(
+                              '${step.$1}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AfaqDesign.gold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              step.$2,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               )
             else ...[
               Builder(
@@ -2425,7 +2514,7 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                                 child: step.$2.$3
                                     ? const Icon(
                                         Icons.check,
-                                        size: 17,
+                                        size: AfaqDesign.iconSmall,
                                         color: Color(0xff28875a),
                                       )
                                     : Text(
@@ -2468,9 +2557,26 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
             const Divider(height: 24),
             Container(
               padding: const EdgeInsets.all(16),
-              color: const Color(0xffeaf1ff),
-              child: const Text(
-                'Local lesson planning stays with teachers. Central updates do not overwrite recorded learning history.',
+              decoration: BoxDecoration(
+                color: const Color(0xffeaf1ff),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Learning history stays protected',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AfaqDesign.ink,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Teachers manage local lesson plans. Published updates do not overwrite recorded learning history.',
+                    style: TextStyle(color: AfaqDesign.muted, height: 1.5),
+                  ),
+                ],
               ),
             ),
           ],
@@ -2486,21 +2592,31 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
               'AFAQ / INSTITUTION WORKSPACE',
               style: TextStyle(
                 color: AfaqDesign.gold,
+                fontSize: 12,
+                height: 1.5,
                 letterSpacing: 1.5,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 18,
-              runSpacing: 12,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Curriculum & Subjects',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 32,
+                    height: 1.2,
+                    color: AfaqDesign.ink,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Develop shared learning frameworks and choose what each madrasa adopts.',
+                  style: TextStyle(color: AfaqDesign.muted, height: 1.5),
+                ),
+                const SizedBox(height: 20),
                 Wrap(
                   spacing: 12,
                   runSpacing: 8,
@@ -2539,11 +2655,6 @@ class _PlatformCurriculumPageState extends State<PlatformCurriculumPage> {
                   ],
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Develop shared learning frameworks and control what each madrasa adopts.',
-              style: TextStyle(color: AfaqDesign.muted),
             ),
             const SizedBox(height: 28),
             SingleChildScrollView(
