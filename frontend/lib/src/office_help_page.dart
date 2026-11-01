@@ -109,7 +109,7 @@ class _OfficeHelpScreenState extends State<OfficeHelpScreen> {
               const Icon(
                 Icons.mark_email_read_outlined,
                 color: publicGold,
-                size: 48,
+                size: 52,
               ),
               const SizedBox(height: 20),
               const Text(
