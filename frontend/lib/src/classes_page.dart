@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'class_timetable_dialog.dart';
 import 'class_record_actions.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'admin_forms.dart';
 import 'academic_actions.dart';
+import 'branch_location_actions.dart';
 
 class ClassesPage extends StatefulWidget {
   const ClassesPage({
@@ -69,6 +71,15 @@ class _ClassesPageState extends State<ClassesPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (widget.submit != null) ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                icon: const Icon(Icons.location_on_outlined),
+                label: const Text('Branch locations'),
+                onPressed: () =>
+                    editBranchLocation(context, widget.load, widget.submit!),
+              ),
+            ),
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
@@ -287,7 +298,7 @@ class _ClassesPageState extends State<ClassesPage> {
                                       tooltip: 'Manage timetable',
                                       icon: const Icon(
                                         Icons.calendar_month_outlined,
-                                        size: 19,
+                                        size: AfaqDesign.iconSmall,
                                       ),
                                       onPressed: () => showClassTimetable(
                                         context,
@@ -300,7 +311,7 @@ class _ClassesPageState extends State<ClassesPage> {
                                     tooltip: 'View ${item['name']}',
                                     icon: const Icon(
                                       Icons.arrow_forward_rounded,
-                                      size: 19,
+                                      size: AfaqDesign.iconSmall,
                                     ),
                                     onPressed: () => showRecordDetails(
                                       context,
