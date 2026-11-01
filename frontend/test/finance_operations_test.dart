@@ -488,7 +488,7 @@ void main() {
           return false;
         },
       );
-      await _tap(tester, find.byType(DropdownButtonFormField<int>));
+      await _tap(tester, _field('Report year'));
       await _tap(tester, find.text('2025').last);
       expect(reads.last.queryParameters['year'], '2025');
       await _tap(tester, find.text('Save CSV'));
