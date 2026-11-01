@@ -5,6 +5,7 @@ import { requireRole } from "../../shared/middleware/require-role";
 import { requireTenantContext } from "../../shared/middleware/tenant-context";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import {
+  pdfReportHandler,
   exportMonthlyFinanceSummaryReportHandler,
   getAttendanceSummaryReportHandler,
   exportAttendanceReportHandler,
@@ -19,6 +20,10 @@ import {
 export const reportsRouter = Router();
 
 reportsRouter.use(authenticate, requireTenantContext);
+reportsRouter.get('/students/pdf', requireRole('ADMIN', 'TEACHER'), asyncHandler(pdfReportHandler('students')));
+reportsRouter.get('/payments/pdf', requireRole('ADMIN', 'ACCOUNTANT'), asyncHandler(pdfReportHandler('payments')));
+reportsRouter.get('/attendance/pdf', requireRole('ADMIN', 'TEACHER'), asyncHandler(pdfReportHandler('attendance')));
+reportsRouter.get('/finance/monthly-summary/pdf', requireRole('ADMIN', 'ACCOUNTANT'), asyncHandler(pdfReportHandler('finance')));
 
 reportsRouter.get(
   "/dashboard",
