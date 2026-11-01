@@ -110,6 +110,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Awaiting setup'));
       await tester.tap(find.text('Awaiting setup'));
       await tester.pumpAndSettle();
       expect(paths.last.queryParameters['setup'], 'pending');
@@ -120,8 +121,10 @@ void main() {
         'Search madrassa name or code',
       );
       await tester.enterText(field, 'School');
+      await tester.ensureVisible(find.text('Search madrassas'));
       await tester.tap(find.text('Search madrassas'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Created madrassas'));
       await tester.tap(find.text('Created madrassas'));
       await tester.pumpAndSettle();
       expect(paths.last.queryParameters, {
@@ -132,9 +135,11 @@ void main() {
       });
       expect(find.text('School status: PENDING_ACTIVATION'), findsOneWidget);
       expect(find.text('Review setup'), findsNothing);
+      await tester.ensureVisible(find.text('Refresh queue'));
       await tester.tap(find.text('Refresh queue'));
       await tester.pumpAndSettle();
       expect(paths.last.queryParameters['setup'], 'created');
+      await tester.ensureVisible(find.text('Clear search'));
       await tester.tap(find.text('Clear search'));
       await tester.pumpAndSettle();
       expect(paths.last.queryParameters, {
@@ -142,6 +147,7 @@ void main() {
         'pageSize': '20',
         'setup': 'created',
       });
+      await tester.ensureVisible(find.text('All approved'));
       await tester.tap(find.text('All approved'));
       await tester.pumpAndSettle();
       expect(paths.last.queryParameters, {'page': '1', 'pageSize': '20'});
@@ -202,9 +208,11 @@ void main() {
         find.text('No approved madrassas match this search on this page.'),
         findsOneWidget,
       );
+      await tester.ensureVisible(find.text('Refresh queue'));
       await tester.tap(find.text('Refresh queue'));
       await tester.pumpAndSettle();
       expect(paths.last.queryParameters['q'], 'Afaq & School');
+      await tester.ensureVisible(find.text('Clear search'));
       await tester.tap(find.text('Clear search'));
       await tester.pumpAndSettle();
       expect(paths.last.queryParameters, {'page': '1', 'pageSize': '20'});
@@ -289,6 +297,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Review setup'));
       await tester.tap(find.text('Review setup'));
       await tester.pumpAndSettle();
       expect(writes, 0);
@@ -306,11 +315,14 @@ void main() {
           expect(find.text('Approved School'), findsNothing);
         }
       } else {
+        await tester.ensureVisible(find.text('Cancel setup'));
         await tester.tap(find.text('Cancel setup'));
         await tester.pumpAndSettle();
         expect(writes, 0);
+        await tester.ensureVisible(find.text('Review setup'));
         await tester.tap(find.text('Review setup'));
         await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Create inactive madrassa'));
         await tester.tap(find.text('Create inactive madrassa'));
         await tester.pumpAndSettle();
         expect(writes, 1);
@@ -337,12 +349,13 @@ void main() {
         );
         expect(find.textContaining('private diagnostic'), findsNothing);
         expect(find.text('Create inactive madrassa'), findsNothing);
+        await tester.ensureVisible(find.text('Check current progress'));
         await tester.tap(find.text('Check current progress'));
         await tester.pumpAndSettle();
         expect(progressReads, 2);
         expect(writes, 1);
         expect(
-          find.textContaining('Waiting for an admin invitation.'),
+          find.textContaining('IT must send the invitation to the approved administrator email.'),
           findsOneWidget,
         );
         await tester.ensureVisible(find.text('Back to queue'));
