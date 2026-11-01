@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'api_client.dart';
@@ -224,7 +225,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
             inboxRefresh++;
             if (selectedId != null) reloadHistory();
           }),
-    icon: const Icon(Icons.refresh, size: 18),
+    icon: const Icon(Icons.refresh, size: AfaqDesign.iconSmall),
     label: const Text('Refresh messages'),
   );
 
@@ -238,7 +239,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
         children: [
           FilledButton.icon(
             onPressed: sending || opening ? null : newConversation,
-            icon: const Icon(Icons.edit_outlined, size: 18),
+            icon: const Icon(Icons.edit_outlined, size: AfaqDesign.iconSmall),
             label: Text(opening ? 'Opening...' : 'New message'),
           ),
           refreshButton(),
@@ -548,7 +549,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
               onPressed: sending ? null : send,
               icon: Icon(
                 sending ? Icons.hourglass_top : Icons.send_outlined,
-                size: 18,
+                size: AfaqDesign.iconSmall,
               ),
               label: Text(
                 sending
