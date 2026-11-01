@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'design_theme.dart';
+import 'brand.dart';
 
 import 'api_client.dart';
 import 'app_layout.dart';
@@ -156,7 +157,7 @@ class _MifAppState extends State<MifApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Modern Islamic Foundation',
+      title: appBrandName,
       debugShowCheckedModeBanner: false,
       shortcuts: (widget.layout ?? resolveAppLayout()) == AppLayout.website
           ? pageKeyboardShortcuts
