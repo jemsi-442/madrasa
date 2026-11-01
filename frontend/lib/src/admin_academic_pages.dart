@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'dashboard_components.dart';
@@ -656,7 +657,7 @@ class _PersonName extends StatelessWidget {
         radius: 19,
         backgroundColor: blue.withValues(alpha: .1),
         child: icon != null
-            ? Icon(icon, color: blue, size: 20)
+            ? Icon(icon, color: blue, size: AfaqDesign.iconSmall)
             : Text(
                 name
                     .split(' ')
