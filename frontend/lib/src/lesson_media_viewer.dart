@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'api_client.dart';
@@ -35,6 +36,7 @@ class LessonMediaViewer extends StatefulWidget {
     required this.load,
     required this.apiBaseUrl,
     this.title = 'Lesson resource',
+    this.teacherResource = false,
     this.onClose,
     this.position,
     this.total,
@@ -59,6 +61,7 @@ class LessonMediaViewer extends StatefulWidget {
     this.surfaceBuilder,
     this.onClose,
   }) : previewSample = sample,
+       teacherResource = false,
        assetId = '',
        apiBaseUrl = '',
        title = 'Player preview',
@@ -66,6 +69,7 @@ class LessonMediaViewer extends StatefulWidget {
        assert((position == null) == (total == null)),
        assert(position == null || (position > 0 && position <= (total ?? 0)));
   final String assetId, apiBaseUrl, title;
+  final bool teacherResource;
   final PageLoader? load;
   final MediaPlayerSample? previewSample;
   final VoidCallback? onClose;
@@ -118,6 +122,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
   void didUpdateWidget(covariant LessonMediaViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.assetId != widget.assetId ||
+        oldWidget.teacherResource != widget.teacherResource ||
         oldWidget.apiBaseUrl != widget.apiBaseUrl ||
         oldWidget.previewSample != widget.previewSample) {
       loading = false;
@@ -141,12 +146,13 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         parsed = sample.delivery;
       } else {
         final raw = await widget.load!(
-          '/api/learner/assets/${widget.assetId}/open',
+          '/api/${widget.teacherResource ? 'courses' : 'learner'}/assets/${Uri.encodeComponent(widget.assetId)}/open',
         );
         parsed = LessonMediaDelivery.parse(
           recordMap(raw),
           apiBaseUrl: widget.apiBaseUrl,
           assetId: widget.assetId,
+          teacherResource: widget.teacherResource,
         );
       }
       if (!mounted || request != generation) return;
@@ -325,7 +331,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                       foregroundColor: playback ? playbackAccent : ink,
                     ),
                     onPressed: loading ? null : reload,
-                    icon: const Icon(Icons.refresh, size: 18),
+                    icon: const Icon(Icons.refresh, size: AfaqDesign.iconSmall),
                     label: const Text('Reload player'),
                   ),
                   if (widget.onToggleFocus != null)
@@ -339,7 +345,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                         widget.focusView
                             ? Icons.close_fullscreen
                             : Icons.open_in_full,
-                        size: 18,
+                        size: AfaqDesign.iconSmall,
                       ),
                       label: Text(
                         widget.focusView ? 'Exit focus view' : 'Focus view',
@@ -386,7 +392,10 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                           : null,
                       key: const ValueKey('previous-resource'),
                       onPressed: widget.onPrevious,
-                      icon: const Icon(Icons.chevron_left, size: 18),
+                      icon: const Icon(
+                        Icons.chevron_left,
+                        size: AfaqDesign.iconSmall,
+                      ),
                       label: const Text('Previous resource'),
                     ),
                     OutlinedButton.icon(
@@ -399,7 +408,10 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                           : null,
                       key: const ValueKey('next-resource'),
                       onPressed: widget.onNext,
-                      icon: const Icon(Icons.chevron_right, size: 18),
+                      icon: const Icon(
+                        Icons.chevron_right,
+                        size: AfaqDesign.iconSmall,
+                      ),
                       label: const Text('Next resource'),
                     ),
                   ],
@@ -452,7 +464,10 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                   ),
                   key: const ValueKey('return-to-lesson-text'),
                   onPressed: widget.onClose,
-                  icon: const Icon(Icons.menu_book_outlined, size: 18),
+                  icon: const Icon(
+                    Icons.menu_book_outlined,
+                    size: AfaqDesign.iconSmall,
+                  ),
                   label: const Text('Back to lesson text'),
                 ),
               Text(
