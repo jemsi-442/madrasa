@@ -1,14 +1,36 @@
-// Disposable, loopback-only company demo. Never imports dotenv or uses DATABASE_URL.
+// Persistent, loopback-only company demo. Never imports dotenv or uses DATABASE_URL.
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { chmod, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { loadDemoState, lockDemo, saveDemoState } from './local-demo-storage';
 
 const root = resolve(__dirname, "..");
+type DemoCredential = { email: string; role: string; password: string };
+const demoEmails = new Set([
+  "superadmin@afaq.test",
+  "reviewer@afaq.test",
+  "it@afaq.test",
+  "schooladmin@afaq.test",
+  "parent@afaq.test",
+]);
+
+function parseDemoCredentials(value: unknown): DemoCredential[] {
+  if (!Array.isArray(value) || value.length !== demoEmails.size) {
+    throw new Error("Invalid private platform demo credentials file.");
+  }
+  const rows = value as DemoCredential[];
+  if (rows.some(row => !row || !demoEmails.has(row.email) || typeof row.role !== "string" || typeof row.password !== "string" || row.password.length < 12 || row.password.length > 72)
+    || new Set(rows.map(row => row.email)).size !== demoEmails.size) {
+    throw new Error("Invalid private platform demo credentials file.");
+  }
+  return rows;
+}
+
 async function freePort() {
   const server = createServer();
   await new Promise<void>((ok, fail) => { server.once("error", fail); server.listen(0, "127.0.0.1", ok); });
@@ -19,29 +41,55 @@ async function freePort() {
 
 async function main() {
   if (process.argv[2] !== "--start" || process.env.NODE_ENV === "production") {
-    throw new Error("Use --start for a disposable local demo, never production.");
+    throw new Error("Use --start for a local demo, never production.");
   }
-  let previousCredentials: Array<{ email: string; password: string }> = [];
-  if (process.argv[3] === "--reuse-demo-passwords") {
-    const file = resolve(process.argv[4] ?? "");
-    if (!file.startsWith(join(tmpdir(), "afaq-local-demo-")) || !file.endsWith("/credentials.json")) throw new Error("Only a previous private demo credentials file is allowed.");
-    previousCredentials = JSON.parse(await readFile(file, "utf8"));
-    if (!Array.isArray(previousCredentials) || previousCredentials.some(row => typeof row.email !== 'string' || typeof row.password !== 'string' || row.password.length < 12 || row.password.length > 72)) throw new Error("Invalid demo credentials file.");
+  if (process.argv.length > 3) throw new Error('Persistent demo startup does not rotate passwords or reset data. Use --start only.');
+  const directory = join(homedir(), '.afaq', 'platform-demo', 'runtime');
+  const unlock = await lockDemo(directory);
+  try { await runDemo(directory); } finally { await unlock(); }
+}
+
+async function runDemo(directory: string) {
+  const probe = createServer();
+  await new Promise<void>((ok, fail) => { probe.once('error', fail); probe.listen(4087, '127.0.0.1', ok); });
+  await new Promise<void>(ok => probe.close(() => ok()));
+  const { state, fresh } = await loadDemoState(directory);
+  const credentialDirectory = join(homedir(), ".afaq", "platform-demo");
+  const persistentCredentialFile = join(credentialDirectory, "credentials.json");
+  await mkdir(credentialDirectory, { recursive: true, mode: 0o700 });
+  await chmod(credentialDirectory, 0o700);
+
+  let previousCredentials: DemoCredential[] = [];
+  if (fresh) {
+    try {
+      previousCredentials = parseDemoCredentials(JSON.parse(await readFile(persistentCredentialFile, "utf8")));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      const previousRuns = await readdir(tmpdir(), { withFileTypes: true });
+      const previousFiles = await Promise.all(previousRuns
+        .filter(entry => entry.isDirectory() && entry.name.startsWith("afaq-local-demo-"))
+        .map(async entry => {
+          const file = join(tmpdir(), entry.name, "credentials.json");
+          try { return { file, mtime: (await stat(file)).mtimeMs }; } catch { return undefined; }
+        }));
+      const latestFile = previousFiles.filter((entry): entry is { file: string; mtime: number } => entry !== undefined)
+        .sort((a, b) => b.mtime - a.mtime)[0];
+      if (latestFile) {
+        previousCredentials = parseDemoCredentials(JSON.parse(await readFile(latestFile.file, "utf8")));
+      }
+    }
   }
-  const directory = await mkdtemp(join(tmpdir(), "afaq-local-demo-"));
   const mysqlPort = await freePort();
   let redisPort = await freePort();
   while (redisPort === mysqlPort) redisPort = await freePort();
-  const password = randomBytes(32).toString("hex");
-  const encryptionKey = randomBytes(32).toString("hex");
-  const signingKey = randomBytes(32).toString("hex");
+  const { password, encryptionKey, signingKey } = state;
   const dbUrl = `mysql://root:${password}@127.0.0.1:${mysqlPort}/afaq_local_demo`;
   const redisUrl = `redis://127.0.0.1:${redisPort}`;
   const children: ChildProcess[] = [];
   const childEnv = {
     ...process.env, NODE_ENV: "development", DOTENV_CONFIG_PATH: "/dev/null",
     DATABASE_URL: dbUrl, FRESH_DATABASE_URL: dbUrl, REDIS_URL: redisUrl,
-    JWT_SECRET: randomBytes(32).toString("hex"), JWT_REFRESH_SECRET: randomBytes(32).toString("hex"),
+    JWT_SECRET: state.jwtSecret, JWT_REFRESH_SECRET: state.refreshSecret,
     PLATFORM_JWT_SECRET: signingKey, PLATFORM_MFA_ENCRYPTION_KEY: encryptionKey,
     APP_BASE_URL: "http://127.0.0.1:4087", WEB_APP_ORIGINS: "http://127.0.0.1:8087",
     PUBLIC_SITE_ORG_CODE: "demo-madrasa", SNIPPE_MOCK_MODE: "true",
@@ -69,23 +117,26 @@ async function main() {
   let db: PrismaClient | undefined;
   const cleanup = async () => {
     await db?.$disconnect();
-    try { run("redis-cli", ["-s", redisSocket, "shutdown", "nosave"]); } catch { /* Not started. */ }
-    try { run("mariadb", ["--no-defaults", `--socket=${socket}`, "-uroot", "-e", "SHUTDOWN"], { ...childEnv, MYSQL_PWD: password } as typeof childEnv); } catch { /* Not started. */ }
+    try { run("redis-cli", ["-s", redisSocket, "shutdown", "save"]); } catch { /* Not started. */ }
+    try { run("mariadb", ["--no-defaults", "--skip-ssl", `--socket=${socket}`, "-uroot", "-e", "SHUTDOWN"], { ...childEnv, MYSQL_PWD: password } as typeof childEnv); } catch { /* Not started. */ }
     for (const child of children) if (child.exitCode === null) child.kill("SIGTERM");
+    await Promise.all(children.map(child => child.exitCode !== null || child.signalCode !== null
+      ? Promise.resolve() : new Promise<void>(done => child.once('exit', () => done()))));
   };
   try {
     const data = join(directory, "data");
-    run("mariadb-install-db", ["--no-defaults", `--datadir=${data}`, "--auth-root-authentication-method=normal", "--skip-test-db"]);
+    if (fresh) run("mariadb-install-db", ["--no-defaults", `--datadir=${data}`, "--auth-root-authentication-method=normal", "--skip-test-db"]);
     const initFile = join(directory, "init.sql");
-    await writeFile(initFile, `ALTER USER 'root'@'localhost' IDENTIFIED BY '${password}';\nCREATE DATABASE afaq_local_demo;\n`, { mode: 0o600 });
-    const mysql = start("mariadbd", ["--no-defaults", `--datadir=${data}`, `--socket=${socket}`, `--pid-file=${join(directory, "mysql.pid")}`, `--init-file=${initFile}`, "--bind-address=127.0.0.1", `--port=${mysqlPort}`, ...(process.getuid?.() === 0 ? ["--user=root"] : [])]);
-    await ready(() => run("mariadb", ["--no-defaults", `--socket=${socket}`, "-uroot", "-e", "SELECT 1"], { ...childEnv, MYSQL_PWD: password } as typeof childEnv), mysql);
-    const redis = start("redis-server", ["--bind", "127.0.0.1", "--port", `${redisPort}`, "--unixsocket", redisSocket, "--unixsocketperm", "700", "--save", "", "--appendonly", "no", "--dir", directory]);
+    if (fresh) await writeFile(initFile, `ALTER USER 'root'@'localhost' IDENTIFIED BY '${password}';\nCREATE DATABASE afaq_local_demo;\n`, { mode: 0o600 });
+    const mysql = start("mariadbd", ["--no-defaults", `--datadir=${data}`, `--socket=${socket}`, `--pid-file=${join(directory, "mysql.pid")}`, ...(fresh ? [`--init-file=${initFile}`] : []), "--bind-address=127.0.0.1", `--port=${mysqlPort}`, ...(process.getuid?.() === 0 ? ["--user=root"] : [])]);
+    await ready(() => run("mariadb", ["--no-defaults", "--skip-ssl", `--socket=${socket}`, "-uroot", "-e", "SELECT 1"], { ...childEnv, MYSQL_PWD: password } as typeof childEnv), mysql);
+    const redis = start("redis-server", ["--bind", "127.0.0.1", "--port", `${redisPort}`, "--unixsocket", redisSocket, "--unixsocketperm", "700", "--save", "", "--appendonly", "yes", "--dir", directory]);
     await ready(() => run("redis-cli", ["-s", redisSocket, "ping"]), redis);
-    console.log("Installing schema into a new isolated demo database...");
+    if (fresh) {
+    console.log("Installing schema once into the persistent local demo database...");
     run(join(root, "node_modules/.bin/tsx"), ["scripts/install-empty-database.ts", "--confirm-empty-database"]);
     db = new PrismaClient({ datasourceUrl: dbUrl, log: [] });
-    const credentials = [];
+    const credentials: DemoCredential[] = [];
     for (const [name, email, role] of [
       ["Demo Super Admin", "superadmin@afaq.test", "SUPER_ADMIN"],
       ["Demo Office Reviewer", "reviewer@afaq.test", "SUPER_ADMIN"],
@@ -132,9 +183,13 @@ async function main() {
     await db.studentGuardian.create({ data: { orgId: org.id, studentId: pendingChild.id, guardianId: pendingGuardian.id, isPrimary: true } });
     const credentialFile = join(directory, "credentials.json");
     await writeFile(credentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
+    await writeFile(persistentCredentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
+    await chmod(persistentCredentialFile, 0o600);
+    await saveDemoState(directory, { ...state, initialized: true });
+    }
     const api = start(join(root, "node_modules/.bin/tsx"), ["scripts/local-demo-api.ts"]);
     await ready(() => run("curl", ["--fail", "--silent", "--max-time", "2", "http://127.0.0.1:4087/api/health"]), api);
-    console.log(`Demo API: http://127.0.0.1:4087\nPrivate demo credentials: ${credentialFile}\nLocal-only disposable accounts; no school data was copied. Stop with Ctrl+C.`);
+    console.log(`Demo API: http://127.0.0.1:4087\nPrivate demo credentials: ${persistentCredentialFile}\nPersistent demo data: ${directory}\nFrameworks, assignments and accounts are preserved across restarts. Stop with Ctrl+C.`);
     await new Promise<void>((ok) => {
       process.once("SIGINT", ok);
       process.once("SIGTERM", ok);
@@ -142,6 +197,6 @@ async function main() {
   } finally { await cleanup(); }
 }
 main().then(() => process.exit(0)).catch(() => {
-  console.error("Local demo stopped or could not start. Check local ports and service availability. Existing databases and credentials were not modified.");
+  console.error("Local demo could not start. Check ports, runtime/running.lock and private state.json. Data was NOT reset. If initialization was interrupted, preserve the runtime directory for recovery.");
   process.exit(1);
 });
