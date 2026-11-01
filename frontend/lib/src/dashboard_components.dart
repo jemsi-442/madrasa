@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'status_badge.dart';
 import 'design_tokens.dart';
+import 'live_data.dart';
 
 import 'foundation_ui.dart';
 
@@ -136,7 +137,7 @@ class PageResult extends StatelessWidget {
   final Widget Function(dynamic data) builder;
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<dynamic>(
+  Widget build(BuildContext context) => LiveDataBuilder(
     future: future,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
@@ -178,7 +179,7 @@ class EmptyRecords extends StatelessWidget {
     child: Center(
       child: Column(
         children: [
-          const Icon(Icons.search_off_rounded, size: 32, color: muted),
+          const Icon(Icons.search_off_rounded, size: 36, color: muted),
           const SizedBox(height: 12),
           Text(
             message,
