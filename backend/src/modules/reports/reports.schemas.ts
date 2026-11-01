@@ -30,6 +30,7 @@ export const dashboardReportQuerySchema = z
   .superRefine(applyDateRangeValidation);
 
 export const studentsExportQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
   branchId: numericId.optional(),
   classId: numericId.optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED", "GRADUATED"]).optional(),
@@ -37,6 +38,9 @@ export const studentsExportQuerySchema = z.object({
 
 export const paymentsExportQuerySchema = z
   .object({
+    search: z.string().trim().max(100).optional(),
+    invoiceId: numericId.optional(),
+    channel: z.enum(['mpesa', 'airtel_money', 'tigo_pesa']).optional(),
     ...dateRangeFields,
     branchId: numericId.optional(),
     classId: numericId.optional(),
@@ -46,6 +50,7 @@ export const paymentsExportQuerySchema = z
 
 export const attendanceExportQuerySchema = z
   .object({
+    search: z.string().trim().max(100).optional(),
     ...dateRangeFields,
     branchId: numericId.optional(),
     classId: numericId.optional(),
