@@ -9,9 +9,13 @@ import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/app_state.dart';
 import 'package:mif_app/src/browser_state.dart';
 import 'package:mif_app/src/attendance_register_page.dart';
+import 'package:mif_app/src/assessments_page.dart';
+import 'package:mif_app/src/student_reports_page.dart';
 import 'package:mif_app/src/family_messages_page.dart';
 import 'package:mif_app/src/parent_portal_page.dart';
 import 'package:mif_app/src/teacher_students_page.dart';
+import 'package:mif_app/src/teacher_quran_page.dart';
+import 'package:mif_app/src/teacher_courses_page.dart';
 import 'package:mif_app/src/teacher_teaching_pages.dart';
 import 'package:mif_app/src/workspace.dart';
 import 'package:mif_app/src/workspace_chrome.dart';
@@ -88,12 +92,151 @@ int section(WidgetTester tester) =>
     tester.widget<WorkspaceSidebar>(find.byType(WorkspaceSidebar)).selected;
 
 void main() {
-  for (final role in roles) {
-    test('$role related pages and groups remain inside its allowed menu', () {
-      final pages = sectionsForRole(role);
-      for (final group in workspaceGroups(role).keys) {
-        expect(group, inInclusiveRange(0, pages.length - 1));
+  for (final width in [390.0, 1440.0]) {
+    testWidgets(
+      'course record actions retain class and return location at $width',
+      (tester) async {
+        await showWorkspace(tester, 'TEACHER', width: width);
+        tester
+            .widget<TeacherOverviewPage>(find.byType(TeacherOverviewPage))
+            .onOpen(5, classId: 'class-1');
+        await tester.pumpAndSettle();
+        final location = TeacherCourseLocation(
+          course: {'id': 'c'},
+          module: {'id': 'm'},
+          lessonId: 'l',
+        );
+        for (final target in TeacherLearningDestination.values) {
+          tester
+              .widget<TeacherCoursesPage>(find.byType(TeacherCoursesPage))
+              .onRecordLearning!(location, target);
+          await tester.pumpAndSettle();
+          if (target == TeacherLearningDestination.quran) {
+            expect(
+              tester
+                  .widget<TeacherQuranPage>(find.byType(TeacherQuranPage))
+                  .initialClassId,
+              'class-1',
+            );
+          } else {
+            expect(
+              tester
+                  .widget<AssessmentsPage>(find.byType(AssessmentsPage))
+                  .initialClassId,
+              'class-1',
+            );
+          }
+          await tap(tester, find.byKey(const ValueKey('workspace-back')));
+          expect(
+            tester
+                .widget<TeacherCoursesPage>(find.byType(TeacherCoursesPage))
+                .initialLocation,
+            same(location),
+          );
+        }
+      },
+    );
+
+    testWidgets(
+      'teacher record journey preserves class and clears stale learner at $width',
+      (tester) async {
+        await showWorkspace(tester, 'TEACHER', width: width);
+        tester
+            .widget<TeacherOverviewPage>(find.byType(TeacherOverviewPage))
+            .onOpen(4, classId: 'class-1');
+        await tester.pumpAndSettle();
+        await tap(tester, find.byKey(const ValueKey('next-page-3')));
+        final quran = tester.widget<TeacherQuranPage>(
+          find.byType(TeacherQuranPage),
+        );
+        expect(quran.initialClassId, 'class-1');
+        quran.onContextChanged!('class-1', {
+          'id': 'synthetic-learner-1',
+          'fullName': 'Demo Learner',
+        });
+        await tap(tester, find.byKey(const ValueKey('next-page-8')));
+        final assessments = tester.widget<AssessmentsPage>(
+          find.byType(AssessmentsPage),
+        );
+        expect(assessments.initialClassId, 'class-1');
+        expect(assessments.admin, isFalse);
+        assessments.onClassChanged!('class-2');
+        await tap(tester, find.byKey(const ValueKey('next-page-9')));
+        final reports = tester.widget<StudentReportsPage>(
+          find.byType(StudentReportsPage),
+        );
+        expect(reports.initialClassId, 'class-2');
+        expect(reports.admin, isFalse);
+        await tap(tester, find.byKey(const ValueKey('workspace-back')));
+        expect(
+          tester
+              .widget<AssessmentsPage>(find.byType(AssessmentsPage))
+              .initialClassId,
+          'class-2',
+        );
+        await tap(tester, find.byKey(const ValueKey('workspace-back')));
+        final restored = tester.widget<TeacherQuranPage>(
+          find.byType(TeacherQuranPage),
+        );
+        expect(restored.initialClassId, 'class-1');
+        expect(restored.initialStudent?['id'], 'synthetic-learner-1');
+        restored.onContextChanged!('class-2', null);
+        await tap(tester, find.byKey(const ValueKey('next-page-8')));
+        await tap(tester, find.byKey(const ValueKey('workspace-back')));
+        final cleared = tester.widget<TeacherQuranPage>(
+          find.byType(TeacherQuranPage),
+        );
+        expect(cleared.initialClassId, 'class-2');
+        expect(cleared.initialStudent, isNull);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  test('teacher next steps do not send tasks into circular navigation', () {
+    void visit(int page, Set<int> trail) {
+      expect(trail, isNot(contains(page)), reason: 'Circular teaching flow');
+      for (final next in relatedWorkspacePages('TEACHER', page)) {
+        visit(next, {...trail, page});
       }
+    }
+
+    for (var page = 0; page < sectionsForRole('TEACHER').length; page++) {
+      visit(page, {});
+    }
+    expect(relatedWorkspacePages('TEACHER', 3), [8, 9]);
+    expect(relatedWorkspacePages('TEACHER', 7), isEmpty);
+    expect(relatedWorkspacePages('TEACHER', 5), isEmpty);
+    final order = workspacePageOrder('TEACHER')!;
+    expect(order.toSet().length, sectionsForRole('TEACHER').length);
+    for (final page in order) {
+      for (final next in relatedWorkspacePages('TEACHER', page)) {
+        expect(order.indexOf(next), greaterThan(order.indexOf(page)));
+      }
+    }
+  });
+
+  testWidgets('teacher menu follows teaching order without changing page IDs', (
+    tester,
+  ) async {
+    await showWorkspace(tester, 'TEACHER');
+    tester.view.physicalSize = const Size(1440, 1800);
+    await tester.pumpAndSettle();
+    final sidebar = tester.widget<WorkspaceSidebar>(
+      find.byType(WorkspaceSidebar),
+    );
+    expect(sidebar.pageOrder, [0, 1, 2, 10, 5, 4, 3, 8, 9, 6, 7]);
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('nav-5'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey('nav-3'))).dy),
+    );
+    await tap(tester, find.byKey(const ValueKey('nav-5')));
+    expect(section(tester), 5);
+    expect(find.byKey(const ValueKey('workspace-next-steps')), findsNothing);
+  });
+  for (final role in roles) {
+    test('$role related pages remain inside its allowed menu', () {
+      final pages = sectionsForRole(role);
       for (var index = 0; index < pages.length; index++) {
         final related = relatedWorkspacePages(role, index);
         expect(related.length, lessThanOrEqualTo(2));
@@ -109,11 +252,29 @@ void main() {
       tester,
     ) async {
       await showWorkspace(tester, role);
+      expect(find.text('MY TEACHING WORKSPACE'), findsNothing);
+      expect(find.text('MY FINANCE WORKSPACE'), findsNothing);
+      expect(find.text(sectionsForRole(role).first.purpose), findsNothing);
       expect(find.byKey(const ValueKey('workspace-trail')), findsOneWidget);
+      final sidebar = find.byType(WorkspaceSidebar);
+      for (final label in [
+        'OVERVIEW',
+        'MY LEARNERS',
+        'LESSON PLANNING',
+        'COLLECTIONS',
+        'SCHOOL MANAGEMENT',
+        'RESULTS',
+      ]) {
+        expect(
+          find.descendant(of: sidebar, matching: find.text(label)),
+          findsNothing,
+        );
+      }
       expect(find.byKey(const ValueKey('workspace-back')), findsNothing);
       await tap(tester, find.byKey(const ValueKey('nav-1')));
       await tap(tester, find.byKey(const ValueKey('nav-2')));
       expect(section(tester), 2);
+      expect(find.text(sectionsForRole(role)[2].purpose), findsNothing);
       await tap(tester, find.byKey(const ValueKey('workspace-back')));
       expect(section(tester), 1);
       await tap(tester, find.byKey(const ValueKey('workspace-home')));
@@ -194,10 +355,7 @@ void main() {
       of: find.byKey(const ValueKey('workspace-back')),
       matching: find.text('Back'),
     );
-    expect(
-      DefaultTextStyle.of(tester.element(label)).style.fontFamily,
-      'Lato',
-    );
+    expect(DefaultTextStyle.of(tester.element(label)).style.fontFamily, 'Lato');
   });
 
   testWidgets('reselecting a destination does not duplicate the Back trail', (
@@ -262,8 +420,38 @@ void main() {
       );
       expect(students.initialClassId, 'class-1');
       expect(students.initialStudent?['id'], 'student-1');
+      expect(students.openInitialProfile, isFalse);
+      expect(find.byType(TeacherStudentProfile), findsNothing);
     },
   );
+
+  testWidgets('attendance continues to Quran and Back with the latest class', (
+    tester,
+  ) async {
+    await showWorkspace(tester, 'TEACHER');
+    tester
+        .widget<TeacherOverviewPage>(find.byType(TeacherOverviewPage))
+        .onOpen(4, classId: 'class-1');
+    await tester.pumpAndSettle();
+    tester
+        .widget<AttendanceRegisterPage>(find.byType(AttendanceRegisterPage))
+        .onClassChanged!('class-2');
+    await tap(tester, find.byKey(const ValueKey('next-page-3')));
+    expect(
+      tester
+          .widget<TeacherQuranPage>(find.byType(TeacherQuranPage))
+          .initialClassId,
+      'class-2',
+    );
+    await tap(tester, find.byKey(const ValueKey('workspace-back')));
+    expect(
+      tester
+          .widget<AttendanceRegisterPage>(find.byType(AttendanceRegisterPage))
+          .initialClassId,
+      'class-2',
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'parent Back restores the child context of the previous destination',
