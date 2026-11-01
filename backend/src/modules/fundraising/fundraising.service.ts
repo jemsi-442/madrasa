@@ -93,6 +93,9 @@ export async function recordDonation(actor: AuthenticatedUser, input: DonationIn
         recordedById: BigInt(actor.userId), idempotencyKey: input.idempotencyKey, inputHash,
       }, include: names });
       await audit(tx, actor, "donation.received", "Donation", row.id);
+      if (process.env.SMS_ENABLED === 'true' && process.env.DONATION_SMS_ENABLED === 'true') {
+        await tx.donationSms.create({ data: { donationId: row.id } });
+      }
       return row;
     });
   } catch (error) {
