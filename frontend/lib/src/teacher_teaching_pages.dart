@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'admin_forms.dart';
 import 'dashboard_components.dart';
@@ -10,10 +11,12 @@ class TeacherOverviewPage extends StatelessWidget {
     required this.load,
     required this.onOpen,
     this.refreshToken = 0,
+    this.onOpenPeriod,
   });
   final PageLoader load;
   final TeacherNavigate onOpen;
   final int refreshToken;
+  final void Function(Map<String, dynamic> period)? onOpenPeriod;
   @override
   Widget build(BuildContext context) => TeacherData(
     load: load,
@@ -137,16 +140,37 @@ class TeacherOverviewPage extends StatelessWidget {
                                 ),
                               ),
                               DataCell(
-                                OutlinedButton.icon(
-                                  onPressed: () => onOpen(
-                                    2,
-                                    classId: '${recordMap(s['class'])['id']}',
-                                  ),
-                                  icon: const Icon(
-                                    Icons.chevron_right,
-                                    size: 17,
-                                  ),
-                                  label: const Text('Open class'),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  spacing: 8,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () => onOpen(
+                                        2,
+                                        classId:
+                                            '${recordMap(s['class'])['id']}',
+                                      ),
+                                      icon: const Icon(
+                                        Icons.chevron_right,
+                                        size: AfaqDesign.iconSmall,
+                                      ),
+                                      label: const Text('Open class'),
+                                    ),
+                                    if (onOpenPeriod != null)
+                                      OutlinedButton.icon(
+                                        key: ValueKey('record-period-${s['id']}'),
+                                        onPressed: () => onOpenPeriod!({
+                                          ...s,
+                                          'classId':
+                                              '${recordMap(s['class'])['id']}',
+                                          'learnedOn': '${data['date']}',
+                                        }),
+                                        icon: const Icon(
+                                          Icons.menu_book_outlined,
+                                        ),
+                                        label: const Text("Record Qur'an"),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -214,7 +238,10 @@ class TeacherOverviewPage extends StatelessWidget {
                           subtitle,
                           style: const TextStyle(fontSize: 11, color: muted),
                         ),
-                        trailing: const Icon(Icons.chevron_right, size: 18),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          size: AfaqDesign.iconSmall,
+                        ),
                         onTap: () => onOpen(page),
                       ),
                     ),
@@ -299,7 +326,10 @@ class TeacherOverviewPage extends StatelessWidget {
                             height: 1.7,
                           ),
                         ),
-                        trailing: const Icon(Icons.chevron_right, size: 18),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          size: AfaqDesign.iconSmall,
+                        ),
                         onTap: () => onOpen(
                           3,
                           classId: '${recordMap(s['student'])['classId']}',
@@ -373,7 +403,7 @@ class TeacherClassesPage extends StatelessWidget {
                                 Icon(
                                   Icons.co_present_outlined,
                                   color: [blue, forest, gold][index % 3],
-                                  size: 30,
+                                  size: 34,
                                 ),
                                 const TeacherTag('Assigned', color: muted),
                               ],
@@ -400,7 +430,7 @@ class TeacherClassesPage extends StatelessWidget {
                               children: [
                                 const Icon(
                                   Icons.people_outline,
-                                  size: 18,
+                                  size: AfaqDesign.iconSmall,
                                   color: muted,
                                 ),
                                 const SizedBox(width: 8),
@@ -432,9 +462,15 @@ class TeacherClassesPage extends StatelessWidget {
                                       onOpen(2, classId: '${c['id']}'),
                                   icon: const Icon(
                                     Icons.chevron_right,
-                                    size: 17,
+                                    size: AfaqDesign.iconSmall,
                                   ),
                                   label: const Text('View class'),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () =>
+                                      onOpen(5, classId: '${c['id']}'),
+                                  icon: const Icon(Icons.menu_book_outlined),
+                                  label: const Text('My courses'),
                                 ),
                                 TextButton(
                                   onPressed: () =>
