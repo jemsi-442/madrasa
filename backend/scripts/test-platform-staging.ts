@@ -67,6 +67,8 @@ try {
     const baseline = source.replace(/^(?:model|enum) (?:PlatformAccount|PlatformSession|PlatformAuditEvent|TenantApplication|PlatformRole|TenantApplicationStatus|SchoolAdminInvitation) \{[^]*?^\}/gm, "")
       .replace(/^\s*onboardingApplication TenantApplication\?\s*$/m, "")
       .replace(/^\s*onboardingInvitation SchoolAdminInvitation\?\s*$/m, "")
+      // Keep later report tables, but remove their relation to the absent platform model.
+      .replace(/^\s*createdBy PlatformAccount @relation\([^\n]*\)\s*$/m, "")
       .replace(/^\s*PENDING_ACTIVATION\s*$/m, "");
     const schemaPath = join(directory, "baseline.prisma");
     const sqlPath = join(directory, "baseline.sql");
@@ -76,6 +78,13 @@ try {
     for (const migration of ["202610071200_add_platform_governance_foundation", "202610071300_add_platform_sessions", "202610071400_add_platform_mfa", "202610081200_add_pending_school_provisioning", "202610081300_add_school_admin_invitations", "202610091200_password_company_sessions"]) {
       run(prisma, ["db", "execute", "--schema", "prisma/schema.prisma", "--file", join(root, "prisma/migrations", migration, "migration.sql")], testEnv);
     }
+    // The baseline already contains current school tables. Reconcile later
+    // platform additions without replaying migrations for those school tables.
+    const upgrade = run(prisma, ["migrate", "diff", "--from-url", testEnv.DATABASE_URL, "--to-schema-datamodel", "prisma/schema.prisma", "--script"], testEnv);
+    if (/DROP\s+(?:TABLE|COLUMN)/i.test(upgrade)) throw new Error("Staging upgrade unexpectedly removes data structures");
+    const upgradePath = join(directory, "platform-upgrade.sql");
+    await writeFile(upgradePath, upgrade);
+    run(prisma, ["db", "execute", "--schema", "prisma/schema.prisma", "--file", upgradePath], testEnv);
   } else if (process.argv.includes("--fresh-install")) {
     console.log("Testing guarded fresh installation using unchanged historical migrations.");
     const installerEnv = { ...testEnv, FRESH_DATABASE_URL: testEnv.DATABASE_URL };

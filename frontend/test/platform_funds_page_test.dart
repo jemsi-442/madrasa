@@ -41,8 +41,9 @@ void main() {
             body: PlatformFundsPage(
               onSessionExpired: () {},
               load: (path) async {
-                if (!path.startsWith('/funds?'))
+                if (!path.startsWith('/funds?')) {
                   return {'ready': true, 'hasMore': false, 'items': []};
+                }
                 requests++;
                 if (offline) throw Exception('offline');
                 return snapshot();

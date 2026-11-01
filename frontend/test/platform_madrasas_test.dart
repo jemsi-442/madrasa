@@ -154,6 +154,7 @@ void main() {
                 onSessionExpired: () {},
                 onReview: (_, value) async {
                   decision = value;
+                  return null;
                 },
                 load: (_) async => {
                   'total': 1,

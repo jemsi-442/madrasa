@@ -25,8 +25,8 @@ const envSchema = z.object({
   SNIPPE_WEBHOOK_SECRET: z.string().optional(),
   SNIPPE_MOCK_MODE: z
     .enum(["true", "false"])
-    .transform((value) => value === "true")
-    .default("false"),
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 const parsed = envSchema.safeParse(process.env);

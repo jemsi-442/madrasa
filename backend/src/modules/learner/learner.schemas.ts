@@ -19,12 +19,12 @@ export type InitiateLearnerCoursePaymentInput = z.infer<typeof initiateLearnerCo
 
 export const updateLearnerLessonProgressSchema = z.object({
   progressPercent: z
-    .number({ invalid_type_error: "progressPercent must be a number" })
+    .number({ error: "progressPercent must be a number" })
     .int("progressPercent must be a whole number")
     .min(0, "progressPercent must be at least 0")
     .max(100, "progressPercent cannot exceed 100"),
   watchSeconds: z
-    .number({ invalid_type_error: "watchSeconds must be a number" })
+    .number({ error: "watchSeconds must be a number" })
     .int("watchSeconds must be a whole number")
     .min(0, "watchSeconds cannot be negative")
     .optional(),
