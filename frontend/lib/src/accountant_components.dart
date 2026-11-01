@@ -6,7 +6,12 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 
 Future<dynamic> financeRequest(PageLoader load, String path) {
-  final request = Future<dynamic>.sync(() => load(path));
+  late final Future<dynamic> request;
+  try {
+    request = load(path);
+  } catch (error, stack) {
+    request = Future.error(error, stack);
+  }
   // A fast failure can precede the next frame. Keep it handled until the UI
   // subscribes; FutureBuilder still receives the original result or error.
   request.ignore();
