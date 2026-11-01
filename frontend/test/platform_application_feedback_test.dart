@@ -59,7 +59,7 @@ void main() {
           ),
           'Ownership evidence verified',
         );
-        await tester.tap(find.text('Confirm decision'));
+        await tester.tap(find.text('Confirm approval'));
         await tester.pumpAndSettle();
         expect(writes, 1);
         expect(find.text('Approve'), findsNothing);
