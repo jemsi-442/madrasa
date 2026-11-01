@@ -26,6 +26,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   final client = http.Client();
   int page = 1, pages = 0;
   bool notified = false;
+  bool textFailed = false;
   String? text;
 
   @override
@@ -77,7 +78,10 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
       setState(() => text = value);
       notify(true);
     } catch (_) {
-      if (mounted) notify(false);
+      if (mounted) {
+        setState(() => textFailed = true);
+        notify(false);
+      }
     } finally {
       client.close();
     }
@@ -97,7 +101,13 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   Widget build(BuildContext context) {
     final asset = widget.delivery.assetPath;
     if (widget.delivery.kind == 'TEXT') {
-      return text == null
+      return textFailed
+          ? const Center(
+              child: Text(
+                'This text resource could not be loaded. Use Reload player to try again.',
+              ),
+            )
+          : text == null
           ? const Center(child: Text('Loading text...'))
           : SingleChildScrollView(primary: false, child: SelectableText(text!));
     }
