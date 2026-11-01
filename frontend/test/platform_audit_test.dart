@@ -7,77 +7,6 @@ import 'package:mif_app/src/platform_console.dart';
 import 'helpers/platform_navigation.dart';
 
 void main() {
-  for (final fromProgress in [false, true]) {
-    testWidgets('IT opens scoped history from setup progress=$fromProgress', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(390, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final auditReads = <Uri>[];
-      final writes = <String>[];
-      final api = PlatformApi(
-        client: MockClient((request) async {
-          final path = request.url.path;
-          if (request.method != 'GET') writes.add(path);
-          dynamic data;
-          if (path.endsWith('/login')) {
-            data = {
-              'accessToken': 'token',
-              'expiresIn': 900,
-              'user': {'id': 'it', 'fullName': 'IT', 'role': 'IT_SECURITY'},
-            };
-          } else if (path.endsWith('/provisioning-queue')) {
-            data = [
-              {
-                'id': 'application',
-                'schoolName': 'School',
-                'requestedCode': 'school',
-                'organization': {'status': 'PENDING_ACTIVATION'},
-              },
-            ];
-          } else if (path.endsWith('/onboarding-progress')) {
-            data = {
-              'schoolName': 'School',
-              'requestedCode': 'school',
-              'stage': 'INVITATION_PENDING',
-              'checkedAt': DateTime.now().toUtc().toIso8601String(),
-            };
-          } else if (path.endsWith('/audit-events')) {
-            auditReads.add(request.url);
-            data = [];
-          } else {
-            fail('Unexpected request: $path');
-          }
-          return http.Response(jsonEncode({'data': data}), 200);
-        }),
-      );
-      await api.login('it@example.test', 'password', '123456');
-      await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await openPlatformPage(tester, 'Madrassa setup');
-      if (fromProgress) {
-        await tester.ensureVisible(find.text('Onboarding progress'));
-        await tester.tap(find.text('Onboarding progress'));
-        await tester.pumpAndSettle();
-      }
-      await tester.ensureVisible(find.text('View application history'));
-      await tester.tap(find.text('View application history'));
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(auditReads.single.queryParameters['applicationId'], 'application');
-      expect(auditReads.single.queryParameters['page'], '1');
-      expect(find.text('Application history: application'), findsOneWidget);
-      await tester.ensureVisible(find.text('Refresh'));
-      await tester.tap(find.text('Refresh'));
-      await tester.pumpAndSettle();
-      expect(auditReads.last.queryParameters['applicationId'], 'application');
-      expect(writes, ['/api/platform/login']);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox());
-      api.close();
-    });
-  }
   for (final withdrawn in [false, true]) {
     testWidgets('IT follows sign-off history from withdrawn=$withdrawn', (
       tester,
@@ -118,12 +47,15 @@ void main() {
       await api.login('it@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
       await openPlatformPage(tester, 'Audit trail');
+      await tester.ensureVisible(find.text('Details'));
+      await tester.tap(find.text('Details'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('View sign-off history'));
       await tester.tap(find.text('View sign-off history'));
       await tester.pumpAndSettle();
       expect(requests.last.queryParameters['technicalReviewId'], 'review');
       expect(requests.last.queryParameters['page'], '1');
-      expect(find.text('Sign-off history: review'), findsOneWidget);
+      expect(find.text('Filtered history: review'), findsOneWidget);
       await tester.ensureVisible(find.text('Refresh'));
       await tester.tap(find.text('Refresh'));
       await tester.pumpAndSettle();
@@ -137,14 +69,14 @@ void main() {
         requests.last.queryParameters.containsKey('technicalReviewId'),
         isFalse,
       );
-      expect(find.text('Sign-off history: review'), findsNothing);
+      expect(find.text('Filtered history: review'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       api.close();
     });
   }
   for (final role in ['SUPER_ADMIN', 'IT_SECURITY']) {
-    testWidgets('$role opens application-scoped audit and clears scope', (
+    testWidgets('$role respects audit scope and navigation boundaries', (
       tester,
     ) async {
       final requests = <Uri>[];
@@ -202,7 +134,21 @@ void main() {
         await tester.ensureVisible(find.text('Manage →'));
         await tester.tap(find.text('Manage →'));
         await tester.pumpAndSettle();
+        expect(find.text('View office history'), findsNothing);
+        expect(find.text('View actor activity'), findsNothing);
+        expect(find.text('Audit trail'), findsNothing);
+        expect(
+          requests.where((uri) => uri.path.endsWith('/audit-events')),
+          isEmpty,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        api.close();
+        return;
       }
+      await tester.ensureVisible(find.text('Details'));
+      await tester.tap(find.text('Details'));
+      await tester.pumpAndSettle();
       final history = find.text(
         role == 'SUPER_ADMIN'
             ? 'View office history'
@@ -214,7 +160,7 @@ void main() {
       expect(requests.last.path, '/api/platform/audit-events');
       expect(requests.last.queryParameters['applicationId'], 'application');
       expect(requests.last.queryParameters['page'], '1');
-      expect(find.text('Application history: application'), findsOneWidget);
+      expect(find.text('Filtered history: application'), findsOneWidget);
       await tester.ensureVisible(find.text('All events'));
       await tester.tap(find.text('All events'));
       await tester.pumpAndSettle();
@@ -244,8 +190,11 @@ void main() {
         isFalse,
       );
       expect(requests.last.queryParameters.containsKey('action'), isFalse);
-      expect(find.text('Application history: application'), findsNothing);
+      expect(find.text('Filtered history: application'), findsNothing);
       if (role == 'IT_SECURITY') {
+        await tester.ensureVisible(find.text('Details'));
+        await tester.tap(find.text('Details'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('View actor activity'));
         await tester.tap(find.text('View actor activity'));
         await tester.pumpAndSettle();
@@ -255,16 +204,22 @@ void main() {
           requests.last.queryParameters.containsKey('applicationId'),
           isFalse,
         );
-        expect(find.text('Activity by account: operator'), findsOneWidget);
+        expect(find.text('Filtered history: operator'), findsOneWidget);
         await tester.ensureVisible(find.text('Refresh'));
         await tester.tap(find.text('Refresh'));
         await tester.pumpAndSettle();
         expect(requests.last.queryParameters['actorId'], 'operator');
+        await tester.ensureVisible(find.text('Details'));
+        await tester.tap(find.text('Details'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('View application history'));
         await tester.tap(find.text('View application history'));
         await tester.pumpAndSettle();
         expect(requests.last.queryParameters['applicationId'], 'application');
         expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
+        await tester.ensureVisible(find.text('Details'));
+        await tester.tap(find.text('Details'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('View actor activity'));
         await tester.tap(find.text('View actor activity'));
         await tester.pumpAndSettle();
@@ -274,7 +229,7 @@ void main() {
         await tester.tap(find.text('Show all application and platform events'));
         await tester.pumpAndSettle();
         expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
-        expect(find.text('Activity by account: operator'), findsNothing);
+        expect(find.text('Filtered history: operator'), findsNothing);
       } else {
         expect(find.text('View actor activity'), findsNothing);
         expect(find.widgetWithText(ChoiceChip, 'Activity log'), findsOneWidget);
@@ -335,10 +290,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(requests.last.queryParameters['action'], 'platform.login.failed');
       expect(requests.last.queryParameters['page'], '1');
-      await tester.ensureVisible(find.text('Event details'));
-      await tester.tap(find.text('Event details'));
+      await tester.ensureVisible(find.text('Details'));
+      await tester.tap(find.text('Details'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Event ID: event-123'), findsOneWidget);
+      expect(find.text('Event ID'), findsOneWidget);
+      expect(find.text('event-123'), findsOneWidget);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
       for (final entry in {
         'IT sign-off recorded': 'tenant.technical-review.recorded',
         'IT sign-off withdrawn': 'tenant.technical-review.withdrawn',

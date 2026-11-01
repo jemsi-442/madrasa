@@ -68,8 +68,12 @@ void main() {
         await tester.ensureVisible(find.text('Approve'));
         await tester.tap(find.text('Approve'));
         await tester.pumpAndSettle();
+        expect(find.text('Proposed administrator email'), findsOneWidget);
         expect(
-          find.textContaining('Nominated admin: school@example.test'),
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.text('school@example.test'),
+          ),
           findsOneWidget,
         );
         expect(

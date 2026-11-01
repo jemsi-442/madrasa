@@ -26,11 +26,25 @@ void main() {
                   error: null,
                   onRefresh: () => actions.add('check'),
                   onHealth: () => actions.add('health'),
-                  onSetup: () => actions.add('setup'),
+                  onIncidents: () => actions.add('incidents'),
+                  onIncident: (id) => actions.add(id),
                   onAccounts: () => actions.add('accounts'),
                   onAudit: () => actions.add('audit'),
                   onSessions: () => actions.add('sessions'),
                   snapshot: {
+                    'incidents': {
+                      'recentOpen': [
+                        {
+                          'id': 'synthetic-alert',
+                          'title': 'Synthetic access concern',
+                          'priority': 'HIGH',
+                        },
+                      ],
+                      'open': 3,
+                      'high': 1,
+                      'resolved': 2,
+                      'checkedAt': now.toIso8601String(),
+                    },
                     'checkedAt': now.toIso8601String(),
                     'status': 'degraded',
                     'checks': [
@@ -54,11 +68,14 @@ void main() {
         expect(find.text('IT & Security Overview'), findsOneWidget);
         expect(find.text('Review Redis connectivity'), findsOneWidget);
         expect(find.text('1 / 2'), findsOneWidget);
+        expect(find.text('3'), findsOneWidget);
+        expect(find.textContaining('3 open / 1 high priority'), findsOneWidget);
         expect(find.text('Recovery readiness'), findsOneWidget);
         expect(find.text('Not measured'), findsNWidgets(2));
         for (final entry in {
-          'Madrasa setup': 'setup',
           'Company accounts': 'accounts',
+          'Security incidents': 'incidents',
+          'Synthetic access concern': 'synthetic-alert',
           'Audit trail': 'audit',
           'My sessions': 'sessions',
         }.entries) {
@@ -70,7 +87,8 @@ void main() {
         expect(tester.takeException(), isNull);
         now = now.add(const Duration(seconds: 61));
         await tester.pump(const Duration(seconds: 61));
-        expect(find.text('Not current'), findsNWidgets(3));
+        expect(find.text('Not current'), findsNWidgets(4));
+        expect(find.text('3'), findsNothing);
         expect(find.text('1 / 2'), findsNothing);
         await tester.pumpWidget(const SizedBox());
       });

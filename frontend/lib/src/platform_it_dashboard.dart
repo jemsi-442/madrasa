@@ -13,7 +13,8 @@ class PlatformItDashboard extends StatefulWidget {
     required this.error,
     required this.onRefresh,
     required this.onHealth,
-    required this.onSetup,
+    required this.onIncidents,
+    this.onIncident,
     required this.onAccounts,
     required this.onAudit,
     required this.onSessions,
@@ -21,10 +22,11 @@ class PlatformItDashboard extends StatefulWidget {
     this.snapshot,
   });
   final bool busy;
+  final ValueChanged<String>? onIncident;
   final String? error;
   final VoidCallback onRefresh,
       onHealth,
-      onSetup,
+      onIncidents,
       onAccounts,
       onAudit,
       onSessions;
@@ -40,7 +42,6 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
   bool get busy => widget.busy;
   String? get error => widget.error;
   VoidCallback get onHealth => widget.onHealth;
-  VoidCallback get onSetup => widget.onSetup;
   VoidCallback get onAccounts => widget.onAccounts;
   VoidCallback get onAudit => widget.onAudit;
   VoidCallback get onSessions => widget.onSessions;
@@ -130,6 +131,28 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
           age != null && !age.isNegative && age < const Duration(seconds: 60);
       final available = checks.where((c) => c['status'] == 'available').length;
       final failed = checks.where((c) => c['status'] != 'available').toList();
+      final incidents = widget.snapshot?['incidents'];
+      final incidentChecked = DateTime.tryParse(
+        '${incidents is Map ? incidents['checkedAt'] : null}',
+      );
+      final incidentAge = incidentChecked == null
+          ? null
+          : (widget.now ?? DateTime.now)().toUtc().difference(
+              incidentChecked.toUtc(),
+            );
+      final incidentFresh =
+          incidentAge != null &&
+          !incidentAge.isNegative &&
+          incidentAge < const Duration(seconds: 60);
+      final openCount = incidents is Map ? incidents['open'] : null;
+      final highCount = incidents is Map ? incidents['high'] : null;
+      final validCounts =
+          openCount is int &&
+          openCount >= 0 &&
+          highCount is int &&
+          highCount >= 0 &&
+          highCount <= openCount;
+      final incidentsReady = incidentFresh && validCounts;
       final operations = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -162,11 +185,24 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                     ),
                   ),
                 const Divider(),
+                if (incidentsReady && widget.onIncident != null)
+                  for (final incident
+                      in (incidents['recentOpen'] as List? ?? [])
+                          .whereType<Map>())
+                    if (incident['id'] is String && incident['title'] is String)
+                      task(
+                        incident['title'] as String,
+                        '${incident['priority']} priority / Recent open incident',
+                        Icons.warning_amber_outlined,
+                        () => widget.onIncident!(incident['id'] as String),
+                      ),
                 task(
-                  'Madrasa setup',
-                  'Continue approved onboarding.',
-                  Icons.domain_add_outlined,
-                  onSetup,
+                  'Security incidents',
+                  incidentsReady
+                      ? '$openCount open / $highCount high priority. Review the incident register.'
+                      : 'Current incident counts are unavailable. Open the register to investigate.',
+                  Icons.warning_amber_outlined,
+                  widget.onIncidents,
                 ),
                 task(
                   'Audit trail',
@@ -403,7 +439,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
         ),
         (
           'Open incidents',
-          'Not connected',
+          incidentsReady ? '$openCount' : 'Not current',
           Icons.warning_amber_outlined,
           AfaqDesign.gold,
         ),

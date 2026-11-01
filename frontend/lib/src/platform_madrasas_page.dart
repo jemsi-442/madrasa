@@ -1147,7 +1147,7 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
-                'Adding a madrasa: register its profile → independent approval → IT setup → assign administrator → review readiness and activate.',
+                'Adding a madrasa: register its profile → independent approval → assign administrator → review readiness and activate.',
                 style: TextStyle(color: Color(0xff3569aa)),
               ),
             ),

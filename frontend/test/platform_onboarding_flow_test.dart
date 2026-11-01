@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
+import 'helpers/platform_navigation.dart';
+import 'helpers/institution_overview_fixture.dart';
 
 void main() {
   for (final width in [390.0, 1280.0]) {
@@ -69,20 +71,30 @@ void main() {
             } else if (path.endsWith('/audit-events')) {
               auditReads.add(request.url);
               data = [];
-            } else if (path.endsWith('/tenant-applications')) {
-              data = [
-                {
-                  'id': 'application',
-                  'schoolName': 'Afaq School',
-                  'requestedCode': 'afaq-school',
-                  'adminEmail': 'school@example.test',
-                  'status': 'APPROVED',
-                  'requestedById': 'requester',
-                  'reviewedById': 'reviewer',
-                  'createdAt': '2026-10-08T09:00:00Z',
-                  'reviewedAt': '2026-10-08T10:00:00Z',
-                },
-              ];
+            } else if (path.endsWith('/overview')) {
+              data = institutionOverviewFixture();
+            } else if (path.endsWith('/madrasas')) {
+              data = {
+                'total': 1,
+                'items': [
+                  {
+                    'id': 'madrasa',
+                    'applicationId': 'application',
+                    'name': 'Afaq School',
+                    'code': 'afaq-school',
+                    'admins': [],
+                    'locations': [],
+                    'schoolName': 'Afaq School',
+                    'requestedCode': 'afaq-school',
+                    'adminEmail': 'school@example.test',
+                    'status': 'APPROVED',
+                    'requestedById': 'requester',
+                    'reviewedById': 'reviewer',
+                    'createdAt': '2026-10-08T09:00:00Z',
+                    'reviewedAt': '2026-10-08T10:00:00Z',
+                  },
+                ],
+              };
             } else {
               fail('Unexpected request: ${request.method} $path');
             }
@@ -109,8 +121,15 @@ void main() {
       await tester.ensureVisible(find.text('Verify and sign in'));
       await tester.tap(find.text('Verify and sign in'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Onboarding progress'));
-      await tester.tap(find.text('Onboarding progress'));
+      await openPlatformPage(tester, 'Madrasas');
+      final manage = width < 600
+          ? find.widgetWithText(ListTile, 'Afaq School')
+          : find.text('Manage →');
+      await tester.ensureVisible(manage);
+      await tester.tap(manage);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Review onboarding'));
+      await tester.tap(find.text('Review onboarding'));
       await tester.pumpAndSettle();
       expect(find.text('IT technical readiness'), findsNothing);
       expect(find.text('Checked (UTC): $checkedAt'), findsOneWidget);
@@ -127,13 +146,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Checked (UTC): $checkedAt'), findsOneWidget);
       expect(find.text('Backup and recovery: review required'), findsNothing);
-      await tester.ensureVisible(find.text('View office history'));
-      await tester.tap(find.text('View office history'));
+      expect(find.text('View office history'), findsNothing);
+      expect(find.text('View application history'), findsNothing);
+      await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
-      expect(auditReads.single.queryParameters['applicationId'], 'application');
-      expect(auditReads.single.queryParameters['page'], '1');
-      expect(find.text('Application history: application'), findsOneWidget);
+      expect(auditReads, isEmpty);
       expect(find.text('Audit trail'), findsNothing);
       expect(writes, ['/api/platform/login']);
       expect(tester.takeException(), isNull);

@@ -87,7 +87,7 @@ class MadrasaReviewSummary extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       approving
-                          ? 'Approval allows IT setup. It does not activate the madrasa or create administrator accounts.'
+                          ? 'Approval allows registration to continue. It does not activate the madrasa or create administrator accounts.'
                           : 'Declining closes this request. Existing madrasa data and accounts are not deleted.',
                     ),
                     const SizedBox(height: 8),

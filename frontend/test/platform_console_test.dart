@@ -96,7 +96,10 @@ void main() {
             return success({
               'status': 'healthy',
               'checkedAt': DateTime.now().toUtc().toIso8601String(),
-              'checks': <dynamic>[],
+              'checks': [
+                {'name': 'database', 'status': 'available'},
+                {'name': 'redis', 'status': 'available'},
+              ],
             });
           }
           return success(
@@ -112,12 +115,13 @@ void main() {
       await tester.ensureVisible(find.text('Verify and sign in'));
       await tester.tap(find.text('Verify and sign in'));
       await tester.pumpAndSettle();
-      expect(find.text('Security activity'), findsOneWidget);
+      expect(find.text('IT & Security Overview'), findsOneWidget);
       await openPlatformPage(tester, 'System health');
-      expect(find.text('Service availability'), findsOneWidget);
-      expect(find.text('Core services available'), findsOneWidget);
+      expect(find.text('System Health'), findsOneWidget);
+      expect(find.text('Shared services'), findsOneWidget);
+      expect(find.text('2 / 2'), findsOneWidget);
       await openPlatformPage(tester, 'Audit trail');
-      expect(find.text('Security activity'), findsOneWidget);
+      expect(find.text('Audit Logs'), findsOneWidget);
       expect(find.text('Request madrassa'), findsNothing);
       expect(calls, contains('/api/platform/audit-events'));
       expect(calls, contains('/api/platform/health'));

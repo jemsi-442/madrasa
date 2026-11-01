@@ -44,6 +44,10 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
       await openPlatformPage(tester, 'My sessions');
       expect(find.text('Current session'), findsOneWidget);
+      expect(find.text('Sign out this session'), findsNothing);
+      await tester.ensureVisible(find.text('Review'));
+      await tester.tap(find.text('Review'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Sign out this session'));
       await tester.tap(find.text('Sign out this session'));
       await tester.pumpAndSettle();

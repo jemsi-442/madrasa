@@ -8,16 +8,18 @@ import 'helpers/platform_navigation.dart';
 
 void main() {
   for (final width in [390.0, 1280.0]) {
-    for (final restore in [false, true]) {
-      for (final saved in [false, true]) {
+    for (final disabled in [false, true]) {
+      for (final historyAvailable in [false, true]) {
         testWidgets(
-          'access feedback restore=$restore saved=$saved never retries the write at $width',
+          'read-only account feedback disabled=$disabled history=$historyAvailable at $width',
           (tester) async {
             tester.view.physicalSize = Size(width, 900);
             tester.view.devicePixelRatio = 1;
             addTearDown(tester.view.resetPhysicalSize);
             addTearDown(tester.view.resetDevicePixelRatio);
             var writes = 0;
+            var historyReads = 0;
+            var available = historyAvailable;
             final api = PlatformApi(
               client: MockClient((req) async {
                 dynamic data = [];
@@ -28,10 +30,13 @@ void main() {
                     'user': {
                       'id': 'admin',
                       'fullName': 'Reviewer',
-                      'role': 'SUPER_ADMIN',
+                      'role': 'IT_SECURITY',
                     },
                   };
                 } else if (req.url.path.endsWith('/access-history')) {
+                  historyReads++;
+                  expect(req.url.path, endsWith('/accounts/it/access-history'));
+                  if (!available) return http.Response('{}', 503);
                   data = [
                     {
                       'id': 'event',
@@ -43,12 +48,7 @@ void main() {
                   ];
                 } else if (req.method == 'POST') {
                   writes++;
-                  if (!saved) return http.Response('{}', 500);
-                  data = {
-                    'id': 'it',
-                    'status': restore ? 'ACTIVE' : 'DISABLED',
-                    'revoked': 1,
-                  };
+                  return http.Response('{}', 403);
                 } else if (req.url.path.endsWith('/accounts')) {
                   if (writes > 0) return http.Response('{}', 503);
                   data = [
@@ -57,7 +57,7 @@ void main() {
                       'fullName': 'Security Operator',
                       'email': 'it@example.test',
                       'role': 'IT_SECURITY',
-                      'status': restore ? 'DISABLED' : 'ACTIVE',
+                      'status': disabled ? 'DISABLED' : 'ACTIVE',
                       'createdAt': '2026-10-08T00:00:00Z',
                     },
                   ];
@@ -71,50 +71,29 @@ void main() {
             );
             await tester.pumpAndSettle();
             await openPlatformPage(tester, 'Company accounts');
-            final action = restore
-                ? 'Review restoration'
-                : 'Disable IT account';
-            await tester.ensureVisible(find.text(action));
-            await tester.tap(find.text(action));
+            await tester.ensureVisible(find.text('Review'));
+            await tester.tap(find.text('Review'));
             await tester.pumpAndSettle();
-            await tester.enterText(
-              find.descendant(
-                of: find.byType(AlertDialog),
-                matching: find.byType(TextFormField),
-              ),
-              'Security review completed',
-            );
-            await tester.tap(
-              find.text(restore ? 'Confirm restore' : 'Confirm disable'),
-            );
+            expect(find.text('Disable IT account'), findsNothing);
+            expect(find.text('Review restoration'), findsNothing);
+            await tester.ensureVisible(find.text('Access history'));
+            await tester.tap(find.text('Access history'));
             await tester.pumpAndSettle();
-            expect(writes, 1);
-            expect(find.text(action), findsNothing);
-            if (saved) {
-              expect(
-                find.textContaining('The access change was saved'),
-                findsOneWidget,
-              );
-              expect(
-                find.textContaining(
-                  restore ? 'IT access restored.' : 'IT account disabled.',
-                ),
-                findsOneWidget,
-              );
-            } else {
-              expect(
-                find.textContaining('We could not confirm the access change.'),
-                findsOneWidget,
-              );
-              expect(
-                find.textContaining('The access change was saved'),
-                findsNothing,
-              );
+            if (!available) {
+              expect(find.text('Retry'), findsOneWidget);
+              expect(find.text('Access under review'), findsNothing);
+              available = true;
+              await tester.tap(find.text('Retry'));
+              await tester.pumpAndSettle();
             }
-            await tester.ensureVisible(find.text('Refresh'));
-            await tester.tap(find.text('Refresh'));
+            expect(find.text('Access under review'), findsOneWidget);
+            expect(historyReads, historyAvailable ? 1 : 2);
+            expect(find.text('Confirm restore'), findsNothing);
+            expect(find.text('Confirm disable'), findsNothing);
+            await tester.tap(find.text('Close'));
             await tester.pumpAndSettle();
-            expect(writes, 1);
+            expect(find.text('Access under review'), findsNothing);
+            expect(writes, 0);
             expect(tester.takeException(), isNull);
             await tester.pumpWidget(const SizedBox());
             api.close();

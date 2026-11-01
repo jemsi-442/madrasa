@@ -22,7 +22,7 @@ void main() {
               'user': {
                 'id': 'admin',
                 'fullName': 'Reviewer',
-                'role': 'SUPER_ADMIN',
+                'role': 'IT_SECURITY',
               },
             };
           } else if (req.url.path.endsWith('/access-history')) {
@@ -61,6 +61,9 @@ void main() {
       await tester.pumpAndSettle();
       await openPlatformPage(tester, 'Company accounts');
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Review'));
+      await tester.tap(find.text('Review'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Access history'));
       await tester.tap(find.text('Access history'));
       await tester.pumpAndSettle();
@@ -86,9 +89,7 @@ void main() {
       api.close();
     },
   );
-  testWidgets('Super Admin opens scoped account access history', (
-    tester,
-  ) async {
+  testWidgets('IT opens scoped account access history', (tester) async {
     final api = PlatformApi(
       client: MockClient((req) async {
         dynamic data = [];
@@ -99,7 +100,7 @@ void main() {
             'user': {
               'id': 'admin',
               'fullName': 'Reviewer',
-              'role': 'SUPER_ADMIN',
+              'role': 'IT_SECURITY',
             },
           };
         } else if (req.url.path.endsWith('/access-history')) {
@@ -132,6 +133,9 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
     await tester.pumpAndSettle();
     await openPlatformPage(tester, 'Company accounts');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Review'));
+    await tester.tap(find.text('Review'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Access history'));
     await tester.tap(find.text('Access history'));

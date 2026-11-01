@@ -8,10 +8,8 @@ import 'package:mif_app/src/platform_console.dart';
 
 void main() {
   testWidgets(
-    'restoration preserves disabled state on denial and refreshes on approval',
+    'IT review preserves disabled state when access history is denied',
     (tester) async {
-      var allow = false;
-      var active = false;
       var attempts = 0;
       var historyAvailable = false;
       final api = PlatformApi(
@@ -24,12 +22,12 @@ void main() {
               'user': {
                 'id': 'admin',
                 'fullName': 'Reviewer',
-                'role': 'SUPER_ADMIN',
+                'role': 'IT_SECURITY',
               },
             };
           } else if (req.url.path.endsWith('/access-history')) {
-            if (!historyAvailable) return http.Response('{}', 503);
-            expect(req.url.queryParameters['pageSize'], '1');
+            if (!historyAvailable) return http.Response('{}', 403);
+            expect(req.url.queryParameters['pageSize'], '20');
             data = [
               {
                 'id': 'suspension-1',
@@ -39,15 +37,9 @@ void main() {
                 'reason': 'Suspended pending access review',
               },
             ];
-          } else if (req.url.path.endsWith('/restore')) {
+          } else if (req.method != 'GET') {
             attempts++;
-            expect(jsonDecode(req.body), {
-              'reason': 'Suspension resolved and reviewed',
-              'suspensionEventId': 'suspension-1',
-            });
-            if (!allow) return http.Response('{}', 403);
-            active = true;
-            data = {'id': 'it', 'status': 'ACTIVE', 'revoked': 0};
+            return http.Response('{}', 403);
           } else if (req.url.path.endsWith('/accounts')) {
             data = [
               {
@@ -55,7 +47,7 @@ void main() {
                 'fullName': 'Security Operator',
                 'email': 'it@example.test',
                 'role': 'IT_SECURITY',
-                'status': active ? 'ACTIVE' : 'DISABLED',
+                'status': 'DISABLED',
                 'createdAt': '2026-10-08T00:00:00Z',
               },
             ];
@@ -68,36 +60,25 @@ void main() {
       await tester.pumpAndSettle();
       await openPlatformPage(tester, 'Company accounts');
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Review restoration'));
-      await tester.tap(find.text('Review restoration'));
+      await tester.ensureVisible(find.text('Review'));
+      await tester.tap(find.text('Review'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Access history'));
+      await tester.tap(find.text('Access history'));
       await tester.pumpAndSettle();
       expect(find.text('Confirm restore'), findsNothing);
-      expect(attempts, 0);
+      expect(find.text('Suspended pending access review'), findsNothing);
+      expect(find.text('Retry'), findsOneWidget);
       historyAvailable = true;
-      for (final permitted in [false, true]) {
-        allow = permitted;
-        await tester.ensureVisible(find.text('Review restoration'));
-        await tester.tap(find.text('Review restoration'));
-        await tester.pumpAndSettle();
-        expect(
-          find.textContaining('Only a different Super Admin'),
-          findsOneWidget,
-        );
-        expect(find.text('Suspended pending access review'), findsOneWidget);
-        await tester.enterText(
-          find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.byType(TextFormField),
-          ),
-          'Suspension resolved and reviewed',
-        );
-        await tester.tap(find.text('Confirm restore'));
-        await tester.pumpAndSettle();
-        expect(find.text(permitted ? 'Active' : 'Disabled'), findsOneWidget);
-      }
-      expect(attempts, 2);
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+      expect(find.text('Suspended pending access review'), findsOneWidget);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('DISABLED'), findsOneWidget);
       expect(find.text('Review restoration'), findsNothing);
-      expect(find.text('Disable IT account'), findsOneWidget);
+      expect(find.text('Disable IT account'), findsNothing);
+      expect(attempts, 0);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       api.close();

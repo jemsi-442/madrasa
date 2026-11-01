@@ -16,8 +16,8 @@ class MadrasaProfileHandoff extends StatelessWidget {
         AfaqDesign.gold,
       ),
       'APPROVED' => (
-        'Approved. IT setup is the next step.',
-        'IT team',
+        'Approved. Continue registration in Madrasas.',
+        'Superadmin',
         Icons.build_outlined,
         AfaqDesign.gold,
       ),

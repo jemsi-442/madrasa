@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_onboarding_progress.dart';
-import 'package:mif_app/src/platform_provisioning_panel.dart';
 
 void main() {
   testWidgets('refresh requires fresh confirmation before invitation sending', (
@@ -376,62 +375,4 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
-  testWidgets('IT queue loads read-only progress and returns to queue', (
-    tester,
-  ) async {
-    final paths = <String>[];
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: PlatformProvisioningPanel(
-              sessionIsCurrent: () => true,
-              call: (path, {body}) async {
-                paths.add(path);
-                expect(body, isNull);
-                if (path.endsWith('/onboarding-progress')) {
-                  return {
-                    'checkedAt': DateTime.now().toUtc().toIso8601String(),
-                    'schoolName': 'School',
-                    'requestedCode': 'school',
-                    'stage': 'INVITATION_PENDING',
-                    'steps': [],
-                  };
-                }
-                return [
-                  {
-                    'id': 'application',
-                    'schoolName': 'School',
-                    'requestedCode': 'school',
-                    'organization': {'status': 'PENDING_ACTIVATION'},
-                  },
-                ];
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Onboarding progress'));
-    await tester.pumpAndSettle();
-    expect(paths.last, '/tenant-applications/application/onboarding-progress');
-    expect(
-      find.textContaining('Email delivery is not connected'),
-      findsOneWidget,
-    );
-    expect(find.text('IT technical readiness'), findsNothing);
-    await tester.ensureVisible(find.text('Refresh progress'));
-    await tester.tap(find.text('Refresh progress'));
-    await tester.pumpAndSettle();
-    expect(
-      paths.where((path) => path.endsWith('/onboarding-progress')).length,
-      2,
-    );
-    await tester.ensureVisible(find.text('Back to queue'));
-    await tester.tap(find.text('Back to queue'));
-    await tester.pumpAndSettle();
-    expect(find.text('School status: PENDING_ACTIVATION'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
 }

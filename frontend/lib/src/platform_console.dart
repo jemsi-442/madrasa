@@ -10,7 +10,6 @@ import 'package:http/http.dart' as http;
 import 'api_client.dart';
 import 'browser_state.dart';
 import 'foundation_ui.dart';
-import 'platform_provisioning_panel.dart';
 import 'platform_onboarding_progress.dart';
 import 'school_password_dialog.dart';
 import 'platform_workspace_shell.dart';
@@ -24,6 +23,14 @@ import 'institutional_reports_page.dart';
 import 'live_data.dart';
 import 'it_workspace_visuals.dart';
 import 'platform_system_health_page.dart';
+import 'platform_access_page.dart';
+import 'platform_sessions_page.dart';
+import 'platform_audit_page.dart';
+import 'security_incident_register.dart';
+import 'platform_updates_page.dart';
+import 'platform_sync_register.dart';
+import 'platform_integrations_page.dart';
+import 'platform_backup_requests.dart';
 import 'workspace_form_dialog.dart';
 import 'workspace_details_dialog.dart';
 
@@ -358,6 +365,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   String auditPeriod = '';
   DateTime? auditSince;
   bool healthView = false;
+  bool incidentsView = false;
+  String? incidentToOpen;
+  bool updatesView = false;
+  bool backupsView = false;
+  bool offlineSyncView = false;
+  bool integrationsView = false;
   bool sessionsView = false;
   bool accountsView = false;
   bool homeView = false;
@@ -367,7 +380,6 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool oversightView = false;
   bool fundsView = false;
   bool reportsView = false;
-  bool setupView = false;
   String applicationStatus = '';
   String applicationScope = '';
   Map<String, dynamic>? overview;
@@ -487,6 +499,13 @@ class _PlatformConsoleState extends State<PlatformConsole> {
 
   Future<void> load() async {
     if (!mounted) return;
+    if (incidentsView ||
+        updatesView ||
+        backupsView ||
+        offlineSyncView ||
+        integrationsView) {
+      return;
+    }
     if (madrasasView ||
         staffView ||
         curriculumView ||
@@ -505,6 +524,37 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       final result = Map<String, dynamic>.from(
         await api.call(office ? '/overview' : '/health') as Map,
       );
+      if (!office &&
+          mounted &&
+          api.user != null &&
+          api.sessionVersion == version) {
+        try {
+          final incidentData = Map<String, dynamic>.from(
+            await api.call('/incidents?page=1') as Map,
+          );
+          result['incidents'] = {
+            'recentOpen': (incidentData['items'] as List? ?? [])
+                .whereType<Map>()
+                .where((row) => row['status'] != 'RESOLVED')
+                .take(3)
+                .map(
+                  (row) => {
+                    'id': row['id'],
+                    'title': row['title'],
+                    'priority': row['priority'],
+                  },
+                )
+                .toList(),
+            'open': incidentData['open'],
+            'high': incidentData['high'],
+            'resolved': incidentData['resolved'],
+            'checkedAt': DateTime.now().toUtc().toIso8601String(),
+          };
+        } catch (_) {
+          // Keep connectivity results usable when the incident register is unavailable.
+          result['incidentsUnavailable'] = true;
+        }
+      }
       if (!mounted || api.user == null || api.sessionVersion != version) return;
       if (mounted && api.user != null && api.sessionVersion == version) {
         setState(() {
@@ -596,11 +646,23 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         api.clear();
         return;
       }
-      audit = !isAdmin;
+      audit = false;
       auditApplicationId = null;
       auditActorId = null;
       auditTechnicalReviewId = null;
+      homeView = true;
+      madrasasView = false;
+      staffView = false;
+      curriculumView = false;
+      oversightView = false;
+      fundsView = false;
+      reportsView = false;
       healthView = false;
+      incidentsView = false;
+      updatesView = false;
+      backupsView = false;
+      offlineSyncView = false;
+      integrationsView = false;
       sessionsView = false;
       accountsView = false;
       applicationStatus = '';
@@ -623,6 +685,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
     if (isAdmin) return;
     audit = true;
     healthView = false;
+    incidentsView = false;
+    updatesView = false;
+    backupsView = false;
+    offlineSyncView = false;
+    integrationsView = false;
     sessionsView = false;
     accountsView = false;
     overview = null;
@@ -711,76 +778,6 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         api.sessionVersion == version) {
       await openApplicationAudit(record['id'] as String);
     }
-  }
-
-  Future<void> inspectProvisioning(Map<String, dynamic> record) async {
-    if (busy) return;
-    final version = api.sessionVersion;
-    Map<String, dynamic>? result;
-    await run(() async {
-      result = Map<String, dynamic>.from(
-        await api.call(
-              '/tenant-applications/${Uri.encodeComponent(record['id'] as String)}/provisioning-preflight',
-            )
-            as Map,
-      );
-    });
-    final data = result;
-    if (!mounted ||
-        api.user == null ||
-        api.sessionVersion != version ||
-        data == null) {
-      return;
-    }
-    final checks = Map<String, dynamic>.from(data['checks'] as Map);
-    await sessionDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Madrassa setup checks'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${record['schoolName']} / ${record['requestedCode']}'),
-                const SizedBox(height: 16),
-                Text(
-                  checks['independentReview'] == true
-                      ? 'Passed: independent approval recorded.'
-                      : 'Blocked: independent approval is incomplete.',
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  data['alreadyProvisioned'] == true
-                      ? 'Already provisioned: this application has a linked madrassa. Do not create another.'
-                      : checks['schoolCodeAvailable'] == true
-                      ? 'Passed: school code is currently available.'
-                      : 'Blocked: school code is already in use.',
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'This check does not create a madrassa, reserve its code, or send an invitation. Automatic provisioning is not enabled yet.',
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Next stages: create an inactive madrassa, invite the first admin, verify acceptance, then activate the school.',
-                ),
-                const SizedBox(height: 12),
-                Text('Checked: ${platformTimestamp(data['checkedAt'])}'),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> requestLogout(bool all) async {
@@ -1027,10 +1024,18 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       ? PlatformPage.funds
       : reportsView
       ? PlatformPage.reports
-      : setupView
-      ? PlatformPage.setup
       : healthView
       ? PlatformPage.health
+      : incidentsView
+      ? PlatformPage.incidents
+      : updatesView
+      ? PlatformPage.updates
+      : backupsView
+      ? PlatformPage.backups
+      : offlineSyncView
+      ? PlatformPage.offlineSync
+      : integrationsView
+      ? PlatformPage.integrations
       : sessionsView
       ? PlatformPage.sessions
       : accountsView
@@ -1057,7 +1062,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               PlatformPage.accounts,
               PlatformPage.home,
               PlatformPage.health,
-              PlatformPage.setup,
+              PlatformPage.incidents,
+              PlatformPage.updates,
+              PlatformPage.backups,
+              PlatformPage.offlineSync,
+              PlatformPage.integrations,
               PlatformPage.sessions,
               PlatformPage.history,
             }.contains(destination);
@@ -1079,8 +1088,13 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       oversightView = destination == PlatformPage.oversight;
       fundsView = destination == PlatformPage.funds;
       reportsView = destination == PlatformPage.reports;
-      setupView = destination == PlatformPage.setup;
       healthView = destination == PlatformPage.health;
+      incidentsView = destination == PlatformPage.incidents;
+      if (!incidentsView) incidentToOpen = null;
+      updatesView = destination == PlatformPage.updates;
+      backupsView = destination == PlatformPage.backups;
+      offlineSyncView = destination == PlatformPage.offlineSync;
+      integrationsView = destination == PlatformPage.integrations;
       sessionsView = destination == PlatformPage.sessions;
       accountsView = destination == PlatformPage.accounts;
       audit = destination == PlatformPage.history;
@@ -1088,8 +1102,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       health = null;
       records = [];
       page = 1;
-      if (!setupView &&
-          !madrasasView &&
+      if (!madrasasView &&
           !staffView &&
           !curriculumView &&
           !oversightView &&
@@ -1463,7 +1476,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                             ? 'Your active sessions. Times are UTC. Only sessions belonging to your account are shown.'
                             : audit
                             ? 'Platform activity'
-                            : 'Request > Independent review > IT setup > Admin invitation (pending)',
+                            : 'Request > Independent review > Madrasa registration > Admin invitation',
                         style: const TextStyle(color: muted),
                       ),
                       const SizedBox(height: 12),
@@ -1839,19 +1852,6 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                                           'Onboarding progress',
                                         ),
                                       ),
-                                    if (!isAdmin &&
-                                        record['status'] == 'APPROVED')
-                                      OutlinedButton.icon(
-                                        onPressed: busy
-                                            ? null
-                                            : () => inspectProvisioning(record),
-                                        icon: const Icon(
-                                          Icons.fact_check_outlined,
-                                        ),
-                                        label: const Text(
-                                          'Check setup readiness',
-                                        ),
-                                      ),
                                     const SizedBox(height: 8),
                                     Text(switch (record['status']) {
                                       'APPROVED' =>
@@ -1981,7 +1981,91 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           },
         ),
       ],
-      child: healthView && !isAdmin
+      child: integrationsView && !isAdmin
+          ? PlatformIntegrationsPage(
+              request: () => api.call('/integrations'),
+              onAudit: () => navigateTo(PlatformPage.history),
+              onHealth: () => navigateTo(PlatformPage.health),
+            )
+          : offlineSyncView && !isAdmin
+          ? PlatformSyncRegister(
+              request: (path) => api.call(path),
+              onAudit: () => navigateTo(PlatformPage.history),
+              onIncidents: () => navigateTo(PlatformPage.incidents),
+            )
+          : backupsView && !isAdmin
+          ? PlatformBackupRequests(
+              onAudit: () => navigateTo(PlatformPage.history),
+              request: (path, body) => api.call(path, body: body),
+            )
+          : updatesView && !isAdmin
+          ? PlatformUpdatesPage(
+              onAudit: () => navigateTo(PlatformPage.history),
+              onIncidents: () => navigateTo(PlatformPage.incidents),
+            )
+          : incidentsView && !isAdmin
+          ? SecurityIncidentRegister(
+              initialIncidentId: incidentToOpen,
+              request: (path, body) => api.call(path, body: body),
+            )
+          : audit && !sessionsView && !accountsView && !isAdmin
+          ? PlatformAuditPage(
+              records: records,
+              busy: busy,
+              error: error,
+              page: page,
+              filters: auditPageFilters(),
+              onDetails: auditEventDetails,
+              onRefresh: () => run(load),
+              onPage: (value) => run(() async {
+                page = value;
+                records = [];
+                await load();
+              }),
+            )
+          : sessionsView && !isAdmin
+          ? PlatformSessionsPage(
+              records: records,
+              busy: busy,
+              error: error,
+              page: page,
+              details: sessionCard,
+              onRefresh: () => run(load),
+              onPage: (value) => run(() async {
+                page = value;
+                records = [];
+                await load();
+              }),
+            )
+          : accountsView && !isAdmin
+          ? PlatformAccessPage(
+              records: records,
+              busy: busy,
+              error: error,
+              page: page,
+              role: accountRole,
+              status: accountStatus,
+              onStatus: (value) => run(() async {
+                accountStatus = value;
+                page = 1;
+                records = [];
+                await load();
+              }),
+              onRefresh: () => run(load),
+              onReview: accountAccessHistory,
+              onRole: (value) => run(() async {
+                accountRole = value;
+                page = 1;
+                records = [];
+                await load();
+              }),
+              onPage: (value) => run(() async {
+                page = value;
+                records = [];
+                await load();
+              }),
+            )
+          : healthView && !isAdmin
           ? PlatformSystemHealthPage(
               snapshot: health,
               busy: busy,
@@ -2070,6 +2154,10 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             )
           : homeView
           ? PlatformOverview(
+              onIncident: (id) {
+                incidentToOpen = id;
+                navigateTo(PlatformPage.incidents);
+              },
               isAdmin: isAdmin,
               name: '${api.user!['fullName']}',
               snapshot: isAdmin ? overview : health,
@@ -2090,23 +2178,6 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               healthPanel: isAdmin
                   ? null
                   : PlatformHealthPanel(snapshot: health, loading: busy),
-            )
-          : setupView
-          ? SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: PlatformProvisioningPanel(
-                key: ValueKey(version),
-                call: api.call,
-                sessionIsCurrent: () =>
-                    api.user != null && api.sessionVersion == version,
-                onViewHistory: (id) async {
-                  setState(() {
-                    setupView = false;
-                    homeView = false;
-                  });
-                  await openApplicationAudit(id);
-                },
-              ),
             )
           : legacy.body!,
     );
@@ -2452,6 +2523,145 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       ),
     ),
   );
+
+  Widget auditPageFilters() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (auditActorId != null ||
+          auditApplicationId != null ||
+          auditTechnicalReviewId != null) ...[
+        Text(
+          'Filtered history: ${auditActorId ?? auditApplicationId ?? auditTechnicalReviewId}',
+        ),
+        TextButton(
+          onPressed: busy ? null : () => openApplicationAudit(null),
+          child: const Text('Show all application and platform events'),
+        ),
+      ],
+      Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          auditFilter('Event', auditAction, const {
+            '': 'All events',
+            'tenant.technical-review.recorded': 'IT sign-off recorded',
+            'tenant.technical-review.withdrawn': 'IT sign-off withdrawn',
+            'platform.login.failed': 'Failed login',
+            'platform.login.succeeded': 'Successful login',
+            'tenant.application.requested': 'Madrassa requested',
+            'tenant.application.approved': 'Madrassa approved',
+            'tenant.application.rejected': 'Madrassa rejected',
+            'tenant.school.provisioned': 'Inactive madrassa created',
+            'tenant.admin.invitation.issued': 'Admin invitation recorded',
+            'tenant.school.activated': 'Madrassa activated',
+            'platform.session.revoked': 'Session revoked',
+            'platform.sessions.revoked': 'All sessions revoked',
+            'platform.account.bootstrapped': 'Reviewer created',
+            'platform.account.disabled': 'IT account disabled',
+            'platform.account.restored': 'IT account restored',
+          }, (value) => auditAction = value),
+          auditFilter('Role', auditRole, const {
+            '': 'All roles',
+            'SUPER_ADMIN': 'Super Admin',
+            'IT_SECURITY': 'IT / Security',
+          }, (value) => auditRole = value),
+          auditFilter(
+            'Period',
+            auditPeriod,
+            const {
+              '': 'All time',
+              '1': 'Last 24 hours',
+              '7': 'Last 7 days',
+              '30': 'Last 30 days',
+            },
+            (value) {
+              auditPeriod = value;
+              auditSince = value.isEmpty
+                  ? null
+                  : DateTime.now().toUtc().subtract(
+                      Duration(days: int.parse(value)),
+                    );
+            },
+          ),
+        ],
+      ),
+    ],
+  );
+
+  Future<void> auditEventDetails(Map<String, dynamic> record) async {
+    final next = await sessionDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${record['action']}'),
+        content: SizedBox(
+          width: 650,
+          child: SingleChildScrollView(
+            child: ItRecordDetails(
+              values: {
+                'Event ID': record['id'],
+                'Actor ID': record['actorId'],
+                'Actor role': record['actorRole'],
+                'Recorded (UTC)': record['createdAt'],
+                'Record type': record['entityType'],
+                'Reference': record['entityId'],
+                if (record['metadata'] is Map)
+                  for (final entry in (record['metadata'] as Map).entries)
+                    'Detail: ${entry.key}':
+                        entry.value is Map || entry.value is List
+                        ? jsonEncode(entry.value)
+                        : entry.value,
+              },
+            ),
+          ),
+        ),
+        actions: [
+          if (record['actorId'] is String &&
+              (record['actorId'] as String).isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'actor'),
+              child: const Text('View actor activity'),
+            ),
+          if (record['entityType'] == 'TenantApplication' &&
+              record['entityId'] is String)
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'application'),
+              child: const Text('View application history'),
+            ),
+          if ((record['action'] == 'tenant.technical-review.recorded' &&
+                  record['entityType'] == 'TenantApplication' &&
+                  record['id'] is String) ||
+              (record['action'] == 'tenant.technical-review.withdrawn' &&
+                  record['entityType'] == 'TechnicalReview' &&
+                  record['entityId'] is String))
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'signoff'),
+              child: const Text('View sign-off history'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || api.user == null) return;
+    if (next == 'actor') {
+      await openApplicationAudit(null, actorId: record['actorId'] as String);
+    }
+    if (next == 'application') {
+      await openApplicationAudit(record['entityId'] as String);
+    }
+    if (next == 'signoff') {
+      await openApplicationAudit(
+        null,
+        technicalReviewId:
+            record[record['entityType'] == 'TechnicalReview'
+                    ? 'entityId'
+                    : 'id']
+                as String,
+      );
+    }
+  }
 
   Widget auditFilter(
     String label,

@@ -53,17 +53,28 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Open navigation'));
     await tester.pumpAndSettle();
-      await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Company accounts')));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(Drawer),
+        matching: find.text('Company accounts'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Demo operator'), findsOneWidget);
-    expect(find.text('Access history'), findsOneWidget);
+    expect(find.text('Review'), findsOneWidget);
     expect(find.text('Disable IT account'), findsNothing);
     expect(find.text('Review restoration'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     api.close();
   });
-  for (final saved in ['accounts', 'history', 'sessions']) {
+  for (final saved in [
+    'accounts',
+    'history',
+    'sessions',
+    'offlineSync',
+    'integrations',
+  ]) {
     testWidgets('superadmin cannot restore technical page $saved', (
       tester,
     ) async {

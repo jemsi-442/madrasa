@@ -32,9 +32,7 @@ void main() {
                     'user': {
                       'id': 'admin',
                       'fullName': 'Reviewer',
-                      'role': view == 'My sessions'
-                          ? 'IT_SECURITY'
-                          : 'SUPER_ADMIN',
+                      'role': 'IT_SECURITY',
                     },
                   },
                 }),
@@ -75,30 +73,38 @@ void main() {
         await api.login('admin@example.test', 'password', '123456');
         await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
         await openPlatformPage(tester, view);
-        expect(find.textContaining('snapshot-record'), findsWidgets);
+        final record = find.textContaining(
+          view == 'My sessions' ? 'Another session' : 'snapshot-record',
+        );
+        final empty = find.text(switch (view) {
+          'My sessions' => 'No sessions match this view.',
+          'Company accounts' => 'No accounts match this view.',
+          _ => 'No audit events match this view.',
+        });
+        expect(record, findsWidgets);
         final before = reads;
         phase = 1;
         await tester.ensureVisible(find.text('Refresh'));
         await tester.tap(find.text('Refresh'));
         await tester.pump();
-        expect(find.textContaining('snapshot-record'), findsNothing);
-        expect(find.text('No records to display.'), findsNothing);
+        expect(record, findsNothing);
+        expect(empty, findsNothing);
         await tester.tap(find.text('Refresh'));
         expect(reads, before + 1);
         pending.complete(http.Response('private error details', 503));
         await tester.pumpAndSettle();
-        expect(find.textContaining('snapshot-record'), findsNothing);
+        expect(record, findsNothing);
         expect(
           find.textContaining('Platform access is not available yet'),
           findsOneWidget,
         );
         expect(find.textContaining('private error details'), findsNothing);
-        expect(find.text('No records to display.'), findsNothing);
+        expect(empty, findsNothing);
         phase = 2;
         await tester.ensureVisible(find.text('Refresh'));
         await tester.tap(find.text('Refresh'));
         await tester.pumpAndSettle();
-        expect(find.text('No records to display.'), findsOneWidget);
+        expect(empty, findsOneWidget);
         expect(
           find.textContaining('Platform access is not available yet'),
           findsNothing,

@@ -20,9 +20,13 @@ enum PlatformPage {
   applications,
   accounts,
   history,
-  setup,
   health,
   sessions,
+  incidents,
+  updates,
+  backups,
+  offlineSync,
+  integrations,
 }
 
 class PlatformAccountStatus extends StatelessWidget {
@@ -154,7 +158,7 @@ class PlatformTaskIntro extends StatelessWidget {
     final (heading, description, icon) = switch (page) {
       PlatformPage.applications => (
         'A clear path for every madrassa',
-        'Submit a request or review one independently. Approval comes before IT setup; an approved request is not yet an active school.',
+        'Review registration requests in Madrasas. An approved request is not yet an active school.',
         Icons.school_outlined,
       ),
       PlatformPage.accounts => (
@@ -229,7 +233,7 @@ class PlatformTaskIntro extends StatelessWidget {
                 for (final step in [
                   '1. Request',
                   '2. Independent review',
-                  '3. IT setup',
+                  '3. Madrasa registration',
                   '4. Admin invitation',
                 ])
                   Chip(
@@ -288,15 +292,36 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
       (PlatformPage.funds, 'Donors & Funds', Icons.favorite_border),
       (PlatformPage.reports, 'Report', Icons.description_outlined),
     ] else ...[
-      (PlatformPage.accounts, 'Company accounts', Icons.badge_outlined),
       (PlatformPage.health, 'System health', Icons.monitor_heart_outlined),
-      (PlatformPage.history, 'Audit trail', Icons.policy_outlined),
-      (PlatformPage.setup, 'Madrassa setup', Icons.domain_add_outlined),
+      (PlatformPage.accounts, 'Company accounts', Icons.badge_outlined),
       (PlatformPage.sessions, 'My sessions', Icons.devices_outlined),
+      (PlatformPage.history, 'Audit trail', Icons.policy_outlined),
+      (
+        PlatformPage.incidents,
+        'Security Incidents',
+        Icons.warning_amber_outlined,
+      ),
+      (
+        PlatformPage.updates,
+        'Vulnerabilities & Updates',
+        Icons.bug_report_outlined,
+      ),
+      (PlatformPage.backups, 'Backups & Recovery', Icons.backup_outlined),
+      (PlatformPage.offlineSync, 'Offline Sync', Icons.sync_outlined),
+      (
+        PlatformPage.integrations,
+        'Integrations & Settings',
+        Icons.settings_outlined,
+      ),
     ],
   ];
 
   String get title => switch (page) {
+    PlatformPage.integrations => 'Integrations & Settings',
+    PlatformPage.offlineSync => 'Offline Sync',
+    PlatformPage.backups => 'Backups & Recovery',
+    PlatformPage.updates => 'Vulnerabilities & Updates',
+    PlatformPage.incidents => 'Security Incidents',
     PlatformPage.home => isAdmin ? 'Office overview' : 'Operations overview',
     PlatformPage.madrasas => 'Madrasa directory',
     PlatformPage.staff => 'Users & Permissions',
@@ -308,7 +333,6 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
     PlatformPage.accounts => 'Company accounts',
     PlatformPage.history =>
       isAdmin ? 'Settings & Security' : 'Security activity',
-    PlatformPage.setup => 'School provisioning',
     PlatformPage.health => 'Service availability',
     PlatformPage.sessions =>
       isAdmin ? 'Settings & Security' : 'Your signed-in devices',
@@ -334,6 +358,72 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
           onNavigate(destinations[index].$1);
         },
       );
+
+  // Related destinations are shortcuts, not sequential approval gates.
+  List<(PlatformPage, String)> get relatedDestinations => switch (page) {
+    PlatformPage.health => [
+      (PlatformPage.integrations, 'Check configuration'),
+      (PlatformPage.incidents, 'Record or review incident'),
+    ],
+    PlatformPage.accounts => [
+      (PlatformPage.history, 'Review access history'),
+      (PlatformPage.sessions, 'My sessions only'),
+    ],
+    PlatformPage.sessions => [
+      (PlatformPage.history, 'Review audit logs'),
+      (PlatformPage.incidents, 'Record or review incident'),
+    ],
+    PlatformPage.history => [
+      (PlatformPage.incidents, 'Investigate in incidents'),
+      (PlatformPage.accounts, 'Check company access'),
+    ],
+    PlatformPage.incidents => [
+      (PlatformPage.history, 'Inspect audit evidence'),
+      (PlatformPage.health, 'Check service health'),
+      (PlatformPage.sessions, 'My sessions only'),
+    ],
+    PlatformPage.updates => [
+      (PlatformPage.incidents, 'Review incidents'),
+      (PlatformPage.backups, 'Check recovery readiness'),
+    ],
+    PlatformPage.backups => [
+      (PlatformPage.history, 'Review audit logs'),
+      (PlatformPage.health, 'Check service health'),
+    ],
+    PlatformPage.offlineSync => [
+      (PlatformPage.incidents, 'Record or review incident'),
+      (PlatformPage.integrations, 'Check configuration'),
+    ],
+    PlatformPage.integrations => [
+      (PlatformPage.health, 'Check service health'),
+      (PlatformPage.history, 'Review audit logs'),
+    ],
+    _ => [],
+  };
+
+  Widget relatedActions() => Material(
+    color: Colors.white,
+    child: SizedBox(
+      height: 48,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            for (final item in relatedDestinations)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: TextButton.icon(
+                  onPressed: busy ? null : () => onNavigate(item.$1),
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  label: Text(item.$2),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -415,6 +505,8 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
                       ),
                     ),
                   ),
+                  if (!isAdmin && relatedDestinations.isNotEmpty)
+                    relatedActions(),
                   Expanded(
                     child: isAdmin ? child : ItWorkspaceSurface(child: child),
                   ),
@@ -442,6 +534,7 @@ class PlatformOverview extends StatelessWidget {
     this.healthPanel,
     this.onReviewPending,
     this.onApproved,
+    this.onIncident,
   });
   final bool isAdmin, busy;
   final String name;
@@ -451,6 +544,7 @@ class PlatformOverview extends StatelessWidget {
   final ValueChanged<PlatformPage> onNavigate;
   final Widget? healthPanel;
   final VoidCallback? onReviewPending, onApproved;
+  final ValueChanged<String>? onIncident;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -462,7 +556,7 @@ class PlatformOverview extends StatelessWidget {
           busy: busy,
           error: error,
           onRefresh: onRefresh,
-          onApplications: () => onNavigate(PlatformPage.applications),
+          onApplications: () => onNavigate(PlatformPage.madrasas),
           onLearning: () => onNavigate(PlatformPage.oversight),
           onFunds: () => onNavigate(PlatformPage.funds),
           onReports: () => onNavigate(PlatformPage.reports),
@@ -476,7 +570,8 @@ class PlatformOverview extends StatelessWidget {
         error: error,
         onRefresh: onRefresh,
         onHealth: () => onNavigate(PlatformPage.health),
-        onSetup: () => onNavigate(PlatformPage.setup),
+        onIncidents: () => onNavigate(PlatformPage.incidents),
+        onIncident: onIncident,
         onAccounts: () => onNavigate(PlatformPage.accounts),
         onAudit: () => onNavigate(PlatformPage.history),
         onSessions: () => onNavigate(PlatformPage.sessions),

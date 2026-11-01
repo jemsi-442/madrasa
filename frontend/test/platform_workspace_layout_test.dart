@@ -6,14 +6,17 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
 import 'package:mif_app/src/platform_workspace_shell.dart';
+import 'helpers/institution_overview_fixture.dart';
 
 void main() {
-  for (final failRequests in [false, true]) {
+  for (final unavailable in [false, true]) {
     testWidgets(
-      'office requests use live API and preserve totals on failure=$failRequests',
+      'institution overview uses API data; unavailable=$unavailable',
       (tester) async {
+        final reads = <String>[];
         final api = PlatformApi(
           client: MockClient((request) async {
+            reads.add(request.url.path);
             if (request.url.path.endsWith('/login')) {
               return http.Response(
                 jsonEncode({
@@ -30,56 +33,32 @@ void main() {
                 200,
               );
             }
-            if (request.url.path.endsWith('/overview')) {
-              return http.Response(
-                jsonEncode({
-                  'data': {
-                    'awaitingYourReview': 7,
-                    'applications': {
-                      'REQUESTED': 7,
-                      'APPROVED': 0,
-                      'REJECTED': 0,
-                    },
-                    'onboarding': {'awaitingSetup': 0, 'pendingActivation': 0},
-                  },
-                }),
-                200,
-              );
-            }
-            expect(request.url.queryParameters, {'page': '1', 'pageSize': '5'});
-            return failRequests
-                ? http.Response('{}', 503)
-                : http.Response(
-                    jsonEncode({
-                      'data': [
-                        {
-                          'schoolName': 'Live school request',
-                          'requestedCode': 'school-01',
-                          'status': 'REQUESTED',
-                        },
-                      ],
-                    }),
-                    200,
-                  );
+            expect(request.url.path, '/api/platform/overview');
+            if (unavailable) return http.Response('{}', 503);
+            return http.Response(
+              jsonEncode({'data': institutionOverviewFixture()}),
+              200,
+            );
           }),
         );
-        await api.login('office@example.test', 'password', '123456');
+        await api.login('office@example.test', 'synthetic-password', '123456');
         await tester.pumpWidget(
           MaterialApp(
             home: PlatformConsole(api: api, onSignedOut: () {}),
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('7'), findsWidgets);
+        expect(find.text('520'), unavailable ? findsNothing : findsOneWidget);
         expect(
-          find.text(
-            failRequests
-                ? 'Requests could not be loaded. Refresh to try again.'
-                : 'Live school request',
-          ),
-          findsOneWidget,
+          find.text('Synthetic Madrasa'),
+          unavailable ? findsNothing : findsOneWidget,
         );
-        expect(find.text('No madrassa requests yet.'), findsNothing);
+        expect(
+          find.text('Madrasa data is unavailable.'),
+          unavailable ? findsOneWidget : findsNothing,
+        );
+        expect(reads.where((path) => path.endsWith('/overview')).length, 1);
+        expect(find.text('No registered madrasas yet.'), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
         api.close();
@@ -168,19 +147,19 @@ void main() {
             ),
           ),
         );
-        final action = find.text('Manage company access');
+        final action = find.text('View all madrasas');
         await tester.ensureVisible(action);
         await tester.pump();
         await tester.tap(action);
         await tester.pump();
-        expect(destination, busy ? isNull : PlatformPage.accounts);
+        expect(destination, busy ? isNull : PlatformPage.madrasas);
         if (!busy) {
           destination = null;
           Focus.of(tester.element(action)).requestFocus();
           await tester.pump();
           await tester.sendKeyEvent(LogicalKeyboardKey.enter);
           await tester.pump();
-          expect(destination, PlatformPage.accounts);
+          expect(destination, PlatformPage.madrasas);
         }
         expect(tester.takeException(), isNull);
       }
@@ -188,43 +167,35 @@ void main() {
   }
 
   for (final empty in [true, false]) {
-    testWidgets(
-      'application chart handles empty=$empty without invented totals',
-      (tester) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: PlatformOverview(
-                isAdmin: true,
-                name: 'Office',
-                busy: false,
-                error: null,
-                snapshot: {
-                  'applications': empty
-                      ? {'REQUESTED': 0, 'APPROVED': 0, 'REJECTED': 0}
-                      : {'REQUESTED': 3},
-                },
-                onRefresh: () {},
-                onNavigate: (_) {},
-              ),
+    testWidgets('madrasa summary distinguishes empty=$empty from unavailable', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformOverview(
+              isAdmin: true,
+              name: 'Office',
+              busy: false,
+              error: null,
+              snapshot: empty ? institutionOverviewFixture(empty: true) : {},
+              onRefresh: () {},
+              onNavigate: (_) {},
             ),
           ),
-        );
-        await tester.scrollUntilVisible(
-          find.text('Applications overview'),
-          200,
-        );
-        expect(
-          find.text(
-            empty
-                ? 'No applications recorded yet.'
-                : 'Application breakdown is unavailable. Refresh to try again.',
-          ),
-          findsOneWidget,
-        );
-        expect(tester.takeException(), isNull);
-      },
-    );
+        ),
+      );
+      expect(
+        find.text(
+          empty
+              ? 'No registered madrasas yet.'
+              : 'Madrasa data is unavailable.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('0 / 0'), empty ? findsOneWidget : findsNothing);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets('task guidance fits a narrow screen with enlarged text', (
@@ -344,7 +315,9 @@ void main() {
         expect(find.byType(PlatformWorkspaceShell), findsOneWidget);
         expect(
           find.text(
-            role == 'SUPER_ADMIN' ? 'Welcome, Demo Operator!' : 'Demo Operator',
+            role == 'SUPER_ADMIN'
+                ? 'Institution Overview'
+                : 'IT & Security Overview',
           ),
           findsWidgets,
         );
@@ -368,18 +341,30 @@ void main() {
           expect(find.text('Madrassa setup'), findsNothing);
           await tester.tap(find.text('Users & Permissions'));
           await tester.pumpAndSettle();
-          await tester.tap(find.widgetWithText(ChoiceChip, 'Company accounts'));
-          await tester.pumpAndSettle();
-          expect(paths, contains('/api/platform/accounts'));
+          expect(
+            find.widgetWithText(ChoiceChip, 'Company accounts'),
+            findsNothing,
+          );
+          expect(paths, isNot(contains('/api/platform/accounts')));
           expect(paths, isNot(contains('/api/platform/health')));
         } else {
-          expect(find.text('Company accounts'), findsNothing);
+          expect(find.text('Company accounts'), findsWidgets);
           expect(find.text('Madrassa applications'), findsNothing);
-          await tester.tap(find.text('Madrassa setup'));
+          expect(find.text('Madrassa setup'), findsNothing);
+          final accountLink = find
+              .descendant(
+                of: find.byType(Drawer).evaluate().isNotEmpty
+                    ? find.byType(Drawer)
+                    : find.byType(PlatformWorkspaceShell),
+                matching: find.text('Company accounts'),
+              )
+              .last;
+          await tester.ensureVisible(accountLink);
+          await tester.tap(accountLink);
           await tester.pumpAndSettle();
-          expect(paths, contains('/api/platform/provisioning-queue'));
+          expect(paths, contains('/api/platform/accounts'));
+          expect(paths, isNot(contains('/api/platform/provisioning-queue')));
           expect(find.byType(AlertDialog), findsNothing);
-          expect(find.text('School provisioning'), findsOneWidget);
         }
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
@@ -419,7 +404,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Not available'), findsNWidgets(6));
+    expect(find.text('Not available'), findsWidgets);
+    expect(find.text('0'), findsNothing);
+    expect(find.text('Madrasa data is unavailable.'), findsOneWidget);
     expect(find.byTooltip('Refresh overview'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());

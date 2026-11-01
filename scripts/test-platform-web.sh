@@ -24,7 +24,7 @@ cd "$root_dir/frontend"
   test/platform_onboarding_flow_test.dart \
   test/platform_progress_refresh_test.dart \
   test/platform_onboarding_progress_test.dart \
-  test/platform_provisioning_panel_test.dart \
+  test/platform_it_workflow_test.dart \
   test/platform_audit_test.dart \
   test/platform_overview_test.dart \
   test/platform_workspace_layout_test.dart \

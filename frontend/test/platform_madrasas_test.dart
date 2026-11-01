@@ -66,7 +66,7 @@ void main() {
         } else if (outcome == true) {
           expect(find.text('Approve madrasa'), findsNothing);
           expect(
-            find.text('Approved. IT setup is the next step.'),
+            find.text('Approved. Continue registration in Madrasas.'),
             findsOneWidget,
           );
           await tester.ensureVisible(find.text('Back to Madrasas'));

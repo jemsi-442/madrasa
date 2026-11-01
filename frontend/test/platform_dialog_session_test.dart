@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'helpers/platform_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -7,10 +8,10 @@ import 'package:mif_app/src/platform_console.dart';
 
 void main() {
   for (final width in [800.0, 1400.0]) {
-    for (final accountAction in [false, true]) {
+    for (final sessionAction in [false, true]) {
       for (final replaceSession in [false, true]) {
         testWidgets(
-          'dialog blocks stale action width=$width account=$accountAction replaced=$replaceSession',
+          'dialog blocks stale action width=$width account=$sessionAction replaced=$replaceSession',
           (tester) async {
             tester.view.physicalSize = Size(width, 900);
             tester.view.devicePixelRatio = 1;
@@ -27,20 +28,19 @@ void main() {
                     'user': {
                       'id': 'admin',
                       'fullName': 'Reviewer',
-                      'role': 'SUPER_ADMIN',
+                      'role': sessionAction ? 'IT_SECURITY' : 'SUPER_ADMIN',
                     },
                   };
                 } else if (req.method == 'POST') {
                   writes++;
                   data = {};
-                } else if (req.url.path.endsWith('/accounts')) {
+                } else if (req.url.path.endsWith('/sessions')) {
                   data = [
                     {
-                      'id': 'it',
-                      'fullName': 'Operator',
-                      'email': 'it@example.test',
-                      'role': 'IT_SECURITY',
-                      'status': 'ACTIVE',
+                      'id': 'session',
+                      'current': true,
+                      'createdAt': '2026-10-08T00:00:00Z',
+                      'expiresAt': '2026-10-08T00:15:00Z',
                     },
                   ];
                 } else {
@@ -63,37 +63,34 @@ void main() {
             await tester.pumpWidget(
               MaterialApp(home: PlatformConsole(api: api)),
             );
-            if (accountAction && width < 1000) {
-              await tester.tap(find.byTooltip('Open navigation'));
+            if (sessionAction) {
+              await openPlatformPage(tester, 'My sessions');
+              await tester.ensureVisible(find.text('Review'));
+              await tester.tap(find.text('Review'));
               await tester.pumpAndSettle();
-            }
-            if (accountAction) {
-              await tester.tap(find.text('Users & Permissions'));
+              await tester.ensureVisible(find.text('Sign out this session'));
+              await tester.tap(find.text('Sign out this session'));
               await tester.pumpAndSettle();
+            } else {
+              await tester.ensureVisible(find.text('Refresh'));
+              await tester.tap(find.text('Refresh'));
+              await tester.pumpAndSettle();
+              await tester.ensureVisible(find.text('Approve'));
+              await tester.tap(find.text('Approve'));
+              await tester.pumpAndSettle();
+              await tester.enterText(
+                find.descendant(
+                  of: find.byType(AlertDialog),
+                  matching: find.byType(TextFormField),
+                ),
+                'Reviewed under the original session',
+              );
             }
-            final tab = accountAction ? 'Company accounts' : 'Refresh';
-            await tester.ensureVisible(find.text(tab));
-            await tester.tap(find.text(tab));
-            await tester.pumpAndSettle();
-            await tester.ensureVisible(
-              find.text(accountAction ? 'Disable IT account' : 'Approve'),
-            );
-            await tester.tap(
-              find.text(accountAction ? 'Disable IT account' : 'Approve'),
-            );
-            await tester.pumpAndSettle();
-            await tester.enterText(
-              find.descendant(
-                of: find.byType(AlertDialog),
-                matching: find.byType(TextFormField),
-              ),
-              'Reviewed under the original session',
-            );
             if (replaceSession) {
               await api.login('admin@example.test', 'password', '654321');
               await tester.tap(
                 find.text(
-                  accountAction ? 'Confirm disable' : 'Confirm approval',
+                  sessionAction ? 'Revoke session' : 'Confirm approval',
                 ),
               );
               await tester.pumpAndSettle();

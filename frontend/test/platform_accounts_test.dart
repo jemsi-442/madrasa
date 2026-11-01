@@ -7,7 +7,7 @@ import 'package:mif_app/src/platform_console.dart';
 import 'helpers/platform_navigation.dart';
 
 void main() {
-  testWidgets('company filters send scoped query and clear together', (
+  testWidgets('company filters send scoped query and can be reset', (
     tester,
   ) async {
     final queries = <Map<String, String>>[];
@@ -21,7 +21,7 @@ void main() {
             'user': {
               'id': 'admin',
               'fullName': 'Reviewer',
-              'role': 'SUPER_ADMIN',
+              'role': 'IT_SECURITY',
             },
           };
         } else if (req.url.path.endsWith('/accounts')) {
@@ -38,13 +38,13 @@ void main() {
     await tester.pumpAndSettle();
     await openPlatformPage(tester, 'Company accounts');
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('Account role-')));
-    await tester.tap(find.byKey(const ValueKey('Account role-')));
+    await tester.ensureVisible(find.byKey(const ValueKey('role-')));
+    await tester.tap(find.byKey(const ValueKey('role-')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('IT Security').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('Account status-')));
-    await tester.tap(find.byKey(const ValueKey('Account status-')));
+    await tester.ensureVisible(find.byKey(const ValueKey('status-')));
+    await tester.tap(find.byKey(const ValueKey('status-')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Disabled').last);
     await tester.pumpAndSettle();
@@ -58,87 +58,73 @@ void main() {
     await tester.pumpAndSettle();
     await openPlatformPage(tester, 'Company accounts');
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Clear account filters'));
-    await tester.tap(find.text('Clear account filters'));
+    await tester.ensureVisible(find.byKey(const ValueKey('role-IT_SECURITY')));
+    await tester.tap(find.byKey(const ValueKey('role-IT_SECURITY')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All company roles').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('status-DISABLED')));
+    await tester.tap(find.byKey(const ValueKey('status-DISABLED')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All statuses').last);
     await tester.pumpAndSettle();
     expect(queries.last, {'page': '1', 'pageSize': '20'});
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     api.close();
   });
-  testWidgets('disable IT requires a valid reason and confirmation', (
-    tester,
-  ) async {
-    var disabled = false;
-    var writes = 0;
-    final api = PlatformApi(
-      client: MockClient((req) async {
-        dynamic data = [];
-        if (req.url.path.endsWith('/login')) {
-          data = {
-            'accessToken': 'token',
-            'expiresIn': 900,
-            'user': {
-              'id': 'admin',
-              'fullName': 'Reviewer',
-              'role': 'SUPER_ADMIN',
-            },
-          };
-        } else if (req.url.path.endsWith('/disable')) {
-          expect(jsonDecode(req.body), {
-            'reason': 'Operator access no longer required',
-          });
-          writes++;
-          disabled = true;
-          data = {'id': 'it', 'status': 'DISABLED', 'revoked': 1};
-        } else if (req.url.path.endsWith('/accounts')) {
-          data = [
-            {
-              'id': 'it',
-              'fullName': 'Security Operator',
-              'email': 'it@example.test',
-              'role': 'IT_SECURITY',
-              'status': disabled ? 'DISABLED' : 'ACTIVE',
-              'createdAt': '2026-10-08T00:00:00Z',
-            },
-          ];
-        }
-        return http.Response(jsonEncode({'data': data}), 200);
-      }),
-    );
-    await api.login('admin@example.test', 'password', '123456');
-    await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-    await tester.pumpAndSettle();
-    await openPlatformPage(tester, 'Company accounts');
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Disable IT account'));
-    await tester.tap(find.text('Disable IT account'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(writes, 0);
-    await tester.tap(find.text('Disable IT account'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirm disable'));
-    await tester.pumpAndSettle();
-    expect(find.text('Enter at least 10 characters.'), findsOneWidget);
-    expect(writes, 0);
-    await tester.enterText(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(TextFormField),
-      ),
-      'Operator access no longer required',
-    );
-    await tester.tap(find.text('Confirm disable'));
-    await tester.pumpAndSettle();
-    expect(writes, 1);
-    expect(find.text('Disabled'), findsOneWidget);
-    expect(find.text('Disable IT account'), findsNothing);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-    api.close();
-  });
+  for (final status in ['ACTIVE', 'DISABLED']) {
+    testWidgets('IT account review stays read-only for $status', (
+      tester,
+    ) async {
+      var writes = 0;
+      final api = PlatformApi(
+        client: MockClient((req) async {
+          dynamic data = [];
+          if (req.url.path.endsWith('/login')) {
+            data = {
+              'accessToken': 'token',
+              'expiresIn': 900,
+              'user': {
+                'id': 'operator',
+                'fullName': 'Operator',
+                'role': 'IT_SECURITY',
+              },
+            };
+          } else {
+            if (req.method != 'GET') writes++;
+            if (req.url.path.endsWith('/accounts')) {
+              data = [
+                {
+                  'id': 'it',
+                  'fullName': 'Synthetic Operator',
+                  'email': 'it@example.test',
+                  'role': 'IT_SECURITY',
+                  'status': status,
+                },
+              ];
+            }
+          }
+          return http.Response(jsonEncode({'data': data}), 200);
+        }),
+      );
+      await api.login('operator@example.test', 'synthetic-password', '123456');
+      await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
+      await openPlatformPage(tester, 'Company accounts');
+      await tester.ensureVisible(find.text('Review'));
+      await tester.tap(find.text('Review'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Read-only account review.'), findsOneWidget);
+      expect(find.text('Disable IT account'), findsNothing);
+      expect(find.text('Review restoration'), findsNothing);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(writes, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      api.close();
+    });
+  }
   for (final role in ['SUPER_ADMIN', 'IT_SECURITY']) {
     testWidgets('company directory access for $role on mobile', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -175,17 +161,19 @@ void main() {
       await api.login('operator@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
       await tester.pumpAndSettle();
-      if (role == 'SUPER_ADMIN') {
+      if (role == 'IT_SECURITY') {
         await openPlatformPage(tester, 'Office history');
         await openPlatformPage(tester, 'Company accounts');
         expect(reads, 1);
         expect(find.text('Company Reviewer'), findsOneWidget);
-        expect(find.text('Your account'), findsOneWidget);
+        expect(find.text('ACTIVE'), findsWidgets);
         expect(find.text('Request madrassa'), findsNothing);
-        expect(find.text('My sessions'), findsNothing);
+
         await openPlatformPage(tester, 'Office history');
         expect(find.text('Company Reviewer'), findsNothing);
       } else {
+        await tester.tap(find.byTooltip('Open navigation'));
+        await tester.pumpAndSettle();
         expect(find.text('Company accounts'), findsNothing);
         expect(reads, 0);
       }

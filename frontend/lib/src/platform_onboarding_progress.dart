@@ -187,7 +187,7 @@ class PlatformOnboardingProgress extends StatelessWidget {
   final Map<String, dynamic> data;
 
   String get stageLabel => switch (data['stage']) {
-    'PROVISIONING_PENDING' => 'Awaiting IT setup',
+    'PROVISIONING_PENDING' => 'Registration pending',
     'INVITATION_PENDING' => 'Invitation needed',
     'INVITATION_EXPIRED' => 'Invitation expired',
     'ACCEPTANCE_PENDING' => 'Awaiting administrator',
