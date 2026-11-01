@@ -28,7 +28,7 @@ class AfaqNotice extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 19),
+          Icon(icon, color: color, size: AfaqDesign.iconSmall),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -84,7 +84,7 @@ class AfaqActionTile extends StatelessWidget {
                   color: accent.withValues(alpha: .1),
                   borderRadius: BorderRadius.circular(AfaqDesign.controlRadius),
                 ),
-                child: Icon(icon, color: accent, size: 22),
+                child: Icon(icon, color: accent, size: AfaqDesign.iconSize),
               ),
               const SizedBox(width: 14),
             ],
@@ -118,7 +118,7 @@ class AfaqActionTile extends StatelessWidget {
             const SizedBox(width: 6),
             const Icon(
               Icons.arrow_forward_rounded,
-              size: 18,
+              size: AfaqDesign.iconSmall,
               color: AfaqDesign.muted,
             ),
           ],
