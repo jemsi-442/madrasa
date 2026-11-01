@@ -18,6 +18,7 @@ class LessonMediaDelivery {
     Map<String, dynamic> response, {
     required String apiBaseUrl,
     required String assetId,
+    bool teacherResource = false,
     DateTime? now,
   }) {
     final delivery = response['delivery'];
@@ -55,7 +56,8 @@ class LessonMediaDelivery {
         uri.userInfo.isNotEmpty ||
         uri.origin != base.origin ||
         !RegExp(r'^[1-9][0-9]*$').hasMatch(assetId) ||
-        uri.path != '/api/learner/assets/$assetId/deliver' ||
+        uri.path !=
+            '/api/${teacherResource ? 'courses' : 'learner'}/assets/$assetId/deliver' ||
         uri.fragment.isNotEmpty ||
         uri.queryParametersAll.length != 1 ||
         uri.queryParametersAll['token']?.length != 1 ||
