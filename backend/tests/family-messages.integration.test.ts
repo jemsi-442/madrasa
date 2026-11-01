@@ -97,19 +97,19 @@ describe("private family messaging", () => {
     for (const body of ["", "   ", "x".repeat(2001)]) expect((await send(body)).status).toBe(422);
     expect((await post(`conversations/${thread}/messages`, { body: "Hello", clientId: randomUUID(), senderId: String(teacher) })).status).toBe(422);
     const clientId = randomUUID();
-    const response = await send(" Assalamu alaikum ", parent, thread, clientId);
+    const response = await send(" Test message ", parent, thread, clientId);
     expect(response.status).toBe(200);
-    expect(response.body.data.message.body).toBe("Assalamu alaikum");
-    const repeated = await Promise.all([send("Assalamu alaikum", parent, thread, clientId), send("Assalamu alaikum", parent, thread, clientId)]);
+    expect(response.body.data.message.body).toBe("Test message");
+    const repeated = await Promise.all([send("Test message", parent, thread, clientId), send("Test message", parent, thread, clientId)]);
     for (const r of repeated) expect(r.body.data.message.id).toBe(response.body.data.message.id);
     expect((await send("Different body", parent, thread, clientId)).status).toBe(409);
     expect(await prisma.familyMessage.count({ where: { orgId, senderId: parent, clientId } })).toBe(1);
-    expect((await send("Wa alaikum salaam", teacher)).status).toBe(200);
+    expect((await send("Test reply", teacher)).status).toBe(200);
     const history = await get(`conversations/${thread}`);
-    expect(history.body.data.messages.map((m: { body: string }) => m.body)).toEqual(["Assalamu alaikum", "Wa alaikum salaam"]);
+    expect(history.body.data.messages.map((m: { body: string }) => m.body)).toEqual(["Test message", "Test reply"]);
     const audit = await prisma.auditLog.findMany({ where: { orgId, entityType: "FamilyConversation", entityId: thread } });
     expect(audit).toHaveLength(2);
-    expect(JSON.stringify(audit.map(a => a.metadata))).not.toContain("Assalamu");
+    expect(JSON.stringify(audit.map(a => a.metadata))).not.toContain("Test message");
   });
 
   it("acknowledges only displayed message IDs, never future messages, and never moves read state backward", async () => {
