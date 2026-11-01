@@ -32,7 +32,7 @@ export function buildFamilyEmail(raw: FamilyEmailInput): EmailDraft {
   const approved = input.kind === "FAMILY_APPROVED";
   const subject = approved ? "Afaq | Your family account is ready" : "Afaq | Your password was changed";
   const paragraphs = [
-    `Assalamu alaikum ${input.fullName},`,
+    `${input.fullName},`,
     approved
       ? `Your family account at ${input.schoolName} has been approved. Your family sign-in number is ${input.familyLoginId}.`
       : `The password for your account at ${input.schoolName} was changed. Previous sessions have been signed out.`,
