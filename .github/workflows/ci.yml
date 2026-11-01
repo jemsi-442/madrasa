@@ -131,6 +131,9 @@ jobs:
       - name: Demo Quran configuration isolation
         run: node --test backend/scripts/local-demo-quran-env.test.mjs backend/scripts/local-demo-lifecycle.test.mjs
 
+      - name: Shared development safety and account preservation
+        run: node --test backend/scripts/development-config.test.mjs backend/scripts/development-accounts.test.mjs
+
       - name: Start backend
         working-directory: backend
         run: |
