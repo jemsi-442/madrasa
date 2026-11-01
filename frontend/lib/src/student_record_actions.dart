@@ -1,8 +1,11 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'admin_forms.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'guardian_residence_actions.dart';
+import 'student_residence_actions.dart';
 
 class StudentRecordActions extends StatefulWidget {
   const StudentRecordActions({
@@ -33,6 +36,38 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
       loading = true;
     });
     try {
+      if (action == 'residence') {
+        setState(() => loading = false);
+        final saved = await editStudentResidence(
+          context,
+          '${widget.student['id']}',
+          widget.load,
+          widget.submit,
+        );
+        if (saved && mounted) {
+          widget.onChanged();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Student residence updated.')),
+          );
+        }
+        return;
+      }
+      if (action == 'guardian-residence') {
+        setState(() => loading = false);
+        final saved = await editGuardianResidence(
+          context,
+          '${widget.student['id']}',
+          widget.load,
+          widget.submit,
+        );
+        if (saved && mounted) {
+          widget.onChanged();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Guardian residence updated.')),
+          );
+        }
+        return;
+      }
       final path = '/api/admin/students/${widget.student['id']}';
       final record = recordMap(await widget.load('$path/record'));
       if (!mounted) return;
@@ -87,13 +122,15 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
             ),
             AdminField(
               'dob',
-              'Date of birth (YYYY-MM-DD)',
+              'Date of birth',
+              kind: 'date',
               required: false,
               initial: date('dob'),
             ),
             AdminField(
               'joinedOn',
-              'Joining date (YYYY-MM-DD)',
+              'Joining date',
+              kind: 'date',
               required: false,
               initial: date('joinedOn'),
             ),
@@ -167,10 +204,15 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
             height: 18,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        : const Icon(Icons.more_vert, size: 20),
+        : const Icon(Icons.more_vert, size: AfaqDesign.iconSmall),
     onSelected: open,
     itemBuilder: (_) => [
       const PopupMenuItem(value: 'edit', child: Text('Edit student')),
+      const PopupMenuItem(value: 'residence', child: Text('Student residence')),
+      const PopupMenuItem(
+        value: 'guardian-residence',
+        child: Text('Edit guardian residence'),
+      ),
       const PopupMenuItem(value: 'history', child: Text('Change history')),
       if (widget.student['programCategory'] == 'MADRASA_CHILD') ...[
         if (widget.student['status'] == 'ACTIVE')
@@ -178,7 +220,7 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
             value: 'archive',
             child: Row(
               children: [
-                Icon(Icons.person_remove_outlined, size: 18),
+                Icon(Icons.person_remove_outlined, size: AfaqDesign.iconSmall),
                 SizedBox(width: 10),
                 Text('Remove student'),
               ],
