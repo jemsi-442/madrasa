@@ -1,3 +1,4 @@
+import 'helpers/platform_navigation.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,8 +66,7 @@ void main() {
       await api.login('admin@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Company accounts'));
-      await tester.tap(find.text('Company accounts'));
+      await openPlatformPage(tester, 'Company accounts');
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Review restoration'));
       await tester.tap(find.text('Review restoration'));
