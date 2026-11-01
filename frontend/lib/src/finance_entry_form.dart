@@ -1,3 +1,4 @@
+import 'date_selection.dart';
 import 'package:flutter/material.dart';
 
 import 'accountant_components.dart';
@@ -125,7 +126,7 @@ class _FinanceEntryState extends State<_FinanceEntry> {
 
   Future<void> pickDate() async {
     final today = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showAfaqDatePicker(
       context: context,
       initialDate: DateTime.tryParse(date.text) ?? today,
       firstDate: DateTime(2000),
