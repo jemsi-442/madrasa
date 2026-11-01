@@ -1,4 +1,8 @@
 import { Router } from "express";
+import { BackupRequestsService } from './platform.backups';
+import { PlatformSyncService } from './platform.sync';
+import { readIntegrations } from './platform.integrations';
+import { SecurityIncidentsService } from './platform.incidents';
 import { PlatformCurriculumService } from './platform.curriculum';
 import { PlatformFundsService } from './platform.funds';
 import { InstitutionalReportsService } from './platform.reports';
@@ -33,6 +37,9 @@ declare module "express-serve-static-core" {
 export function createPlatformRouter(db: PrismaClient, secret: string, schoolSecrets: readonly string[], login?: PlatformLoginOptions, health?: PlatformHealthReader, delivery?: InvitationDelivery) {
   const router = Router();
   const service = new PlatformGovernanceService(db);
+  const incidents = new SecurityIncidentsService(db);
+  const backups = new BackupRequestsService(db);
+  const sync = new PlatformSyncService(db);
   const curriculum = new PlatformCurriculumService(db);
   const funds = new PlatformFundsService(db);
   const reports = new InstitutionalReportsService(db);
@@ -74,6 +81,18 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
       select: { id: true, fullName: true, role: true },
     });
     res.json({ success: true, data: account });
+  }));
+  router.get('/backups/requests', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await backups.list(req.platformContext!, req.query) });
+  }));
+  router.get('/sync/received', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await sync.received(req.platformContext!, req.query) });
+  }));
+  router.get('/integrations', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await readIntegrations(db, req.platformContext!, login?.passwordOnly === undefined && login ? false : login?.passwordOnly) });
+  }));
+  router.post('/backups/requests', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await backups.request(req.platformContext!, req.body) });
   }));
   router.get('/curriculum', asyncHandler(async (req, res) => {
     res.json({ success: true, data: await curriculum.list(req.platformContext!, req.query) });
@@ -281,6 +300,10 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
   router.get("/audit-events", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.listAuditEvents(req.platformContext!, req.query) });
   }));
+  router.get('/incidents', asyncHandler(async (req, res) => { res.json({ success: true, data: await incidents.list(req.platformContext!, req.query) }); }));
+  router.get('/incidents/:id', asyncHandler(async (req, res) => { res.json({ success: true, data: await incidents.detail(req.platformContext!, z.string().min(1).max(30).parse(req.params.id)) }); }));
+  router.post('/incidents', asyncHandler(async (req, res) => { res.status(201).json({ success: true, data: await incidents.create(req.platformContext!, req.body) }); }));
+  router.post('/incidents/:id', asyncHandler(async (req, res) => { res.json({ success: true, data: await incidents.update(req.platformContext!, z.string().min(1).max(30).parse(req.params.id), req.body) }); }));
   router.get("/sessions", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.listOwnSessions(req.platformContext!, req.query) });
   }));

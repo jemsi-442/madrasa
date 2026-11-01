@@ -292,6 +292,34 @@ model CurriculumReview {
   @@map("curriculum_reviews")
 }
 
+model SecurityIncident {
+  id String @id @default(cuid()) @db.VarChar(30)
+  title String @db.VarChar(160)
+  description String @db.Text
+  priority String @db.VarChar(10)
+  status String @default("OPEN") @db.VarChar(20)
+  ownerId String @db.VarChar(30)
+  revision Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  resolvedAt DateTime?
+  entries SecurityIncidentEntry[]
+  @@index([createdAt, id])
+  @@map("security_incidents")
+}
+
+model SecurityIncidentEntry {
+  id String @id @default(cuid()) @db.VarChar(30)
+  incidentId String @db.VarChar(30)
+  actorId String @db.VarChar(30)
+  status String @db.VarChar(20)
+  note String @db.Text
+  createdAt DateTime @default(now())
+  incident SecurityIncident @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+  @@index([incidentId, createdAt])
+  @@map("security_incident_entries")
+}
+
 model PlatformAuditEvent {
   id            String   @id @default(cuid()) @db.VarChar(30)
   actorId       String   @map("actor_id") @db.VarChar(30)

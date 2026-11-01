@@ -2034,3 +2034,74 @@ Checks: `npx vitest run tests/institutional-reports.test.ts tests/tabular-report
 from backend; `flutter test --no-pub test/institutional_reports_page_test.dart`
 from frontend. Synthetic fixtures only. The local HTTP smoke check also verified
 preview, generation, idempotent retry, saved history and PDF download.
+# Security incident register
+
+The IT console uses `/api/platform/incidents` for persistent incident records.
+Apply migration `202611030100_security_incidents` to the intended development
+database before using the register. Do not reset or reseed the database.
+
+Only active IT_SECURITY platform accounts can list, create or update incidents.
+New incidents are assigned to the recording account. Updates require the current
+revision and a response note; concurrent stale updates return HTTP 409. Response
+entries are appended, and there is no delete endpoint. Creation and updates also
+record platform audit events without copying incident descriptions or notes.
+
+Device trust, automatic alert detection, owner reassignment and notifications
+are not implemented by this register. Do not include secrets or learner records
+in incident descriptions. Monthly resolution counts use UTC.
+
+### Backup restore-test requests
+
+GET and POST `/api/platform/backups/requests` are restricted to active
+IT_SECURITY accounts. The UI records a snapshot reference and reason/scope for
+an isolated test; these immutable requests use the existing platform audit table.
+No migration is needed. Retries with the same actor and requestId return the
+original request; changed details for that ID return 409. Lists are paginated.
+Do not enter secrets, signed storage URLs or learner records in these fields.
+
+This integration records requests only. It does not validate the supplied
+snapshot reference, enqueue a restore, approve production recovery, create
+backups or verify recovery evidence. Backup inventory and the isolated restore
+worker still need an actual backup-provider integration. Their UI remains
+unverified rather than displaying sample successes.
+
+### IT received-update metadata
+
+`GET /api/platform/sync/received?page=1` requires an active IT_SECURITY account.
+It reads accepted `curriculum.lesson.taught` audit entries, returning only receipt
+ID, madrasa ID and server audit timestamp. It excludes teacher/student identity,
+lesson payloads, IP addresses and audit metadata. Pagination is 20 entries.
+The UI checks again every 30 seconds while the page is active, retaining previous
+results with an error warning if the check fails. No database migration is needed.
+
+This is not device telemetry: online/offline origin is unknown. Device reporting,
+pending local updates, conflict persistence and review assignment are still not
+connected. Received-event totals must not be presented as synced-device counts.
+
+### Integration configuration visibility
+
+GET `/api/platform/integrations` is restricted to active IT_SECURITY accounts.
+It returns allowlisted configuration status for login, SMTP/SMS, payments and
+Quran content, plus the validated server timezone. It never returns credentials,
+hosts, sender addresses or raw environment objects. Configured does not mean a
+provider connection has been tested. This endpoint sends no messages and performs
+no provider requests. Login mode is taken from the router's actual login options.
+Rotation requests, configuration writes and policy changes are not implemented.
+
+### Incident filters and safe creation retries
+
+GET `/api/platform/incidents` accepts `page`, `status` (OPEN, INVESTIGATING,
+RESOLVED) and `priority` (LOW, MEDIUM, HIGH). The register and its total use the
+filters; summary counts remain global. All requests still require active IT access.
+
+POST `/api/platform/incidents` accepts an optional `requestId` (16-80 letters,
+digits or hyphens). The UI generates one per creation dialog and retains the
+submitted payload on retry. Actor-scoped deterministic IDs and immutable upserts
+prevent duplicate incidents, initial entries and creation audit events. Changed
+content using the same key returns 409. Legacy callers without requestId retain
+their existing behavior and do not get retry deduplication.
+
+After an unconfirmed creation, fields remain locked and Save retries the same
+payload. Closing the dialog loses that retry key: check the register before
+starting another creation. Status updates still use revision conflict checks;
+reload the incident after an uncertain update. No new migration is required.
