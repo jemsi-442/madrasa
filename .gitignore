@@ -6,5 +6,9 @@ frontend/.env
 frontend/.env.local
 *.log
 
+# Generated local tool caches are rebuilt by dependencies, not versioned.
+/.cache/
+/.caches/
+
 # Local demo passwords must never be committed.
 /LOCAL_CREDENTIALS.md
