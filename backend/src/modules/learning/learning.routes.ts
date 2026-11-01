@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { deliverTeacherMedia, openTeacherMedia } from "./teacher-media";
 
 import { authenticate } from "../../shared/middleware/authenticate";
 import { requireRole } from "../../shared/middleware/require-role";
@@ -30,7 +31,22 @@ export const coursesRouter = Router();
 export const teachingCoursesRouter = Router();
 
 subjectsRouter.use(authenticate, requireTenantContext);
+// Media elements cannot attach a bearer header. The short-lived token is
+// validated here and current teacher/course permissions are checked again.
+coursesRouter.get("/assets/:assetId/deliver", asyncHandler(async (req, res) => {
+  const url = await deliverTeacherMedia(String(req.params.assetId), typeof req.query.token === "string" ? req.query.token : "");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  if (typeof url === "string") res.redirect(302, url);
+  else res.sendFile(url.filePath);
+}));
 coursesRouter.use(authenticate, requireTenantContext);
+coursesRouter.get("/assets/:assetId/open", requireRole("TEACHER"), asyncHandler(async (req, res) => {
+  const data = await openTeacherMedia(req.authUser!, String(req.params.assetId));
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ success: true, data });
+}));
 teachingCoursesRouter.use(authenticate, requireTenantContext, requireRole("TEACHER"));
 
 subjectsRouter.get("/", requireRole("ADMIN", "TEACHER"), asyncHandler(listSubjectsHandler));
