@@ -251,7 +251,7 @@ void main() {
     addTearDown(state.dispose);
     await tester.pumpWidget(MifApp(state: state, layout: AppLayout.website));
     await tester.pumpAndSettle();
-    expect(find.text('Assalamu alaikum, Teacher Amina'), findsOneWidget);
+    expect(find.text('Teacher Amina'), findsOneWidget);
     expect(find.text('Donations'), findsNothing);
     expect(tester.takeException(), isNull);
   });
