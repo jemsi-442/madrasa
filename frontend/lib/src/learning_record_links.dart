@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'foundation_ui.dart';
@@ -104,7 +105,7 @@ class LearningRecordLinks extends StatelessWidget {
                     : () => onOpen!(page, classId),
                 icon: Icon(
                   current == page ? Icons.check_circle_outline : icon,
-                  size: 18,
+                  size: AfaqDesign.iconSmall,
                 ),
                 label: Text(current == page ? '$label (current)' : label),
               ),
