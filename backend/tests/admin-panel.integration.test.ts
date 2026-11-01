@@ -7,10 +7,10 @@ import { api } from "./helpers/api-client";
 import { recentMonths } from "../src/modules/fundraising/fundraising.service";
 
 describe("admin panel and fundraising", () => {
-  let orgId: bigint, otherOrgId: bigint, userId: bigint;
+  let orgId: bigint, otherOrgId: bigint, userId: bigint, otherUserId: bigint;
   let donorId: string, campaignId: string, otherDonorId: string;
   const token = (role = "ADMIN", org = orgId) => jwt.sign({
-    sub: userId.toString(), orgId: org.toString(), role, type: "access",
+    sub: (org === otherOrgId ? otherUserId : userId).toString(), orgId: org.toString(), role, type: "access",
   }, env.JWT_SECRET, { expiresIn: "5m" });
   const get = (path: string) => api.get(`/api${path}`).set("Authorization", `Bearer ${token()}`);
   const post = (path: string, body: object) => api.post(`/api${path}`).set("Authorization", `Bearer ${token()}`).send(body);
@@ -21,6 +21,7 @@ describe("admin panel and fundraising", () => {
     orgId = (await prisma.organization.create({ data: { name: "Admin panel test", code: `AP-${randomUUID()}` } })).id;
     otherOrgId = (await prisma.organization.create({ data: { name: "Other tenant", code: `AP-${randomUUID()}` } })).id;
     userId = (await prisma.user.create({ data: { orgId, fullName: "Test Administrator", passwordHash: "not-a-login", role: "ADMIN" } })).id;
+    otherUserId = (await prisma.user.create({ data: { orgId: otherOrgId, fullName: "Synthetic Other Administrator", passwordHash: "not-a-login", role: "ADMIN" } })).id;
     otherDonorId = (await prisma.donor.create({ data: { orgId: otherOrgId, fullName: "Private donor" } })).id.toString();
     const donor = await post("/fundraising/donors", { fullName: "Foundation Supporter" });
     expect(donor.status).toBe(201);

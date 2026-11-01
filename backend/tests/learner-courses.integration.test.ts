@@ -178,7 +178,7 @@ describe("learner course browsing and completion", () => {
     expect((await api.get("/api/learner/courses")).status).toBe(401);
     expect((await api.get("/api/learner/courses").set("Authorization", `Bearer ${token(learner, "PARENT")}`)).status).toBe(403);
     await prisma.user.update({ where: { id: learner }, data: { status: "DISABLED" } });
-    expect((await get("/courses")).status).toBe(404);
+    expect((await get("/courses")).status).toBe(403);
     await prisma.user.update({ where: { id: learner }, data: { status: "ACTIVE" } });
     await prisma.student.update({ where: { id: student }, data: { learnerUserId: null } });
     expect((await get(`/lessons/${first}`)).status).toBe(404);

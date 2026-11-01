@@ -12,6 +12,10 @@ vi.mock("../src/config/env", () => ({ env: { JWT_SECRET: "school-test-key-not-us
 const key = "platform-test-key-not-used-in-production";
 const schoolKey = "school-test-key-not-used-in-production";
 const sid = "c222bd7e-bdbd-4698-b666-67b6b5e2d658";
+const applicationInput = {
+  schoolName: 'Synthetic School', requestedCode: 'synthetic-school', adminEmail: 'admin@example.test',
+  location: { country: 'Tanzania', region: 'Dar es Salaam', district: 'Ilala', ward: 'Kariakoo' },
+};
 
 function fixture(role = "SUPER_ADMIN", secret = key) {
   const now = Math.floor(Date.now() / 1000);
@@ -132,12 +136,14 @@ describe("platform HTTP boundary", () => {
     expect((await request(f.app).get('/api/platform/overview')).status).toBe(401);
     expect((await request(f.app).get('/api/platform/overview').set('Authorization', `Bearer ${f.token}`)).status).toBe(403);
   });
-  it('restricts reason-bearing history to Super Admin over HTTP', async () => {
+  it('allows scoped account history to Super Admin and IT over HTTP', async () => {
     const admin = fixture();
     expect((await request(admin.app).get('/api/platform/accounts/it/access-history').set('Authorization', `Bearer ${admin.token}`)).status).toBe(200);
     const it = fixture('IT_SECURITY');
-    expect((await request(it.app).get('/api/platform/accounts/it/access-history').set('Authorization', `Bearer ${it.token}`)).status).toBe(403);
-    expect(it.db.platformAuditEvent.findMany).not.toHaveBeenCalled();
+    expect((await request(it.app).get('/api/platform/accounts/it/access-history').set('Authorization', `Bearer ${it.token}`)).status).toBe(200);
+    expect(it.db.platformAuditEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { entityType: 'PlatformAccount', entityId: 'it', action: { in: ['platform.account.disabled', 'platform.account.restored'] } },
+    }));
   });
   it('denies IT restoration through HTTP', async () => {
     const f = fixture('IT_SECURITY');
@@ -156,7 +162,7 @@ describe("platform HTTP boundary", () => {
     expect((await request(f.app).post('/api/platform/accounts/other/disable').set('Authorization', `Bearer ${f.token}`).send({ reason: 'Access no longer required' })).status).toBe(403);
     expect(f.db.platformSession.updateMany).not.toHaveBeenCalled();
   });
-  it("allows only Super Admin to read the minimal paginated company directory", async () => {
+  it("allows Super Admin to read the minimal paginated company directory", async () => {
     const f = fixture();
     const res = await request(f.app).get('/api/platform/accounts?page=2&pageSize=10').set('Authorization', `Bearer ${f.token}`);
     expect(res.status).toBe(200);
@@ -167,11 +173,12 @@ describe("platform HTTP boundary", () => {
       select: { id: true, fullName: true, email: true, role: true, status: true, createdAt: true },
     });
   });
-  it("denies the company directory to IT and unauthenticated visitors", async () => {
+  it("allows IT read-only directory access but denies unauthenticated visitors", async () => {
     const f = fixture('IT_SECURITY');
-    expect((await request(f.app).get('/api/platform/accounts').set('Authorization', `Bearer ${f.token}`)).status).toBe(403);
+    expect((await request(f.app).get('/api/platform/accounts').set('Authorization', `Bearer ${f.token}`)).status).toBe(200);
     expect((await request(f.app).get('/api/platform/accounts')).status).toBe(401);
-    expect(f.db.platformAccount.findMany).not.toHaveBeenCalled();
+    expect(f.db.platformAccount.findMany).toHaveBeenCalledTimes(1);
+    expect(f.db.platformAuditEvent.create).not.toHaveBeenCalled();
   });
   it.each(['pageSize=1000', 'include=passwordHash', 'role=ADMIN', 'status=DELETED'])("rejects unapproved directory query %s", async (query) => {
     const f = fixture();
@@ -184,8 +191,8 @@ describe("platform HTTP boundary", () => {
     expect(res.status).toBe(200);
     expect(f.db.platformAccount.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { role: 'IT_SECURITY', status: 'DISABLED' }, skip: 0, take: 25 }));
     const it = fixture('IT_SECURITY');
-    expect((await request(it.app).get('/api/platform/accounts?role=IT_SECURITY').set('Authorization', `Bearer ${it.token}`)).status).toBe(403);
-    expect(it.db.platformAccount.findMany).not.toHaveBeenCalled();
+    expect((await request(it.app).get('/api/platform/accounts?role=IT_SECURITY').set('Authorization', `Bearer ${it.token}`)).status).toBe(200);
+    expect(it.db.platformAccount.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { role: 'IT_SECURITY' } }));
   });
   it("lists only own sessions and revokes the current session via HTTP", async () => {
     const f = fixture("IT_SECURITY");
@@ -278,7 +285,7 @@ describe("platform HTTP boundary", () => {
     expect((await request(f.app).get("/api/platform/audit-events").set("Authorization", auth)).status).toBe(200);
     expect((await request(f.app).get("/api/platform/tenant-applications").set("Authorization", auth)).status).toBe(403);
     expect((await request(f.app).post("/api/platform/tenant-applications").set("Authorization", auth)
-      .send({ schoolName: "Afaq School", requestedCode: "afaq-school", adminEmail: "admin@example.test" })).status).toBe(403);
+      .send(applicationInput)).status).toBe(403);
     expect((await request(f.app).post("/api/platform/tenant-applications/application/review").set("Authorization", auth)
       .send({ decision: "APPROVED", reason: "School ownership verified" })).status).toBe(403);
     expect(f.db.tenantApplication.create).not.toHaveBeenCalled();
@@ -287,7 +294,7 @@ describe("platform HTTP boundary", () => {
   it("allows Super Admin intake without activating a school", async () => {
     const f = fixture();
     const res = await request(f.app).post("/api/platform/tenant-applications").set("Authorization", `Bearer ${f.token}`)
-      .send({ schoolName: "Afaq School", requestedCode: "afaq-school", adminEmail: "admin@example.test" });
+      .send(applicationInput);
     expect(res.status).toBe(201);
     expect(res.body.data.status).toBe("REQUESTED");
     expect(f.db.platformAuditEvent.create).toHaveBeenCalledTimes(1);

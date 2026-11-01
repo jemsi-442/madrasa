@@ -56,6 +56,9 @@ try {
   await ready(() => { run("redis-cli", ["-s", redisSocket, "ping"]); }, redis);
   const testEnv = {
     ...env, DATABASE_URL: `mysql://root@127.0.0.1:${mysqlPort}/${name}`,
+    DOTENV_CONFIG_PATH: '/dev/null',
+    APP_BASE_URL: 'http://127.0.0.1:4000',
+    SNIPPE_MOCK_MODE: 'true', EMAIL_MODE: 'disabled', SMS_ENABLED: 'false', QF_ENABLED: 'false',
     REDIS_URL: `redis://127.0.0.1:${redisPort}`, PLATFORM_STAGING_RUN: "isolated",
     JWT_SECRET: randomBytes(32).toString("hex"), JWT_REFRESH_SECRET: randomBytes(32).toString("hex"),
     PLATFORM_JWT_SECRET: randomBytes(32).toString("hex"),
@@ -110,7 +113,18 @@ try {
     console.log("Applying complete migration history to disposable MariaDB...");
     console.log(run(prisma, ["migrate", "deploy"], testEnv));
   }
-  const testFiles = process.argv.includes("--all-tests")
+  if (process.argv.includes('--all-tests') || process.argv.includes('--ci-regressions')) {
+    // Seed only the disposable database; never inherit local demo identities.
+    const seedEnv = { ...testEnv, SEED_ORG_CODE: 'demo-madrasa',
+      SEED_ADMIN_EMAIL: 'admin@example.com', SEED_ADMIN_PASSWORD: 'ChangeMe123!',
+      E2E_STUDENT_FULL_NAME: 'Synthetic Test Learner' };
+    run(join(root, 'node_modules/.bin/tsx'), ['scripts/seed-admin.ts'], seedEnv);
+    run(join(root, 'node_modules/.bin/tsx'), ['scripts/seed-e2e-roles.ts'], seedEnv);
+  }
+  const testFiles = process.argv.includes('--ci-regressions')
+    ? ['tests/admin-panel.integration.test.ts', 'tests/browser-session.integration.test.ts',
+      'tests/learner-courses.integration.test.ts', 'tests/rbac.integration.test.ts']
+    : process.argv.includes("--all-tests")
     ? []
     : process.argv.includes("--class-management")
     ? ["tests/class-management.integration.test.ts"]

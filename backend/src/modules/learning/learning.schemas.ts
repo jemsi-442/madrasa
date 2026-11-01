@@ -40,7 +40,17 @@ export const createCourseSchema = z.object({
   primaryInstructorUserId: numericId.optional(),
 });
 
-export const updateCourseSchema = createCourseSchema.partial().refine(
+// Creation defaults must never become implicit PATCH writes.
+export const updateCourseSchema = createCourseSchema.partial().extend({
+  programCategory: createCourseSchema.shape.programCategory.removeDefault().optional(),
+  deliveryMode: createCourseSchema.shape.deliveryMode.removeDefault().optional(),
+  visibility: createCourseSchema.shape.visibility.removeDefault().optional(),
+  billingMode: createCourseSchema.shape.billingMode.removeDefault().optional(),
+  publicationStatus: createCourseSchema.shape.publicationStatus.removeDefault().optional(),
+  isFeatured: createCourseSchema.shape.isFeatured.removeDefault().optional(),
+  isReligious: createCourseSchema.shape.isReligious.removeDefault().optional(),
+  requiresApprovalBeforePublish: createCourseSchema.shape.requiresApprovalBeforePublish.removeDefault().optional(),
+}).refine(
   (value) => Object.keys(value).length > 0,
   "At least one field is required",
 );
@@ -78,7 +88,10 @@ export const createCourseLessonSchema = z.object({
   estimatedMinutes: z.number().int().positive().optional(),
 });
 
-export const updateCourseLessonSchema = createCourseLessonSchema.partial().refine(
+export const updateCourseLessonSchema = createCourseLessonSchema.partial().extend({
+  visibility: createCourseLessonSchema.shape.visibility.removeDefault().optional(),
+  publicationStatus: createCourseLessonSchema.shape.publicationStatus.removeDefault().optional(),
+}).refine(
   (value) => Object.keys(value).length > 0,
   "At least one field is required",
 );
@@ -96,7 +109,11 @@ export const createLessonAssetSchema = z.object({
   streamingProfile: z.string().max(100, "streamingProfile is too long").optional(),
 });
 
-export const updateLessonAssetSchema = createLessonAssetSchema.partial().refine(
+export const updateLessonAssetSchema = createLessonAssetSchema.partial().extend({
+  storageProvider: createLessonAssetSchema.shape.storageProvider.removeDefault().optional(),
+  visibility: createLessonAssetSchema.shape.visibility.removeDefault().optional(),
+  downloadAllowed: createLessonAssetSchema.shape.downloadAllowed.removeDefault().optional(),
+}).refine(
   (value) => Object.keys(value).length > 0,
   "At least one field is required",
 );

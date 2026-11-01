@@ -46,17 +46,21 @@ void main() {
         );
         await api.login('operator@example.test', 'password', '123456');
         await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-        await tester.tap(find.byTooltip('Sign out options'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Account menu'));
         await tester.pumpAndSettle();
         await tester.tap(find.text(all ? 'Sign out all sessions' : 'Sign out'));
         await tester.pumpAndSettle();
         if (all) {
-          expect(paths.length, 1);
+          expect(paths.where((path) => path.endsWith('/logout-all')), isEmpty);
           await tester.tap(find.text('Confirm sign out everywhere'));
           await tester.pumpAndSettle();
         }
         expect(paths.last, '/api/platform/${all ? 'logout-all' : 'logout'}');
-        expect(paths.length, 2);
+        expect(
+          paths.where((path) => path.endsWith(all ? '/logout-all' : '/logout')),
+          hasLength(1),
+        );
         expect(api.user, isNull);
         expect(api.expiresAt, isNull);
         expect(find.text('Platform sign in'), findsOneWidget);
@@ -93,7 +97,7 @@ void main() {
               200,
             );
           }
-          writes++;
+          if (request.method == 'POST') writes++;
           return http.Response('{"data":{}}', 200);
         }),
       );
@@ -102,7 +106,8 @@ void main() {
         api.expiresAt = DateTime.now().add(const Duration(seconds: 3));
       }
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await tester.tap(find.byTooltip('Sign out options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Account menu'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sign out all sessions'));
       await tester.pumpAndSettle();

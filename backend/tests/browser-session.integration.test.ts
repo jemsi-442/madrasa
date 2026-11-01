@@ -12,7 +12,7 @@ const browser = (path: string) => api.post(`/api/auth/browser/${path}`)
   .set("Origin", origin).set("X-MIF-Browser", "1");
 const cookie = (response: { headers: Record<string, any> }) => {
   const value = response.headers["set-cookie"] as string[];
-  return value[0]!.split(";")[0]!;
+  return value.find((header) => header.startsWith('mif_browser_session='))!.split(";")[0]!;
 };
 
 describe("browser session restoration", () => {
@@ -62,7 +62,8 @@ describe("browser session restoration", () => {
     expect(loggedIn.body.data.refreshToken).toBeUndefined();
     expect(loggedIn.body.data.refreshTokenHash).toBeUndefined();
     expect(loggedIn.headers["cache-control"]).toBe("no-store");
-    const header = (loggedIn.headers["set-cookie"] as unknown as string[])[0]!;
+    const header = (loggedIn.headers["set-cookie"] as unknown as string[])
+      .find((value) => value.startsWith('mif_browser_session='))!;
     expect(header).toContain("HttpOnly");
     expect(header).toContain("SameSite=Lax");
     expect(header).toContain("Path=/api/auth/browser");

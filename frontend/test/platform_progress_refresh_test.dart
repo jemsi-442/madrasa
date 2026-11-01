@@ -39,28 +39,39 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: RefreshableOnboardingProgress(
-            initialData: snapshot(),
-            now: () => now,
-            sessionIsCurrent: () => true,
-            load: () async {
-              calls++;
-              return snapshot();
-            },
+          body: SingleChildScrollView(
+            child: RefreshableOnboardingProgress(
+              initialData: snapshot(),
+              now: () => now,
+              sessionIsCurrent: () => true,
+              load: () async {
+                calls++;
+                return snapshot();
+              },
+            ),
           ),
         ),
       ),
     );
-    expect(find.textContaining('Preparation is complete'), findsOneWidget);
+    expect(
+      find.textContaining('Waiting for independent office approval'),
+      findsOneWidget,
+    );
     now = now.add(const Duration(minutes: 1));
     await tester.pump(const Duration(seconds: 15));
-    expect(find.textContaining('Preparation is complete'), findsNothing);
+    expect(
+      find.textContaining('Waiting for independent office approval'),
+      findsNothing,
+    );
     expect(find.textContaining('Progress is outdated'), findsOneWidget);
     expect(calls, 0);
     await tester.tap(find.text('Refresh progress'));
     await tester.pumpAndSettle();
     expect(calls, 1);
-    expect(find.textContaining('Preparation is complete'), findsOneWidget);
+    expect(
+      find.textContaining('Waiting for independent office approval'),
+      findsOneWidget,
+    );
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 30));
     expect(tester.takeException(), isNull);
@@ -93,10 +104,11 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Previous School / old'), findsOneWidget);
+      expect(find.text('Previous School'), findsOneWidget);
+      expect(find.text('old'), findsOneWidget);
       await tester.tap(find.text('Refresh progress'));
       await tester.pump();
-      expect(find.text('Previous School / old'), findsNothing);
+      expect(find.text('Previous School'), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       await tester.tap(find.text('Refresh progress'));
       expect(calls, 1);
@@ -113,9 +125,9 @@ void main() {
         });
       }
       await tester.pumpAndSettle();
-      expect(find.text('Previous School / old'), findsNothing);
+      expect(find.text('Previous School'), findsNothing);
       expect(
-        find.text('Updated School / new'),
+        find.text('Updated School'),
         outcome == 'success' ? findsOneWidget : findsNothing,
       );
       if (outcome == 'failure') {
