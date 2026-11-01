@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'madrasa_profile_handoff.dart';
+import 'madrasa_administration.dart';
+import 'madrasa_location_fields.dart';
+import 'madrasa_directory_export.dart';
+import 'report_preview.dart';
 import 'api_client.dart';
+import 'automatic_data_updates.dart';
+import 'live_data.dart';
 import 'design_tokens.dart';
 import 'workspace_chrome.dart';
 import 'workspace_details_dialog.dart';
@@ -24,17 +32,34 @@ class PlatformMadrasasPage extends StatefulWidget {
   final Future<void> Function()? onAdd;
   final void Function(String)? onOnboarding;
   final void Function(String)? onHistory;
-  final Future<void> Function(Map<String, dynamic>, String)? onReview;
+  final Future<bool?> Function(Map<String, dynamic>, String)? onReview;
   final Future<bool> Function(String, String)? saveCsv;
   @override
   State<PlatformMadrasasPage> createState() => _DirectoryState();
 }
 
 class _DirectoryState extends State<PlatformMadrasasPage> {
+  late final AutomaticDataUpdates updates;
+  int generation = 0;
+  bool stale = false, accessLost = false;
+  bool get canSync =>
+      mounted &&
+      !busy &&
+      !exporting &&
+      !profileBusy &&
+      selected == null &&
+      !accessLost &&
+      !dataWriteInProgress &&
+      search.text.trim() == query &&
+      ModalRoute.of(context)?.isCurrent != false;
+  void dataChanged() => updates.tick();
   final search = TextEditingController();
   String status = '', location = '', query = '';
   int page = 1, total = 0;
   bool busy = true, exporting = false;
+  bool profileBusy = false;
+  String? profileError;
+  String? reviewError;
   String? error;
   Map<String, dynamic>? summary, selected;
   List<String> locations = [];
@@ -42,36 +67,74 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
   @override
   void initState() {
     super.initState();
+    updates = AutomaticDataUpdates(
+      canUpdate: () => canSync,
+      update: () => refresh(quiet: true),
+    );
+    dataChanges.addListener(dataChanged);
     refresh();
   }
 
   @override
   void dispose() {
+    dataChanges.removeListener(dataChanged);
+    updates.dispose();
     search.dispose();
     super.dispose();
   }
 
   String path({bool export = false}) =>
       '/madrasas?${Uri(queryParameters: {'page': '$page', 'search': query, if (status.isNotEmpty) 'status': status, if (location.isNotEmpty) 'location': location, if (export) 'export': 'true'}).query}';
-  Future<void> refresh() async {
-    setState(() {
-      busy = true;
-      error = null;
-    });
+  Future<void> refresh({bool quiet = false}) async {
+    final ticket = ++generation, revision = dataChanges.value;
+    if (!quiet) {
+      setState(() {
+        busy = true;
+        error = null;
+        accessLost = false;
+      });
+    }
     try {
       final data = await widget.load(path());
-      if (!mounted) return;
+      if (!mounted ||
+          ticket != generation ||
+          (quiet && (!canSync || revision != dataChanges.value))) {
+        return;
+      }
       setState(() {
         rows = (data['items'] as List).cast<Map<String, dynamic>>();
         total = data['total'];
         summary = data['summary'];
         locations = (data['locations'] as List? ?? []).cast<String>();
+        if (location.isNotEmpty && !locations.contains(location)) {
+          locations = [...locations, location];
+        }
+        stale = false;
+        error = null;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted ||
+          ticket != generation ||
+          (quiet && (!canSync || revision != dataChanges.value))) {
+        return;
+      }
+      final denied = e is ApiException && [401, 403].contains(e.statusCode);
+      if (quiet && !denied) {
+        setState(() => stale = true);
+        return;
+      }
+      if (denied) {
+        setState(() {
+          accessLost = true;
+          rows = [];
+          summary = null;
+          error =
+              'Madrasa access is unavailable. Check your session and permissions.';
+        });
+      }
       if (e is ApiException && e.statusCode == 401) {
         widget.onSessionExpired();
-      } else {
+      } else if (!denied) {
         setState(() {
           error = 'Could not load madrasas. Please try again.';
           rows = [];
@@ -79,7 +142,9 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
         });
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted && ticket == generation && !quiet) {
+        setState(() => busy = false);
+      }
     }
   }
 
@@ -89,38 +154,94 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
     refresh();
   }
 
+  Future<void> refreshProfile() async {
+    if (profileBusy || selected == null) return;
+    final original = selected!;
+    setState(() {
+      profileBusy = true;
+      profileError = null;
+    });
+    try {
+      final result = await widget.load(
+        '/madrasas?${Uri(queryParameters: {'code': '${original['code']}'}).query}',
+      );
+      if (!mounted || !identical(selected, original)) return;
+      final matches = (result['items'] as List)
+          .where((row) => row['code'] == original['code'])
+          .toList();
+      if (matches.length != 1) {
+        setState(
+          () => profileError =
+              'This madrasa could not be uniquely located. Return to the directory and refresh.',
+        );
+      } else {
+        setState(() {
+          selected = Map<String, dynamic>.from(matches.single as Map);
+          rows = rows
+              .map((row) => row['code'] == original['code'] ? selected! : row)
+              .toList();
+          reviewError = null;
+        });
+      }
+    } catch (failure) {
+      if (!mounted || !identical(selected, original)) return;
+      setState(
+        () => profileError =
+            'Current details could not be loaded. Previous information is hidden.',
+      );
+      if (failure is ApiException && failure.statusCode == 401) {
+        widget.onSessionExpired();
+      }
+    } finally {
+      if (mounted) setState(() => profileBusy = false);
+    }
+  }
+
+  void closeProfile() {
+    setState(() {
+      selected = null;
+      profileError = null;
+      reviewError = null;
+    });
+    // Reapply directory filters and summary counts after a profile/status update.
+    refresh();
+  }
+
+  Future<void> reviewMadrasa(
+    Map<String, dynamic> record,
+    String decision,
+  ) async {
+    if (busy || reviewError != null) return;
+    setState(() => busy = true);
+    try {
+      final saved = await widget.onReview!(record, decision);
+      if (!mounted || !identical(selected, record)) return;
+      if (saved == true) {
+        await refreshProfile();
+      } else if (saved == false) {
+        setState(
+          () => reviewError =
+              'Decision could not be confirmed. Refresh details before taking another action.',
+        );
+      }
+    } catch (_) {
+      if (mounted && identical(selected, record)) {
+        setState(
+          () => reviewError =
+              'Decision could not be confirmed. Refresh details before taking another action.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> export() async {
     setState(() => exporting = true);
     try {
       final result = await widget.load(path(export: true));
       if (!mounted) return;
-      String cell(dynamic v) {
-        var s = '$v';
-        if (RegExp(r'^\s*[=+@\-\t\r\n]').hasMatch(s)) s = "'$s";
-        return '"${s.replaceAll('"', '""')}"';
-      }
-
-      final csv = [
-        [
-          'Madrasa',
-          'Code',
-          'Locations',
-          'Assigned admins',
-          'Learners',
-          'Teachers',
-          'Status',
-        ],
-        for (final r in result['items'] as List)
-          [
-            r['name'],
-            r['code'],
-            (r['locations'] as List? ?? []).join('; '),
-            (r['admins'] as List).join('; '),
-            r['students'],
-            r['teachers'],
-            r['status'],
-          ],
-      ].map((r) => r.map(cell).join(',')).join('\r\n');
+      final csv = madrasaDirectoryCsv(result['items'] as List);
       final saved = await (widget.saveCsv ?? files.saveFinanceCsv)(
         'afaq-madrasas.csv',
         csv,
@@ -153,10 +274,20 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
   String admins(Map<String, dynamic> r) => (r['admins'] as List).isEmpty
       ? 'Not assigned'
       : (r['admins'] as List).join(', ');
-  String place(Map<String, dynamic> r) =>
-      (r['locations'] as List? ?? []).isEmpty
-      ? 'Location not recorded'
-      : (r['locations'] as List).join(', ');
+  String place(Map<String, dynamic> r) {
+    final location = r['location'];
+    if (location is Map) {
+      final parts = ['country', 'region', 'district', 'ward']
+          .map((key) => '${location[key] ?? ''}'.trim())
+          .where((value) => value.isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty) return parts.join(', ');
+    }
+    return (r['locations'] as List? ?? []).isEmpty
+        ? 'Location not recorded'
+        : (r['locations'] as List).join(', ');
+  }
+
   static String label(String s) => switch (s) {
     'REQUESTED' => 'Awaiting approval',
     'APPROVED' => 'Awaiting setup',
@@ -279,40 +410,239 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
       final mobile = bounds.maxWidth < 750;
       if (selected != null) {
         final r = selected!;
+        if (profileBusy || profileError != null) {
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(mobile ? 16 : 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: closeProfile,
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to Madrasas'),
+                  ),
+                ),
+                if (profileBusy)
+                  const LinearProgressIndicator()
+                else
+                  WorkspaceDetailsSection(
+                    title: 'Madrasa details unavailable',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(profileError!),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: refreshProfile,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try again'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(28),
+          key: ValueKey('madrasa-profile-${r['id']}'),
+          padding: EdgeInsets.all(mobile ? 16 : 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => selected = null),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to Madrasas'),
-                ),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: closeProfile,
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to Madrasas'),
+                  ),
+                  TextButton.icon(
+                    onPressed: busy ? null : refreshProfile,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refresh details'),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      try {
+                        await Clipboard.setData(
+                          ClipboardData(text: '${r['code']}'),
+                        );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Afaq code copied.')),
+                        );
+                      } catch (_) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Could not copy. Select the registration code below.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.copy_outlined),
+                    label: const Text('Copy Afaq code'),
+                  ),
+                ],
               ),
               WorkspaceRecordHeading(
                 title: '${r['name']}',
-                subtitle: 'Madrasa profile and administration',
+                subtitle: '${r['code']}',
                 trailing: badge(r['status']),
               ),
               const SizedBox(height: 20),
-              WorkspaceDetailsSection(
-                title: 'Madrasa details',
-                icon: Icons.account_balance_outlined,
-                child: WorkspaceRecordDetails(
-                  fields: [
-                    ('Registration code', '${r['code']}'),
-                    ('Location', place(r)),
-                    ('Assigned admins', admins(r)),
-                    ('Learners', '${r['students'] ?? 'Not enrolled yet'}'),
-                    (
-                      'Active teachers',
-                      '${r['teachers'] ?? 'Not assigned yet'}',
+              MadrasaProfileHandoff(status: r['status'] as String),
+              const SizedBox(height: 20),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth >= 680 ? 3 : 1;
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      for (final stat in [
+                        ('Learners', r['students'], Icons.school_outlined),
+                        (
+                          'Active teachers',
+                          r['teachers'],
+                          Icons.menu_book_outlined,
+                        ),
+                        (
+                          'Active administrators',
+                          (r['admins'] as List).length,
+                          Icons.admin_panel_settings_outlined,
+                        ),
+                      ])
+                        SizedBox(
+                          width:
+                              (constraints.maxWidth - (columns - 1) * 16) /
+                              columns,
+                          child: panel(
+                            Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    stat.$3,
+                                    color: AfaqDesign.gold,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          stat.$1,
+                                          style: const TextStyle(
+                                            color: AfaqDesign.muted,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '${stat.$2 ?? 'Not available'}',
+                                          style: TextStyle(
+                                            fontSize: stat.$2 == null ? 16 : 28,
+                                            fontWeight: FontWeight.w700,
+                                            color: AfaqDesign.ink,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 1000;
+                  final locationSection = WorkspaceDetailsSection(
+                    title: 'Location',
+                    icon: Icons.location_on_outlined,
+                    child: WorkspaceRecordDetails(
+                      fields: [
+                        if (r['location'] is Map) ...[
+                          for (final entry in madrasaLocationLabels.entries)
+                            if ([
+                                  'country',
+                                  'region',
+                                  'district',
+                                  'ward',
+                                ].contains(entry.key) ||
+                                '${r['location'][entry.key] ?? ''}'
+                                    .trim()
+                                    .isNotEmpty)
+                              (
+                                entry.value,
+                                '${r['location'][entry.key] ?? 'Not recorded'}',
+                              ),
+                        ] else
+                          ('Recorded location', place(r)),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                  final administration = WorkspaceDetailsSection(
+                    title: 'Administration',
+                    icon: Icons.admin_panel_settings_outlined,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        WorkspaceRecordDetails(
+                          fields: [
+                            ('Afaq code', '${r['code']}'),
+                            ('Madrasa status', label(r['status'])),
+                            if (r['adminEmail'] != null)
+                              (
+                                'Proposed administrator email',
+                                '${r['adminEmail']}',
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        MadrasaAdministration(record: r),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Classroom records and finance are managed by the madrasa.',
+                          style: TextStyle(color: AfaqDesign.muted),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (!wide) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        locationSection,
+                        const SizedBox(height: 20),
+                        administration,
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: locationSection),
+                      const SizedBox(width: 20),
+                      Expanded(flex: 2, child: administration),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 20),
               WorkspaceDetailsSection(
@@ -321,6 +651,17 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (reviewError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            reviewError!,
+                            style: const TextStyle(color: Color(0xffa53e42)),
+                          ),
+                        ),
+                      ),
                     if (r['status'] == 'REQUESTED') ...[
                       const Text(
                         'This madrasa is awaiting independent approval before technical setup.',
@@ -328,22 +669,13 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                       if (r['canReview'] == true && widget.onReview != null)
                         Wrap(
                           spacing: 12,
+                          runSpacing: 12,
                           children: [
                             for (final decision in ['APPROVED', 'REJECTED'])
                               OutlinedButton(
-                                onPressed: busy
+                                onPressed: busy || reviewError != null
                                     ? null
-                                    : () async {
-                                        setState(() => busy = true);
-                                        try {
-                                          await widget.onReview!(r, decision);
-                                        } finally {
-                                          if (mounted) {
-                                            setState(() => selected = null);
-                                            await refresh();
-                                          }
-                                        }
-                                      },
+                                    : () => reviewMadrasa(r, decision),
                                 child: Text(
                                   decision == 'APPROVED'
                                       ? 'Approve madrasa'
@@ -366,9 +698,13 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                         icon: const Icon(Icons.checklist),
                         label: const Text('Review onboarding'),
                       )
-                    else
+                    else if (r['applicationId'] == null)
                       const Text(
                         'No onboarding application is linked to this madrasa.',
+                      )
+                    else
+                      const Text(
+                        'Onboarding details are unavailable in this view.',
                       ),
                     if (r['applicationId'] != null && widget.onHistory != null)
                       TextButton(
@@ -376,15 +712,6 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                         child: const Text('View office history'),
                       ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              const WorkspaceDetailsSection(
-                title: 'Management responsibilities',
-                icon: Icons.verified_user_outlined,
-                child: Text(
-                  'Classroom records and finance remain managed inside the madrasa. No student-level changes from this directory.',
-                  style: TextStyle(color: AfaqDesign.muted, height: 1.6),
                 ),
               ),
             ],
@@ -395,6 +722,13 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
         spacing: 12,
         runSpacing: 12,
         children: [
+          ReportPdfButton(
+            load: widget.load,
+            path: path(
+              export: true,
+            ).replaceFirst('/madrasas?', '/madrasas/pdf?'),
+            enabled: !busy && !exporting,
+          ),
           OutlinedButton.icon(
             onPressed: busy || exporting ? null : export,
             icon: const Icon(Icons.download_outlined),
@@ -456,7 +790,7 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                 children: [
                   Expanded(child: heading),
                   const SizedBox(width: 16),
-                  actions,
+                  Flexible(child: actions),
                 ],
               ),
             const SizedBox(height: 28),
@@ -543,7 +877,7 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                               maxLength: 100,
                               decoration: InputDecoration(
                                 hintText:
-                                    'Search madrasa or registration ID...',
+                                    'Search madrasa, registration ID or area...',
                                 counterText: '',
                                 prefixIcon: const Icon(Icons.search),
                                 suffixIcon: IconButton(
@@ -603,6 +937,14 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
                       ],
                     ),
                   ),
+                  if (stale && !accessLost)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        'Showing previous data. Reconnecting automatically.',
+                        style: TextStyle(color: Colors.blueGrey),
+                      ),
+                    ),
                   if (busy)
                     const LinearProgressIndicator()
                   else if (error != null)
