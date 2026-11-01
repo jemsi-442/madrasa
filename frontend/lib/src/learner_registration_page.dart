@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -100,7 +101,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           hintText: 'Your full name',
                           prefixIcon: Icon(
                             Icons.person_outline_rounded,
-                            size: 19,
+                            size: AfaqDesign.iconSmall,
                           ),
                         ),
                         validator: (value) => (value ?? '').trim().length < 2
@@ -124,7 +125,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           hintText: 'you@example.com',
                           prefixIcon: Icon(
                             Icons.mail_outline_rounded,
-                            size: 19,
+                            size: AfaqDesign.iconSmall,
                           ),
                         ),
                         validator: (value) =>
@@ -151,7 +152,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           hintText: 'At least 8 characters',
                           prefixIcon: const Icon(
                             Icons.lock_outline_rounded,
-                            size: 19,
+                            size: AfaqDesign.iconSmall,
                           ),
                           suffixIcon: IconButton(
                             tooltip: revealPassword
@@ -164,7 +165,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                               revealPassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              size: 19,
+                              size: AfaqDesign.iconSmall,
                             ),
                           ),
                         ),
@@ -191,7 +192,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           hintText: 'Repeat your password',
                           prefixIcon: const Icon(
                             Icons.lock_outline_rounded,
-                            size: 19,
+                            size: AfaqDesign.iconSmall,
                           ),
                           suffixIcon: IconButton(
                             tooltip: revealConfirmation
@@ -204,7 +205,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                               revealConfirmation
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              size: 19,
+                              size: AfaqDesign.iconSmall,
                             ),
                           ),
                         ),
@@ -251,7 +252,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               const SizedBox(height: 22),
               const Row(
                 children: [
-                  Icon(Icons.school_outlined, size: 20, color: publicGold),
+                  Icon(
+                    Icons.school_outlined,
+                    size: AfaqDesign.iconSmall,
+                    color: publicGold,
+                  ),
                   SizedBox(width: 9),
                   Expanded(
                     child: Text(
