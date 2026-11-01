@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'dashboard_components.dart';
@@ -5,6 +6,8 @@ import 'foundation_ui.dart';
 import 'admin_forms.dart';
 import 'academic_actions.dart';
 import 'student_record_actions.dart';
+import 'madrasa_location_fields.dart';
+import 'report_preview.dart';
 
 class StudentRegistryPage extends StatefulWidget {
   const StudentRegistryPage({
@@ -118,8 +121,19 @@ class _StudentRegistryPageState extends State<StudentRegistryPage> {
                 query = search.text.trim();
                 reload(resetPage: true);
               },
-              icon: const Icon(Icons.search, size: 18),
+              icon: const Icon(Icons.search, size: AfaqDesign.iconSmall),
               label: const Text('Search'),
+            ),
+            ReportPdfButton(
+              load: widget.load,
+              path: Uri(
+                path: '/api/reports/students/pdf',
+                queryParameters: {
+                  if (query.isNotEmpty) 'search': query,
+                  if (status.isNotEmpty) 'status': status,
+                  if (classId.isNotEmpty) 'classId': classId,
+                },
+              ).toString(),
             ),
             SizedBox(
               width: 175,
@@ -383,7 +397,7 @@ class _StudentRegistryPageState extends State<StudentRegistryPage> {
                                     tooltip: 'View ${student['fullName']}',
                                     icon: const Icon(
                                       Icons.arrow_forward_rounded,
-                                      size: 19,
+                                      size: AfaqDesign.iconSmall,
                                     ),
                                     onPressed: () => showRecordDetails(
                                       context,
@@ -426,6 +440,16 @@ class _StudentRegistryPageState extends State<StudentRegistryPage> {
                                           recordMap(
                                             student['primaryGuardian'],
                                           )['email'],
+                                        ),
+                                        'Guardian residence': locationSummary(
+                                          recordMap(
+                                            student['primaryGuardian'],
+                                          )['residenceLocation'],
+                                          fallback: recordText(
+                                            recordMap(
+                                              student['primaryGuardian'],
+                                            )['address'],
+                                          ),
                                         ),
                                       },
                                     ),
