@@ -1,3 +1,4 @@
+import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
 import 'public_shell.dart';
@@ -359,7 +360,10 @@ class _HeroMessage extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                 ),
-                icon: const Icon(Icons.auto_stories_outlined, size: 20),
+                icon: const Icon(
+                  Icons.auto_stories_outlined,
+                  size: AfaqDesign.iconSmall,
+                ),
                 label: const Text(
                   'Explore Learning',
                   style: TextStyle(fontWeight: FontWeight.w700),
@@ -519,7 +523,10 @@ class _AboutSection extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onJoin,
                   iconAlignment: IconAlignment.end,
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  icon: const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: AfaqDesign.iconSmall,
+                  ),
                   label: const Text(
                     'Start your learning journey',
                     style: TextStyle(fontWeight: FontWeight.w700),
