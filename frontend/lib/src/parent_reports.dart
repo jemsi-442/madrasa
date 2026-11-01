@@ -89,7 +89,7 @@ class _ParentReportsState extends State<ParentReports> {
                                   const Icon(
                                     Icons.description_outlined,
                                     color: blue,
-                                    size: 34,
+                                    size: 38,
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
