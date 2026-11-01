@@ -22,6 +22,7 @@ const guardianSelect = Prisma.validator<Prisma.GuardianSelect>()({
   email: true,
   relationship: true,
   address: true,
+  residenceLocation: true,
   createdAt: true,
 });
 
@@ -77,6 +78,7 @@ const toGuardianResponse = (guardian: GuardianRecord, authUser?: Pick<Authentica
   email: guardian.email,
   relationship: authUser?.role === "ACCOUNTANT" ? null : guardian.relationship,
   address: authUser?.role === "ACCOUNTANT" ? null : guardian.address,
+  residenceLocation: authUser?.role === "ACCOUNTANT" ? null : guardian.residenceLocation ?? null,
   createdAt: guardian.createdAt.toISOString(),
 });
 
@@ -238,6 +240,7 @@ export const createGuardian = async (orgId: string, input: CreateGuardianInput) 
       email: input.email ?? null,
       relationship: input.relationship ?? null,
       address: input.address ?? null,
+      ...(input.residenceLocation ? { residenceLocation: input.residenceLocation } : {}),
     },
     select: guardianSelect,
   });
@@ -296,6 +299,7 @@ export const createStudent = async (orgId: string, input: CreateStudentInput) =>
             email: input.guardian!.email ?? null,
             relationship: input.guardian!.relationship ?? null,
             address: input.guardian!.address ?? null,
+            ...(input.guardian!.residenceLocation ? { residenceLocation: input.guardian!.residenceLocation } : {}),
           },
           select: { id: true },
         })
