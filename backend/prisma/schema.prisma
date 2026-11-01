@@ -40,6 +40,7 @@ enum TenantApplicationStatus {
 }
 
 model PlatformAccount {
+  institutionalReports InstitutionalReport[]
   id           String     @id @default(cuid()) @db.VarChar(30)
   email        String     @unique @db.VarChar(150)
   fullName     String     @map("full_name") @db.VarChar(150)
@@ -60,6 +61,19 @@ model PlatformAccount {
   @@map("platform_accounts")
 }
 
+model InstitutionalReport {
+  id String @id @default(cuid()) @db.VarChar(30)
+  createdById String @db.VarChar(30)
+  requestId String @db.VarChar(36)
+  month String @db.Char(7)
+  snapshot Json
+  createdAt DateTime @default(now())
+  createdBy PlatformAccount @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  @@unique([createdById, requestId])
+  @@index([createdAt])
+  @@map("institutional_reports")
+}
+
 model PlatformSession {
   id            String       @id @default(uuid()) @db.VarChar(36)
   accountId     String       @map("account_id") @db.VarChar(30)
@@ -76,7 +90,14 @@ model PlatformSession {
 }
 
 // Approval is not activation. IT provisioning links an inactive school separately.
+model MadrasaCodeSequence {
+  id BigInt @id @default(autoincrement())
+  @@map("madrasa_code_sequence")
+}
+
 model TenantApplication {
+  governmentRegistrationNumber String? @map("government_registration_number") @db.VarChar(100)
+  location Json?
   id                String                  @id @default(cuid()) @db.VarChar(30)
   schoolName        String                  @map("school_name") @db.VarChar(150)
   requestedCode     String                  @unique @map("requested_code") @db.VarChar(50)
@@ -464,6 +485,8 @@ enum WebhookProcessingStatus {
 }
 
 model Organization {
+  governmentRegistrationNumber String? @map("government_registration_number") @db.VarChar(100)
+  location Json?
   curriculumAssignments CurriculumAssignment[]
   classCurriculumHistory ClassCurriculumHistory[]
   familyApplications FamilyApplication[]
@@ -515,6 +538,7 @@ model Branch {
   orgId         BigInt            @map("org_id")
   name          String            @db.VarChar(150)
   location      String?           @db.VarChar(255)
+  structuredLocation Json?        @map("structured_location")
   phone         String?           @db.VarChar(30)
   isMain        Boolean           @default(false) @map("is_main")
   createdAt     DateTime          @default(now()) @map("created_at")
@@ -640,6 +664,7 @@ model Guardian {
   email          String?            @db.VarChar(150)
   relationship   String?            @db.VarChar(50)
   address        String?            @db.VarChar(255)
+  residenceLocation Json?            @map("residence_location")
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
   organization   Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
@@ -662,6 +687,7 @@ model Student {
   orgId             BigInt             @map("org_id")
   branchId          BigInt             @map("branch_id")
   admissionNo       String             @map("admission_no") @db.VarChar(50)
+  residence         Json?
   fullName          String             @map("full_name") @db.VarChar(150)
   gender            String?            @db.VarChar(20)
   programCategory   StudentProgramCategory @default(MADRASA_CHILD) @map("program_category")
@@ -1252,6 +1278,11 @@ model Donor {
   fullName String @map("full_name") @db.VarChar(150)
   email String? @db.VarChar(150)
   phone String? @db.VarChar(30)
+  smsOptIn Boolean @default(false) @map("sms_opt_in")
+  smsConsentNote String? @map("sms_consent_note") @db.VarChar(500)
+  smsConsentBy String? @map("sms_consent_by") @db.VarChar(30)
+  smsConsentAt DateTime? @map("sms_consent_at")
+  messages DonorMessageRecipient[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
@@ -1320,6 +1351,7 @@ model Donation {
   voidedById BigInt? @map("voided_by_id")
   voidReason String? @map("void_reason") @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at")
+  sms DonationSms?
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
   donor Donor @relation(fields: [orgId, donorId], references: [orgId, id], onDelete: Restrict)
   campaign FundraisingCampaign @relation(fields: [orgId, campaignId], references: [orgId, id], onDelete: Restrict)
@@ -1330,6 +1362,54 @@ model Donation {
   @@unique([orgId, idempotencyKey], map: "uniq_donations_org_request")
   @@index([orgId, status, receivedAt], map: "idx_donations_org_status_received")
   @@map("donations")
+}
+
+// One durable receipt notification per donation, not per HTTP submission.
+model DonationSms {
+  id BigInt @id @default(autoincrement())
+  donationId BigInt @unique @map("donation_id")
+  status String @default("PENDING") @db.VarChar(20)
+  batchId String? @map("batch_id") @db.VarChar(150)
+  reason String? @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  donation Donation @relation(fields: [donationId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@map("donation_sms")
+}
+
+model DonorMessage {
+  id String @id @default(cuid()) @db.VarChar(30)
+  creatorId String @map("creator_id") @db.VarChar(30)
+  senderName String @map("sender_name") @db.VarChar(150)
+  body String @db.Text
+  status String @default("DRAFT") @db.VarChar(20)
+  revision Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  queuedAt DateTime? @map("queued_at")
+  recipients DonorMessageRecipient[]
+  @@index([creatorId, status, createdAt])
+  @@map("donor_messages")
+}
+
+model DonorMessageRecipient {
+  id BigInt @id @default(autoincrement())
+  messageId String @map("message_id") @db.VarChar(30)
+  donorId BigInt @map("donor_id")
+  donorName String @map("donor_name") @db.VarChar(150)
+  madrasaName String @map("madrasa_name") @db.VarChar(150)
+  phone String @db.VarChar(30)
+  status String @default("DRAFT") @db.VarChar(20)
+  batchId String? @map("batch_id") @db.VarChar(150)
+  reason String? @db.VarChar(50)
+  updatedAt DateTime @updatedAt @map("updated_at")
+  message DonorMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  donor Donor @relation(fields: [donorId], references: [id], onDelete: Restrict)
+  @@unique([messageId, donorId])
+  @@index([status, id])
+  @@map("donor_message_recipients")
 }
 
 model FoundationEvent {
@@ -1377,6 +1457,8 @@ model ClassTimetableSlot {
   cancelledAt DateTime? @map("cancelled_at")
   createdById BigInt @map("created_by_id")
   createdAt DateTime @default(now()) @map("created_at")
+  quranSessions QuranSession[]
+  @@unique([orgId, id], map: "uniq_timetable_org_id")
   schoolClass Class @relation(fields: [orgId, classId], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict)
   createdBy User @relation(fields: [orgId, createdById], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict)
   @@index([orgId, classId, cancelledAt, weekday], map: "idx_timetable_class_day")
@@ -1398,6 +1480,9 @@ model QuranSession {
   observation LearningObservation
   note String? @db.VarChar(1000)
   learnedOn DateTime @map("learned_on") @db.Date
+  timetableSlotId BigInt? @map("timetable_slot_id")
+  timetableSlot ClassTimetableSlot? @relation(fields: [orgId, timetableSlotId], references: [orgId, id], onDelete: Restrict, onUpdate: Restrict, map: "fk_quran_timetable_period")
+  @@index([orgId, timetableSlotId, learnedOn], map: "idx_quran_period")
   createdAt DateTime @default(now()) @map("created_at")
   voidedAt DateTime? @map("voided_at")
   voidReason String? @map("void_reason") @db.VarChar(255)
