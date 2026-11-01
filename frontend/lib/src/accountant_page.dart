@@ -1,3 +1,5 @@
+import 'design_tokens.dart';
+import 'report_preview.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -309,7 +311,7 @@ class _AccountantPageState extends State<AccountantPage> {
                     page = 1;
                     result = fetch();
                   }),
-                  icon: const Icon(Icons.close, size: 18),
+                  icon: const Icon(Icons.close, size: AfaqDesign.iconSmall),
                   label: const Text('All invoices'),
                 ),
               ],
@@ -343,6 +345,24 @@ class _AccountantPageState extends State<AccountantPage> {
                 },
               ),
               filters(),
+              if (section == 2) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ReportPdfButton(
+                    load: widget.load,
+                    path: Uri(
+                      path: '/api/reports/payments/pdf',
+                      queryParameters: {
+                        if (status != null) 'status': status!,
+                        if (query.isNotEmpty) 'search': query,
+                        if (channel != null) 'channel': channel!,
+                        if (invoiceId != null) 'invoiceId': invoiceId!,
+                      },
+                    ).toString(),
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               PageResult(future: result, onRetry: reload, builder: records),
             ],
@@ -463,7 +483,10 @@ class _AccountantPageState extends State<AccountantPage> {
             if (query.isNotEmpty || status != null || channel != null)
               TextButton.icon(
                 onPressed: clearFilters,
-                icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+                icon: const Icon(
+                  Icons.filter_alt_off_outlined,
+                  size: AfaqDesign.iconSmall,
+                ),
                 label: const Text('Clear filters'),
               ),
           ],
@@ -577,7 +600,10 @@ class _AccountantPageState extends State<AccountantPage> {
                             result = fetch();
                           })
                         : null,
-                    icon: const Icon(Icons.chevron_left, size: 18),
+                    icon: const Icon(
+                      Icons.chevron_left,
+                      size: AfaqDesign.iconSmall,
+                    ),
                     label: const Text('Previous'),
                   ),
                   OutlinedButton.icon(
@@ -587,7 +613,10 @@ class _AccountantPageState extends State<AccountantPage> {
                             result = fetch();
                           })
                         : null,
-                    icon: const Icon(Icons.chevron_right, size: 18),
+                    icon: const Icon(
+                      Icons.chevron_right,
+                      size: AfaqDesign.iconSmall,
+                    ),
                     label: const Text('Next'),
                   ),
                 ],
@@ -704,7 +733,10 @@ class _AccountantPageState extends State<AccountantPage> {
                   width: 112,
                   child: OutlinedButton.icon(
                     onPressed: open,
-                    icon: const Icon(Icons.chevron_right, size: 16),
+                    icon: const Icon(
+                      Icons.chevron_right,
+                      size: AfaqDesign.iconSmall,
+                    ),
                     label: const Text('Details'),
                   ),
                 ),
@@ -729,7 +761,10 @@ class _AccountantPageState extends State<AccountantPage> {
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: open,
-                  icon: const Icon(Icons.arrow_forward, size: 17),
+                  icon: const Icon(
+                    Icons.arrow_forward,
+                    size: AfaqDesign.iconSmall,
+                  ),
                   label: const Text('View details'),
                 ),
               ],
@@ -825,7 +860,7 @@ class AccountantOverview extends StatelessWidget {
                 ])
                   OutlinedButton.icon(
                     onPressed: () => onOpen(FinanceDestination(page)),
-                    icon: Icon(icon, size: 17),
+                    icon: Icon(icon, size: AfaqDesign.iconSmall),
                     label: Text(label),
                   ),
               ],
@@ -964,7 +999,10 @@ class AccountantOverview extends StatelessWidget {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () => onOpen(const FinanceDestination(1)),
-                    icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                    icon: const Icon(
+                      Icons.receipt_long_outlined,
+                      size: AfaqDesign.iconSmall,
+                    ),
                     label: const Text('Open invoice register'),
                   ),
                 ],
@@ -1089,7 +1127,7 @@ class AccountantOverview extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(icon, color: color, size: 24),
+                          Icon(icon, color: color, size: AfaqDesign.iconSize),
                           const SizedBox(height: 14),
                           Text(
                             title,
@@ -1187,7 +1225,7 @@ class _PaymentDetailState extends State<_PaymentDetail> {
             receipt = false;
             result = fetch();
           }),
-          icon: const Icon(Icons.arrow_back, size: 18),
+          icon: const Icon(Icons.arrow_back, size: AfaqDesign.iconSmall),
           label: const Text('Back to payment'),
         ),
       PageResult(
