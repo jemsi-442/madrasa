@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { schoolDate } from "../attendance/register.service";
 import type { LearningReport } from "./student-reports.service";
+import { reportLogo } from '../../shared/utils/report-brand';
 
 export function reportPdf(snapshot: LearningReport, reference: string, publishedAt?: Date): Promise<Buffer> {
   return new Promise((resolvePdf, reject) => {
@@ -10,7 +11,7 @@ export function reportPdf(snapshot: LearningReport, reference: string, published
     const fonts = [resolve(__dirname, "../../../assets/fonts"), resolve(__dirname, "../../../../assets/fonts")]
       .find(p => existsSync(resolve(p, "DejaVuSans.ttf")));
     if (!fonts) return reject(new Error("Report fonts are missing from the deployment"));
-    const doc = new PDFDocument({ size: "A4", margin: 48, bufferPages: true,
+    const doc = new PDFDocument({ size: "A4", margins: { top: 134, bottom: 58, left: 48, right: 48 }, bufferPages: true,
       info: { Title: `${snapshot.period.name} - ${snapshot.student.fullName}`, Author: snapshot.school,
         CreationDate: publishedAt ?? new Date() } });
     const chunks: Buffer[] = [];
@@ -19,10 +20,20 @@ export function reportPdf(snapshot: LearningReport, reference: string, published
     doc.on("end", () => resolvePdf(Buffer.concat(chunks)));
     doc.registerFont("body", resolve(fonts, "DejaVuSans.ttf"));
     doc.registerFont("heading", resolve(fonts, "DejaVuSans-Bold.ttf"));
+    const pageHeader = () => {
+      doc.rect(0, 0, doc.page.width, 105).fill('#122336');
+      doc.rect(0, 105, doc.page.width, 4).fill('#B18D2C');
+      reportLogo(doc, 48, 18, 125);
+      doc.font('heading').fontSize(13).fillColor('#FFFFFF').text('Student Learning Report', 220, 38, { width: 320 });
+      doc.font('body').fontSize(10).fillColor('#34485d');
+      doc.x = 48; doc.y = 134;
+    };
+    pageHeader();
+    doc.on('pageAdded', pageHeader);
     const heading = (text: string) => { if (doc.y > 700) doc.addPage(); doc.moveDown().font("heading").fontSize(12).fillColor("#142a40").text(text).moveDown(0.4); };
     const line = (text: string) => doc.font("body").fontSize(10).fillColor("#34485d").text(text, { paragraphGap: 6 });
     doc.font("heading").fontSize(20).fillColor("#142a40").text(snapshot.school);
-    doc.fontSize(15).fillColor("#a7852e").text("Student Learning Report").moveDown();
+    doc.moveDown(0.5);
     line(`${publishedAt ? "Published" : "DRAFT - Not published"} | Reference ${reference}`);
     if (publishedAt) line(`Issued: ${schoolDate(publishedAt)}`);
     line(`${snapshot.period.name} | ${snapshot.period.startsOn} to ${snapshot.period.endsOn}`);
