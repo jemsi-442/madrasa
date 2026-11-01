@@ -27,14 +27,7 @@ export type RecipientVerification = { address: string; verifiedAt: Date };
 
 export function createSmtpEmail(environment: Record<string, string | undefined>) {
   const config = smtpEmailConfig(environment);
-  const transport = nodemailer.createTransport({
-    host: config.SMTP_HOST, port: Number(config.SMTP_PORT), secure: config.SMTP_PORT === "465",
-    requireTLS: true, opportunisticTLS: false,
-    tls: { rejectUnauthorized: true, minVersion: "TLSv1.2" },
-    auth: { user: config.SMTP_USER, pass: config.SMTP_PASSWORD },
-    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 30_000, dnsTimeout: 10_000,
-    disableFileAccess: true, disableUrlAccess: true, logger: false, debug: false,
-  });
+  const transport = createSmtpTransport(config);
 
   return {
     async verify(): Promise<{ status: "SMTP_CONNECTION_VERIFIED" | "FAILED" }> {
@@ -75,4 +68,15 @@ export function createSmtpEmail(environment: Record<string, string | undefined>)
     },
     close() { transport.close(); },
   };
+}
+
+export function createSmtpTransport(config: ReturnType<typeof smtpEmailConfig>) {
+  return nodemailer.createTransport({
+    host: config.SMTP_HOST, port: Number(config.SMTP_PORT), secure: config.SMTP_PORT === "465",
+    requireTLS: true, opportunisticTLS: false,
+    tls: { rejectUnauthorized: true, minVersion: "TLSv1.2" },
+    auth: { user: config.SMTP_USER, pass: config.SMTP_PASSWORD },
+    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 30_000, dnsTimeout: 10_000,
+    disableFileAccess: true, disableUrlAccess: true, logger: false, debug: false,
+  });
 }
