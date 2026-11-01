@@ -66,7 +66,10 @@ void main() {
           await tester.tap(find.text('Learning Oversight'));
           await tester.pumpAndSettle();
           expect(find.byType(CurriculumOversightPage), findsOneWidget);
-          expect(find.byKey(const ValueKey('workspace-footer')), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('workspace-footer')),
+            findsOneWidget,
+          );
           expect(
             tester
                 .widget<PlatformWorkspaceShell>(
@@ -76,6 +79,9 @@ void main() {
             PlatformPage.oversight,
           );
           expect(reportLoads, 1);
+          await tester.ensureVisible(find.text('Filters & details'));
+          await tester.tap(find.text('Filters & details'));
+          await tester.pumpAndSettle();
           final refresh = find.descendant(
             of: find.byType(CurriculumOversightPage),
             matching: find.text('Refresh'),
