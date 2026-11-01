@@ -1,3 +1,4 @@
+import 'date_selection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'finance_presentation.dart';
 import 'finance_monthly_chart.dart';
+import 'report_preview.dart';
 import 'platform/finance_export_native.dart'
     if (dart.library.js_interop) 'platform/finance_export_web.dart'
     as platform;
@@ -147,18 +149,13 @@ class _FinanceReportsPageState extends State<FinanceReportsPage> {
               children: [
                 SizedBox(
                   width: 180,
-                  child: DropdownButtonFormField<int>(
-                    initialValue: year,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Report year'),
-                    items: [
-                      for (var y = 2100; y >= 2000; y--)
-                        DropdownMenuItem(value: y, child: Text('$y')),
-                    ],
+                  child: AfaqYearField(
+                    label: 'Report year',
+                    value: year,
                     onChanged: exporting
                         ? null
                         : (value) => setState(() {
-                            year = value!;
+                            year = value;
                             result = fetch();
                           }),
                   ),
@@ -167,6 +164,11 @@ class _FinanceReportsPageState extends State<FinanceReportsPage> {
                   onPressed: exporting ? null : () => export(preview: true),
                   icon: const Icon(Icons.description_outlined),
                   label: const Text('View CSV'),
+                ),
+                ReportPdfButton(
+                  load: widget.load,
+                  path: '/api/reports/finance/monthly-summary/pdf?year=$year',
+                  enabled: !exporting,
                 ),
                 if (widget.saveCsv != null ||
                     platform.financeDownloadsSupported)
