@@ -49,7 +49,7 @@ class WorkspaceAccountMenu extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 19, color: AfaqDesign.muted),
+          Icon(icon, size: AfaqDesign.iconSmall, color: AfaqDesign.muted),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -127,7 +127,10 @@ class WorkspaceAccountMenu extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.keyboard_arrow_down, size: 20),
+                    const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: AfaqDesign.iconSmall,
+                    ),
                   ],
                 ],
               ),
@@ -148,7 +151,7 @@ class WorkspaceAccountMenu extends StatelessWidget {
                   VoidCallback callback,
                 ) => MenuItemButton(
                   onPressed: callback,
-                  leadingIcon: Icon(icon, size: 20),
+                  leadingIcon: Icon(icon, size: AfaqDesign.iconSmall),
                   child: Text(label),
                 );
                 return Column(
@@ -340,7 +343,7 @@ class WorkspaceSidebar extends StatelessWidget {
     required this.roleLabel,
     this.collapsed = false,
     this.primary = false,
-    this.groups = const {},
+    this.pageOrder,
     this.enabled = true,
     this.onClose,
   });
@@ -352,7 +355,7 @@ class WorkspaceSidebar extends StatelessWidget {
   final bool primary;
   final bool enabled;
   final VoidCallback? onClose;
-  final Map<int, String> groups;
+  final List<int>? pageOrder;
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
@@ -376,11 +379,13 @@ class WorkspaceSidebar extends StatelessWidget {
               child: collapsed
                   ? const Tooltip(
                       message: publicBrandName,
-                      child: Icon(Icons.school_outlined, color: ink, size: 28),
+                      child: PublicBrand(compact: true, markOnly: true),
                     )
                   : Row(
                       children: [
-                        const Expanded(child: PublicBrand(compact: true)),
+                        const Expanded(
+                          child: PublicBrand(compact: true, wordmarkSize: 24),
+                        ),
                         if (onClose != null)
                           WorkspaceSidebarToggle(
                             control: SidebarControl.close,
@@ -393,46 +398,21 @@ class WorkspaceSidebar extends StatelessWidget {
               child: ListView(
                 primary: primary,
                 padding: const EdgeInsets.symmetric(
-                  vertical: 24,
+                  vertical: 16,
                   horizontal: 12,
                 ),
                 children: [
-                  if (!collapsed)
+                  for (final index
+                      in pageOrder ??
+                          List.generate(items.length, (i) => i)) ...[
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                      child: Text(
-                        roleLabel.toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF99ADBF),
-                          fontSize: AfaqDesign.secondarySize,
-                          letterSpacing: 1.6,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  for (var index = 0; index < items.length; index++) ...[
-                    if (!collapsed && groups.containsKey(index))
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          12,
-                          index == 0 ? 0 : 16,
-                          12,
-                          10,
-                        ),
-                        child: Text(
-                          groups[index]!.toUpperCase(),
-                          style: const TextStyle(
-                            color: Color(0xFF99ADBF),
-                            fontSize: AfaqDesign.secondarySize,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Tooltip(
-                        message: collapsed ? items[index].$1 : '',
+                        message: collapsed
+                            ? '${items[index].$1}${selected == index ? ' (current page)' : ''}'
+                            : '',
+                        waitDuration: const Duration(milliseconds: 300),
+                        preferBelow: false,
                         child: Semantics(
                           selected: selected == index,
                           child: Material(
@@ -444,14 +424,23 @@ class WorkspaceSidebar extends StatelessWidget {
                             ),
                             child: InkWell(
                               key: ValueKey('nav-$index'),
+                              hoverColor: selected == index
+                                  ? ink.withValues(alpha: 0.06)
+                                  : Colors.white.withValues(alpha: 0.08),
+                              focusColor: selected == index
+                                  ? ink.withValues(alpha: 0.12)
+                                  : Colors.white.withValues(alpha: 0.16),
                               borderRadius: BorderRadius.circular(
                                 AfaqDesign.controlRadius,
                               ),
                               onTap: enabled ? () => onSelect(index) : null,
-                              child: Padding(
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  minHeight: 48,
+                                ),
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: collapsed ? 8 : 16,
-                                  vertical: 15,
+                                  horizontal: collapsed ? 8 : 14,
+                                  vertical: 12,
                                 ),
                                 child: Row(
                                   mainAxisAlignment: collapsed
@@ -460,23 +449,36 @@ class WorkspaceSidebar extends StatelessWidget {
                                   children: [
                                     Icon(
                                       items[index].$2,
-                                      color: Colors.white,
-                                      size: 22,
+                                      color: selected == index
+                                          ? ink
+                                          : const Color(0xFFD2DDE6),
+                                      size: AfaqDesign.sidebarIconSize,
                                     ),
                                     if (!collapsed) ...[
-                                      const SizedBox(width: 15),
+                                      const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
                                           items[index].$1,
                                           style: TextStyle(
-                                            color: Colors.white,
+                                            color: selected == index
+                                                ? ink
+                                                : Colors.white,
                                             fontSize: AfaqDesign.bodySize,
+                                            height: 1.3,
                                             fontWeight: selected == index
                                                 ? FontWeight.w700
                                                 : FontWeight.w600,
                                           ),
                                         ),
                                       ),
+                                      if (selected == index) ...[
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.circle,
+                                          size: 5,
+                                          color: ink,
+                                        ),
+                                      ],
                                     ],
                                   ],
                                 ),
@@ -492,24 +494,18 @@ class WorkspaceSidebar extends StatelessWidget {
             ),
             if (!collapsed && MediaQuery.sizeOf(context).height >= 640)
               const Padding(
-                padding: EdgeInsets.fromLTRB(26, 0, 26, 26),
+                padding: EdgeInsets.fromLTRB(22, 0, 22, 18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Divider(color: Color(0xFF425B70)),
-                    SizedBox(height: 18),
-                    Icon(
-                      Icons.auto_stories_outlined,
-                      color: Color(0xFFDFC184),
-                      size: 26,
-                    ),
-                    SizedBox(height: 12),
+                    SizedBox(height: 8),
                     Text(
                       'Knowledge today.\nBrighter tomorrows.',
                       style: TextStyle(
                         color: Color(0xFFD2DDE6),
                         fontSize: AfaqDesign.secondarySize,
-                        height: 1.7,
+                        height: 1.5,
                       ),
                     ),
                   ],
@@ -582,7 +578,7 @@ class WorkspaceTopBar extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                Icon(pageIcon, color: gold, size: 22),
+                Icon(pageIcon, color: gold, size: AfaqDesign.iconSize),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
