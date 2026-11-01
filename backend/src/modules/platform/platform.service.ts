@@ -1,5 +1,9 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
+import { allocateMadrasaCode } from './madrasa-code';
+import { locationSuggestions } from './location-suggestions';
+import { directoryLocationFilters, directoryLocationValues } from './directory-location';
+import { institutionOverview } from './institution-overview';
 
 import { HttpError } from "../../shared/errors/http-error";
 import { assertPlatformPermission, hasPlatformPermission, type PlatformPermission } from "./platform.permissions";
@@ -58,6 +62,7 @@ export class PlatformGovernanceService {
 
   async madrasaDirectory(actor: PlatformContext, input: unknown = {}) {
     const query = z.object({
+      code: z.string().trim().min(1).max(100).optional(),
       search: z.string().trim().max(100).default(''),
       location: z.string().trim().max(255).optional(),
       export: z.enum(['true']).optional(),
@@ -67,56 +72,75 @@ export class PlatformGovernanceService {
     return this.db.$transaction(async (tx) => {
       await this.authorize(tx, actor, 'tenant.directory.read');
       const where: Prisma.OrganizationWhereInput = {
-        ...(query.location ? { branches: { some: { location: query.location } } } : {}),
+        ...(query.code ? { code: query.code } : {}),
+        ...(query.location ? { AND: [{ OR: [
+          { branches: { some: { location: query.location } } },
+          ...directoryLocationFilters(query.location, true),
+        ] }] } : {}),
         ...(query.status ? (['REQUESTED', 'APPROVED', 'REJECTED'].includes(query.status)
           ? { id: -1n } : { status: query.status as 'ACTIVE' | 'SUSPENDED' | 'TRIAL' | 'PENDING_ACTIVATION' }) : {}),
-        ...(query.search ? { OR: [{ name: { contains: query.search } }, { code: { contains: query.search } }] } : {}),
+        ...(query.search ? { OR: [{ name: { contains: query.search } }, { code: { contains: query.search } },
+          { branches: { some: { location: { contains: query.search } } } }, ...directoryLocationFilters(query.search)] } : {}),
       };
       const applicationWhere: Prisma.TenantApplicationWhereInput = {
+        ...(query.code ? { requestedCode: query.code } : {}),
         organizationId: null,
-        ...(query.location ? { id: '__no_location__' } : {}),
+        ...(query.location ? { AND: [{ OR: directoryLocationFilters(query.location, true) }] } : {}),
         ...(query.status ? (['REQUESTED', 'APPROVED', 'REJECTED'].includes(query.status)
           ? { status: query.status as 'REQUESTED' | 'APPROVED' | 'REJECTED' } : { id: '__not_application__' }) : {}),
-        ...(query.search ? { OR: [{ schoolName: { contains: query.search } }, { requestedCode: { contains: query.search } }] } : {}),
+        ...(query.search ? { OR: [{ schoolName: { contains: query.search } }, { requestedCode: { contains: query.search } }, ...directoryLocationFilters(query.search)] } : {}),
       };
       const pendingCount = await tx.tenantApplication.count({ where: applicationWhere });
       const total = await tx.organization.count({ where }) + pendingCount;
       if (query.export && total > 5000) throw new HttpError(422, 'Narrow the filters to export at most 5000 madrasas');
-      const [all, active, onboarding, assignedAdmins, branches] = await Promise.all([
+      const [all, active, onboarding, assignedAdmins, branches, schoolLocations, applicationLocations] = await Promise.all([
         tx.organization.count(), tx.organization.count({ where: { status: 'ACTIVE' } }),
         tx.organization.count({ where: { status: 'PENDING_ACTIVATION' } }),
         tx.user.count({ where: { role: 'ADMIN', status: 'ACTIVE' } }),
         tx.branch.findMany({ where: { location: { not: null } }, distinct: ['location'], select: { location: true }, orderBy: { location: 'asc' } }),
+        tx.organization.findMany({ distinct: ['location'], select: { location: true } }),
+        tx.tenantApplication.findMany({ where: { organizationId: null }, distinct: ['location'], select: { location: true } }),
       ]);
       const offset = query.export ? 0 : (query.page - 1) * 25;
       const limit = query.export ? 5000 : 25;
       // Pending records come first; once provisioned, only the organization row remains.
       const applications = offset < pendingCount ? await tx.tenantApplication.findMany({
         where: applicationWhere, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: offset, take: limit,
-        select: { id: true, schoolName: true, requestedCode: true, adminEmail: true, status: true, requestedById: true, decisionReason: true },
+        select: { id: true, schoolName: true, requestedCode: true, adminEmail: true, status: true, requestedById: true, decisionReason: true, location: true, governmentRegistrationNumber: true },
       }) : [];
       const rows = applications.length < limit ? await tx.organization.findMany({
         where, orderBy: [{ name: 'asc' }, { id: 'asc' }], skip: Math.max(0, offset - pendingCount), take: limit - applications.length,
-        select: { id: true, name: true, code: true, status: true,
+        select: { id: true, name: true, code: true, status: true, location: true, governmentRegistrationNumber: true,
           branches: { select: { location: true }, orderBy: { id: 'asc' } },
-          users: { where: { role: 'ADMIN', status: 'ACTIVE' }, select: { fullName: true }, orderBy: { id: 'asc' } },
-          onboardingApplication: { select: { id: true } },
+          users: { where: { role: 'ADMIN' }, select: { id: true, fullName: true, status: true }, orderBy: { id: 'asc' } },
+          onboardingApplication: { select: { id: true, adminInvitation: { select: {
+            acceptedAt: true, acceptedUserId: true, expiresAt: true,
+          } } } },
           _count: { select: { students: true, users: { where: { role: 'TEACHER', status: 'ACTIVE' } } } },
         },
       }) : [];
       return { total, page: query.page, pageSize: query.export ? 5000 : 25,
         summary: { total: all, active, onboarding, assignedAdmins },
-        locations: branches.map(branch => branch.location).filter(value => value?.trim()),
+        locations: [...new Set([
+          ...branches.flatMap(branch => branch.location?.trim() ? [branch.location.trim()] : []),
+          ...[...schoolLocations, ...applicationLocations].flatMap(row => directoryLocationValues(row.location)),
+        ])].sort((a, b) => a.localeCompare(b)),
         items: [...applications.map(row => ({
           id: `application:${row.id}`, name: row.schoolName, code: row.requestedCode, status: row.status,
+          location: row.location,
+          governmentRegistrationNumber: row.governmentRegistrationNumber,
           locations: [], admins: [], students: null, teachers: null, applicationId: row.id,
           canReview: row.status === 'REQUESTED' && row.requestedById !== actor.accountId,
           decisionReason: row.decisionReason,
           adminEmail: row.adminEmail,
+          adminAccounts: [], invitationStatus: 'NOT_ISSUED',
         })), ...rows.map(row => ({
         id: row.id.toString(), name: row.name, code: row.code, status: row.status,
+        location: row.location,
+        governmentRegistrationNumber: row.governmentRegistrationNumber,
         locations: [...new Set(row.branches.map(branch => branch.location).filter(value => value?.trim()))],
-        admins: row.users.map(user => user.fullName), students: row._count.students,
+        admins: row.users.filter(user => user.status === 'ACTIVE').map(user => user.fullName), students: row._count.students,
+        ...directoryAdministration(row.status, row.users, row.onboardingApplication?.adminInvitation),
         teachers: row._count.users, applicationId: row.onboardingApplication?.id ?? null,
       }))] };
     });
@@ -246,7 +270,7 @@ export class PlatformGovernanceService {
         const account = await this.authorize(tx, actor, "tenant.provisioning.create");
         const application = await tx.tenantApplication.findUnique({
           where: { id },
-          select: { id: true, status: true, schoolName: true, requestedCode: true,
+          select: { id: true, status: true, schoolName: true, requestedCode: true, location: true, governmentRegistrationNumber: true,
             requestedById: true, reviewedById: true, reviewedAt: true, organizationId: true,
             organization: { select: { id: true, status: true } } },
         });
@@ -263,7 +287,9 @@ export class PlatformGovernanceService {
             status: application.organization.status, created: false };
         }
         const organization = await tx.organization.create({
-          data: { name: application.schoolName, code: application.requestedCode, status: "PENDING_ACTIVATION" },
+          data: { name: application.schoolName, code: application.requestedCode, status: "PENDING_ACTIVATION",
+            ...(application.governmentRegistrationNumber ? { governmentRegistrationNumber: application.governmentRegistrationNumber } : {}),
+            ...(application.location ? { location: application.location as Prisma.InputJsonObject } : {}) },
           select: { id: true, status: true },
         });
         const linked = await tx.tenantApplication.updateMany({
@@ -327,7 +353,8 @@ export class PlatformGovernanceService {
       for (const row of applications) applicationCounts[row.status] = row._count._all;
       const accountCounts = { SUPER_ADMIN: { ACTIVE: 0, DISABLED: 0 }, IT_SECURITY: { ACTIVE: 0, DISABLED: 0 } };
       for (const row of accounts) accountCounts[row.role][row.status] = row._count._all;
-      return { checkedAt: new Date().toISOString(), applications: applicationCounts, awaitingYourReview, accounts: accountCounts,
+      const institution = await institutionOverview(tx);
+      return { institution, checkedAt: new Date().toISOString(), applications: applicationCounts, awaitingYourReview, accounts: accountCounts,
         onboarding: { awaitingSetup, pendingActivation } };
     });
   }
@@ -498,12 +525,17 @@ export class PlatformGovernanceService {
     const data = tenantApplicationSchema.parse(input);
     return this.db.$transaction(async (tx) => {
       const account = await this.authorize(tx, actor, "tenant.application.create");
+      // New UI requests omit the code; old integrations may retain legacy slugs.
+      const requestedCode = data.requestedCode ?? await allocateMadrasaCode(tx);
       const existing = await tx.organization.findUnique({
-        where: { code: data.requestedCode }, select: { id: true },
+        where: { code: requestedCode }, select: { id: true },
       });
       if (existing) throw new HttpError(409, "Madrassa code is already in use");
       const application = await tx.tenantApplication.create({
-        data: { ...data, requestedById: account.id },
+        data: { schoolName: data.schoolName, requestedCode,
+          ...(data.governmentRegistrationNumber ? { governmentRegistrationNumber: data.governmentRegistrationNumber } : {}),
+          adminEmail: data.adminEmail, requestedById: account.id,
+          ...(data.location ? { location: Object.fromEntries(Object.entries(data.location).filter(([, value]) => value !== undefined)) as Prisma.InputJsonObject } : {}) },
       });
       await tx.platformAuditEvent.create({
         data: {
@@ -513,6 +545,13 @@ export class PlatformGovernanceService {
         },
       });
       return application;
+    });
+  }
+
+  async suggestLocations(actor: PlatformContext, input: unknown) {
+    return this.db.$transaction(async tx => {
+      await this.authorize(tx, actor, 'tenant.application.create');
+      return locationSuggestions(tx, input);
     });
   }
 
@@ -621,3 +660,4 @@ export function safePlatformAuditMetadata(input: unknown): Record<string, string
   if (typeof value.count === "number" && Number.isSafeInteger(value.count) && value.count >= 0) safe.count = value.count;
   return safe;
 }
+import { directoryAdministration } from './directory-administration';
