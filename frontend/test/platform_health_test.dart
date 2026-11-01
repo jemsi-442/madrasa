@@ -190,17 +190,22 @@ void main() {
       );
       await api.login('it@example.test', 'test-password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
+      await tester.tap(find.byTooltip('Open navigation'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('System health'));
       await tester.tap(find.text('System health'));
       await tester.pumpAndSettle();
-      expect(find.text('Service attention needed'), findsOneWidget);
+      expect(find.textContaining('Redis: unavailable'), findsOneWidget);
       expect(find.text('Request madrassa'), findsNothing);
       fail = true;
-      await tester.ensureVisible(find.text('Refresh'));
-      await tester.tap(find.text('Refresh'));
+      await tester.ensureVisible(find.text('Refresh status'));
+      await tester.tap(find.text('Refresh status'));
       await tester.pumpAndSettle();
-      expect(find.text('Service attention needed'), findsNothing);
-      expect(find.text('No health result available'), findsOneWidget);
+      expect(find.textContaining('Redis: unavailable'), findsNothing);
+      expect(
+        find.textContaining('Current availability is unknown'),
+        findsOneWidget,
+      );
       expect(find.text('Operator next steps'), findsNothing);
       await tester.pumpWidget(const SizedBox());
       api.close();
