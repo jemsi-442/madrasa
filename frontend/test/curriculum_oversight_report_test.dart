@@ -4,6 +4,84 @@ import 'package:mif_app/src/curriculum_oversight_report.dart';
 import 'package:mif_app/src/dashboard_components.dart' show StatusPill;
 
 void main() {
+  testWidgets(
+    'institution summary fits mobile and labels its independent scope',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: InstitutionLearningSummary(
+                data: {
+                  'madrasas': 3,
+                  'month': '2026-10',
+                  'eligible': 6,
+                  'recorded': 2,
+                  'unrecorded': 4,
+                  'needingSupport': 1,
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Institution learning coverage'), findsOneWidget);
+      expect(find.text('Without Quran records'), findsOneWidget);
+      expect(
+        find.textContaining('including those without curriculum assignments'),
+        findsNothing,
+      );
+      await tester.tap(find.text('How these totals are counted'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('including those without curriculum assignments'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('Quran oversight separates unique learners from sessions', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CurriculumOversightReport(
+              rows: [],
+              quran: {
+                'classScopes': 2,
+                'month': '2026-10',
+                'learners': {
+                  'eligible': 6,
+                  'recorded': 2,
+                  'unrecorded': 4,
+                  'needingSupport': 1,
+                },
+                'activities': [],
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('2 / 6 current learners recorded'), findsOneWidget);
+    expect(find.text('4 without records / 1 needing support'), findsOneWidget);
+    expect(
+      find.textContaining('No record does not mean absence or failure.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
   for (final scenario in [
     (0, 0, 0, 'Awaiting class adoption.'),
     (1, 0, 0, 'No planned class-lessons.'),
