@@ -81,7 +81,8 @@ void main() {
       expect(find.text('AFQ-001'), findsOneWidget);
       expect(find.text('2016-01-12'), findsOneWidget);
       await tester.enterText(field('Full name'), 'Ali Updated');
-      await tester.enterText(field('Date of birth (YYYY-MM-DD)'), '');
+      await tester.ensureVisible(find.byTooltip('Clear date of birth'));
+      await tester.tap(find.byTooltip('Clear date of birth'));
       await tester.enterText(field('Notes'), '');
       await tester.enterText(
         field('Reason for this change'),
