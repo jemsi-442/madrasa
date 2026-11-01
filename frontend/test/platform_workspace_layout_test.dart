@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:mif_app/src/platform_console.dart';
 import 'package:mif_app/src/platform_workspace_shell.dart';
 import 'helpers/institution_overview_fixture.dart';
+import 'helpers/memory_browser_state.dart';
 
 void main() {
   for (final unavailable in [false, true]) {
@@ -44,7 +45,11 @@ void main() {
         await api.login('office@example.test', 'synthetic-password', '123456');
         await tester.pumpWidget(
           MaterialApp(
-            home: PlatformConsole(api: api, onSignedOut: () {}),
+            home: PlatformConsole(
+              api: api,
+              browserState: MemoryBrowserState(),
+              onSignedOut: () {},
+            ),
           ),
         );
         await tester.pumpAndSettle();
@@ -308,7 +313,11 @@ void main() {
         await api.login('demo@example.test', 'password', '123456');
         await tester.pumpWidget(
           MaterialApp(
-            home: PlatformConsole(api: api, onSignedOut: () {}),
+            home: PlatformConsole(
+              api: api,
+              browserState: MemoryBrowserState(),
+              onSignedOut: () {},
+            ),
           ),
         );
         await tester.pumpAndSettle();
@@ -400,7 +409,11 @@ void main() {
     await api.login('demo@example.test', 'password', '123456');
     await tester.pumpWidget(
       MaterialApp(
-        home: PlatformConsole(api: api, onSignedOut: () {}),
+        home: PlatformConsole(
+          api: api,
+          browserState: MemoryBrowserState(),
+          onSignedOut: () {},
+        ),
       ),
     );
     await tester.pumpAndSettle();
