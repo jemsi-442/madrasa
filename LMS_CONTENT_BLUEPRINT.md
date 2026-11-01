@@ -1,4 +1,4 @@
-# MODERN ISLAMIC FOUNDATION LMS Content Blueprint
+# Afaq LMS Content Blueprint
 
 Last updated: `2026-10-01`
 
