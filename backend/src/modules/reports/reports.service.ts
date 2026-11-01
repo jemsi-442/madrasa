@@ -157,7 +157,7 @@ const buildCsv = (rows: Array<Array<string | number | boolean | null | undefined
 
 const buildStudentWhere = (
   scope: ReportScope,
-  extra?: Pick<StudentsExportQuery, "status">,
+  extra?: Pick<StudentsExportQuery, "status" | "search">,
 ): Prisma.StudentWhereInput => {
   const where: Prisma.StudentWhereInput = {
     orgId: scope.orgId,
@@ -173,6 +173,13 @@ const buildStudentWhere = (
 
   if (extra?.status) {
     where.status = extra.status;
+  }
+  if (extra?.search) {
+    where.OR = [
+      { fullName: { contains: extra.search } }, { admissionNo: { contains: extra.search } },
+      { primaryGuardian: { fullName: { contains: extra.search } } },
+      { primaryGuardian: { phone: { contains: extra.search } } },
+    ];
   }
 
   return where;
@@ -586,6 +593,16 @@ export const exportPaymentsReport = async (authUser: AuthenticatedUser, query: P
   const where: Prisma.PaymentWhereInput = {
     orgId: scope.orgId,
   };
+  if (query.invoiceId) where.invoiceId = BigInt(query.invoiceId);
+  if (query.channel) where.channel = query.channel;
+  if (query.search) {
+    where.AND = [{ OR: [
+      { reference: { contains: query.search } }, { externalReference: { contains: query.search } },
+      { providerTxnRef: { contains: query.search } }, { invoice: { invoiceNo: { contains: query.search } } },
+      { invoice: { student: { fullName: { contains: query.search } } } },
+      { invoice: { student: { admissionNo: { contains: query.search } } } },
+    ] }];
+  }
 
   if (query.status) {
     where.status = query.status;
@@ -695,6 +712,9 @@ export const exportPaymentsReport = async (authUser: AuthenticatedUser, query: P
 export const exportAttendanceReport = async (authUser: AuthenticatedUser, query: AttendanceExportQuery) => {
   const scope = await resolveReportScope(authUser, query);
   const where = buildAttendanceWhere(scope, query);
+  if (query.search) {
+    where.student = { OR: [{ fullName: { contains: query.search } }, { admissionNo: { contains: query.search } }] };
+  }
 
   if (query.status) {
     where.status = query.status;
