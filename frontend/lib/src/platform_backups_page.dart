@@ -13,27 +13,8 @@ class PlatformBackupsPage extends StatelessWidget {
   final VoidCallback onAudit;
   final VoidCallback? onRequest;
   final Widget? requests;
-  Widget panel(String title, Widget body) => Container(
-    decoration: AfaqDesign.panelDecoration(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(22),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AfaqDesign.ink,
-            ),
-          ),
-        ),
-        const Divider(height: 1),
-        Padding(padding: const EdgeInsets.all(22), child: body),
-      ],
-    ),
-  );
+  Widget panel(String title, Widget body) =>
+      ItSectionPanel(title: title, child: body);
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {

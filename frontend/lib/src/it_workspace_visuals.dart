@@ -138,6 +138,76 @@ class ItSectionPanel extends StatelessWidget {
   );
 }
 
+class ItMetricCard extends StatelessWidget {
+  const ItMetricCard({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accent,
+  });
+  final String label, value;
+  final IconData icon;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: const BoxConstraints(minHeight: 150),
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: accent.withValues(alpha: .25)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x08011F3D),
+          blurRadius: 18,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: AfaqDesign.muted,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: accent, size: 26),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Text(
+          value,
+          style: TextStyle(
+            color: AfaqDesign.ink,
+            fontWeight: FontWeight.w800,
+            fontSize: value.length > 9 ? 24 : 32,
+            height: 1.2,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class ItRecordDetails extends StatelessWidget {
   const ItRecordDetails({super.key, required this.values});
   final Map<String, dynamic> values;

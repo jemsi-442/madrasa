@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'it_workspace_visuals.dart';
-import 'foundation_ui.dart' show DashboardMetric;
 import 'design_tokens.dart';
 import 'workspace_chrome.dart';
 import 'status_badge.dart';
@@ -520,12 +519,11 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                     width:
                         (bounds.maxWidth - padding * 2 - (columns - 1) * 16) /
                         columns,
-                    child: DashboardMetric(
+                    child: ItMetricCard(
                       label: metric.$1,
                       value: metric.$2,
                       icon: metric.$3,
                       accent: metric.$4,
-                      dense: true,
                     ),
                   ),
               ],
