@@ -23,6 +23,55 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('homepage restores scroll position and shows desktop scrollbar', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 1000);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final bucket = PageStorageBucket();
+    Widget page(bool showHome) => MaterialApp(
+      home: PageStorage(
+        bucket: bucket,
+        child: showHome
+            ? PublicHomeScreen(onNavigate: (_) {})
+            : const SizedBox(),
+      ),
+    );
+    await tester.pumpWidget(page(true));
+    await tester.pumpAndSettle();
+    final scroll = find.byKey(const PageStorageKey('public-home-scroll'));
+    final controller = tester.widget<SingleChildScrollView>(scroll).controller!;
+    final bar = find
+        .ancestor(of: scroll, matching: find.byType(Scrollbar))
+        .first;
+    expect(tester.widget<Scrollbar>(bar).thumbVisibility, isTrue);
+    await Scrollable.ensureVisible(
+      tester.element(find.byType(HomeTeamSection)),
+    );
+    await tester.pumpAndSettle();
+    final offset = controller.offset;
+    expect(offset, greaterThan(700));
+    await tester.pumpWidget(page(false));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(page(true));
+    await tester.pumpAndSettle();
+    final restored = tester.widget<SingleChildScrollView>(scroll).controller!;
+    expect(restored.offset, closeTo(offset, 1));
+    expect(find.byKey(const ValueKey('home-back-to-top')), findsOneWidget);
+    await tester.tap(find.byTooltip('More homepage sections'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<CheckedPopupMenuItem<String>>(
+            find.widgetWithText(CheckedPopupMenuItem<String>, 'Our team'),
+          )
+          .checked,
+      isTrue,
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('menu follows scrolling without a navigation click', (
     tester,
   ) async {

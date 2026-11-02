@@ -46,6 +46,9 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
   void initState() {
     super.initState();
     scrollController.addListener(updateScrollActions);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && scrollController.hasClients) updateScrollActions();
+    });
   }
 
   void updateScrollActions() {
@@ -115,65 +118,71 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
             onNavigate: widget.onNavigate,
           ),
           Expanded(
-            child: SingleChildScrollView(
+            child: Scrollbar(
               controller: scrollController,
-              child: Column(
-                children: [
-                  _HomeHero(
-                    key: topKey,
-                    featuresKey: featuresKey,
-                    onJoin: () => widget.onNavigate('/register'),
-                    onExplore: () => openSection('About'),
-                  ),
-                  _AboutSection(
-                    key: aboutKey,
-                    onJoin: () => widget.onNavigate('/register'),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 20,
+              thumbVisibility: MediaQuery.sizeOf(context).width >= 900,
+              interactive: true,
+              child: SingleChildScrollView(
+                key: const PageStorageKey('public-home-scroll'),
+                controller: scrollController,
+                child: Column(
+                  children: [
+                    _HomeHero(
+                      key: topKey,
+                      featuresKey: featuresKey,
+                      onJoin: () => widget.onNavigate('/register'),
+                      onExplore: () => openSection('About'),
                     ),
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        for (final label in [
-                          'Our story',
-                          'Learning in practice',
-                          'Our team',
-                          'For Schools',
-                          'Partners',
-                          'FAQs',
-                        ])
-                          OutlinedButton.icon(
-                            onPressed: () => openSection(label),
-                            icon: const Icon(
-                              Icons.arrow_downward_rounded,
-                              size: 22,
+                    _AboutSection(
+                      key: aboutKey,
+                      onJoin: () => widget.onNavigate('/register'),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          for (final label in [
+                            'Our story',
+                            'Learning in practice',
+                            'Our team',
+                            'For Schools',
+                            'Partners',
+                            'FAQs',
+                          ])
+                            OutlinedButton.icon(
+                              onPressed: () => openSection(label),
+                              icon: const Icon(
+                                Icons.arrow_downward_rounded,
+                                size: 22,
+                              ),
+                              label: Text(label),
                             ),
-                            label: Text(label),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  HomeStorySections(
-                    storyKey: storyKey,
-                    practiceKey: practiceKey,
-                  ),
-                  HomeTeamSection(key: teamKey),
-                  HomeSchoolSection(
-                    key: schoolsKey,
-                    onNavigate: widget.onNavigate,
-                  ),
-                  HomePartnershipSection(
-                    key: partnersKey,
-                    faqKey: faqKey,
-                    onNavigate: widget.onNavigate,
-                  ),
-                  PublicSiteFooter(onNavigate: widget.onNavigate),
-                ],
+                    HomeStorySections(
+                      storyKey: storyKey,
+                      practiceKey: practiceKey,
+                    ),
+                    HomeTeamSection(key: teamKey),
+                    HomeSchoolSection(
+                      key: schoolsKey,
+                      onNavigate: widget.onNavigate,
+                    ),
+                    HomePartnershipSection(
+                      key: partnersKey,
+                      faqKey: faqKey,
+                      onNavigate: widget.onNavigate,
+                    ),
+                    PublicSiteFooter(onNavigate: widget.onNavigate),
+                  ],
+                ),
               ),
             ),
           ),
