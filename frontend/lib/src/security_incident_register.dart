@@ -126,13 +126,16 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
           if (keepId == null) selected = null;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted && version == viewVersion) {
         setState(() {
           snapshot = null;
           selected = null;
-          error =
-              'Incident records could not be loaded. Check the API and database migration.';
+          accessDenied =
+              e is ApiException && [401, 403, 409].contains(e.statusCode);
+          error = accessDenied
+              ? 'Access could not be verified. Sign in again or check your permissions.'
+              : 'Incident records could not be loaded. Try again; no new incident has been saved.';
         });
       }
     } finally {
@@ -171,12 +174,14 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   }
 
   Future<void> edit({bool update = false}) async {
-    editing = true;
     final request = widget.request;
     final original = selected;
     final title = TextEditingController();
     final note = TextEditingController(text: update ? '' : sourceDraft);
-    if (!update) sourceDraft = null;
+    setState(() {
+      editing = true;
+      if (!update) sourceDraft = null;
+    });
     final form = GlobalKey<FormState>();
     var choice = update ? '${original!['status']}' : 'MEDIUM';
     var saving = false;
@@ -321,7 +326,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
         ),
       ),
     );
-    editing = false;
+    if (mounted) setState(() => editing = false);
     // Wait for the dialog route to finish its closing animation before disposal.
     await Future<void>.delayed(const Duration(milliseconds: 300));
     title.dispose();
@@ -476,9 +481,13 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
               spacing: 12,
               children: [
                 FilledButton.icon(
-                  onPressed: busy ? null : () => edit(),
+                  onPressed: busy || accessDenied ? null : () => edit(),
                   icon: const Icon(Icons.add),
-                  label: const Text('Record incident'),
+                  label: Text(
+                    sourceDraft != null
+                        ? 'Continue receipt draft'
+                        : 'Record incident',
+                  ),
                 ),
                 OutlinedButton(
                   onPressed: busy ? null : refresh,
@@ -489,6 +498,13 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
             if (busy) const LinearProgressIndicator(),
             if (error != null)
               Text(error!, style: const TextStyle(color: Colors.red)),
+            if (sourceDraft != null && !editing)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'Receipt draft retained on this page. Not saved yet; continue the draft to review and save it.',
+                ),
+              ),
             const SizedBox(height: 24),
             Wrap(
               spacing: 16,

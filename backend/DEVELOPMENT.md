@@ -2185,3 +2185,9 @@ summary and saves through the existing authorized incident endpoint. This is a
 human investigation shortcut, not an automatic failure classification or a
 database-enforced receipt-to-incident relationship. The draft is not persisted
 until saved; cancelling or navigating away must not be treated as a saved report.
+
+If the incident list initially fails to load, the receipt draft remains available
+through `Continue receipt draft`, explicitly marked as not saved. Session/access
+denial disables creation until access is verified again. Opening the draft consumes
+the prefill once; cancelling it leaves subsequent new incident forms blank.
+This is in-memory recovery on the current page, not offline draft persistence.

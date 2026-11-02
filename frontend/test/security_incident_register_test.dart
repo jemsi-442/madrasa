@@ -2,8 +2,60 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/security_incident_register.dart';
+import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final denied in [false, true]) {
+    testWidgets('Failed initial read retains receipt draft denied=$denied', (
+      tester,
+    ) async {
+      var writes = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SecurityIncidentRegister(
+              initialDescription: 'Receipt: SYNTHETIC-RECEIPT',
+              request: (path, body) async {
+                if (body != null) writes++;
+                if (denied) throw const ApiException('Denied', 403);
+                throw Exception('Synthetic offline connection');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.textContaining('Not saved yet'), findsOneWidget);
+        final button = find.ancestor(
+          of: find.text('Continue receipt draft'),
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        );
+      expect(
+        tester.widget<FilledButton>(button).onPressed,
+        denied ? isNull : isNotNull,
+      );
+      if (!denied) {
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<TextFormField>(find.byType(TextFormField).at(1))
+              .controller!
+              .text,
+          'Receipt: SYNTHETIC-RECEIPT',
+        );
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(find.text('Continue receipt draft'), findsNothing);
+        expect(find.textContaining('Not saved yet'), findsNothing);
+      }
+      expect(writes, 0);
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final fails in [false, true]) {
     testWidgets(
       'Late incident response cannot replace newer choice failure=$fails',
