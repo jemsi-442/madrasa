@@ -1,6 +1,33 @@
 import { expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { integrationSummary, readIntegrations } from '../src/modules/platform/platform.integrations';
+import { integrationSummary, readIntegrations, smtpConnectionCheck } from '../src/modules/platform/platform.integrations';
+import type { createSmtpEmail } from '../src/shared/notifications/smtp-email';
+
+it('checks SMTP without sending and throttles repeated checks', async () => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const client = { verify: vi.fn().mockResolvedValue({ status: 'SMTP_CONNECTION_VERIFIED' }), close: vi.fn(), send: vi.fn() };
+  const check = smtpConnectionCheck(db, () => client as unknown as ReturnType<typeof createSmtpEmail>);
+  const actor = { scope: 'platform' as const, accountId: 'synthetic', sessionId: 'synthetic' };
+  expect(await check(actor)).toMatchObject({ status: 'CONNECTED' });
+  expect(client.send).not.toHaveBeenCalled();
+  expect(client.close).toHaveBeenCalledOnce();
+  await expect(check(actor)).rejects.toThrow('one minute');
+});
+
+it('denies SMTP probes before creating a client', async () => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'SUPER_ADMIN', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const create = vi.fn();
+  await expect(smtpConnectionCheck(db, create)({ scope: 'platform', accountId: 'synthetic', sessionId: 'synthetic' })).rejects.toThrow('restricted');
+  expect(create).not.toHaveBeenCalled();
+});
+
+it('does not reveal configuration errors', async () => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const check = smtpConnectionCheck(db, () => { throw new Error('secret-sentinel'); });
+  const result = await check({ scope: 'platform', accountId: 'synthetic', sessionId: 'synthetic' });
+  expect(result.status).toBe('NOT_CONFIGURED');
+  expect(JSON.stringify(result)).not.toContain('secret-sentinel');
+});
 it('returns allowlisted status without configuration secrets', () => {
   const data = integrationSummary({ SMS_ENABLED: 'true', SMS_PROVIDER: 'rodsms', RODSMS_API_KEY: 'secret-sentinel', RODSMS_SENDER_ID: 'AFAQ',
     QF_ENABLED: 'true', QF_CLIENT_ID: 'private-client', QF_CLIENT_SECRET: 'secret-sentinel', SNIPPE_MOCK_MODE: 'true' }, true);

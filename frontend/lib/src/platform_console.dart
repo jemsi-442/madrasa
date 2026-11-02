@@ -2013,6 +2013,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           ? PlatformIntegrationsPage(
               key: ValueKey('integrations-${api.sessionVersion}'),
               request: () => api.call('/integrations'),
+              checkSmtp: () => api.call('/integrations/smtp/check', body: {}),
               onAudit: () => navigateTo(PlatformPage.history),
               onHealth: () => navigateTo(PlatformPage.health),
             )

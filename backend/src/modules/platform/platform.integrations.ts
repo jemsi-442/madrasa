@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { smsConfig } from '../../shared/notifications/sms-provider';
-import { smtpEmailConfig } from '../../shared/notifications/smtp-email';
+import { smtpEmailConfig, createSmtpEmail } from '../../shared/notifications/smtp-email';
 import { HttpError } from '../../shared/errors/http-error';
 import type { PlatformContext } from './platform.service';
 
@@ -54,4 +54,25 @@ export async function readIntegrations(db: PrismaClient, actor: PlatformContext,
   const account = await db.platformAccount.findUnique({ where: { id: actor.accountId }, select: { role: true, status: true } });
   if (!account || account.role !== 'IT_SECURITY' || account.status !== 'ACTIVE') throw new HttpError(403, 'Integrations are restricted to active IT accounts');
   return integrationSummary(process.env, passwordOnly);
+}
+
+export function smtpConnectionCheck(db: PrismaClient, create = () => createSmtpEmail(process.env)) {
+  let running = false;
+  let nextCheck = 0;
+  return async (actor: PlatformContext) => {
+    await readIntegrations(db, actor, undefined);
+    if (running || Date.now() < nextCheck) throw new HttpError(429, 'Wait one minute before checking again');
+    running = true;
+    nextCheck = Date.now() + 60_000;
+    let client: ReturnType<typeof createSmtpEmail> | undefined;
+    let status = 'NOT_CONFIGURED';
+    try {
+      try { client = create(); } catch { return { status, checkedAt: new Date().toISOString() }; }
+      status = (await client.verify()).status === 'SMTP_CONNECTION_VERIFIED' ? 'CONNECTED' : 'FAILED';
+      return { status, checkedAt: new Date().toISOString() };
+    } finally {
+      client?.close();
+      running = false;
+    }
+  };
 }

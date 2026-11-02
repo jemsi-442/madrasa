@@ -2342,6 +2342,17 @@ reset, credential change, migration or production deployment was performed.
 
 ### Live local IT navigation smoke check
 
+SMTP connection checks are now available to active IT accounts through
+`POST /api/platform/integrations/smtp/check` and the Email & SMS gateway panel.
+The check uses the existing SMTP verifier (TLS/authentication), never sends mail,
+closes the transport and returns only a fixed status and check timestamp.
+Checks are limited to once per minute per API process; this is not a distributed
+rate limit. Results are displayed in the current page, not persisted as history.
+SMTP authentication success does not establish inbox delivery. Missing settings
+remain NOT_CONFIGURED, not Connected. SMS, Quran, payment and backup provider
+connectivity checks are still unconnected. No live SMTP probe was run during
+implementation; backend checks use synthetic mocked transports.
+
 On 2026-11-02, an isolated Chromium browser signed in using the saved local IT
 demo account and opened all ten IT pages against the running API: Overview,
 System Health, Access & Roles, Sessions & Devices, Audit Logs, Security Incidents,

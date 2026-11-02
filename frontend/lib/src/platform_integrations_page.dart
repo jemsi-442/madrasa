@@ -11,9 +11,11 @@ class PlatformIntegrationsPage extends StatefulWidget {
     required this.onAudit,
     required this.onHealth,
     this.request,
+    this.checkSmtp,
   });
   final VoidCallback onAudit, onHealth;
   final Future<dynamic> Function()? request;
+  final Future<dynamic> Function()? checkSmtp;
   @override
   State<PlatformIntegrationsPage> createState() =>
       _PlatformIntegrationsPageState();
@@ -24,6 +26,38 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   String service = 'Authentication';
   Map<String, dynamic>? snapshot;
   bool loading = false;
+  bool checkingSmtp = false;
+  String? smtpResult;
+
+  Future<void> verifySmtp() async {
+    if (checkingSmtp || widget.checkSmtp == null) return;
+    setState(() {
+      checkingSmtp = true;
+      smtpResult = null;
+    });
+    try {
+      final result = await widget.checkSmtp!();
+      if (!mounted) return;
+      final label = switch (result['status']) {
+        'CONNECTED' =>
+          'SMTP connection verified. Inbox delivery has not been tested.',
+        'NOT_CONFIGURED' => 'Complete the SMTP configuration before checking.',
+        _ =>
+          'Connection could not be verified. Check server configuration and connectivity.',
+      };
+      setState(() => smtpResult = '$label\nChecked: ${result['checkedAt']}');
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => smtpResult =
+              'Check unavailable. Verify your access or wait one minute before retrying.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => checkingSmtp = false);
+    }
+  }
+
   bool accessDenied = false;
   late final AutomaticDataUpdates updates;
   String? error;
@@ -46,6 +80,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
           mounted &&
           widget.request != null &&
           !loading &&
+          !checkingSmtp &&
           !accessDenied &&
           !dataWriteInProgress &&
           ModalRoute.of(context)?.isCurrent != false,
@@ -209,6 +244,27 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
         ),
         const SizedBox(height: 20),
         configurationChecks(),
+        if (service == 'Email & SMS gateway') ...[
+          const SizedBox(height: 16),
+          const Text(
+            'Checks SMTP authentication and connection only. No email or SMS is sent.',
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: checkingSmtp || accessDenied || widget.checkSmtp == null
+                ? null
+                : verifySmtp,
+            icon: const Icon(Icons.network_check),
+            label: Text(
+              checkingSmtp ? 'Checking SMTP...' : 'Check SMTP connection',
+            ),
+          ),
+          if (smtpResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(smtpResult!),
+            ),
+        ],
         const SizedBox(height: 20),
         const Tooltip(
           message: 'Credential rotation requests are not connected yet',

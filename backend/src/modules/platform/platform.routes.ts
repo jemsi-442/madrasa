@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { BackupRequestsService } from './platform.backups';
 import { PlatformSyncService } from './platform.sync';
-import { readIntegrations } from './platform.integrations';
+import { readIntegrations, smtpConnectionCheck } from './platform.integrations';
 import { SecurityIncidentsService } from './platform.incidents';
 import { PlatformCurriculumService } from './platform.curriculum';
 import { PlatformFundsService } from './platform.funds';
@@ -39,6 +39,7 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
   const service = new PlatformGovernanceService(db);
   const incidents = new SecurityIncidentsService(db);
   const backups = new BackupRequestsService(db);
+  const checkSmtp = smtpConnectionCheck(db);
   const sync = new PlatformSyncService(db);
   const curriculum = new PlatformCurriculumService(db);
   const funds = new PlatformFundsService(db);
@@ -90,6 +91,10 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
   }));
   router.get('/integrations', asyncHandler(async (req, res) => {
     res.json({ success: true, data: await readIntegrations(db, req.platformContext!, login?.passwordOnly === undefined && login ? false : login?.passwordOnly) });
+  }));
+  router.post('/integrations/smtp/check', asyncHandler(async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ success: true, data: await checkSmtp(req.platformContext!) });
   }));
   router.post('/backups/requests', asyncHandler(async (req, res) => {
     res.json({ success: true, data: await backups.request(req.platformContext!, req.body) });
