@@ -44,7 +44,11 @@ void main() {
       await tester.pumpWidget(MifApp(layout: layout));
       await _loadPreviewAssets(tester);
       await tester.pumpAndSettle();
-      expect(find.byType(LearningPortrait), findsOneWidget);
+      if (layout == AppLayout.mobile) {
+        expect(find.byType(LearningPortrait), findsOneWidget);
+      } else {
+        expect(find.byKey(const ValueKey('home-hero-photo')), findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
       if (_previews) {
         await expectLater(

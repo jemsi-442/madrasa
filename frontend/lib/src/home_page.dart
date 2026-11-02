@@ -284,13 +284,43 @@ class _HomeHero extends StatelessWidget {
               );
               final portrait = Column(
                 children: [
-                  const AspectRatio(
-                    aspectRatio: 1.12,
-                    child: LearningPortrait(
-                      asset: 'assets/home/shared-learning.jpg',
-                      description:
-                          'Learners working together before a Quran session.',
-                      alignment: Alignment.center,
+                  Container(
+                    key: const ValueKey('home-hero-photo'),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFFDED5C5)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x18092136),
+                          blurRadius: 30,
+                          offset: Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: AspectRatio(
+                        aspectRatio: 1100 / 619,
+                        child: Image.asset(
+                          'assets/home/shared-learning.jpg',
+                          fit: BoxFit.contain,
+                          semanticLabel:
+                              'Learners working together before a Quran session.',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Learning together, growing with purpose.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: publicInk,
+                      fontSize: 16,
+                      height: 1.5,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 20),
