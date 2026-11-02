@@ -773,7 +773,9 @@ class _AboutSection extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 1160),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final wide = constraints.maxWidth > 760;
+            final wide =
+                constraints.maxWidth > 760 &&
+                MediaQuery.textScalerOf(context).scale(16) < 25;
             final message = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -789,12 +791,12 @@ class _AboutSection extends StatelessWidget {
                 const SizedBox(height: 14),
                 Semantics(
                   header: true,
-                  child: const Text(
+                  child: Text(
                     'Rooted in values.\nReady for tomorrow.',
                     style: TextStyle(
                       color: publicInk,
                       fontFamily: 'NotoSerifDisplay',
-                      fontSize: 34,
+                      fontSize: wide ? 42 : 34,
                       fontWeight: FontWeight.w700,
                       height: 1.2,
                     ),

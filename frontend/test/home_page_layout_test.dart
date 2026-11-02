@@ -23,6 +23,42 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('story sections have clear desktop headings and touch targets', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 1000);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: HomePartnershipSection(onNavigate: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<Text>(
+            find.text(
+              'A stronger learning community\nstarts with shared effort.',
+            ),
+          )
+          .style!
+          .fontSize,
+      42,
+    );
+    final contact = find.byKey(const ValueKey('home-contact-next-step'));
+    await tester.ensureVisible(contact);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(contact).height, greaterThanOrEqualTo(56));
+    final theme = Theme.of(tester.element(contact)).filledButtonTheme.style!;
+    expect(theme.textStyle!.resolve({})!.fontSize, 17);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('tablet hero stacks matching readable columns', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1024, 900);

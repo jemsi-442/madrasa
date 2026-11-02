@@ -457,9 +457,9 @@ class _Section extends StatelessWidget {
               header: true,
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'NotoSerifDisplay',
-                  fontSize: 32,
+                  fontSize: MediaQuery.sizeOf(context).width >= 1000 ? 42 : 32,
                   height: 1.25,
                   fontWeight: FontWeight.w700,
                   color: publicInk,
@@ -481,13 +481,49 @@ class _Section extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 32),
-            child,
+            Theme(
+              data: Theme.of(context).copyWith(
+                filledButtonTheme: FilledButtonThemeData(
+                  style:
+                      Theme.of(
+                        context,
+                      ).filledButtonTheme.style?.merge(_sectionActionStyle) ??
+                      _sectionActionStyle,
+                ),
+                outlinedButtonTheme: OutlinedButtonThemeData(
+                  style:
+                      Theme.of(
+                        context,
+                      ).outlinedButtonTheme.style?.merge(_sectionActionStyle) ??
+                      _sectionActionStyle,
+                ),
+                textButtonTheme: TextButtonThemeData(
+                  style:
+                      Theme.of(
+                        context,
+                      ).textButtonTheme.style?.merge(_sectionActionStyle) ??
+                      _sectionActionStyle,
+                ),
+              ),
+              child: child,
+            ),
           ],
         ),
       ),
     ),
   );
 }
+
+const _sectionActionStyle = ButtonStyle(
+  minimumSize: WidgetStatePropertyAll(Size(0, 56)),
+  padding: WidgetStatePropertyAll(
+    EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+  ),
+  textStyle: WidgetStatePropertyAll(
+    TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+  ),
+  iconSize: WidgetStatePropertyAll(26),
+);
 
 class _Columns extends StatelessWidget {
   const _Columns({required this.children});
