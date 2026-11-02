@@ -157,7 +157,13 @@ void main() {
     }
     await tester.tap(find.byTooltip('Open menu'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('For Schools').last);
+    final schoolMenu = find.widgetWithText(
+      CheckedPopupMenuItem<String>,
+      'For Schools',
+    );
+    await tester.ensureVisible(schoolMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(schoolMenu);
     await tester.pumpAndSettle();
     expect(
       tester.getTopLeft(find.text('FOR SCHOOLS & MADRASAS')).dy,
@@ -291,6 +297,34 @@ void main() {
       }
       expect(tester.takeException(), isNull);
     }
+  });
+
+  testWidgets('phone menu links directly to FAQ and marks selected section', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 640);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: PublicHomeScreen(onNavigate: (_) {})),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pumpAndSettle();
+    final faq = find.widgetWithText(CheckedPopupMenuItem<String>, 'FAQs');
+    await tester.ensureVisible(faq);
+    await tester.pumpAndSettle();
+    await tester.tap(faq);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.text('QUESTIONS & ANSWERS')).dy,
+      inInclusiveRange(0, 400),
+    );
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckedPopupMenuItem<String>>(faq).checked, isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('home remains usable through phone and desktop resizes', (

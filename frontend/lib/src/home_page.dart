@@ -264,16 +264,40 @@ class _HomeHeader extends StatelessWidget {
               const SizedBox(width: 4),
               PopupMenuButton<String>(
                 tooltip: 'Open menu',
-                icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                icon: const Icon(
+                  Icons.menu_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
                 onSelected: (value) => value == 'Get Started'
                     ? onNavigate('/register')
                     : onSection(value),
-                itemBuilder: (_) => [...sections, 'Get Started']
-                    .map(
-                      (label) =>
-                          PopupMenuItem(value: label, child: Text(label)),
-                    )
-                    .toList(),
+                itemBuilder: (_) => [
+                  for (final label in [
+                    'Home',
+                    'Features',
+                    'About',
+                    'Our story',
+                    'Learning in practice',
+                    'For Schools',
+                    'Partners',
+                    'FAQs',
+                  ])
+                    CheckedPopupMenuItem(
+                      value: label,
+                      checked: selected == label,
+                      child: Text(label, style: const TextStyle(fontSize: 16)),
+                    ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'Contact',
+                    child: Text('Contact Afaq'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'Get Started',
+                    child: Text('Get Started'),
+                  ),
+                ],
               ),
             ],
           ],
