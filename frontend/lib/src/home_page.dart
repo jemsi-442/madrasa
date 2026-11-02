@@ -25,6 +25,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
   final schoolsKey = GlobalKey();
   final storyKey = GlobalKey();
   final practiceKey = GlobalKey();
+  final teamKey = GlobalKey();
   final partnersKey = GlobalKey();
   final faqKey = GlobalKey();
   String selected = 'Home';
@@ -35,6 +36,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
     'About': aboutKey,
     'Our story': storyKey,
     'Learning in practice': practiceKey,
+    'Our team': teamKey,
     'For Schools': schoolsKey,
     'Partners': partnersKey,
     'FAQs': faqKey,
@@ -140,6 +142,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                         for (final label in [
                           'Our story',
                           'Learning in practice',
+                          'Our team',
                           'For Schools',
                           'Partners',
                           'FAQs',
@@ -159,6 +162,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                     storyKey: storyKey,
                     practiceKey: practiceKey,
                   ),
+                  HomeTeamSection(key: teamKey),
                   HomeSchoolSection(
                     key: schoolsKey,
                     onNavigate: widget.onNavigate,
@@ -259,6 +263,7 @@ class _HomeHeader extends StatelessWidget {
                   for (final label in [
                     'Our story',
                     'Learning in practice',
+                    'Our team',
                     'Partners',
                     'FAQs',
                   ])
@@ -344,6 +349,7 @@ class _HomeHeader extends StatelessWidget {
                     'About',
                     'Our story',
                     'Learning in practice',
+                    'Our team',
                     'For Schools',
                     'Partners',
                     'FAQs',
