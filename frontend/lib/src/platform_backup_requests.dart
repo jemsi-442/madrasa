@@ -7,6 +7,7 @@ import 'platform_form_dialog.dart';
 import 'automatic_data_updates.dart';
 import 'live_data.dart';
 import 'api_client.dart';
+import 'workspace_form_dialog.dart';
 
 class PlatformBackupRequests extends StatefulWidget {
   const PlatformBackupRequests({
@@ -123,7 +124,9 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
       (context) => StatefulBuilder(
         builder: (context, change) => PopScope(
           canPop: !saving,
-          child: AlertDialog(
+          child: WorkspaceFormDialog(
+            icon: Icons.restore_rounded,
+            eyebrow: 'RECOVERY / TEST REQUEST',
             title: const Text('Request an isolated restore test'),
             content: SizedBox(
               width: 520,
@@ -132,11 +135,17 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                   key: key,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'This records a request only. No restore is executed. Do not include passwords, storage URLs or learner records.',
+                      const WorkspaceFormNotice(
+                        message:
+                            'This records a request only. No restore is executed. Do not include passwords, storage URLs or learner records.',
                       ),
-                      const SizedBox(height: 20),
+                      const WorkspaceFormSection(
+                        title: 'Snapshot to test',
+                        description:
+                            'Use the reference supplied by your backup operator.',
+                      ),
                       TextFormField(
                         controller: snapshot,
                         enabled: !saving && submitted == null,
@@ -151,6 +160,11 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                             : null,
                       ),
                       const SizedBox(height: 16),
+                      const WorkspaceFormSection(
+                        title: 'Test purpose',
+                        description:
+                            'Describe what should be verified in the isolated test environment.',
+                      ),
                       TextFormField(
                         controller: reason,
                         enabled: !saving && submitted == null,
@@ -165,10 +179,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                             : null,
                       ),
                       if (failure != null)
-                        Text(
-                          failure!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
+                        WorkspaceFormNotice(message: failure!, isError: true),
                     ],
                   ),
                 ),

@@ -187,6 +187,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Request restore test'));
     await tester.pumpAndSettle();
+    expect(find.text('RECOVERY / TEST REQUEST'), findsOneWidget);
+    expect(find.text('Snapshot to test'), findsOneWidget);
+    expect(find.text('Test purpose'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).at(0), 'BKP-SYNTHETIC');
     await tester.enterText(
       find.byType(TextFormField).at(1),
