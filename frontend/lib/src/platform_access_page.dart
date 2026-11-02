@@ -44,18 +44,23 @@ class _PlatformAccessPageState extends State<PlatformAccessPage> {
   void didUpdateWidget(covariant PlatformAccessPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!ready || !identical(oldWidget.records, widget.records)) {
-      final route = reviewRoute;
-      if (route != null) {
-        reviewRoute = null;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (route.isActive) route.navigator?.removeRoute(route);
-        });
-      }
+      dismissReview();
     }
+  }
+
+  void dismissReview() {
+    final route = reviewRoute;
+    reviewRoute = null;
+    if (route == null) return;
+    // Remove only our route, after the navigator has finished this frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route.isActive) route.navigator?.removeRoute(route);
+    });
   }
 
   @override
   void dispose() {
+    dismissReview();
     search.dispose();
     super.dispose();
   }

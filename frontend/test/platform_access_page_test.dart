@@ -3,6 +3,73 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_access_page.dart';
 
 void main() {
+  for (final anotherDialog in [false, true]) {
+    testWidgets(
+      'Leaving access removes only its review overlay=$anotherDialog',
+      (tester) async {
+        final visible = ValueNotifier(true);
+        final navigator = GlobalKey<NavigatorState>();
+        addTearDown(visible.dispose);
+        var reviews = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorKey: navigator,
+            home: Scaffold(
+              body: ValueListenableBuilder<bool>(
+                valueListenable: visible,
+                builder: (context, show, _) => show
+                    ? PlatformAccessPage(
+                        records: const [
+                          {
+                            'id': 'synthetic',
+                            'fullName': 'Synthetic Operator',
+                            'role': 'IT_SECURITY',
+                            'status': 'ACTIVE',
+                          },
+                        ],
+                        busy: false,
+                        error: null,
+                        page: 1,
+                        role: '',
+                        onRole: (_) {},
+                        onPage: (_) {},
+                        onRefresh: () {},
+                        onReview: (_) => reviews++,
+                      )
+                    : const Text('Sign in again'),
+              ),
+            ),
+          ),
+        );
+        await tester.ensureVisible(find.text('Review'));
+        await tester.tap(find.text('Review'));
+        await tester.pumpAndSettle();
+        expect(find.text('Access history'), findsOneWidget);
+        if (anotherDialog) {
+          showDialog<void>(
+            context: navigator.currentContext!,
+            builder: (_) =>
+                const AlertDialog(title: Text('Independent notice')),
+          );
+          await tester.pumpAndSettle();
+        }
+        visible.value = false;
+        await tester.pumpAndSettle();
+        expect(find.text('Access history', skipOffstage: false), findsNothing);
+        expect(
+          find.text('Synthetic Operator', skipOffstage: false),
+          findsNothing,
+        );
+        expect(
+          find.text('Independent notice'),
+          anotherDialog ? findsOneWidget : findsNothing,
+        );
+        expect(reviews, 0);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   for (final busy in [true, false]) {
     testWidgets(
       'Access review closes when data becomes unavailable busy=$busy',
