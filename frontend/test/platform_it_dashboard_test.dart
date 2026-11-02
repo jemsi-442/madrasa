@@ -3,6 +3,52 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_it_dashboard.dart';
 
 void main() {
+  for (final error in <String?>[null, 'Connection unavailable']) {
+    testWidgets('Overview does not claim all-clear after error: $error', (
+      tester,
+    ) async {
+      final now = DateTime.utc(2026, 11, 2);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformItDashboard(
+              busy: false,
+              error: error,
+              now: () => now,
+              snapshot: {
+                'checkedAt': now.toIso8601String(),
+                'checks': [
+                  {'name': 'database', 'status': 'available'},
+                  {'name': 'redis', 'status': 'available'},
+                ],
+                'incidents': {
+                  'open': 0,
+                  'high': 0,
+                  'checkedAt': now.toIso8601String(),
+                },
+              },
+              onRefresh: () {},
+              onHealth: () {},
+              onIncidents: () {},
+              onAccounts: () {},
+              onAudit: () {},
+              onSessions: () {},
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.text('No open issues in current checks'),
+        error == null ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('Status needs verification'),
+        error == null ? findsNothing : findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   for (final checks in <List<dynamic>>[
     [],
     [
@@ -114,8 +160,12 @@ void main() {
         expect(find.text('1 / 2'), findsOneWidget);
         expect(find.text('3'), findsOneWidget);
         expect(find.textContaining('3 open / 1 high priority'), findsOneWidget);
-        expect(find.text('Recovery readiness'), findsOneWidget);
-        expect(find.text('Not measured'), findsNWidgets(2));
+        expect(find.text('Investigate access'), findsOneWidget);
+        expect(find.text('Action required'), findsOneWidget);
+        expect(find.text('Failed service checks'), findsOneWidget);
+        expect(find.text('High-priority incidents'), findsOneWidget);
+        expect(find.text('Not measured'), findsNothing);
+        expect(find.textContaining('Manage your own'), findsNothing);
         for (final entry in {
           'Company accounts': 'accounts',
           'Security incidents': 'incidents',
@@ -131,7 +181,8 @@ void main() {
         expect(tester.takeException(), isNull);
         now = now.add(const Duration(seconds: 61));
         await tester.pump(const Duration(seconds: 61));
-        expect(find.text('Not current'), findsNWidgets(4));
+        expect(find.text('Not current'), findsNWidgets(6));
+        expect(find.text('Status needs verification'), findsOneWidget);
         expect(find.text('3'), findsNothing);
         expect(find.text('1 / 2'), findsNothing);
         await tester.pumpWidget(const SizedBox());

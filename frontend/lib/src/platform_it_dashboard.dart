@@ -112,7 +112,10 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
           ? null
           : (widget.now ?? DateTime.now)().toUtc().difference(checked.toUtc());
       final fresh =
-          age != null && !age.isNegative && age < const Duration(seconds: 60);
+          error == null &&
+          age != null &&
+          !age.isNegative &&
+          age < const Duration(seconds: 60);
       final available = checks.where((c) => c['status'] == 'available').length;
       final failed = checks.where((c) => c['status'] != 'available').toList();
       final incidents = widget.snapshot?['incidents'];
@@ -136,7 +139,10 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
           highCount is int &&
           highCount >= 0 &&
           highCount <= openCount;
-      final incidentsReady = incidentFresh && validCounts;
+      final incidentsReady = error == null && incidentFresh && validCounts;
+      final needsAction =
+          (fresh && failed.isNotEmpty) || (incidentsReady && openCount > 0);
+      final statusKnown = fresh && checks.length == 2 && incidentsReady;
       final operations = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -229,19 +235,6 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                       ],
                     ),
                   ),
-                const Divider(),
-                task(
-                  'Company accounts',
-                  'Read-only account directory.',
-                  Icons.badge_outlined,
-                  onAccounts,
-                ),
-                task(
-                  'Sessions',
-                  'Manage your own signed-in devices.',
-                  Icons.devices_outlined,
-                  onSessions,
-                ),
               ],
             ),
           ),
@@ -376,25 +369,29 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
             ),
           ),
           const SizedBox(height: 24),
-          panel(
-            'Recovery readiness',
-            const Column(
+          ItSectionPanel(
+            accent: const Color(0xff346bb0),
+            title: 'Investigate access',
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.backup_outlined, color: AfaqDesign.gold),
-                  title: Text('Backup verification'),
-                  subtitle: Text('Backup evidence is not connected.'),
+                task(
+                  'Company accounts',
+                  'Identify the account, role and permitted scope.',
+                  Icons.badge_outlined,
+                  onAccounts,
                 ),
-                Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.restore_outlined, color: AfaqDesign.gold),
-                  title: Text('Restore test'),
-                  subtitle: Text(
-                    'No verified restore-test result is available.',
-                  ),
+                const Divider(),
+                task(
+                  'Sessions',
+                  'Search platform and madrasa sessions by account, role or IP.',
+                  Icons.devices_outlined,
+                  onSessions,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Use the audit trail to trace activity, then record an incident when investigation is needed. An IP address alone is not proof of misuse.',
+                  style: TextStyle(color: AfaqDesign.muted, height: 1.5),
                 ),
               ],
             ),
@@ -409,9 +406,9 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
           : 1;
       final metrics = [
         (
-          'Connected madrasas',
-          'Not measured',
-          Icons.account_balance_outlined,
+          'Failed service checks',
+          checks.isEmpty || !fresh ? 'Not current' : '${failed.length}',
+          Icons.report_problem_outlined,
           const Color(0xff346bb0),
         ),
         (
@@ -429,8 +426,8 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
           AfaqDesign.gold,
         ),
         (
-          'Privileged MFA',
-          'Not measured',
+          'High-priority incidents',
+          incidentsReady ? '$highCount' : 'Not current',
           Icons.shield_outlined,
           const Color(0xff7663af),
         ),
@@ -474,7 +471,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Protect the platform and keep every madrasa connected.',
+              'Check service availability, prioritise incidents and investigate account access.',
               style: TextStyle(color: AfaqDesign.muted, height: 1.5),
             ),
             if (busy)
@@ -493,6 +490,40 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                   ),
                 ),
               ),
+            const SizedBox(height: 24),
+            ItSectionPanel(
+              accent: needsAction
+                  ? AfaqDesign.gold
+                  : statusKnown
+                  ? const Color(0xff278457)
+                  : const Color(0xff346bb0),
+              title: needsAction
+                  ? 'Action required'
+                  : statusKnown
+                  ? 'No open issues in current checks'
+                  : 'Status needs verification',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    needsAction
+                        ? 'Start with failed services and open incidents below.'
+                        : statusKnown
+                        ? 'Database and Redis checks passed; no open incidents were reported.'
+                        : 'Some checks are missing, stale or unavailable. Do not treat this as an all-clear.',
+                    style: const TextStyle(color: AfaqDesign.ink, height: 1.5),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Service snapshot: ${itTimestamp(widget.snapshot?['checkedAt'])}',
+                    style: const TextStyle(
+                      color: AfaqDesign.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
             Wrap(
               spacing: 16,
@@ -523,9 +554,9 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                 ],
               )
             else ...[
-              services,
-              const SizedBox(height: 24),
               operations,
+              const SizedBox(height: 24),
+              services,
             ],
             const SizedBox(height: 24),
             Container(
