@@ -273,7 +273,7 @@ void main() {
           find.byKey(const ValueKey('lesson-media-stage')),
         );
         expect(focused.height, greaterThan(normal.height));
-        if (width == 1440) expect(focused.width, greaterThan(normal.width));
+        if (width == 1440) expect(focused.width, normal.width);
         expect(f.events, ['mount PDF']);
         expect(f.paths.where((p) => p.endsWith('/30/open')).length, 1);
         await tap(t, find.byKey(const ValueKey('next-resource')));

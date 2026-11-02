@@ -82,6 +82,12 @@ void main() {
         ),
       );
       expect(find.text('Test $kind surface'), findsOneWidget);
+      final viewerRect = t.getRect(find.byType(LessonMediaViewer));
+      expect(viewerRect.width, greaterThan(1000));
+      expect(
+        viewerRect.top,
+        lessThan(t.getTopLeft(find.text('Lesson notes')).dy),
+      );
       expect(find.text('Resource 1 of 1 available'), findsOneWidget);
       expect(
         t

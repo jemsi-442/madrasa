@@ -573,7 +573,23 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                   onPressed: saving
                                       ? null
                                       : () => play(playback),
-                                  icon: const Icon(Icons.play_circle_outline),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: ink,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(0, 56),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 16,
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.play_circle_outline,
+                                    size: 28,
+                                  ),
                                   label: Text(
                                     'Watch video: ${recordText(playback['title'], 'Lesson video')}',
                                   ),
@@ -654,62 +670,60 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         ),
                       ),
                     const SizedBox(height: 24),
-                    LayoutBuilder(
-                      builder: (context, box) {
-                        if (focusView) return stage;
-                        if (box.maxWidth >= 980) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    stage,
-                                    const SizedBox(height: 20),
-                                    reading(lesson),
-                                    const SizedBox(height: 20),
-                                    completion(progress),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              SizedBox(
-                                width: 300,
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (widget.outline.isNotEmpty) ...[
-                                      contents(progress, compact: false),
-                                      const SizedBox(height: 18),
+                    stage,
+                    if (!focusView) const SizedBox(height: 20),
+                    if (!focusView)
+                      LayoutBuilder(
+                        builder: (context, box) {
+                          if (box.maxWidth >= 980) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      reading(lesson),
+                                      const SizedBox(height: 20),
+                                      completion(progress),
                                     ],
-                                    resources(assets),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 24),
+                                SizedBox(
+                                  width: 300,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (widget.outline.isNotEmpty) ...[
+                                        contents(progress, compact: false),
+                                        const SizedBox(height: 18),
+                                      ],
+                                      resources(assets),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (widget.outline.isNotEmpty) ...[
+                                contents(progress, compact: true),
+                                const SizedBox(height: 18),
+                              ],
+                              reading(lesson),
+                              const SizedBox(height: 20),
+                              resources(assets),
+                              const SizedBox(height: 20),
+                              completion(progress),
                             ],
                           );
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (widget.outline.isNotEmpty) ...[
-                              contents(progress, compact: true),
-                              const SizedBox(height: 18),
-                            ],
-                            stage,
-                            const SizedBox(height: 20),
-                            reading(lesson),
-                            const SizedBox(height: 20),
-                            resources(assets),
-                            const SizedBox(height: 20),
-                            completion(progress),
-                          ],
-                        );
-                      },
-                    ),
+                        },
+                      ),
                     if (!focusView && lessonIndex >= 0) ...[
                       const SizedBox(height: 20),
                       courseNavigation(lessonIndex),
