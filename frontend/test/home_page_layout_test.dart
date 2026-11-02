@@ -23,6 +23,33 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('menu follows scrolling without a navigation click', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: PublicHomeScreen(onNavigate: (_) {})),
+    );
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+      tester.element(find.byType(HomeSchoolSection)),
+      alignment: 0,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pumpAndSettle();
+    final item = find.widgetWithText(
+      CheckedPopupMenuItem<String>,
+      'For Schools',
+    );
+    expect(tester.widget<CheckedPopupMenuItem<String>>(item).checked, isTrue);
+    final home = find.widgetWithText(CheckedPopupMenuItem<String>, 'Home');
+    expect(tester.widget<CheckedPopupMenuItem<String>>(home).checked, isFalse);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [700.0, 900.0, 1440.0]) {
     testWidgets('school cards have comfortable columns at $width', (
       tester,

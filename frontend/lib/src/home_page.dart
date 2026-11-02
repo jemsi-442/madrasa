@@ -1,5 +1,6 @@
 import 'design_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'public_shell.dart';
 import 'public_entry_visuals.dart';
@@ -27,6 +28,17 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
   final faqKey = GlobalKey();
   String selected = 'Home';
 
+  Map<String, GlobalKey> get sectionKeys => {
+    'Home': topKey,
+    'Features': featuresKey,
+    'About': aboutKey,
+    'Our story': storyKey,
+    'Learning in practice': practiceKey,
+    'For Schools': schoolsKey,
+    'Partners': partnersKey,
+    'FAQs': faqKey,
+  };
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +47,21 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
 
   void updateScrollActions() {
     final visible = scrollController.offset > 700;
-    if (visible != showBackToTop) setState(() => showBackToTop = visible);
+    var active = 'Home';
+    for (final entry in sectionKeys.entries) {
+      final box = entry.value.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) continue;
+      final viewport = RenderAbstractViewport.maybeOf(box);
+      if (viewport == null) continue;
+      final offset = viewport.getOffsetToReveal(box, 0).offset;
+      if (offset <= scrollController.offset + 100) active = entry.key;
+    }
+    if (visible != showBackToTop || selected != active) {
+      setState(() {
+        showBackToTop = visible;
+        selected = active;
+      });
+    }
   }
 
   @override
@@ -49,16 +75,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
       widget.onNavigate('/contact');
       return;
     }
-    final key = switch (label) {
-      'About' => aboutKey,
-      'Features' => featuresKey,
-      'For Schools' => schoolsKey,
-      'Our story' => storyKey,
-      'Learning in practice' => practiceKey,
-      'Partners' => partnersKey,
-      'FAQs' => faqKey,
-      _ => topKey,
-    };
+    final key = sectionKeys[label] ?? topKey;
     setState(() => selected = label);
     final target = key.currentContext;
     if (target != null) {
