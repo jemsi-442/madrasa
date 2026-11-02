@@ -206,14 +206,17 @@ class _HomeHeader extends StatelessWidget {
       return PublicHeaderBar(
         child: Row(
           children: [
-            Flexible(
+            Expanded(
               child: InkWell(
                 onTap: () => onSection('Home'),
                 borderRadius: BorderRadius.circular(8),
-                child: PublicBrand(light: true, compact: compact),
+                child: PublicBrand(
+                  light: true,
+                  compact: compact,
+                  wordmarkSize: 18,
+                ),
               ),
             ),
-            const Spacer(),
             if (wide) ...[
               for (final label in sections)
                 Padding(
