@@ -5,6 +5,45 @@ import 'package:mif_app/src/lesson_playback_frame.dart';
 import 'package:mif_app/src/lesson_playback_tools.dart';
 
 void main() {
+  testWidgets('short frames keep the stage visible and controls scrollable', (
+    t,
+  ) async {
+    var pressed = false;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 200,
+            child: LessonPlaybackFrame(
+              ready: true,
+              failed: false,
+              playing: true,
+              controls: Column(
+                children: [
+                  const SizedBox(height: 300),
+                  TextButton(
+                    onPressed: () => pressed = true,
+                    child: const Text('Last control'),
+                  ),
+                ],
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      t.getSize(find.byKey(const ValueKey('playback-screen'))).height,
+      greaterThanOrEqualTo(40),
+    );
+    await t.ensureVisible(find.text('Last control'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Last control'));
+    expect(pressed, isTrue);
+    expect(t.takeException(), isNull);
+  });
+
   test('playback clock formats long durations and clamps negative times', () {
     expect(playbackTime(const Duration(seconds: -3)), '0:00');
     expect(playbackTime(const Duration(seconds: 65)), '1:05');

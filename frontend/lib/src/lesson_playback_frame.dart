@@ -60,103 +60,112 @@ class _LessonPlaybackFrameState extends State<LessonPlaybackFrame> {
     },
     child: ColoredBox(
       color: const Color(0xFF0D0E10),
-      child: Column(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              key: const ValueKey('playback-screen'),
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                keyboard.requestFocus();
-                if (widget.ready && !widget.failed) widget.onPlay?.call();
-              },
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  widget.child,
-                  if (widget.failed || !widget.ready || widget.audio)
-                    ColoredBox(
-                      color: const Color(0xFF0D0E10),
-                      child: Center(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(18),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                widget.failed
-                                    ? Icons.videocam_off_outlined
-                                    : widget.audio
-                                    ? Icons.graphic_eq
-                                    : Icons.play_circle_outline,
-                                size: 52,
-                                color: playbackAccent,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                widget.failed
-                                    ? 'Unable to play this media'
-                                    : !widget.ready
-                                    ? 'Opening media...'
-                                    : 'Audio lesson',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                key: const ValueKey('playback-screen'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  keyboard.requestFocus();
+                  if (widget.ready && !widget.failed) widget.onPlay?.call();
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    widget.child,
+                    if (widget.failed || !widget.ready || widget.audio)
+                      ColoredBox(
+                        color: const Color(0xFF0D0E10),
+                        child: Center(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(18),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  widget.failed
+                                      ? Icons.videocam_off_outlined
+                                      : widget.audio
+                                      ? Icons.graphic_eq
+                                      : Icons.play_circle_outline,
+                                  size: 52,
+                                  color: playbackAccent,
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                widget.failed
-                                    ? 'Check your connection or the file format, then use Reload player.'
-                                    : !widget.ready
-                                    ? 'The controls will be ready shortly.'
-                                    : widget.playing
-                                    ? 'Now playing'
-                                    : 'Press Play to listen',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: playbackMuted,
-                                  fontSize: 12,
+                                const SizedBox(height: 12),
+                                Text(
+                                  widget.failed
+                                      ? 'Unable to play this media'
+                                      : !widget.ready
+                                      ? 'Opening media...'
+                                      : 'Audio lesson',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  widget.failed
+                                      ? 'Check your connection or the file format, then use Reload player.'
+                                      : !widget.ready
+                                      ? 'The controls will be ready shortly.'
+                                      : widget.playing
+                                      ? 'Now playing'
+                                      : 'Press Play to listen',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: playbackMuted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  if (widget.ready &&
-                      !widget.failed &&
-                      !widget.audio &&
-                      !widget.playing)
-                    Center(
-                      child: IconButton.filled(
-                        tooltip: 'Play video',
-                        onPressed: widget.onPlay,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black.withValues(alpha: .72),
-                          foregroundColor: playbackAccent,
-                          padding: const EdgeInsets.all(18),
+                    if (widget.ready &&
+                        !widget.failed &&
+                        !widget.audio &&
+                        !widget.playing)
+                      Center(
+                        child: IconButton.filled(
+                          tooltip: 'Play video',
+                          onPressed: widget.onPlay,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.black.withValues(
+                              alpha: .72,
+                            ),
+                            foregroundColor: playbackAccent,
+                            padding: const EdgeInsets.all(18),
+                          ),
+                          icon: const Icon(Icons.play_arrow, size: 44),
                         ),
-                        icon: const Icon(Icons.play_arrow, size: 44),
                       ),
-                    ),
-                  if (widget.buffering && !widget.failed)
-                    const Align(
-                      alignment: Alignment.bottomCenter,
-                      child: LinearProgressIndicator(
-                        color: playbackAccent,
-                        backgroundColor: playbackPanel,
-                        minHeight: 2,
+                    if (widget.buffering && !widget.failed)
+                      const Align(
+                        alignment: Alignment.bottomCenter,
+                        child: LinearProgressIndicator(
+                          color: playbackAccent,
+                          backgroundColor: playbackPanel,
+                          minHeight: 2,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          widget.controls,
-        ],
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: constraints.maxHeight * .8,
+              ),
+              child: SingleChildScrollView(child: widget.controls),
+            ),
+          ],
+        ),
       ),
     ),
   );
