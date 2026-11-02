@@ -40,7 +40,7 @@ void main() {
       expect(find.text('OUR STORY'), findsOneWidget);
       expect(find.text('PARTNER WITH AFAQ'), findsOneWidget);
       if (width >= 1150) {
-        await tester.tap(find.text('For Schools'));
+        await tester.tap(find.text('For Schools').first);
         await tester.pumpAndSettle();
         final schoolTop = tester
             .getTopLeft(find.text('FOR SCHOOLS & MADRASAS'))
@@ -62,6 +62,76 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+  testWidgets('homepage shortcuts reach their sections on a phone', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: PublicHomeScreen(onNavigate: (_) {})),
+    );
+    await tester.pumpAndSettle();
+    for (final (label, heading) in [
+      ('Our story', 'OUR STORY'),
+      ('Learning in practice', 'LEARNING IN PRACTICE'),
+      ('Partners', 'PARTNER WITH AFAQ'),
+      ('FAQs', 'QUESTIONS & ANSWERS'),
+    ]) {
+      final shortcut = find.widgetWithText(OutlinedButton, label);
+      await tester.ensureVisible(shortcut);
+      await tester.pumpAndSettle();
+      await tester.tap(shortcut);
+      await tester.pumpAndSettle();
+      final top = tester.getTopLeft(find.text(heading)).dy;
+      expect(top, inInclusiveRange(0, 400), reason: label);
+      expect(tester.takeException(), isNull);
+    }
+    await tester.tap(find.byTooltip('Open menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('For Schools').last);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.text('FOR SCHOOLS & MADRASAS')).dy,
+      inInclusiveRange(0, 400),
+    );
+  });
+
+  testWidgets('expanded content supports large text on a narrow screen', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                const HomeStorySections(),
+                HomeSchoolSection(onNavigate: (_) {}),
+                HomePartnershipSection(onNavigate: (_) {}),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('What is Afaq?'));
+    await tester.tap(find.text('What is Afaq?'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [0.0, 1.0, 10.0, 19.0, 20.0, 54.0, 120.0]) {
     testWidgets('home features tolerate a transient width of $width', (
       tester,

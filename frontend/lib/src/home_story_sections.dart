@@ -4,7 +4,8 @@ import 'public_shell.dart';
 /// Public copy adapted from the supplied pitch deck and event proposal.
 /// Projections, fundraising targets and personal biographies are not published.
 class HomeStorySections extends StatelessWidget {
-  const HomeStorySections({super.key});
+  const HomeStorySections({super.key, this.storyKey, this.practiceKey});
+  final Key? storyKey, practiceKey;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -41,6 +42,7 @@ class HomeStorySections extends StatelessWidget {
         ),
       ),
       _Section(
+        key: storyKey,
         color: Colors.white,
         eyebrow: 'OUR STORY',
         title: 'Small beginnings. A shared ambition.',
@@ -81,6 +83,7 @@ class HomeStorySections extends StatelessWidget {
         ),
       ),
       _Section(
+        key: practiceKey,
         eyebrow: 'LEARNING IN PRACTICE',
         title: 'More than a lesson.\nAn opportunity to take part.',
         intro:
@@ -184,8 +187,13 @@ class HomeSchoolSection extends StatelessWidget {
 }
 
 class HomePartnershipSection extends StatelessWidget {
-  const HomePartnershipSection({super.key, required this.onNavigate});
+  const HomePartnershipSection({
+    super.key,
+    required this.onNavigate,
+    this.faqKey,
+  });
   final PublicNavigate onNavigate;
+  final Key? faqKey;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -234,6 +242,7 @@ class HomePartnershipSection extends StatelessWidget {
         ),
       ),
       _Section(
+        key: faqKey,
         eyebrow: 'QUESTIONS & ANSWERS',
         title: 'A little clarity before you begin.',
         child: Column(
@@ -285,6 +294,7 @@ class HomePartnershipSection extends StatelessWidget {
 
 class _Section extends StatelessWidget {
   const _Section({
+    super.key,
     required this.eyebrow,
     required this.title,
     required this.child,

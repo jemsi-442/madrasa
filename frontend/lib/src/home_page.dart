@@ -19,6 +19,10 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
   final aboutKey = GlobalKey();
   final featuresKey = GlobalKey();
   final schoolsKey = GlobalKey();
+  final storyKey = GlobalKey();
+  final practiceKey = GlobalKey();
+  final partnersKey = GlobalKey();
+  final faqKey = GlobalKey();
   String selected = 'Home';
 
   void openSection(String label) {
@@ -30,6 +34,10 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
       'About' => aboutKey,
       'Features' => featuresKey,
       'For Schools' => schoolsKey,
+      'Our story' => storyKey,
+      'Learning in practice' => practiceKey,
+      'Partners' => partnersKey,
+      'FAQs' => faqKey,
       _ => topKey,
     };
     setState(() => selected = label);
@@ -72,12 +80,47 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                     key: aboutKey,
                     onJoin: () => widget.onNavigate('/register'),
                   ),
-                  const HomeStorySections(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        for (final label in [
+                          'Our story',
+                          'Learning in practice',
+                          'For Schools',
+                          'Partners',
+                          'FAQs',
+                        ])
+                          OutlinedButton.icon(
+                            onPressed: () => openSection(label),
+                            icon: const Icon(
+                              Icons.arrow_downward_rounded,
+                              size: 18,
+                            ),
+                            label: Text(label),
+                          ),
+                      ],
+                    ),
+                  ),
+                  HomeStorySections(
+                    storyKey: storyKey,
+                    practiceKey: practiceKey,
+                  ),
                   HomeSchoolSection(
                     key: schoolsKey,
                     onNavigate: widget.onNavigate,
                   ),
-                  HomePartnershipSection(onNavigate: widget.onNavigate),
+                  HomePartnershipSection(
+                    key: partnersKey,
+                    faqKey: faqKey,
+                    onNavigate: widget.onNavigate,
+                  ),
                   PublicSiteFooter(onNavigate: widget.onNavigate),
                 ],
               ),
