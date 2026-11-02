@@ -124,6 +124,16 @@ void main() {
             .dy;
         expect(schoolTop, greaterThanOrEqualTo(0));
         expect(schoolTop, lessThan(400));
+        await tester.tap(find.byTooltip('More homepage sections'));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(CheckedPopupMenuItem<String>, 'Partners'),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(find.text('PARTNER WITH AFAQ')).dy,
+          inInclusiveRange(0, 400),
+        );
       }
       await tester.ensureVisible(find.text('Discuss your madrasa'));
       await tester.pumpAndSettle();

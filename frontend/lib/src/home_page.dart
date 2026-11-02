@@ -248,7 +248,51 @@ class _HomeHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-              const SizedBox(width: 24),
+              PopupMenuButton<String>(
+                tooltip: 'More homepage sections',
+                onSelected: onSection,
+                itemBuilder: (_) => [
+                  for (final label in [
+                    'Our story',
+                    'Learning in practice',
+                    'Partners',
+                    'FAQs',
+                  ])
+                    CheckedPopupMenuItem(
+                      value: label,
+                      checked: selected == label,
+                      child: Text(label),
+                    ),
+                ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'More',
+                        style: TextStyle(
+                          color: sections.contains(selected)
+                              ? Colors.white
+                              : publicHeaderAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.expand_more,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
             ],
             OutlinedButton(
               key: const ValueKey('header-login'),
