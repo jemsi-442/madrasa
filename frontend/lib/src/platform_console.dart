@@ -79,18 +79,30 @@ class PlatformApi {
   }
 
   Future<dynamic> call(String path, {Map<String, dynamic>? body}) {
-    if (body != null && path.endsWith('/preview')) {
-      return _call(path, body: body);
-    }
-    if (body != null) return dataWrite(() => _call(path, body: body));
-    if (!liveDataPath(path)) return _call(path);
     final owner = sessionVersion;
-    return liveRead(() {
+    Future<dynamic> perform() {
       if (owner != sessionVersion) {
         throw const ApiException('Session changed.', 409);
       }
-      return _call(path);
-    });
+      return _call(path, body: body);
+    }
+
+    if (body != null && path.endsWith('/preview')) {
+      return perform();
+    }
+    if (body != null) return dataWrite(perform);
+    if (!liveDataPath(path)) return perform();
+    return liveRead(perform);
+  }
+
+  Future<dynamic> Function(String, Map<String, dynamic>?) bindSession() {
+    final owner = sessionVersion;
+    return (path, body) async {
+      if (owner != sessionVersion) {
+        throw const ApiException('Session changed. Reopen this form.', 409);
+      }
+      return call(path, body: body);
+    };
   }
 
   Future<dynamic> _call(String path, {Map<String, dynamic>? body}) async {
@@ -442,9 +454,14 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   Future<T?> sessionDialog<T>({
     required BuildContext context,
     required WidgetBuilder builder,
+    bool barrierDismissible = true,
   }) async {
     final version = api.sessionVersion;
-    final route = DialogRoute<T>(context: context, builder: builder);
+    final route = DialogRoute<T>(
+      context: context,
+      builder: builder,
+      barrierDismissible: barrierDismissible,
+    );
     sessionDialogs.add(route);
     try {
       final result = await Navigator.of(
@@ -1996,7 +2013,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           : backupsView && !isAdmin
           ? PlatformBackupRequests(
               onAudit: () => navigateTo(PlatformPage.history),
-              request: (path, body) => api.call(path, body: body),
+              request: api.bindSession(),
+              showForm: (context, builder) => sessionDialog<bool>(
+                context: context,
+                builder: builder,
+                barrierDismissible: false,
+              ),
             )
           : updatesView && !isAdmin
           ? PlatformUpdatesPage(
@@ -2006,7 +2028,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           : incidentsView && !isAdmin
           ? SecurityIncidentRegister(
               initialIncidentId: incidentToOpen,
-              request: (path, body) => api.call(path, body: body),
+              request: api.bindSession(),
+              showForm: (context, builder) => sessionDialog<bool>(
+                context: context,
+                builder: builder,
+                barrierDismissible: false,
+              ),
             )
           : audit && !sessionsView && !accountsView && !isAdmin
           ? PlatformAuditPage(

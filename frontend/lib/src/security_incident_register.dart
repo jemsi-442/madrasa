@@ -3,13 +3,16 @@ import 'dart:math';
 import 'design_tokens.dart';
 import 'foundation_ui.dart' show DashboardMetric;
 import 'it_workspace_visuals.dart';
+import 'platform_form_dialog.dart';
 
 class SecurityIncidentRegister extends StatefulWidget {
   const SecurityIncidentRegister({
     super.key,
     required this.request,
     this.initialIncidentId,
+    this.showForm = showPlatformForm,
   });
+  final PlatformFormPresenter showForm;
   final String? initialIncidentId;
   final Future<dynamic> Function(String path, Map<String, dynamic>? body)
   request;
@@ -95,6 +98,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   }
 
   Future<void> edit({bool update = false}) async {
+    final request = widget.request;
     final original = selected;
     final title = TextEditingController();
     final note = TextEditingController();
@@ -109,10 +113,9 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
     Map<String, dynamic>? submitted;
     String? savedId;
     String? failure;
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
+    final saved = await widget.showForm(
+      context,
+      (context) => StatefulBuilder(
         builder: (context, change) => PopScope(
           canPop: !saving,
           child: AlertDialog(
@@ -214,7 +217,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
                           failure = null;
                         });
                         try {
-                          final result = await widget.request(
+                          final result = await request(
                             update
                                 ? '/incidents/${original!['id']}'
                                 : '/incidents',

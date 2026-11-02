@@ -2122,3 +2122,16 @@ receive a revision conflict; a subsequent identical retry can confirm the saved
 response. Closing the form discards its retry key, so check history before making
 a new submission. Legacy callers without requestId retain revision protection
 but do not get replay confirmation. No migration or provider setup is needed.
+
+### IT form session ownership
+
+Incident create/update and isolated restore-test request dialogs use the console's
+session-tracked presenter. Session expiry closes these dialogs. Their request
+callbacks remain bound to the session that opened the form, even after a parent
+rebuild; a replacement login cannot submit an older form under the new account.
+Platform API calls also check session ownership before a deferred request starts.
+
+Network failures retain form input while the dialog is open. Drafts are not
+persisted across expiry, logout or closing the dialog. These client checks do not
+replace server-side authorization. Regression tests cover both forms on expiry
+and login replacement, including a parent rebuild before submission.

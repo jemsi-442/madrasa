@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'platform_backups_page.dart';
 import 'design_tokens.dart';
 import 'it_workspace_visuals.dart';
+import 'platform_form_dialog.dart';
 
 class PlatformBackupRequests extends StatefulWidget {
   const PlatformBackupRequests({
     super.key,
     required this.request,
     required this.onAudit,
+    this.showForm = showPlatformForm,
   });
+  final PlatformFormPresenter showForm;
   final Future<dynamic> Function(String, Map<String, dynamic>?) request;
   final VoidCallback onAudit;
   @override
@@ -50,6 +53,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
   }
 
   Future<void> create() async {
+    final request = widget.request;
     final snapshot = TextEditingController();
     final reason = TextEditingController();
     final key = GlobalKey<FormState>();
@@ -60,10 +64,9 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
     ).join();
     var saving = false;
     String? failure;
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
+    final saved = await widget.showForm(
+      context,
+      (context) => StatefulBuilder(
         builder: (context, change) => PopScope(
           canPop: !saving,
           child: AlertDialog(
@@ -132,7 +135,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                           failure = null;
                         });
                         try {
-                          await widget.request('/backups/requests', {
+                          await request('/backups/requests', {
                             'requestId': requestId,
                             'snapshot': snapshot.text.trim(),
                             'reason': reason.text.trim(),
