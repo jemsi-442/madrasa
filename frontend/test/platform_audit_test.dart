@@ -209,6 +209,14 @@ void main() {
         await tester.tap(find.text('Refresh'));
         await tester.pumpAndSettle();
         expect(requests.last.queryParameters['actorId'], 'operator');
+        await openPlatformPage(tester, 'My sessions');
+        await openPlatformPage(tester, 'Audit trail');
+        expect(requests.last.path, '/api/platform/audit-events');
+        expect(requests.last.queryParameters.containsKey('actorId'), isFalse);
+        expect(requests.last.queryParameters.containsKey('action'), isFalse);
+        expect(requests.last.queryParameters.containsKey('actorRole'), isFalse);
+        expect(requests.last.queryParameters.containsKey('from'), isFalse);
+        expect(find.text('Filtered history: operator'), findsNothing);
         await tester.ensureVisible(find.text('Details'));
         await tester.tap(find.text('Details'));
         await tester.pumpAndSettle();

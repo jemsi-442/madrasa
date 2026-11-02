@@ -1099,6 +1099,15 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       widget.browserState.write(navigationKey, destination.name);
     }
     run(() async {
+      if (destination == PlatformPage.history && !audit) {
+        auditApplicationId = null;
+        auditActorId = null;
+        auditTechnicalReviewId = null;
+        auditAction = '';
+        auditRole = '';
+        auditPeriod = '';
+        auditSince = null;
+      }
       homeView = destination == PlatformPage.home;
       madrasasView = destination == PlatformPage.madrasas;
       staffView = destination == PlatformPage.staff;
