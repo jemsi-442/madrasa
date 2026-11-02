@@ -3,6 +3,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_it_dashboard.dart';
 
 void main() {
+  testWidgets('Incident cards carry distinct filters and accessible values', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final selected = <bool>[];
+    final now = DateTime.utc(2026, 11, 2);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlatformItDashboard(
+            busy: false,
+            error: null,
+            now: () => now,
+            snapshot: {
+              'incidents': {
+                'open': 4,
+                'high': 2,
+                'checkedAt': now.toIso8601String(),
+              },
+            },
+            onRefresh: () {},
+            onHealth: () {},
+            onIncidents: () => fail('Unfiltered route used'),
+            onIncidentFilter: selected.add,
+            onAccounts: () {},
+            onAudit: () {},
+            onSessions: () {},
+          ),
+        ),
+      ),
+    );
+    for (final label in ['Open incidents', 'High-priority incidents']) {
+      final card = find.byKey(ValueKey('overview-$label'));
+      await tester.ensureVisible(card);
+      await tester.tap(card);
+      await tester.pump();
+    }
+    expect(selected, [false, true]);
+    expect(find.bySemanticsLabel('Open incidents: 4'), findsOneWidget);
+    expect(find.bySemanticsLabel('High-priority incidents: 2'), findsOneWidget);
+    semantics.dispose();
+    await tester.pumpWidget(const SizedBox());
+  });
   for (final error in <String?>[null, 'Connection unavailable']) {
     testWidgets('Overview does not claim all-clear after error: $error', (
       tester,

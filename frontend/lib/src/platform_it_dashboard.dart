@@ -426,24 +426,36 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
               : '${failed.length}',
           Icons.report_problem_outlined,
           const Color(0xff346bb0),
+          onHealth,
+          'Open system health',
         ),
         (
           'Service health',
           checks.isEmpty || !fresh ? 'Not current' : '$available / 2',
           Icons.dns_outlined,
           const Color(0xff278457),
+          onHealth,
+          'Open system health',
         ),
         (
           'Open incidents',
           incidentsReady ? '$openCount' : 'Not current',
           Icons.warning_amber_outlined,
           AfaqDesign.gold,
+          () => widget.onIncidentFilter != null
+              ? widget.onIncidentFilter!(false)
+              : widget.onIncidents(),
+          'View unresolved incidents',
         ),
         (
           'High-priority incidents',
           incidentsReady ? '$highCount' : 'Not current',
           Icons.shield_outlined,
           const Color(0xff7663af),
+          () => widget.onIncidentFilter != null
+              ? widget.onIncidentFilter!(true)
+              : widget.onIncidents(),
+          'View unresolved high-priority incidents',
         ),
       ];
       return SingleChildScrollView(
@@ -511,11 +523,13 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                         columns,
                     child: Stack(
                       children: [
-                        ItMetricCard(
-                          label: metric.$1,
-                          value: metric.$2,
-                          icon: metric.$3,
-                          accent: metric.$4,
+                        ExcludeSemantics(
+                          child: ItMetricCard(
+                            label: metric.$1,
+                            value: metric.$2,
+                            icon: metric.$3,
+                            accent: metric.$4,
+                          ),
                         ),
                         Positioned.fill(
                           child: Material(
@@ -523,28 +537,19 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                             borderRadius: BorderRadius.circular(14),
                             clipBehavior: Clip.antiAlias,
                             child: Tooltip(
-                              message: metric.$1.contains('incidents')
-                                  ? 'Open incident register'
-                                  : 'Open system health',
+                              message: metric.$6,
+                              excludeFromSemantics: true,
                               child: Semantics(
-                                label: 'Open ${metric.$1}',
+                                label: '${metric.$1}: ${metric.$2}',
+                                hint: metric.$6,
                                 button: true,
+                                enabled: !busy,
                                 child: InkWell(
                                   key: ValueKey('overview-${metric.$1}'),
-                                  onTap: busy
-                                      ? null
-                                      : metric.$1.contains('incidents')
-                                      ? () {
-                                          if (widget.onIncidentFilter != null) {
-                                            widget.onIncidentFilter!(
-                                              metric.$1 ==
-                                                  'High-priority incidents',
-                                            );
-                                          } else {
-                                            widget.onIncidents();
-                                          }
-                                        }
-                                      : onHealth,
+                                  focusColor: AfaqDesign.ink.withValues(
+                                    alpha: .18,
+                                  ),
+                                  onTap: busy ? null : metric.$5,
                                 ),
                               ),
                             ),
