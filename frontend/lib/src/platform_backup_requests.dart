@@ -63,6 +63,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
       (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
     ).join();
     var saving = false;
+    Map<String, dynamic>? submitted;
     String? failure;
     final saved = await widget.showForm(
       context,
@@ -85,7 +86,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                       const SizedBox(height: 20),
                       TextFormField(
                         controller: snapshot,
-                        enabled: !saving,
+                        enabled: !saving && submitted == null,
                         maxLength: 100,
                         decoration: const InputDecoration(
                           labelText: 'Snapshot reference',
@@ -99,7 +100,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: reason,
-                        enabled: !saving,
+                        enabled: !saving && submitted == null,
                         minLines: 3,
                         maxLines: 5,
                         maxLength: 1000,
@@ -129,24 +130,26 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                 onPressed: saving
                     ? null
                     : () async {
-                        if (!key.currentState!.validate()) return;
+                        if (submitted == null && !key.currentState!.validate())
+                          return;
                         change(() {
-                          saving = true;
-                          failure = null;
-                        });
-                        try {
-                          await request('/backups/requests', {
+                          submitted ??= Map<String, dynamic>.unmodifiable({
                             'requestId': requestId,
                             'snapshot': snapshot.text.trim(),
                             'reason': reason.text.trim(),
                           });
+                          saving = true;
+                          failure = null;
+                        });
+                        try {
+                          await request('/backups/requests', submitted!);
                           if (context.mounted) Navigator.pop(context, true);
                         } catch (_) {
                           if (context.mounted) {
                             change(() {
                               saving = false;
                               failure =
-                                  'Could not confirm the save. Retry with the same details; duplicate requests are prevented.';
+                                  'Save could not be confirmed. Your details are retained and locked. Retry to confirm the same request. Before creating a different request, cancel and check request history.';
                             });
                           }
                         }

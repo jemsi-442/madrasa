@@ -30,13 +30,70 @@ void main() {
     await tester.tap(find.text('Record request'));
     await tester.pumpAndSettle();
     expect(find.text('BKP-SYNTHETIC'), findsOneWidget);
+    for (final field in tester.widgetList<TextFormField>(
+      find.byType(TextFormField),
+    )) {
+      expect(field.enabled, isFalse);
+    }
     await tester.tap(find.text('Record request'));
     await tester.pumpAndSettle();
     expect(attempts.length, 2);
     expect(attempts[0]['requestId'], attempts[1]['requestId']);
+    expect(attempts[1], attempts[0]);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 350));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Confirmed retry closes form and reloads recorded requests', (
+    tester,
+  ) async {
+    final attempts = <Map<String, dynamic>>[];
+    var reads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlatformBackupRequests(
+            onAudit: () {},
+            request: (path, body) async {
+              if (body == null) {
+                reads++;
+                return {'items': [], 'total': 0};
+              }
+              attempts.add(body);
+              if (attempts.length == 1)
+                throw Exception('Synthetic lost response');
+              return {'id': 'synthetic-request'};
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Request restore test'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), ' BKP-SYNTHETIC ');
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      ' Synthetic isolated recovery ',
+    );
+    await tester.tap(find.text('Record request'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Record request'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(attempts, hasLength(2));
+    expect(attempts[1], attempts[0]);
+    expect(attempts[1]['snapshot'], 'BKP-SYNTHETIC');
+    expect(attempts[1]['reason'], 'Synthetic isolated recovery');
+    expect(reads, 2);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(
+      find.text('Request recorded. No restore has been executed.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

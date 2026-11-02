@@ -2135,3 +2135,10 @@ Network failures retain form input while the dialog is open. Drafts are not
 persisted across expiry, logout or closing the dialog. These client checks do not
 replace server-side authorization. Regression tests cover both forms on expiry
 and login replacement, including a parent rebuild before submission.
+
+Restore-test forms also freeze the trimmed snapshot reference and reason on the
+first valid submission. An unconfirmed save keeps those fields locked and retries
+the same request ID and payload. A confirmed retry closes the form and reloads
+request history. To change the details, cancel and check history before creating
+a new request: the earlier submission may already have been saved. This records
+a request only; no backup worker or restore execution is connected by this flow.
