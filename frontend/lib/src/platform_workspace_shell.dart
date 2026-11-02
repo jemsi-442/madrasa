@@ -359,72 +359,6 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
         },
       );
 
-  // Related destinations are shortcuts, not sequential approval gates.
-  List<(PlatformPage, String)> get relatedDestinations => switch (page) {
-    PlatformPage.health => [
-      (PlatformPage.integrations, 'Check configuration'),
-      (PlatformPage.incidents, 'Record or review incident'),
-    ],
-    PlatformPage.accounts => [
-      (PlatformPage.history, 'Review access history'),
-      (PlatformPage.sessions, 'My sessions only'),
-    ],
-    PlatformPage.sessions => [
-      (PlatformPage.history, 'Review audit logs'),
-      (PlatformPage.incidents, 'Record or review incident'),
-    ],
-    PlatformPage.history => [
-      (PlatformPage.incidents, 'Investigate in incidents'),
-      (PlatformPage.accounts, 'Check company access'),
-    ],
-    PlatformPage.incidents => [
-      (PlatformPage.history, 'Inspect audit evidence'),
-      (PlatformPage.health, 'Check service health'),
-      (PlatformPage.sessions, 'My sessions only'),
-    ],
-    PlatformPage.updates => [
-      (PlatformPage.incidents, 'Review incidents'),
-      (PlatformPage.backups, 'Check recovery readiness'),
-    ],
-    PlatformPage.backups => [
-      (PlatformPage.history, 'Review audit logs'),
-      (PlatformPage.health, 'Check service health'),
-    ],
-    PlatformPage.offlineSync => [
-      (PlatformPage.incidents, 'Record or review incident'),
-      (PlatformPage.integrations, 'Check configuration'),
-    ],
-    PlatformPage.integrations => [
-      (PlatformPage.health, 'Check service health'),
-      (PlatformPage.history, 'Review audit logs'),
-    ],
-    _ => [],
-  };
-
-  Widget relatedActions() => Material(
-    color: Colors.white,
-    child: SizedBox(
-      height: 48,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            for (final item in relatedDestinations)
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: TextButton.icon(
-                  onPressed: busy ? null : () => onNavigate(item.$1),
-                  icon: const Icon(Icons.arrow_forward, size: 18),
-                  label: Text(item.$2),
-                ),
-              ),
-          ],
-        ),
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
@@ -505,8 +439,6 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
                       ),
                     ),
                   ),
-                  if (!isAdmin && relatedDestinations.isNotEmpty)
-                    relatedActions(),
                   Expanded(
                     child: isAdmin ? child : ItWorkspaceSurface(child: child),
                   ),
