@@ -23,6 +23,25 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('tablet hero stacks matching readable columns', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1024, 900);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: PublicHomeScreen(onNavigate: (_) {})),
+    );
+    await tester.pumpAndSettle();
+    final photo = tester.getRect(find.byKey(const ValueKey('home-hero-photo')));
+    final headline = tester.getRect(
+      find.text('Knowledge that\nshapes brighter\ntomorrows.'),
+    );
+    final actions = tester.getRect(find.byKey(const ValueKey('hero-register')));
+    expect(photo.width, 680);
+    expect(photo.left, headline.left);
+    expect(photo.top, greaterThan(actions.bottom));
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'desktop hero gives the headline and original photo a larger stage',
     (tester) async {

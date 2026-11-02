@@ -422,7 +422,7 @@ class _HomeHero extends StatelessWidget {
             builder: (context, constraints) {
               if (constraints.maxWidth == 0) return const SizedBox.shrink();
               final wide =
-                  constraints.maxWidth >= 850 &&
+                  constraints.maxWidth >= 1050 &&
                   MediaQuery.textScalerOf(context).scale(16) < 25;
               final message = _HeroMessage(
                 onJoin: onJoin,
@@ -505,7 +505,14 @@ class _HomeHero extends StatelessWidget {
                             : Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  message,
+                                  Center(
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 680,
+                                      ),
+                                      child: message,
+                                    ),
+                                  ),
                                   const SizedBox(height: 36),
                                   Center(
                                     child: ConstrainedBox(
