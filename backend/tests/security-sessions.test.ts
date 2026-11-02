@@ -86,3 +86,17 @@ it('rejects oversized search before querying sessions', async () => {
   await expect(service.listSecuritySessions(actor, { q: 'x'.repeat(101) })).rejects.toThrow();
   expect(tx.platformSession.findMany).not.toHaveBeenCalled();
 });
+
+it.each(['current', 'other'])('filters %s platform sessions before pagination', async filter => {
+  const { tx, service } = setup();
+  await service.listSecuritySessions(actor, { filter });
+  const args = tx.platformSession.findMany.mock.calls[0]![0] as any;
+  expect(args.where.id).toEqual(filter === 'current' ? actor.sessionId : { not: actor.sessionId });
+  expect(args.where.revokedAt).toBeNull();
+});
+
+it('has no current platform session in the madrasa group', async () => {
+  const { tx, service } = setup();
+  expect(await service.listSecuritySessions(actor, { source: 'madrasa', filter: 'current' })).toEqual([]);
+  expect(tx.refreshToken.findMany).not.toHaveBeenCalled();
+});

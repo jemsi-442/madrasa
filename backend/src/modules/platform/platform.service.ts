@@ -470,6 +470,7 @@ export class PlatformGovernanceService {
     const query = platformPageSchema.extend({
       source: z.enum(['platform', 'madrasa']).default('platform'),
       q: z.string().trim().max(100).default(''),
+      filter: z.enum(['all', 'current', 'other']).default('all'),
     }).strict().parse(input);
     return this.db.$transaction(async (tx) => {
       await this.authorize(tx, actor, 'platform.session.inspect');
@@ -479,6 +480,8 @@ export class PlatformGovernanceService {
       if (query.source === 'platform') {
         const rows = await tx.platformSession.findMany({
           where: { revokedAt: null, expiresAt: { gt: now },
+            ...(query.filter === 'current' ? { id: actor.sessionId } :
+              query.filter === 'other' ? { id: { not: actor.sessionId } } : {}),
             ...(query.q ? { OR: [
               { account: { fullName: { contains: query.q } } },
               { ipAddress: { contains: query.q } },
@@ -497,6 +500,8 @@ export class PlatformGovernanceService {
           canRevoke: accountId === actor.accountId,
         }));
       }
+      // A platform login can never be a madrasa refresh credential.
+      if (query.filter === 'current') return [];
       const rows = await tx.refreshToken.findMany({
         where: { revokedAt: null, expiresAt: { gt: now }, user: { status: 'ACTIVE' },
           ...(query.q ? { OR: [

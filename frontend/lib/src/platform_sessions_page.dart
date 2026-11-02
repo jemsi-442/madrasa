@@ -18,11 +18,13 @@ class PlatformSessionsPage extends StatefulWidget {
     this.source = 'platform',
     this.onSource,
     this.onSearch,
+    this.onFilter,
   });
   final bool oversight;
   final String source;
   final ValueChanged<String>? onSource;
   final ValueChanged<String>? onSearch;
+  final ValueChanged<String>? onFilter;
   final List<Map<String, dynamic>> records;
   final bool busy;
   final String? error;
@@ -179,7 +181,15 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                 ),
                 DropdownMenuItem(value: 'other', child: Text('Other sessions')),
               ],
-              onChanged: (value) => setState(() => filter = value ?? 'all'),
+              onChanged: widget.busy
+                  ? null
+                  : (value) {
+                      setState(() {
+                        filter = value ?? 'all';
+                        selected = null;
+                      });
+                      widget.onFilter?.call(filter);
+                    },
             ),
             const SizedBox(height: 20),
             Text(

@@ -11,12 +11,14 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       String? source;
       String? query;
+      String? selectedFilter;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: PlatformSessionsPage(
               oversight: true,
               onSearch: (value) => query = value,
+              onFilter: (value) => selectedFilter = value,
               source: 'platform',
               onSource: (value) => source = value,
               records: const [
@@ -49,6 +51,11 @@ void main() {
       await tester.tap(find.text('Clear search'));
       await tester.pumpAndSettle();
       expect(query, '');
+      await tester.tap(find.text('All listed sessions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Other sessions').last);
+      await tester.pumpAndSettle();
+      expect(selectedFilter, 'other');
       await tester.ensureVisible(find.text('Review').first);
       await tester.tap(find.text('Review').first);
       await tester.pumpAndSettle();

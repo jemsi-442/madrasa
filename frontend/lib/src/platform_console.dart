@@ -385,6 +385,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool sessionsView = false;
   String sessionSource = 'platform';
   String sessionSearch = '';
+  String sessionFilter = 'all';
   bool accountsView = false;
   bool homeView = false;
   bool madrasasView = false;
@@ -600,6 +601,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         'page': '$page',
         'pageSize': '20',
         if (sessionsView && !isAdmin) 'source': sessionSource,
+        if (sessionsView && !isAdmin) 'filter': sessionFilter,
         if (sessionsView && !isAdmin && sessionSearch.isNotEmpty)
           'q': sessionSearch,
         if (!accountsView &&
@@ -2081,6 +2083,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           : sessionsView && !isAdmin
           ? PlatformSessionsPage(
               oversight: true,
+              onFilter: (value) => run(() async {
+                sessionFilter = value;
+                page = 1;
+                records = [];
+                await load();
+              }),
               onSearch: (value) => run(() async {
                 sessionSearch = value;
                 page = 1;
@@ -2090,6 +2098,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               source: sessionSource,
               onSource: (value) => run(() async {
                 sessionSource = value;
+                sessionFilter = 'all';
                 page = 1;
                 records = [];
                 await load();

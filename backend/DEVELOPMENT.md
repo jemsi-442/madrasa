@@ -8,7 +8,10 @@ The IT `Sessions` page reads `/api/platform/security-sessions` with separate
 platform and madrasa account groups and pagination. Only active IT_SECURITY
 accounts can search these groups by account name, role or IP using `q` (up to
 100 characters). Madrasa names are searchable in the madrasa group. Filtering
-is applied on the server before pagination. Only active IT_SECURITY
+is applied on the server before pagination, including `filter=current` and
+`filter=other` (the default is `all`).
+Current refers to the inspecting IT login, not an online-presence signal;
+the madrasa group therefore has no current platform session. Only active IT_SECURITY
 accounts have `platform.session.inspect`; other roles retain their existing
 own-session access. Responses include account, role, scope, timestamps and the
 IP observed at login or token renewal, never tokens or password hashes.
