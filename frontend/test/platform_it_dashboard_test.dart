@@ -37,14 +37,8 @@ void main() {
           ),
         ),
       );
-      expect(
-        find.text('No open issues in current checks'),
-        findsNothing,
-      );
-      expect(
-        find.text('Status needs verification'),
-        findsNothing,
-      );
+      expect(find.text('No open issues in current checks'), findsNothing);
+      expect(find.text('Status needs verification'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });
@@ -99,7 +93,10 @@ void main() {
         }
         expect(find.textContaining('Incident snapshot:'), findsNothing);
         expect(find.textContaining('Service snapshot:'), findsNothing);
-        expect(find.textContaining('Check service availability,'), findsNothing);
+        expect(
+          find.textContaining('Check service availability,'),
+          findsNothing,
+        );
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
@@ -178,6 +175,24 @@ void main() {
         expect(find.text('High-priority incidents'), findsOneWidget);
         expect(find.text('Not measured'), findsNothing);
         expect(find.textContaining('Manage your own'), findsNothing);
+        for (final label in [
+          'Failed service checks',
+          'Service health',
+          'Open incidents',
+          'High-priority incidents',
+        ]) {
+          final card = find.byKey(ValueKey('overview-$label'));
+          await tester.ensureVisible(card);
+          final before = actions.length;
+          await tester.tap(card);
+          await tester.pump();
+          expect(actions.length, before + (busy ? 0 : 1));
+          if (!busy)
+            expect(
+              actions.last,
+              label.contains('incidents') ? 'incidents' : 'health',
+            );
+        }
         for (final entry in {
           'Company accounts': 'accounts',
           'Security incidents': 'incidents',

@@ -507,11 +507,39 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                     width:
                         (bounds.maxWidth - padding * 2 - (columns - 1) * 16) /
                         columns,
-                    child: ItMetricCard(
-                      label: metric.$1,
-                      value: metric.$2,
-                      icon: metric.$3,
-                      accent: metric.$4,
+                    child: Stack(
+                      children: [
+                        ItMetricCard(
+                          label: metric.$1,
+                          value: metric.$2,
+                          icon: metric.$3,
+                          accent: metric.$4,
+                        ),
+                        Positioned.fill(
+                          child: Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(14),
+                            clipBehavior: Clip.antiAlias,
+                            child: Tooltip(
+                              message: metric.$1.contains('incidents')
+                                  ? 'Open incident register'
+                                  : 'Open system health',
+                              child: Semantics(
+                                label: 'Open ${metric.$1}',
+                                button: true,
+                                child: InkWell(
+                                  key: ValueKey('overview-${metric.$1}'),
+                                  onTap: busy
+                                      ? null
+                                      : metric.$1.contains('incidents')
+                                      ? widget.onIncidents
+                                      : onHealth,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
