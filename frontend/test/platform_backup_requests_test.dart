@@ -62,8 +62,9 @@ void main() {
                 return {'items': [], 'total': 0};
               }
               attempts.add(body);
-              if (attempts.length == 1)
+              if (attempts.length == 1) {
                 throw Exception('Synthetic lost response');
+              }
               return {'id': 'synthetic-request'};
             },
           ),

@@ -130,8 +130,9 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                 onPressed: saving
                     ? null
                     : () async {
-                        if (submitted == null && !key.currentState!.validate())
+                        if (submitted == null && !key.currentState!.validate()) {
                           return;
+                        }
                         change(() {
                           submitted ??= Map<String, dynamic>.unmodifiable({
                             'requestId': requestId,
