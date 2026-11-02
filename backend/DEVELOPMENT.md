@@ -2339,3 +2339,31 @@ part of the 125-test run. Provider connectivity, actual backup/restore execution
 device trust/telemetry and configuration changes remain unverified or unconnected.
 The running frontend and API both returned HTTP 200; no server restart, demo
 reset, credential change, migration or production deployment was performed.
+
+### Live local IT navigation smoke check
+
+On 2026-11-02, an isolated Chromium browser signed in using the saved local IT
+demo account and opened all ten IT pages against the running API: Overview,
+System Health, Access & Roles, Sessions & Devices, Audit Logs, Security Incidents,
+Vulnerabilities & Updates, Backups & Recovery, Offline Sync and Integrations.
+All expected page headings appeared, with no failed API GET responses or browser
+JavaScript errors observed. Screenshots were captured at 1440 x 1100.
+
+To repeat with a locally installed Playwright module and Chromium:
+
+```bash
+cd backend
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core node scripts/check-it-workflow.mjs --confirm-local-development
+```
+
+The script reads the IT account from `~/.afaq/platform-demo/credentials.json`
+without logging credentials, and uses the existing frontend on port 8087.
+It permits authentication requests but blocks other API writes. Login can create
+a normal session and audit entry. Screenshots under `/tmp/afaq-it-inspection`
+are local inspection artifacts; do not publish them without checking their content.
+
+This is a navigation smoke check, not a full functional or mobile acceptance test.
+It does not submit forms, export files, send messages, execute restores or test
+external providers. Visual inspection found that long Overview metric values
+such as "Not measured" truncate at this viewport; layout refinement remains.
+No demo data was reset and neither running server was restarted.
