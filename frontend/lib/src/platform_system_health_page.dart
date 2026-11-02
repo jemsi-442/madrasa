@@ -13,12 +13,14 @@ class PlatformSystemHealthPage extends StatefulWidget {
     required this.busy,
     required this.error,
     required this.onRefresh,
+    this.onInvestigate,
     this.now,
   });
   final Map<String, dynamic>? snapshot;
   final bool busy;
   final String? error;
   final VoidCallback onRefresh;
+  final ValueChanged<String>? onInvestigate;
   final DateTime Function()? now;
   @override
   State<PlatformSystemHealthPage> createState() =>
@@ -67,6 +69,7 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
   Widget build(BuildContext context) {
     final checks = (widget.snapshot?['checks'] as List? ?? [])
         .whereType<Map>()
+        .where((row) => ['database', 'redis'].contains(row['name']))
         .toList();
     final checked = DateTime.tryParse('${widget.snapshot?['checkedAt']}');
     final age = checked == null
@@ -341,9 +344,24 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
                 ),
               const Divider(height: 32),
               const Text(
-                'Incident tracking is not connected. A failed probe is not a confirmed security incident.',
+                'A failed probe is not a confirmed security incident. Review the evidence before recording an investigation.',
                 style: TextStyle(color: AfaqDesign.muted, height: 1.5),
               ),
+              if (widget.onInvestigate != null && failed.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: widget.busy || widget.error != null || !fresh
+                      ? null
+                      : () => widget.onInvestigate!(
+                          'Connectivity checks for investigation. This does not establish a security breach.\n'
+                          'Checked (UTC): ${checked!.toUtc().toIso8601String()}\n'
+                          'Unavailable services: ${failed.map((row) => row['name'] == 'database' ? 'Database' : 'Redis').join(', ')}\n\n'
+                          'Investigation reason:',
+                        ),
+                  icon: const Icon(Icons.assignment_outlined),
+                  label: const Text('Investigate failed checks'),
+                ),
+              ],
             ],
           ),
         ),

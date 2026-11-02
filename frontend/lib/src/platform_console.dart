@@ -2106,6 +2106,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               busy: busy,
               error: error,
               onRefresh: () => run(load),
+              onInvestigate: (description) {
+                incidentToOpen = null;
+                incidentDraft = description;
+                navigateTo(PlatformPage.incidents);
+              },
             )
           : reportsView
           ? InstitutionalReportsPage(

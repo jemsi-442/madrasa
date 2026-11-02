@@ -2209,3 +2209,11 @@ CHROME_EXECUTABLE=/usr/bin/chromium flutter test --no-pub --platform chrome --re
 These tests execute Flutter in a real browser with mocked API responses. They do
 not verify live SMS/email delivery, actual backup restoration or production
 connectivity. No demo records were changed by this run.
+
+System Health can now open an incident draft from a fresh failed database or
+Redis connectivity check. The draft contains only the allowlisted service names
+and check time, never raw probe details. The action is disabled while loading,
+after a load error, or when the snapshot is at least 60 seconds old. Opening a
+draft does not save an incident or establish a breach: IT must supply a summary
+and save through the existing incident endpoint. Cancellation consumes the draft
+so a later new incident does not inherit the previous investigation context.

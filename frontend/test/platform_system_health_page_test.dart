@@ -3,6 +3,61 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_system_health_page.dart';
 
 void main() {
+  testWidgets('Only fresh verified failures can open investigation drafts', (
+    tester,
+  ) async {
+    final checked = DateTime.utc(2026, 11, 2);
+    var now = checked;
+    String? draft;
+    Future<void> render({bool busy = false, String? error}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformSystemHealthPage(
+              snapshot: {
+                'checkedAt': checked.toIso8601String(),
+                'checks': [
+                  {
+                    'name': 'database',
+                    'status': 'unavailable',
+                    'detail': 'private-sentinel',
+                  },
+                  {
+                    'name': 'unexpected-private-service',
+                    'status': 'unavailable',
+                  },
+                ],
+              },
+              busy: busy,
+              error: error,
+              now: () => now,
+              onRefresh: () {},
+              onInvestigate: (value) => draft = value,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    final button = find.widgetWithText(
+      OutlinedButton,
+      'Investigate failed checks',
+    );
+    await render();
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    expect(draft, contains('Unavailable services: Database'));
+    expect(draft, isNot(contains('private')));
+    expect(find.text('0 / 1'), findsOneWidget);
+    await render(error: 'Connection failed');
+    expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+    now = checked.add(const Duration(seconds: 61));
+    await render();
+    expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('empty checks do not imply healthy services', (tester) async {
     final now = DateTime.utc(2026, 11, 1);
     await tester.pumpWidget(
