@@ -553,16 +553,21 @@ class _HeroMessage extends StatelessWidget {
           spacing: 14,
           runSpacing: 12,
           children: [
-            GoldAction(
-              key: const ValueKey('hero-register'),
-              label: 'Get Started',
-              icon: Icons.arrow_forward_rounded,
-              fullWidth: false,
-              onPressed: onJoin,
+            SizedBox(
+              width: constraints.maxWidth < 480 ? constraints.maxWidth : null,
+              child: GoldAction(
+                key: const ValueKey('hero-register'),
+                label: 'Get Started',
+                icon: Icons.arrow_forward_rounded,
+                fullWidth: constraints.maxWidth < 480,
+                onPressed: onJoin,
+              ),
             ),
             SizedBox(
-              height: 52,
+              width: constraints.maxWidth < 480 ? constraints.maxWidth : null,
+              height: 58,
               child: OutlinedButton.icon(
+                key: const ValueKey('hero-explore'),
                 onPressed: onExplore,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: publicInk,
@@ -587,7 +592,7 @@ class _HeroMessage extends StatelessWidget {
         const SizedBox(height: 24),
         const Text(
           'For curious minds. For every stage of learning.',
-          style: TextStyle(color: publicMuted, fontSize: 12, height: 1.5),
+          style: TextStyle(color: publicMuted, fontSize: 14, height: 1.6),
         ),
       ],
     ),

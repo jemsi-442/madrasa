@@ -23,6 +23,31 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('phone hero actions have matching full-width touch targets', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final destinations = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(home: PublicHomeScreen(onNavigate: destinations.add)),
+    );
+    await tester.pumpAndSettle();
+    final register = find.byKey(const ValueKey('hero-register'));
+    final explore = find.byKey(const ValueKey('hero-explore'));
+    expect(tester.getSize(register), const Size(342, 58));
+    expect(tester.getSize(explore), const Size(342, 58));
+    await tester.ensureVisible(register);
+    await tester.tap(register);
+    expect(destinations, ['/register']);
+    await tester.ensureVisible(explore);
+    await tester.tap(explore);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('home-back-to-top')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('feature descriptions align when headings wrap on desktop', (
     tester,
   ) async {
