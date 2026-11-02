@@ -12,10 +12,12 @@ class PlatformIntegrationsPage extends StatefulWidget {
     required this.onHealth,
     this.request,
     this.checkSmtp,
+    this.checkQuran,
   });
   final VoidCallback onAudit, onHealth;
   final Future<dynamic> Function()? request;
   final Future<dynamic> Function()? checkSmtp;
+  final Future<dynamic> Function()? checkQuran;
   @override
   State<PlatformIntegrationsPage> createState() =>
       _PlatformIntegrationsPageState();
@@ -28,6 +30,38 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   bool loading = false;
   bool checkingSmtp = false;
   String? smtpResult;
+  bool checkingQuran = false;
+  String? quranResult;
+
+  Future<void> verifyQuran() async {
+    if (checkingQuran || widget.checkQuran == null) return;
+    setState(() {
+      checkingQuran = true;
+      quranResult = null;
+    });
+    try {
+      final result = await widget.checkQuran!();
+      if (!mounted) return;
+      final label = switch (result['status']) {
+        'CONNECTED' =>
+          'Quran API connection verified. ${result['chapterCount']} chapters returned. ${result['limitedContent'] == true ? 'Prelive: limited content.' : 'Production content endpoint.'}',
+        'NOT_CONFIGURED' =>
+          'Enable and complete Quran provider configuration first.',
+        _ =>
+          'Quran API connection could not be verified. Check configuration and connectivity.',
+      };
+      setState(() => quranResult = '$label\nChecked: ${result['checkedAt']}');
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => quranResult =
+              'Check unavailable. Verify access or wait one minute before retrying.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => checkingQuran = false);
+    }
+  }
 
   Future<void> verifySmtp() async {
     if (checkingSmtp || widget.checkSmtp == null) return;
@@ -81,6 +115,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
           widget.request != null &&
           !loading &&
           !checkingSmtp &&
+          !checkingQuran &&
           !accessDenied &&
           !dataWriteInProgress &&
           ModalRoute.of(context)?.isCurrent != false,
@@ -244,6 +279,30 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
         ),
         const SizedBox(height: 20),
         configurationChecks(),
+        if (service == 'Quran content') ...[
+          const SizedBox(height: 16),
+          const Text(
+            'Checks authentication and chapter metadata. Does not change learning records or verify all verse content.',
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed:
+                checkingQuran || accessDenied || widget.checkQuran == null
+                ? null
+                : verifyQuran,
+            icon: const Icon(Icons.network_check),
+            label: Text(
+              checkingQuran
+                  ? 'Checking Quran API...'
+                  : 'Check Quran connection',
+            ),
+          ),
+          if (quranResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(quranResult!),
+            ),
+        ],
         if (service == 'Email & SMS gateway') ...[
           const SizedBox(height: 16),
           const Text(

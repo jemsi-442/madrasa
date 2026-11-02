@@ -1,6 +1,28 @@
 import { expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { integrationSummary, readIntegrations, smtpConnectionCheck } from '../src/modules/platform/platform.integrations';
+import { integrationSummary, readIntegrations, smtpConnectionCheck, quranConnectionCheck } from '../src/modules/platform/platform.integrations';
+import type { QuranContentClient } from '../src/modules/teacher-workspace/quran-content';
+
+it.each(['CONNECTED', 'FAILED', 'NOT_CONFIGURED'])('returns safe Quran check status %s', async expected => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const chapters = expected === 'FAILED' ? vi.fn().mockRejectedValue(new Error('secret-sentinel')) : vi.fn().mockResolvedValue({ environment: 'prelive', limitedContent: true, chapters: [{ id: 1 }] });
+  const create = vi.fn(() => ({ chapters }) as unknown as QuranContentClient);
+  const check = quranConnectionCheck(db, { QF_ENABLED: expected === 'NOT_CONFIGURED' ? 'false' : 'true', QF_ENV: 'prelive', QF_CLIENT_ID: 'synthetic', QF_CLIENT_SECRET: 'secret-sentinel' }, create);
+  const actor = { scope: 'platform' as const, accountId: 'synthetic', sessionId: 'synthetic' };
+  const result = await check(actor);
+  expect(result.status).toBe(expected);
+  expect(JSON.stringify(result)).not.toContain('secret-sentinel');
+  if (expected === 'CONNECTED') expect(result).toMatchObject({ chapterCount: 1, limitedContent: true });
+  if (expected === 'NOT_CONFIGURED') expect(create).not.toHaveBeenCalled();
+  await expect(check(actor)).rejects.toThrow('one minute');
+});
+
+it('denies Quran checks before making provider requests', async () => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'DISABLED' }) } } as unknown as PrismaClient;
+  const create = vi.fn();
+  await expect(quranConnectionCheck(db, {}, create)({ scope: 'platform', accountId: 'synthetic', sessionId: 'synthetic' })).rejects.toThrow('restricted');
+  expect(create).not.toHaveBeenCalled();
+});
 import type { createSmtpEmail } from '../src/shared/notifications/smtp-email';
 
 it('checks SMTP without sending and throttles repeated checks', async () => {

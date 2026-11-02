@@ -5,6 +5,50 @@ import 'package:mif_app/src/platform_integrations_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets(
+    'Quran check shows limited content and prevents duplicate probes',
+    (tester) async {
+      final result = Completer<dynamic>();
+      var calls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformIntegrationsPage(
+              onAudit: () {},
+              onHealth: () {},
+              checkQuran: () {
+                calls++;
+                return result.future;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.ensureVisible(find.text('Credentials'));
+      await tester.tap(find.text('Credentials'));
+      await tester.pumpAndSettle();
+      final dropdown = find.byType(DropdownButtonFormField<String>);
+      await tester.ensureVisible(dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Quran content').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Check Quran connection'));
+      await tester.tap(find.text('Check Quran connection'));
+      await tester.pump();
+      await tester.tap(find.text('Checking Quran API...'));
+      expect(calls, 1);
+      result.complete({
+        'status': 'CONNECTED',
+        'chapterCount': 2,
+        'limitedContent': true,
+        'checkedAt': '2026-11-02T00:00:00Z',
+      });
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Prelive: limited content.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final denied in [false, true]) {
     testWidgets(
       'Old integration request cannot replace a new session: denied=$denied',

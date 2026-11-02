@@ -3,6 +3,37 @@ import { smsConfig } from '../../shared/notifications/sms-provider';
 import { smtpEmailConfig, createSmtpEmail } from '../../shared/notifications/smtp-email';
 import { HttpError } from '../../shared/errors/http-error';
 import type { PlatformContext } from './platform.service';
+import { QuranContentClient } from '../teacher-workspace/quran-content';
+
+export function quranConnectionCheck(db: PrismaClient, environment = process.env,
+  create = () => new QuranContentClient({ enabled: true,
+    environment: environment.QF_ENV === 'production' ? 'production' : 'prelive',
+    clientId: environment.QF_CLIENT_ID!.trim(), clientSecret: environment.QF_CLIENT_SECRET!.trim() })) {
+  let running = false;
+  let nextCheck = 0;
+  return async (actor: PlatformContext) => {
+    await readIntegrations(db, actor, undefined);
+    if (running || Date.now() < nextCheck) throw new HttpError(429, 'Wait one minute before checking again');
+    running = true;
+    nextCheck = Date.now() + 60_000;
+    try {
+      if (environment.QF_ENABLED !== 'true' || !environment.QF_CLIENT_ID?.trim() ||
+          !environment.QF_CLIENT_SECRET?.trim() ||
+          !['prelive', 'production'].includes(environment.QF_ENV ?? 'prelive')) {
+        return { status: 'NOT_CONFIGURED', checkedAt: new Date().toISOString() };
+      }
+      try {
+        // A fresh client ensures this explicit check does not report cached success.
+        const result = await create().chapters();
+        return { status: 'CONNECTED', checkedAt: new Date().toISOString(),
+          environment: result.environment, limitedContent: result.limitedContent,
+          chapterCount: result.chapters.length };
+      } catch {
+        return { status: 'FAILED', checkedAt: new Date().toISOString() };
+      }
+    } finally { running = false; }
+  };
+}
 
 export function integrationSummary(environment: NodeJS.ProcessEnv, passwordOnly: boolean | undefined) {
   let emailReady = false;

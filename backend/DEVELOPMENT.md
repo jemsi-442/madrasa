@@ -2349,9 +2349,18 @@ closes the transport and returns only a fixed status and check timestamp.
 Checks are limited to once per minute per API process; this is not a distributed
 rate limit. Results are displayed in the current page, not persisted as history.
 SMTP authentication success does not establish inbox delivery. Missing settings
-remain NOT_CONFIGURED, not Connected. SMS, Quran, payment and backup provider
+remain NOT_CONFIGURED, not Connected. SMS, payment and backup provider
 connectivity checks are still unconnected. No live SMTP probe was run during
 implementation; backend checks use synthetic mocked transports.
+
+The Quran content panel also offers an explicit connection check through
+`POST /api/platform/integrations/quran/check`. It uses a fresh existing Quran
+client to authenticate and fetch validated chapter metadata, reporting chapter
+count and the limited prelive dataset accurately. It does not generate Quran
+text, inspect learner records, or certify every verse/audio endpoint. Errors
+are sanitized and active IT authorization precedes provider access. The same
+per-process one-minute throttle applies. Results are local to the current page;
+no live provider probe was executed during implementation.
 
 On 2026-11-02, an isolated Chromium browser signed in using the saved local IT
 demo account and opened all ten IT pages against the running API: Overview,
