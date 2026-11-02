@@ -50,9 +50,9 @@ class HomeStorySections extends StatelessWidget {
         key: storyKey,
         color: Colors.white,
         eyebrow: 'OUR STORY',
-        title: 'Small beginnings. A shared ambition.',
+        title: 'Small beginnings.\nA shared ambition.',
         intro:
-            'Our story began with volunteer teaching in a local mosque and lessons for three children at home. It grew into a wider effort to strengthen madrasa education, rooted in community and driven by the needs of learners.',
+            'Our story began with volunteer teaching in a local mosque and lessons for three children at home.\n\nIt grew into a wider effort to strengthen madrasa education, rooted in community and driven by the needs of learners.',
         child: _Columns(
           children: [
             const _Photo(
@@ -664,32 +664,48 @@ class _StoryStep extends StatelessWidget {
   final String year, title, text;
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 24),
-    padding: const EdgeInsetsDirectional.only(start: 20),
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(24),
     decoration: const BoxDecoration(
-      border: BorderDirectional(start: BorderSide(color: publicGold, width: 3)),
+      color: Color(0xFFFAF8F3),
+      borderRadius: BorderRadius.all(Radius.circular(16)),
+      border: Border.fromBorderSide(BorderSide(color: Color(0xFFE5DDCF))),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          year,
-          style: const TextStyle(
-            color: publicGold,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF2E8D2),
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+          ),
+          child: Text(
+            year,
+            style: const TextStyle(
+              color: Color(0xFF805A14),
+              fontSize: 13,
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 22,
-            color: publicInk,
-            fontWeight: FontWeight.w700,
+        const SizedBox(height: 14),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              height: 1.35,
+              color: publicInk,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Text(
           text,
           style: const TextStyle(height: 1.7, color: publicMuted, fontSize: 17),
