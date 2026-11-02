@@ -30,41 +30,53 @@ Future<void> previewHost(
     MaterialApp(
       theme: adminTheme(ThemeData()),
       navigatorObservers: [if (observer != null) observer],
-      home: Scaffold(body: MediaPlayerPreviewButton(surfaceBuilder: builder)),
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: MediaPlayerPreviewButton(surfaceBuilder: builder),
+        ),
+      ),
     ),
   );
   await tap(t, find.text('Try media player'));
 }
 
 void main() {
-  for (final width in [320.0, 1440.0]) {
-    testWidgets('media launcher is prominent and fits width $width', (t) async {
-      t.view.physicalSize = Size(width, 900);
-      t.view.devicePixelRatio = 1;
-      t.platformDispatcher.textScaleFactorTestValue = 2;
-      addTearDown(t.view.resetPhysicalSize);
-      addTearDown(t.view.resetDevicePixelRatio);
-      addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
-      await t.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(child: MediaPlayerPreviewButton()),
+  for (final width in [320.0, 700.0, 1440.0]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('media launcher fits width $width at scale $scale', (
+        t,
+      ) async {
+        t.view.physicalSize = Size(width, 900);
+        t.view.devicePixelRatio = 1;
+        t.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(t.view.resetPhysicalSize);
+        addTearDown(t.view.resetDevicePixelRatio);
+        addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
+        await t.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(child: MediaPlayerPreviewButton()),
+            ),
           ),
-        ),
-      );
-      expect(find.text('Media player'), findsOneWidget);
-      expect(
-        find.text('Preview sample media before starting a lesson.'),
-        findsOneWidget,
-      );
-      final button = find.byKey(const ValueKey('open-media-player-preview'));
-      expect(t.getSize(button).height, greaterThanOrEqualTo(56));
-      expect(
-        t.getSize(find.byKey(const ValueKey('media-player-launcher'))).width,
-        width,
-      );
-      expect(t.takeException(), isNull);
-    });
+        );
+        expect(find.text('Media player'), findsOneWidget);
+        expect(find.text('PREVIEW'), findsOneWidget);
+        if (width == 320 || scale == 2) {
+            expect(t.getTopLeft(find.text('Media player')).dx, closeTo(24, 2));
+        }
+        expect(
+          find.text('Preview sample media before starting a lesson.'),
+          findsOneWidget,
+        );
+        final button = find.byKey(const ValueKey('open-media-player-preview'));
+        expect(t.getSize(button).height, greaterThanOrEqualTo(56));
+        expect(
+          t.getSize(find.byKey(const ValueKey('media-player-launcher'))).width,
+          width,
+        );
+        expect(t.takeException(), isNull);
+      });
+    }
   }
   // Direct asset I/O hangs in the Chrome widget-test harness. Verify real
   // browser asset loading against the release preview instead.

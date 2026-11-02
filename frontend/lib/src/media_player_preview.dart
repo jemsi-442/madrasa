@@ -26,6 +26,8 @@ class MediaPlayerPreviewButton extends StatelessWidget {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(18),
       gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
         colors: [Color(0xFF102C43), Color(0xFF214A61)],
       ),
       border: Border.all(color: const Color(0xFF365B70)),
@@ -36,49 +38,76 @@ class MediaPlayerPreviewButton extends StatelessWidget {
         final compact =
             constraints.maxWidth < 640 ||
             MediaQuery.textScalerOf(context).scale(16) > 24;
-        final introduction = Row(
+        final stackedIntro =
+            constraints.maxWidth < 420 ||
+            MediaQuery.textScalerOf(context).scale(16) > 24;
+        final emblem = Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE0B351),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF3D88E)),
+          ),
+          child: const Icon(Icons.play_circle_outline, size: 36, color: ink),
+        );
+        final copy = Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 60,
-              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFE0B351),
-                borderRadius: BorderRadius.circular(16),
+                color: Colors.white.withValues(alpha: .08),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: const Icon(
-                Icons.play_circle_outline,
-                size: 36,
-                color: ink,
+              child: const Text(
+                'PREVIEW',
+                style: TextStyle(
+                  color: Color(0xFFF3D88E),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                ),
               ),
             ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Media player',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Preview sample media before starting a lesson.',
-                    style: TextStyle(
-                      color: Color(0xFFD2E0E9),
-                      fontSize: 16,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 10),
+            Semantics(
+              header: true,
+              child: const Text(
+                'Media player',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Preview sample media before starting a lesson.',
+              style: TextStyle(
+                color: Color(0xFFD2E0E9),
+                fontSize: 16,
+                height: 1.5,
               ),
             ),
           ],
         );
+        final introduction = stackedIntro
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [emblem, const SizedBox(height: 16), copy],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  emblem,
+                  const SizedBox(width: 20),
+                  Expanded(child: copy),
+                ],
+              );
         final action = FilledButton.icon(
           key: const ValueKey('open-media-player-preview'),
           onPressed: () =>
