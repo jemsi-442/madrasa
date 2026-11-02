@@ -23,6 +23,31 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('homepage feature icons and copy use larger readable sizes', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_featuresAtWidth(700));
+    await tester.pumpAndSettle();
+    for (final title in _featureTitles) {
+      expect(tester.widget<Text>(find.text(title)).style!.fontSize, 22);
+    }
+    expect(
+      tester
+          .widget<Text>(find.text('Follow memorization and recitation'))
+          .style!
+          .fontSize,
+      18,
+    );
+    final icons = tester.widgetList<Icon>(
+      find.descendant(
+        of: find.byType(PublicHomeFeatures),
+        matching: find.byType(Icon),
+      ),
+    );
+    expect(icons.length, 4);
+    expect(icons.every((icon) => icon.size == 48), isTrue);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('homepage restores scroll position and shows desktop scrollbar', (
     tester,
   ) async {

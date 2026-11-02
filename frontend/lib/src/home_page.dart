@@ -602,14 +602,14 @@ class PublicHomeFeatures extends StatelessWidget {
     builder: (context, constraints) {
       // Window-size transitions can briefly leave no space after page padding.
       if (constraints.maxWidth == 0) return const SizedBox.shrink();
-      final textScale = MediaQuery.textScalerOf(context).scale(17) / 17;
+      final textScale = MediaQuery.textScalerOf(context).scale(22) / 22;
       final readableWidth = constraints.maxWidth / textScale.clamp(1.0, 3.0);
       final columns = switch (readableWidth) {
         >= 960 => 4,
         >= 480 => 2,
         _ => 1,
       };
-      final width = (constraints.maxWidth - 20 * (columns - 1)) / columns;
+      final width = (constraints.maxWidth - 24 * (columns - 1)) / columns;
       const features = [
         (
           Icons.menu_book_outlined,
@@ -633,8 +633,8 @@ class PublicHomeFeatures extends StatelessWidget {
         ),
       ];
       return Wrap(
-        spacing: 20,
-        runSpacing: 26,
+        spacing: 24,
+        runSpacing: 36,
         children: features
             .map(
               (feature) => SizedBox(
@@ -643,37 +643,37 @@ class PublicHomeFeatures extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 54,
-                      height: 54,
+                      width: 72,
+                      height: 72,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFFEAF0F5), Color(0xFFF6F6F5)],
                         ),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(18),
                       ),
                       child: Icon(
                         feature.$1,
                         color: const Color(0xFF123C62),
-                        size: 36,
+                        size: 48,
                       ),
                     ),
-                    const SizedBox(height: 13),
+                    const SizedBox(height: 18),
                     Text(
                       feature.$2,
                       style: const TextStyle(
                         color: publicInk,
                         fontWeight: FontWeight.w700,
-                        fontSize: 17,
+                        fontSize: 22,
                         height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 10),
                     Text(
                       feature.$3,
                       style: const TextStyle(
                         color: Color(0xFF405772),
-                        fontSize: 15,
-                        height: 1.5,
+                        fontSize: 18,
+                        height: 1.6,
                       ),
                     ),
                   ],
