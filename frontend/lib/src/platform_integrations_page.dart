@@ -112,6 +112,55 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   );
   Widget note(String text) =>
       Text(text, style: const TextStyle(color: AfaqDesign.muted, height: 1.5));
+  Widget configurationChecks() {
+    final groups = snapshot?['configurationChecks'];
+    final checks = groups is Map ? groups[service] : null;
+    if (checks is! List || checks.isEmpty) {
+      return note(
+        loading
+            ? 'Checking configuration...'
+            : 'Configuration checklist unavailable.',
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Configuration checklist',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        for (final check in checks.whereType<Map>())
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Icon(
+                  check['ready'] == true
+                      ? Icons.check_circle_outline
+                      : Icons.info_outline,
+                  color: check['ready'] == true
+                      ? AfaqDesign.blue
+                      : AfaqDesign.gold,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text('${check['label']}')),
+                const SizedBox(width: 10),
+                Text(
+                  check['ready'] == true ? 'Ready' : 'Not ready',
+                  style: const TextStyle(color: AfaqDesign.muted),
+                ),
+              ],
+            ),
+          ),
+        note(
+          'Configuration only. Provider connectivity and delivery have not been tested.',
+        ),
+      ],
+    );
+  }
+
   Widget credentials() => panel(
     'Credential handling',
     Column(
@@ -135,6 +184,8 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
             'Secret values': 'Never returned by this page',
           },
         ),
+        const SizedBox(height: 20),
+        configurationChecks(),
         const SizedBox(height: 20),
         const Tooltip(
           message: 'Credential rotation requests are not connected yet',

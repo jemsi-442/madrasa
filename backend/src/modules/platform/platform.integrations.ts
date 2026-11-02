@@ -23,6 +23,29 @@ export function integrationSummary(environment: NodeJS.ProcessEnv, passwordOnly:
     timezone,
     mfaPolicy: passwordOnly === undefined ? 'Login configuration unavailable' : passwordOnly ? 'Password-only sign-in is enabled. MFA is not required by this login mode.' : 'MFA login mode is configured. This does not confirm enrollment for every account.',
     connectionTested: false,
+    configurationChecks: {
+      Authentication: [
+        { label: 'Login configured', ready: passwordOnly !== undefined },
+      ],
+      'Email & SMS gateway': [
+        { label: 'SMTP configuration complete', ready: emailReady },
+        { label: 'SMS enabled', ready: environment.SMS_ENABLED === 'true' },
+        { label: 'SMS provider configuration complete', ready: smsReady },
+      ],
+      'Payment connection': [
+        { label: 'Live API credential present', ready: present('SNIPPE_API_KEY') },
+        { label: 'Webhook credential present', ready: present('SNIPPE_WEBHOOK_SECRET') },
+        { label: 'Mock mode disabled', ready: environment.SNIPPE_MOCK_MODE !== 'true' },
+      ],
+      'Backup storage': [
+        { label: 'Backup provider connected', ready: false },
+      ],
+      'Quran content': [
+        { label: 'Quran provider enabled', ready: environment.QF_ENABLED === 'true' },
+        { label: 'Client ID present', ready: present('QF_CLIENT_ID') },
+        { label: 'Client secret present', ready: present('QF_CLIENT_SECRET') },
+      ],
+    },
   };
 }
 

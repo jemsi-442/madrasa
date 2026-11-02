@@ -2299,3 +2299,11 @@ or selected service. Six Flutter widget tests passed, including 320px and
 targeted static analysis passed. These remain configuration reads, not provider
 connectivity probes. Credential rotation and configuration-change requests are
 still unconnected and disabled.
+
+The integration response also provides allowlisted `configurationChecks` for the
+selected service. These contain fixed labels and readiness booleans only, never
+credential values. Enabled flags are separate from credential presence; SMS
+configuration uses the existing provider validator. The UI explicitly states
+that configuration readiness is not verified connectivity or delivery. Old checks
+are hidden during rechecks. Six backend tests and six Flutter widget tests passed,
+including narrow/wide layouts and mixed ready/not-ready states; analysis passed.

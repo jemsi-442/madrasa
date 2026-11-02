@@ -25,6 +25,12 @@ void main() {
                 if (++calls > 1) return pending.future;
                 return {
                   'services': {'Quran content': 'Synthetic previous status'},
+                  'configurationChecks': {
+                    'Quran content': [
+                      {'label': 'Client ID present', 'ready': true},
+                      {'label': 'Client secret present', 'ready': false},
+                    ],
+                  },
                 };
               },
             ),
@@ -42,10 +48,15 @@ void main() {
       expect(find.text('Credential handling'), findsOneWidget);
       expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
       expect(find.text('Synthetic previous status'), findsOneWidget);
+      expect(find.text('Client ID present'), findsOneWidget);
+      expect(find.text('Ready'), findsOneWidget);
+      expect(find.text('Not ready'), findsOneWidget);
       await tester.ensureVisible(find.text('Check configuration'));
       await tester.tap(find.text('Check configuration'));
       await tester.pump();
       expect(find.text('Synthetic previous status'), findsNothing);
+      expect(find.text('Client ID present'), findsNothing);
+      expect(find.text('Checking configuration...'), findsOneWidget);
       expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
       pending.complete({
         'services': {'Quran content': 'Synthetic updated status'},

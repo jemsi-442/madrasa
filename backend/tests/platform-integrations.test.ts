@@ -10,6 +10,23 @@ it('returns allowlisted status without configuration secrets', () => {
   expect(data.services['Payment connection']).toContain('Mock mode');
   expect(data.mfaPolicy).toContain('Password-only');
   expect(data.connectionTested).toBe(false);
+  expect(data.configurationChecks['Email & SMS gateway']).toEqual([
+    { label: 'SMTP configuration complete', ready: false },
+    { label: 'SMS enabled', ready: true },
+    { label: 'SMS provider configuration complete', ready: true },
+  ]);
+  expect(data.configurationChecks['Payment connection']).toContainEqual({ label: 'Mock mode disabled', ready: false });
+});
+it('separates disabled providers from present credentials and rejects invalid SMS configuration', () => {
+  const data = integrationSummary({ QF_CLIENT_ID: 'synthetic', QF_CLIENT_SECRET: 'synthetic',
+    SMS_ENABLED: 'true', SMS_PROVIDER: 'rodsms', RODSMS_API_KEY: 'synthetic', RODSMS_SENDER_ID: 'invalid sender' }, false);
+  expect(data.configurationChecks['Quran content']).toEqual([
+    { label: 'Quran provider enabled', ready: false },
+    { label: 'Client ID present', ready: true },
+    { label: 'Client secret present', ready: true },
+  ]);
+  expect(data.configurationChecks['Email & SMS gateway']).toContainEqual({ label: 'SMS provider configuration complete', ready: false });
+  expect(data.connectionTested).toBe(false);
 });
 it('does not mistake absent configuration for connection success', () => {
   const data = integrationSummary({}, undefined);
