@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Prisma, PlatformRole, UserRole, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { randomUUID } from 'node:crypto';
 import { tabularReportPdf } from '../../shared/utils/tabular-report-pdf';
@@ -469,14 +469,21 @@ export class PlatformGovernanceService {
   async listSecuritySessions(actor: PlatformContext, input: unknown = {}) {
     const query = platformPageSchema.extend({
       source: z.enum(['platform', 'madrasa']).default('platform'),
+      q: z.string().trim().max(100).default(''),
     }).strict().parse(input);
     return this.db.$transaction(async (tx) => {
       await this.authorize(tx, actor, 'platform.session.inspect');
       const now = new Date();
       const pagination = { skip: (query.page - 1) * query.pageSize, take: query.pageSize };
+      const roleQuery = query.q.toUpperCase().replace(/[ &-]+/g, '_');
       if (query.source === 'platform') {
         const rows = await tx.platformSession.findMany({
           where: { revokedAt: null, expiresAt: { gt: now },
+            ...(query.q ? { OR: [
+              { account: { fullName: { contains: query.q } } },
+              { ipAddress: { contains: query.q } },
+              { role: { in: Object.values(PlatformRole).filter(role => role.includes(roleQuery)) } },
+            ] } : {}),
             createdAt: { gte: new Date(now.getTime() - 900_000), lte: now },
             account: { status: 'ACTIVE' } },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], ...pagination,
@@ -492,6 +499,12 @@ export class PlatformGovernanceService {
       }
       const rows = await tx.refreshToken.findMany({
         where: { revokedAt: null, expiresAt: { gt: now }, user: { status: 'ACTIVE' },
+          ...(query.q ? { OR: [
+            { user: { fullName: { contains: query.q } } },
+            { ipAddress: { contains: query.q } },
+            { organization: { name: { contains: query.q } } },
+            { user: { role: { in: Object.values(UserRole).filter(role => role.includes(roleQuery)) } } },
+          ] } : {}),
           organization: { status: { in: ['ACTIVE', 'TRIAL'] } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], ...pagination,
         select: { id: true, userId: true, ipAddress: true, createdAt: true, expiresAt: true,

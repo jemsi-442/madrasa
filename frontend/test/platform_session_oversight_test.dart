@@ -10,11 +10,13 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       String? source;
+      String? query;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: PlatformSessionsPage(
               oversight: true,
+              onSearch: (value) => query = value,
               source: 'platform',
               onSource: (value) => source = value,
               records: const [
@@ -39,6 +41,14 @@ void main() {
       );
       expect(find.text('Synthetic operator'), findsOneWidget);
       expect(find.textContaining('192.0.2.12'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), ' 192.0.2.12 ');
+      await tester.ensureVisible(find.text('Search sessions'));
+      await tester.tap(find.text('Search sessions'));
+      await tester.pumpAndSettle();
+      expect(query, '192.0.2.12');
+      await tester.tap(find.text('Clear search'));
+      await tester.pumpAndSettle();
+      expect(query, '');
       await tester.ensureVisible(find.text('Review').first);
       await tester.tap(find.text('Review').first);
       await tester.pumpAndSettle();

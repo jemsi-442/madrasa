@@ -61,3 +61,28 @@ it('validates IP observations and rejects forwarded lists or arbitrary values', 
   expect(sessionIp('2001:db8::1')).toBe('2001:db8::1');
   for (const value of [undefined, 'unknown', '192.0.2.1, 198.51.100.1', '<script>']) expect(sessionIp(value)).toBeNull();
 });
+
+it('searches platform account names and IP before pagination', async () => {
+  const { tx, service } = setup();
+  await service.listSecuritySessions(actor, { q: ' 192.0.2.12 ', page: 2 });
+  const args = tx.platformSession.findMany.mock.calls[0]![0] as any;
+  expect(args.where.OR).toContainEqual({ ipAddress: { contains: '192.0.2.12' } });
+  expect(args.where.OR).toContainEqual({ account: { fullName: { contains: '192.0.2.12' } } });
+  expect(args.where.revokedAt).toBeNull();
+  expect(args.skip).toBeGreaterThan(0);
+});
+
+it('searches madrasa roles without weakening active account restrictions', async () => {
+  const { tx, service } = setup();
+  await service.listSecuritySessions(actor, { source: 'madrasa', q: 'teacher' });
+  const args = tx.refreshToken.findMany.mock.calls[0]![0] as any;
+  expect(args.where.OR).toContainEqual({ user: { role: { in: ['TEACHER'] } } });
+  expect(args.where.user.status).toBe('ACTIVE');
+  expect(args.where.organization.status.in).toEqual(['ACTIVE', 'TRIAL']);
+});
+
+it('rejects oversized search before querying sessions', async () => {
+  const { tx, service } = setup();
+  await expect(service.listSecuritySessions(actor, { q: 'x'.repeat(101) })).rejects.toThrow();
+  expect(tx.platformSession.findMany).not.toHaveBeenCalled();
+});

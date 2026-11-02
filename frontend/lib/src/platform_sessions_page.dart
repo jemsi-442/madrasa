@@ -17,10 +17,12 @@ class PlatformSessionsPage extends StatefulWidget {
     this.oversight = false,
     this.source = 'platform',
     this.onSource,
+    this.onSearch,
   });
   final bool oversight;
   final String source;
   final ValueChanged<String>? onSource;
+  final ValueChanged<String>? onSearch;
   final List<Map<String, dynamic>> records;
   final bool busy;
   final String? error;
@@ -36,6 +38,19 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
   String? selected;
   String filter = 'all';
   final detailKey = GlobalKey();
+  final search = TextEditingController();
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  void searchSessions() {
+    setState(() => selected = null);
+    widget.onSearch?.call(search.text.trim());
+  }
+
   Widget panel(String title, Widget child) => Container(
     decoration: AfaqDesign.panelDecoration(),
     child: Column(
@@ -86,6 +101,38 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.oversight) ...[
+              TextField(
+                controller: search,
+                maxLength: 100,
+                textInputAction: TextInputAction.search,
+                decoration: const InputDecoration(
+                  labelText: 'Search account, role or IP',
+                  prefixIcon: Icon(Icons.search),
+                  counterText: '',
+                ),
+                onSubmitted: widget.busy ? null : (_) => searchSessions(),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 12,
+                children: [
+                  FilledButton.icon(
+                    onPressed: widget.busy ? null : searchSessions,
+                    icon: const Icon(Icons.search),
+                    label: const Text('Search sessions'),
+                  ),
+                  TextButton(
+                    onPressed: widget.busy
+                        ? null
+                        : () {
+                            search.clear();
+                            searchSessions();
+                          },
+                    child: const Text('Clear search'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 isExpanded: true,
                 initialValue: widget.source,
