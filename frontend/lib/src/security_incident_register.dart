@@ -14,11 +14,14 @@ class SecurityIncidentRegister extends StatefulWidget {
     required this.request,
     this.initialIncidentId,
     this.initialDescription,
+    this.initialStatus,
+    this.initialPriority,
     this.showForm = showPlatformForm,
   });
   final PlatformFormPresenter showForm;
   final String? initialIncidentId;
   final String? initialDescription;
+  final String? initialStatus, initialPriority;
   final Future<dynamic> Function(String path, Map<String, dynamic>? body)
   request;
   @override
@@ -40,6 +43,8 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   void initState() {
     super.initState();
     sourceDraft = widget.initialDescription;
+    statusFilter = widget.initialStatus;
+    priorityFilter = widget.initialPriority;
     updates = AutomaticDataUpdates(
       canUpdate: () =>
           mounted &&
@@ -555,8 +560,14 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
                   (
                     'Status',
                     statusFilter,
-                    ['', 'OPEN', 'INVESTIGATING', 'RESOLVED'],
-                    ['All statuses', 'Open', 'Investigating', 'Resolved'],
+                    ['', 'UNRESOLVED', 'OPEN', 'INVESTIGATING', 'RESOLVED'],
+                    [
+                      'All statuses',
+                      'All unresolved',
+                      'Open',
+                      'Investigating',
+                      'Resolved',
+                    ],
                   ),
                   (
                     'Priority',

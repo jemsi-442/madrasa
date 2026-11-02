@@ -467,6 +467,7 @@ class PlatformOverview extends StatelessWidget {
     this.onReviewPending,
     this.onApproved,
     this.onIncident,
+    this.onIncidentFilter,
   });
   final bool isAdmin, busy;
   final String name;
@@ -477,6 +478,7 @@ class PlatformOverview extends StatelessWidget {
   final Widget? healthPanel;
   final VoidCallback? onReviewPending, onApproved;
   final ValueChanged<String>? onIncident;
+  final ValueChanged<bool>? onIncidentFilter;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -504,6 +506,7 @@ class PlatformOverview extends StatelessWidget {
         onHealth: () => onNavigate(PlatformPage.health),
         onIncidents: () => onNavigate(PlatformPage.incidents),
         onIncident: onIncident,
+        onIncidentFilter: onIncidentFilter,
         onAccounts: () => onNavigate(PlatformPage.accounts),
         onAudit: () => onNavigate(PlatformPage.history),
         onSessions: () => onNavigate(PlatformPage.sessions),

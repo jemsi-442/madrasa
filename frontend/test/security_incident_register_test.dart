@@ -5,6 +5,38 @@ import 'package:mif_app/src/security_incident_register.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets(
+    'Overview handoff applies unresolved and high filters on first read',
+    (tester) async {
+      final paths = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SecurityIncidentRegister(
+              initialStatus: 'UNRESOLVED',
+              initialPriority: 'HIGH',
+              request: (path, body) async {
+                paths.add(path);
+                return {
+                  'items': [],
+                  'total': 0,
+                  'open': 0,
+                  'high': 0,
+                  'resolved': 0,
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final query = Uri.parse(paths.first).queryParameters;
+      expect(query, {'page': '1', 'status': 'UNRESOLVED', 'priority': 'HIGH'});
+      expect(find.text('All unresolved'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   for (final status in [401, 403, 409]) {
     testWidgets(
       'Detail denial locks writes until a successful access check status=$status',

@@ -377,6 +377,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool healthView = false;
   bool incidentsView = false;
   String? incidentToOpen;
+  String? incidentInitialStatus, incidentInitialPriority;
   String? incidentDraft;
   bool updatesView = false;
   bool backupsView = false;
@@ -1122,6 +1123,10 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       healthView = destination == PlatformPage.health;
       incidentsView = destination == PlatformPage.incidents;
       if (!incidentsView) incidentToOpen = null;
+      if (!incidentsView) {
+        incidentInitialStatus = null;
+        incidentInitialPriority = null;
+      }
       if (!incidentsView) incidentDraft = null;
       updatesView = destination == PlatformPage.updates;
       backupsView = destination == PlatformPage.backups;
@@ -2054,6 +2059,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           : incidentsView && !isAdmin
           ? SecurityIncidentRegister(
               initialIncidentId: incidentToOpen,
+              initialStatus: incidentInitialStatus,
+              initialPriority: incidentInitialPriority,
               initialDescription: incidentDraft,
               request: api.bindSession(),
               showForm: (context, builder) => sessionDialog<bool>(
@@ -2236,6 +2243,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             )
           : homeView
           ? PlatformOverview(
+              onIncidentFilter: (highOnly) {
+                incidentInitialStatus = 'UNRESOLVED';
+                incidentInitialPriority = highOnly ? 'HIGH' : null;
+                navigateTo(PlatformPage.incidents);
+              },
               onIncident: (id) {
                 incidentToOpen = id;
                 navigateTo(PlatformPage.incidents);

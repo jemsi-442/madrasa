@@ -14,6 +14,7 @@ class PlatformItDashboard extends StatefulWidget {
     required this.onHealth,
     required this.onIncidents,
     this.onIncident,
+    this.onIncidentFilter,
     required this.onAccounts,
     required this.onAudit,
     required this.onSessions,
@@ -22,6 +23,7 @@ class PlatformItDashboard extends StatefulWidget {
   });
   final bool busy;
   final ValueChanged<String>? onIncident;
+  final ValueChanged<bool>? onIncidentFilter;
   final String? error;
   final VoidCallback onRefresh,
       onHealth,
@@ -532,7 +534,16 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                                   onTap: busy
                                       ? null
                                       : metric.$1.contains('incidents')
-                                      ? widget.onIncidents
+                                      ? () {
+                                          if (widget.onIncidentFilter != null) {
+                                            widget.onIncidentFilter!(
+                                              metric.$1 ==
+                                                  'High-priority incidents',
+                                            );
+                                          } else {
+                                            widget.onIncidents();
+                                          }
+                                        }
                                       : onHealth,
                                 ),
                               ),

@@ -13,6 +13,17 @@ function fixture(role = 'IT_SECURITY', status = 'ACTIVE') {
   return { tx, service };
 }
 describe('Security incidents', () => {
+  it('filters unresolved high-priority incidents before pagination', async () => {
+    const base = fixture().tx;
+    const findMany = vi.fn().mockResolvedValue([]);
+    const tx = { ...base, securityIncident: { ...base.securityIncident, findMany, count: vi.fn().mockResolvedValue(0) } };
+    const service = new SecurityIncidentsService({ $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient);
+    await service.list(actor, { status: 'UNRESOLVED', priority: 'HIGH', page: 2 });
+    expect(findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      where: { status: { not: 'RESOLVED' }, priority: 'HIGH' }, skip: 20,
+    }));
+    expect(incidentUpdate.safeParse({ revision: 1, status: 'UNRESOLVED', note: 'Synthetic response' }).success).toBe(false);
+  });
   it('builds a bounded priority queue independently of the register page', async () => {
     const base = fixture().tx;
     const findMany = vi.fn(async (args: any) => {

@@ -18,7 +18,7 @@ export const incidentUpdate = z.object({
 }).strict();
 export const incidentQuery = z.object({
   page: z.coerce.number().int().min(1).max(10000).default(1),
-  status: z.enum(['OPEN', 'INVESTIGATING', 'RESOLVED']).optional(),
+  status: z.enum(['OPEN', 'INVESTIGATING', 'RESOLVED', 'UNRESOLVED']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
 }).strict();
 
@@ -31,7 +31,7 @@ export class SecurityIncidentsService {
   }
   async list(actor: PlatformContext, input: unknown) {
     const { page, status, priority } = incidentQuery.parse(input);
-    const where = { ...(status ? { status } : {}), ...(priority ? { priority } : {}) };
+    const where = { ...(status ? { status: status === 'UNRESOLVED' ? { not: 'RESOLVED' } : status } : {}), ...(priority ? { priority } : {}) };
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
       const now = new Date();
