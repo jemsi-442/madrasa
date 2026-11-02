@@ -470,13 +470,22 @@ class _Section extends StatelessWidget {
               const SizedBox(height: 18),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 820),
-                child: Text(
-                  intro!,
-                  style: const TextStyle(
-                    color: publicMuted,
-                    fontSize: 18,
-                    height: 1.75,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final (index, paragraph)
+                        in intro!.split('\n\n').indexed) ...[
+                      if (index > 0) const SizedBox(height: 14),
+                      Text(
+                        paragraph,
+                        style: const TextStyle(
+                          color: publicMuted,
+                          fontSize: 18,
+                          height: 1.75,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -666,7 +675,7 @@ class _StoryStep extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.all(24),
+    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 18 : 24),
     decoration: const BoxDecoration(
       color: Color(0xFFFAF8F3),
       borderRadius: BorderRadius.all(Radius.circular(16)),
