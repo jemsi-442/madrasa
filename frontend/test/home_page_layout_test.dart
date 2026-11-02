@@ -70,6 +70,16 @@ void main() {
         find.textContaining('The digital platform supports this wider'),
         findsOneWidget,
       );
+      for (final (key, route) in [
+        ('home-contact-next-step', '/contact'),
+        ('home-sign-in-next-step', '/login'),
+      ]) {
+        final action = find.byKey(ValueKey(key));
+        await tester.ensureVisible(action);
+        await tester.pumpAndSettle();
+        await tester.tap(action);
+        expect(routes.last, route);
+      }
       expect(tester.takeException(), isNull);
     });
   }

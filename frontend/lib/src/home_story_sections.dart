@@ -277,7 +277,24 @@ class HomePartnershipSection extends StatelessWidget {
               Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 elevation: 0,
+                color: Colors.white,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: Color(0xFFDED5C5)),
+                ),
                 child: ExpansionTile(
+                  key: PageStorageKey(item.$1),
+                  tilePadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                  iconColor: publicGold,
+                  collapsedIconColor: publicInk,
+                  backgroundColor: const Color(0xFFF5F8FA),
+                  shape: const Border(),
+                  collapsedShape: const Border(),
                   title: Text(
                     item.$1,
                     style: const TextStyle(fontWeight: FontWeight.w700),
@@ -294,6 +311,63 @@ class HomePartnershipSection extends StatelessWidget {
                   ],
                 ),
               ),
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: publicInk,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Let\'s talk about your next step.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'For learning opportunities, madrasa partnerships or programme support, start a conversation with our team.',
+                    style: TextStyle(
+                      color: Color(0xFFD8E2EC),
+                      fontSize: 16,
+                      height: 1.7,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
+                    children: [
+                      FilledButton.icon(
+                        key: const ValueKey('home-contact-next-step'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFF0D899),
+                          foregroundColor: publicInk,
+                        ),
+                        onPressed: () => onNavigate('/contact'),
+                        icon: const Icon(Icons.arrow_forward),
+                        label: const Text('Contact Afaq'),
+                      ),
+                      TextButton(
+                        key: const ValueKey('home-sign-in-next-step'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => onNavigate('/login'),
+                        child: const Text('Already registered? Sign in'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
