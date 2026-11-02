@@ -1,9 +1,62 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_integrations_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final width in [320.0, 1440.0]) {
+    testWidgets('Service shortcut preserves context during recheck at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final pending = Completer<dynamic>();
+      var calls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformIntegrationsPage(
+              onAudit: () {},
+              onHealth: () {},
+              request: () async {
+                if (++calls > 1) return pending.future;
+                return {
+                  'services': {'Quran content': 'Synthetic previous status'},
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final shortcut = find.byKey(
+        const ValueKey('configuration-Quran content'),
+      );
+      await tester.ensureVisible(shortcut);
+      await tester.tap(shortcut);
+      await tester.pumpAndSettle();
+      expect(find.text('Connected services'), findsNothing);
+      expect(find.text('Credential handling'), findsOneWidget);
+      expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
+      expect(find.text('Synthetic previous status'), findsOneWidget);
+      await tester.ensureVisible(find.text('Check configuration'));
+      await tester.tap(find.text('Check configuration'));
+      await tester.pump();
+      expect(find.text('Synthetic previous status'), findsNothing);
+      expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
+      pending.complete({
+        'services': {'Quran content': 'Synthetic updated status'},
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic updated status'), findsOneWidget);
+      expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   testWidgets(
     'Auto checks preserve selected service and stop on permission denial',
     (tester) async {

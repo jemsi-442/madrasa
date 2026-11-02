@@ -54,6 +54,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
     setState(() {
       loading = true;
       error = null;
+      snapshot = null;
     });
     try {
       final data = await widget.request!();
@@ -117,6 +118,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DropdownButtonFormField<String>(
+          key: ValueKey(service),
           initialValue: service,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Selected service'),
@@ -225,6 +227,16 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
                             color: AfaqDesign.muted,
                             fontSize: 12,
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          key: ValueKey('configuration-${services[i]}'),
+                          onPressed: () => setState(() {
+                            service = services[i];
+                            tab = 1;
+                          }),
+                          icon: const Icon(Icons.arrow_forward, size: 18),
+                          label: const Text('View configuration'),
                         ),
                       ],
                     ),

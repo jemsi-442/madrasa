@@ -2289,3 +2289,13 @@ live deployment. Existing demo records and running servers were not changed.
 cd backend
 npm test -- --run tests/platform-routes.test.ts tests/platform-audit-export.test.ts tests/tabular-report-pdf.test.ts
 ```
+
+### Integration service navigation
+
+Each service in IT Integrations now opens its own configuration view directly.
+Rechecks clear the previous snapshot while loading, without resetting the tab
+or selected service. Six Flutter widget tests passed, including 320px and
+1440px layouts, refresh selection preservation and permission-denial handling;
+targeted static analysis passed. These remain configuration reads, not provider
+connectivity probes. Credential rotation and configuration-change requests are
+still unconnected and disabled.
