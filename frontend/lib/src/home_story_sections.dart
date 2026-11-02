@@ -145,7 +145,7 @@ class HomeTeamSection extends StatelessWidget {
     child: Column(
       children: [
         const HomePhoto(
-          asset: 'assets/home/team.png',
+          asset: 'assets/home/team.webp',
           description:
               'Afaq team: Kassim Iddi, Founder; Miraji Hamidu, '
               'Co-Founder; Mrs. Ismail and Zuberi Bani, Mentors and Advisors.',

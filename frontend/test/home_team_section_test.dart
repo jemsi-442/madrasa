@@ -31,7 +31,7 @@ void main() {
           expect(find.text('The people behind Afaq.'), findsOneWidget);
           expect(find.byType(HomePhoto), findsOneWidget);
           final photo = tester.widget<HomePhoto>(find.byType(HomePhoto));
-          expect(photo.asset, 'assets/home/team.png');
+          expect(photo.asset, 'assets/home/team.webp');
           expect(photo.aspectRatio, 16 / 9);
           await tester.ensureVisible(find.text('View full team image'));
           await tester.tap(find.text('View full team image'));

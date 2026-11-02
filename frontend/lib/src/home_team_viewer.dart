@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'public_shell.dart';
+import 'home_photo.dart';
 
 class HomeTeamViewer extends StatefulWidget {
   const HomeTeamViewer({super.key});
@@ -98,10 +99,10 @@ class _HomeTeamViewerState extends State<HomeTeamViewer> {
                           transformationController: _transform,
                           maxScale: 6,
                           child: Center(
-                            child: Image.asset(
-                              'assets/home/team.png',
-                              fit: BoxFit.contain,
-                              semanticLabel:
+                            child: HomePhoto(
+                              asset: 'assets/home/team.webp',
+                              aspectRatio: 16 / 9,
+                              description:
                                   'Afaq team: Kassim Iddi, Founder; Miraji Hamidu, Co-Founder; Mrs. Ismail and Zuberi Bani, Mentors and Advisors.',
                             ),
                           ),
