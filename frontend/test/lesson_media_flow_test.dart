@@ -199,6 +199,12 @@ void main() {
       expect(find.text('Resource 1 of 2 available'), findsOneWidget);
       expect(
         t
+            .getSize(find.byKey(const ValueKey('media-resource-navigation')))
+            .height,
+        lessThanOrEqualTo(80),
+      );
+      expect(
+        t
             .widget<OutlinedButton>(
               find.byKey(const ValueKey('previous-resource')),
             )
@@ -233,7 +239,7 @@ void main() {
     },
   );
 
-  testWidgets('single available resource disables both sequence boundaries', (
+  testWidgets('single available resource omits unnecessary sequence buttons', (
     t,
   ) async {
     final f = MediaFixture()..includeAudio = false;
@@ -241,10 +247,7 @@ void main() {
     await tap(t, find.byKey(const ValueKey('open-resource-30')));
     expect(find.text('Resource 1 of 1 available'), findsOneWidget);
     for (final key in ['previous-resource', 'next-resource']) {
-      expect(
-        t.widget<OutlinedButton>(find.byKey(ValueKey(key))).onPressed,
-        isNull,
-      );
+      expect(find.byKey(ValueKey(key)), findsNothing);
     }
     expect(f.paths.where((p) => p.endsWith('/open')).length, 1);
     expect(f.writes, isEmpty);

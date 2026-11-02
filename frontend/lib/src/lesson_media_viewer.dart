@@ -354,7 +354,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         if (widget.position != null)
           Container(
             key: const ValueKey('media-resource-navigation'),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: playback ? const Color(0xFF191A1C) : paper,
               border: Border(
@@ -362,55 +362,58 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                 bottom: BorderSide(color: playback ? Colors.white12 : line),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 Text(
                   widget.previewSample == null
                       ? 'Resource ${widget.position} of ${widget.total} available'
                       : 'Sample ${widget.position} of ${widget.total}',
-                  style: TextStyle(color: secondary, fontSize: 12),
+                  style: TextStyle(color: secondary, fontSize: 13),
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      style: playback
-                          ? OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              disabledForegroundColor: Colors.white30,
-                              side: const BorderSide(color: Colors.white24),
-                            )
-                          : null,
-                      key: const ValueKey('previous-resource'),
-                      onPressed: widget.onPrevious,
-                      icon: const Icon(
-                        Icons.chevron_left,
-                        size: AfaqDesign.iconSmall,
+                if ((widget.total ?? 0) > 1)
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        style: playback
+                            ? OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                disabledForegroundColor: Colors.white30,
+                                side: const BorderSide(color: Colors.white24),
+                              )
+                            : null,
+                        key: const ValueKey('previous-resource'),
+                        onPressed: widget.onPrevious,
+                        icon: const Icon(
+                          Icons.chevron_left,
+                          size: AfaqDesign.iconSmall,
+                        ),
+                        label: const Text('Previous'),
                       ),
-                      label: const Text('Previous resource'),
-                    ),
-                    OutlinedButton.icon(
-                      style: playback
-                          ? OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              disabledForegroundColor: Colors.white30,
-                              side: const BorderSide(color: Colors.white24),
-                            )
-                          : null,
-                      key: const ValueKey('next-resource'),
-                      onPressed: widget.onNext,
-                      icon: const Icon(
-                        Icons.chevron_right,
-                        size: AfaqDesign.iconSmall,
+                      OutlinedButton.icon(
+                        style: playback
+                            ? OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                disabledForegroundColor: Colors.white30,
+                                side: const BorderSide(color: Colors.white24),
+                              )
+                            : null,
+                        key: const ValueKey('next-resource'),
+                        onPressed: widget.onNext,
+                        icon: const Icon(
+                          Icons.chevron_right,
+                          size: AfaqDesign.iconSmall,
+                        ),
+                        label: const Text('Next'),
                       ),
-                      label: const Text('Next resource'),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
           ),
