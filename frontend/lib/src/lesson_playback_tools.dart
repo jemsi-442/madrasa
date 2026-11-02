@@ -1,8 +1,8 @@
 import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 
-const playbackAccent = Color(0xFFFFAA45);
-const playbackPanel = Color(0xFF202124);
+const playbackAccent = Color(0xFFE0B351);
+const playbackPanel = Color(0xFF142C40);
 const playbackMuted = Color(0xFFB6B8BE);
 
 String playbackTime(Duration value) {
@@ -71,6 +71,7 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
     onPressed: action,
     color: selected ? playbackAccent : Colors.white,
     disabledColor: Colors.white24,
+    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
     icon: Icon(icon, size: AfaqDesign.iconSize),
   );
 
@@ -132,18 +133,21 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
             inactiveTrackColor: Colors.white24,
             thumbColor: playbackAccent,
             overlayColor: playbackAccent.withValues(alpha: .15),
-            trackHeight: 3,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+            trackHeight: 5,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: LayoutBuilder(
             builder: (context, box) {
               final compact =
                   box.maxWidth < 620 ||
                   MediaQuery.textScalerOf(context).scale(13) > 20;
               final transport = Wrap(
+                key: const ValueKey('playback-transport'),
+                spacing: 4,
+                runSpacing: 4,
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
@@ -155,6 +159,7 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
                       foregroundColor: const Color(0xFF191919),
                       disabledBackgroundColor: Colors.white12,
                       disabledForegroundColor: Colors.white24,
+                      minimumSize: const Size(52, 52),
                     ),
                     icon: Icon(widget.playing ? Icons.pause : Icons.play_arrow),
                   ),
@@ -168,6 +173,9 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
                 ],
               );
               final settings = Wrap(
+                key: const ValueKey('playback-settings'),
+                spacing: 4,
+                runSpacing: 4,
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
@@ -207,7 +215,7 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
               final clock = Text(
                 '${playbackTime(Duration(milliseconds: position.round()))} / ${max > 0 ? playbackTime(widget.duration) : '--:--'}',
                 textAlign: TextAlign.right,
-                style: const TextStyle(color: playbackMuted, fontSize: 12),
+                style: const TextStyle(color: playbackMuted, fontSize: 14),
               );
               return Column(
                 mainAxisSize: MainAxisSize.min,
@@ -239,7 +247,12 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
                   ),
                   if (compact) ...[
                     Align(alignment: Alignment.centerRight, child: clock),
+                    const SizedBox(height: 8),
                     transport,
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(height: 1, color: Colors.white12),
+                    ),
                     settings,
                   ] else
                     Row(children: [transport, const Spacer(), settings]),

@@ -207,7 +207,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
   }
 
   double videoHeight(BuildContext context, double width) {
-    final toolbar = width < 640 ? 200.0 : 108.0;
+    final toolbar = width < 680 ? 270.0 : 140.0;
     // Reserve desktop space for the title, resource navigation and transport
     // footer, so Focus view does not push playback controls below the screen.
     final limit = width >= 700
@@ -228,7 +228,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
       builder: (context, box) => SizedBox(
         key: const ValueKey('lesson-media-stage'),
         height: source.kind == 'AUDIO'
-            ? 340
+            ? 440
             : document
             ? (MediaQuery.sizeOf(context).height *
                       (widget.focusView ? .75 : .6))
@@ -280,20 +280,31 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(lessonResourceIcon(delivery?.kind ?? ''), color: gold),
-                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: gold.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      lessonResourceIcon(delivery?.kind ?? ''),
+                      color: gold,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       delivery?.title ?? widget.title,
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 22,
                         fontWeight: FontWeight.w700,
                         color: playback ? Colors.white : ink,
                       ),

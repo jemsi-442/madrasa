@@ -3,6 +3,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_playback_tools.dart';
 
 void main() {
+  for (final width in [320.0, 680.0, 1200.0]) {
+    testWidgets('player groups fit at width $width', (t) async {
+      t.view.physicalSize = Size(width, 800);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.resetPhysicalSize);
+      addTearDown(t.view.resetDevicePixelRatio);
+      var plays = 0;
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LessonPlaybackTools(
+              speed: 1,
+              duration: const Duration(minutes: 4),
+              position: const Duration(seconds: 32),
+              onPlay: () => plays++,
+              onFocus: () {},
+            ),
+          ),
+        ),
+      );
+      final transport = find.byKey(const ValueKey('playback-transport'));
+      final settings = find.byKey(const ValueKey('playback-settings'));
+      expect(find.text('0:32 / 4:00'), findsOneWidget);
+      expect(
+        t.getSize(find.byTooltip('Play')).height,
+        greaterThanOrEqualTo(48),
+      );
+      if (width == 320) {
+        expect(
+          t.getTopLeft(settings).dy,
+          greaterThan(t.getBottomLeft(transport).dy),
+        );
+      }
+      await t.tap(find.byTooltip('Play'));
+      expect(plays, 1);
+      expect(t.takeException(), isNull);
+    });
+  }
   for (final scale in [1.0, 2.0]) {
     testWidgets('quick tools fit a small player at text scale $scale', (
       t,
