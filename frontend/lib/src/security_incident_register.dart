@@ -196,14 +196,19 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
                     ? null
                     : () async {
                         if (!form.currentState!.validate()) return;
-                        if (!update) {
-                          submitted ??= {
-                            'requestId': requestId,
-                            'title': title.text.trim(),
-                            'description': note.text.trim(),
-                            'priority': choice,
-                          };
-                        }
+                        submitted ??= update
+                            ? {
+                                'requestId': requestId,
+                                'revision': original!['revision'],
+                                'status': choice,
+                                'note': note.text.trim(),
+                              }
+                            : {
+                                'requestId': requestId,
+                                'title': title.text.trim(),
+                                'description': note.text.trim(),
+                                'priority': choice,
+                              };
                         change(() {
                           saving = true;
                           failure = null;
@@ -213,13 +218,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
                             update
                                 ? '/incidents/${original!['id']}'
                                 : '/incidents',
-                            update
-                                ? {
-                                    'revision': original!['revision'],
-                                    'status': choice,
-                                    'note': note.text.trim(),
-                                  }
-                                : submitted!,
+                            submitted!,
                           );
                           savedId = result is Map
                               ? result['id'] as String?
@@ -231,7 +230,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
                             change(() {
                               saving = false;
                               failure = update
-                                  ? 'Save could not be confirmed. Your text is retained. Reload the incident before retrying an update.'
+                                  ? 'Save could not be confirmed. Your text is retained. Retry Save safely with the same response. If the incident changed, cancel and reload before making a new update.'
                                   : 'Save could not be confirmed. Your text is retained. Retry Save safely using the same request; fields are locked to prevent duplicates.';
                             });
                           }

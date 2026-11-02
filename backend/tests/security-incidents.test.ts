@@ -13,6 +13,56 @@ function fixture(role = 'IT_SECURITY', status = 'ACTIVE') {
   return { tx, service };
 }
 describe('Security incidents', () => {
+  it('retries a saved response without duplicating history or overwriting later changes', async () => {
+    const base = fixture().tx;
+    const receipts = new Map<string, Record<string, unknown>>();
+    const tx = { ...base, platformAuditEvent: {
+      findUnique: vi.fn(async ({ where }: { where: { id: string } }) => receipts.get(where.id) ?? null),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        receipts.set(data.id as string, data);
+        return data;
+      }),
+    } };
+    const service = new SecurityIncidentsService({ $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient);
+    const input = { requestId: 'synthetic-response-001', revision: 1, status: 'RESOLVED', note: 'Synthetic resolution' };
+    await service.update(actor, 'synthetic-incident', input);
+    tx.securityIncident.findUniqueOrThrow.mockResolvedValue({ id: 'synthetic-incident', status: 'INVESTIGATING', revision: 3 } as never);
+    const replay = await service.update(actor, 'synthetic-incident', input);
+    expect(replay).toMatchObject({ status: 'INVESTIGATING', revision: 3 });
+    expect(tx.securityIncident.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.securityIncidentEntry.create).toHaveBeenCalledTimes(1);
+    expect(tx.platformAuditEvent.create).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify([...receipts.values()])).not.toContain(input.note);
+    for (const changed of [{ note: 'Different synthetic resolution' }, { revision: 2 }, { status: 'OPEN' }]) {
+      await expect(service.update(actor, 'synthetic-incident', { ...input, ...changed })).rejects.toThrow('different response');
+    }
+    tx.platformAccount.findUnique.mockResolvedValue({ role: 'IT_SECURITY', status: 'DISABLED' });
+    await expect(service.update(actor, 'synthetic-incident', input)).rejects.toThrow('restricted');
+    expect(tx.securityIncident.updateMany).toHaveBeenCalledTimes(1);
+  });
+  it('keeps response retry keys scoped to the actor and incident', async () => {
+    const base = fixture().tx;
+    const tx = { ...base, platformAuditEvent: { ...base.platformAuditEvent, findUnique: vi.fn().mockResolvedValue(null) } };
+    const service = new SecurityIncidentsService({ $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient);
+    const input = { requestId: 'synthetic-response-001', revision: 1, status: 'OPEN', note: 'Synthetic response note' };
+    await service.update(actor, 'synthetic-incident', input);
+    await service.update({ ...actor, accountId: 'another-synthetic-it' }, 'synthetic-incident', input);
+    await service.update(actor, 'another-incident', input);
+    const ids = tx.platformAuditEvent.findUnique.mock.calls.map(call => call[0].where.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(incidentUpdate.safeParse({ ...input, requestId: 'bad/key' }).success).toBe(false);
+  });
+  it('does not create a retry receipt for a stale response', async () => {
+    const base = fixture().tx;
+    base.securityIncident.updateMany.mockResolvedValue({ count: 0 });
+    const tx = { ...base, platformAuditEvent: { ...base.platformAuditEvent, findUnique: vi.fn().mockResolvedValue(null) } };
+    const service = new SecurityIncidentsService({ $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient);
+    await expect(service.update(actor, 'synthetic-incident', {
+      requestId: 'synthetic-response-stale', revision: 1, status: 'RESOLVED', note: 'Synthetic stale response',
+    })).rejects.toThrow('Reload');
+    expect(tx.securityIncidentEntry.create).not.toHaveBeenCalled();
+    expect(tx.platformAuditEvent.create).not.toHaveBeenCalled();
+  });
   it('replays a creation request without replacing the incident or its audit history', async () => {
     const base = fixture().tx;
     const rows = new Map<string, Record<string, unknown>>();

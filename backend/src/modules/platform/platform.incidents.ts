@@ -11,6 +11,7 @@ export const incidentCreate = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']),
 }).strict();
 export const incidentUpdate = z.object({
+  requestId: z.string().regex(/^[a-zA-Z0-9-]{16,80}$/).optional(),
   revision: z.number().int().positive(),
   status: z.enum(['OPEN', 'INVESTIGATING', 'RESOLVED']),
   note: z.string().trim().min(10).max(4000),
@@ -81,14 +82,30 @@ export class SecurityIncidentsService {
     }
   }
   async update(actor: PlatformContext, id: string, input: unknown) {
-    const data = incidentUpdate.parse(input);
+    const { requestId, ...data } = incidentUpdate.parse(input);
+    const receiptId = requestId
+      ? createHash('sha256').update(`incident-update:${actor.accountId}:${id}:${requestId}`).digest('hex').slice(0, 30)
+      : undefined;
+    const fingerprint = createHash('sha256').update(JSON.stringify(data)).digest('hex');
     return this.db.$transaction(async tx => {
       await this.authorize(tx, actor);
+      if (receiptId) {
+        const receipt = await tx.platformAuditEvent.findUnique({ where: { id: receiptId } });
+        if (receipt) {
+          const metadata = receipt.metadata as { fingerprint?: string } | null;
+          if (receipt.actorId !== actor.accountId || receipt.entityId !== id ||
+              receipt.action !== 'security.incident.updated' || metadata?.fingerprint !== fingerprint) {
+            throw new HttpError(409, 'This request was already used for a different response.');
+          }
+          // Return current state without replaying the original status over later work.
+          return tx.securityIncident.findUniqueOrThrow({ where: { id } });
+        }
+      }
       const changed = await tx.securityIncident.updateMany({ where: { id, revision: data.revision },
         data: { status: data.status, revision: { increment: 1 }, resolvedAt: data.status === 'RESOLVED' ? new Date() : null } });
       if (changed.count !== 1) throw new HttpError(409, 'Incident changed. Reload before updating.');
       await tx.securityIncidentEntry.create({ data: { incidentId: id, actorId: actor.accountId, status: data.status, note: data.note } });
-      await tx.platformAuditEvent.create({ data: { actorId: actor.accountId, actorRole: 'IT_SECURITY', action: 'security.incident.updated', entityType: 'SecurityIncident', entityId: id } });
+      await tx.platformAuditEvent.create({ data: { ...(receiptId ? { id: receiptId, metadata: { fingerprint } } : {}), actorId: actor.accountId, actorRole: 'IT_SECURITY', action: 'security.incident.updated', entityType: 'SecurityIncident', entityId: id } });
       return tx.securityIncident.findUniqueOrThrow({ where: { id } });
     });
   }

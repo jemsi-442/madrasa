@@ -2103,5 +2103,22 @@ their existing behavior and do not get retry deduplication.
 
 After an unconfirmed creation, fields remain locked and Save retries the same
 payload. Closing the dialog loses that retry key: check the register before
-starting another creation. Status updates still use revision conflict checks;
-reload the incident after an uncertain update. No new migration is required.
+starting another creation. Status updates use revision conflict checks and the
+response retry receipt described below. No new migration is required.
+
+### Safe response retries
+
+Incident updates now also accept an optional actor-and-incident-scoped `requestId`.
+The response entry, revision change and audit receipt are committed in one
+transaction. Repeating the same request returns the current incident without
+reapplying an older status or duplicating its response history. Reusing a key
+with changed revision, status or note returns 409. Every retry rechecks active IT
+access. Audit receipts store a payload fingerprint, not the response text.
+
+The response form retains and locks the submitted fields after an unconfirmed
+save, so Save retries the same request. A genuinely stale revision still requires
+closing the form and reloading before a new update. Concurrent requests can also
+receive a revision conflict; a subsequent identical retry can confirm the saved
+response. Closing the form discards its retry key, so check history before making
+a new submission. Legacy callers without requestId retain revision protection
+but do not get replay confirmation. No migration or provider setup is needed.
