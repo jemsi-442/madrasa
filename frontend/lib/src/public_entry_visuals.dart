@@ -90,8 +90,17 @@ class EntryReveal extends StatelessWidget {
 }
 
 class LearningPortrait extends StatelessWidget {
-  const LearningPortrait({super.key, this.compact = false});
+  const LearningPortrait({
+    super.key,
+    this.compact = false,
+    this.asset = 'assets/learning-hero.png',
+    this.description =
+        'Illustration of a young learner studying in a madrasa library',
+    this.alignment = const Alignment(0.45, -0.3),
+  });
   final bool compact;
+  final String asset, description;
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -120,11 +129,10 @@ class LearningPortrait extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Image.asset(
-              'assets/learning-hero.png',
+              asset,
               fit: BoxFit.cover,
-              alignment: const Alignment(0.45, -0.3),
-              semanticLabel:
-                  'Illustration of a young learner studying in a madrasa library',
+              alignment: alignment,
+              semanticLabel: description,
             ),
             const DecoratedBox(
               decoration: BoxDecoration(

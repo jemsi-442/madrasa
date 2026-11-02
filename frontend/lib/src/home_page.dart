@@ -286,7 +286,12 @@ class _HomeHero extends StatelessWidget {
                 children: [
                   const AspectRatio(
                     aspectRatio: 1.12,
-                    child: LearningPortrait(),
+                    child: LearningPortrait(
+                      asset: 'assets/home/shared-learning.jpg',
+                      description:
+                          'Learners working together before a Quran session.',
+                      alignment: Alignment.center,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   const Text(

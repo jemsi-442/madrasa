@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/home_page.dart';
 import 'package:mif_app/src/home_story_sections.dart';
+import 'package:mif_app/src/public_entry_visuals.dart';
 
 const _featureTitles = [
   "Qur'an Tracking",
@@ -37,6 +38,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(HomeStorySections), findsOneWidget);
+      final portrait = tester.widget<LearningPortrait>(
+        find.byType(LearningPortrait),
+      );
+      expect(portrait.asset, 'assets/home/shared-learning.jpg');
       expect(find.text('OUR STORY'), findsOneWidget);
       expect(find.text('PARTNER WITH AFAQ'), findsOneWidget);
       if (width >= 1150) {
