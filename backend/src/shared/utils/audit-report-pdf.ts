@@ -66,8 +66,11 @@ export function auditReportPdf(events: AuditEvent[], generatedAt: string): Promi
     text('GENERATED (UTC)', 265, y + 12, width - 243, true, 8, '#63758A');
     text(timestamp(new Date(generatedAt)), 265, y + 32, width - 243);
     y += 100;
+    doc.outline.addItem('01 Event summary');
     text('01  Event summary', 36, y, width, true, 14);
     y += 29;
+    text('Select an event number to open its full references.', 36, y, width, false, 8, '#63758A');
+    y += 22;
     const widths = [30, 157, 112, width - 299];
     const xs = [36, 66, 223, 335];
     const tableHeader = () => {
@@ -82,11 +85,15 @@ export function auditReportPdf(events: AuditEvent[], generatedAt: string): Promi
       doc.font('body').fontSize(9);
       const height = Math.max(36, ...cells.map((cell, i) => doc.heightOfString(cell, { width: widths[i]! - 14, lineGap: 3 }) + 20));
       if (y + height > bottom) { newPage('Event summary / continued'); tableHeader(); }
+      doc.addNamedDestination(`summary-${index + 1}`, 'XYZ', 36, y, null);
       doc.rect(36, y, width, height).fill(index % 2 ? '#FFFFFF' : '#F3F5F7');
-      cells.forEach((cell, i) => text(cell, xs[i]! + 7, y + 10, widths[i]! - 14));
+      cells.forEach((cell, i) => text(cell, xs[i]! + 7, y + 10, widths[i]! - 14,
+        i === 0, 9, i === 0 ? '#2463A5' : '#122336'));
+      doc.goTo(36, y, widths[0]!, height, `reference-${index + 1}`);
       y += height;
     });
     newPage('Event references / restricted identifiers');
+    doc.outline.addItem('02 Event references');
     text('02  Event references', 36, y, width, true, 14);
     y += 28;
     text('Match each numbered record to the event summary. Identifiers are preserved in full.', 36, y, width, false, 9, '#63758A');
@@ -109,8 +116,12 @@ export function auditReportPdf(events: AuditEvent[], generatedAt: string): Promi
       if (y + height > bottom) newPage('Event references / continued');
       cards.forEach((card, column) => {
         const x = 36 + column * (referenceWidth + 16);
+        const number = index + column + 1;
+        doc.addNamedDestination(`reference-${number}`, 'XYZ', x, y, null);
         doc.roundedRect(x, y, referenceWidth, height, 7).fill('#F3F5F7');
-        text(`Event ${index + column + 1}`, x + 14, y + 12, referenceWidth - 28, true, 11);
+        text(`Event ${number}`, x + 14, y + 12, 100, true, 11);
+        text('Back to summary', x + referenceWidth - 104, y + 14, 90, false, 8, '#2463A5');
+        doc.goTo(x + referenceWidth - 104, y + 10, 90, 20, `summary-${number}`);
         let fieldY = y + 37;
         card.fields.forEach(([label, value], i) => {
           text(label!, x + 14, fieldY, referenceWidth - 28, true, 8, '#63758A');
@@ -129,6 +140,7 @@ export function auditReportPdf(events: AuditEvent[], generatedAt: string): Promi
     const notesHeight = 30 + notes.reduce((sum, note) =>
       sum + doc.heightOfString(note, { width, lineGap: 3 }) + 10, 0);
     if (y + notesHeight > bottom) newPage('Report handling');
+    doc.outline.addItem('03 Reading and sharing');
     text('03  Reading and sharing', 36, y, width, true, 14);
     y += 30;
     for (const note of notes) {

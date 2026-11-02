@@ -17,6 +17,13 @@ it('renders a branded multipage audit summary with full reference records', asyn
   const pageCount = Number(pdf.toString('latin1').match(/\/Type \/Pages\s+[\s\S]*?\/Count (\d+)/)?.[1]);
   expect(pageCount).toBeGreaterThan(1);
   expect(pageCount).toBeLessThanOrEqual(7);
+  const source = pdf.toString('latin1');
+  expect(source).toContain('/Outlines');
+  expect(source.match(/\/S \/GoTo\b/g)).toHaveLength(40);
+  for (let number = 1; number <= 20; number++) {
+    expect(source).toContain(`(reference-${number})`);
+    expect(source).toContain(`(summary-${number})`);
+  }
   if (process.env.AFAQ_PDF_PREVIEW === 'true') writeFileSync('/tmp/afaq-audit-preview.pdf', pdf);
 });
 
