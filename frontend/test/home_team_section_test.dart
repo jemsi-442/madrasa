@@ -6,7 +6,7 @@ import 'package:mif_app/src/home_story_sections.dart';
 void main() {
   for (final width in [320.0, 800.0, 1440.0]) {
     for (final scale in [1.0, 2.0]) {
-      testWidgets('team cards fit width $width at text scale $scale', (
+      testWidgets('original team image and zoom fit $width at text scale $scale', (
         tester,
       ) async {
         tester.view.physicalSize = Size(width, 1000);
@@ -28,24 +28,17 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('The people behind Afaq.'), findsOneWidget);
-        for (final name in [
-          'Kassim Iddi',
-          'Miraji Hamidu',
-          'Mrs. Ismail',
-          'Zuberi Bani',
-        ]) {
-          expect(find.text(name), findsOneWidget);
-        }
-        expect(find.byType(HomePhoto), findsNWidgets(4));
-        expect(find.text('Mentor & Advisor'), findsNWidgets(2));
-        final first = tester.getTopLeft(find.byType(HomePhoto).at(0));
-        final second = tester.getTopLeft(find.byType(HomePhoto).at(1));
-        if (width == 320 || scale == 2) {
-          expect(second.dy, greaterThan(first.dy));
-        } else {
-          expect(second.dy, first.dy);
-          expect(second.dx, greaterThan(first.dx));
-        }
+        expect(find.byType(HomePhoto), findsOneWidget);
+        final photo = tester.widget<HomePhoto>(find.byType(HomePhoto));
+        expect(photo.asset, 'assets/home/team.png');
+        expect(photo.aspectRatio, 16 / 9);
+        await tester.ensureVisible(find.text('View full team image'));
+        await tester.tap(find.text('View full team image'));
+        await tester.pumpAndSettle();
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+        await tester.tap(find.byTooltip('Close team image'));
+        await tester.pumpAndSettle();
+        expect(find.byType(InteractiveViewer), findsNothing);
         expect(tester.takeException(), isNull);
       });
     }

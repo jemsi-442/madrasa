@@ -141,70 +141,52 @@ class HomeTeamSection extends StatelessWidget {
     eyebrow: 'OUR TEAM',
     title: 'The people behind Afaq.',
     intro: 'Meet our founders, mentors and advisors.',
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final largeText = MediaQuery.textScalerOf(context).scale(16) >= 25;
-        final columns = largeText || constraints.maxWidth < 540
-            ? 1
-            : constraints.maxWidth < 1050
-            ? 2
-            : 4;
-        final width = (constraints.maxWidth - 24 * (columns - 1)) / columns;
-        return Wrap(
-          spacing: 24,
-          runSpacing: 24,
-          children: [
-            for (final member in const [
-              ('Kassim Iddi', 'Founder', 'kassim'),
-              ('Miraji Hamidu', 'Co-Founder', 'miraji'),
-              ('Mrs. Ismail', 'Mentor & Advisor', 'ismail'),
-              ('Zuberi Bani', 'Mentor & Advisor', 'zuberi'),
-            ])
-              SizedBox(
-                width: width,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: publicCream,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFDED5C5)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: HomePhoto(
-                          asset: 'assets/home/team-${member.$3}.jpg',
-                          description: 'Portrait of ${member.$1}',
-                          aspectRatio: 480 / 501,
+    child: Column(
+      children: [
+        const HomePhoto(
+          asset: 'assets/home/team.png',
+          description:
+              'Afaq team: Kassim Iddi, Founder; Miraji Hamidu, '
+              'Co-Founder; Mrs. Ismail and Zuberi Bani, Mentors and Advisors.',
+          aspectRatio: 16 / 9,
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.zoom_in_rounded),
+          label: const Text('View full team image'),
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (context) => Dialog.fullscreen(
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        tooltip: 'Close team image',
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                    Expanded(
+                      child: InteractiveViewer(
+                        maxScale: 6,
+                        child: Center(
+                          child: Image.asset(
+                            'assets/home/team.png',
+                            fit: BoxFit.contain,
+                            semanticLabel: 'Original Afaq team image',
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        member.$1,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: publicInk,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        member.$2,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          height: 1.5,
-                          color: Color(0xFF88600D),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        );
-      },
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }
