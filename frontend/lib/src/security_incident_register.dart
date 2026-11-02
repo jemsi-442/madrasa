@@ -103,7 +103,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   }
 
   Future<void> refresh({String? incidentId}) async {
-    viewVersion++;
+    final version = ++viewVersion;
     final keepId = incidentId ?? selected?['id'] as String?;
     setState(() {
       busy = true;
@@ -111,7 +111,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
     });
     try {
       final data = await widget.request(listPath, null);
-      if (mounted) {
+      if (mounted && version == viewVersion) {
         setState(() {
           accessDenied = false;
           snapshot = Map<String, dynamic>.from(data as Map);
@@ -119,7 +119,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && version == viewVersion) {
         setState(() {
           snapshot = null;
           selected = null;
@@ -128,13 +128,18 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
         });
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted && version == viewVersion) setState(() => busy = false);
     }
-    if (mounted && snapshot != null && keepId != null) await open(keepId);
+    if (mounted &&
+        version == viewVersion &&
+        snapshot != null &&
+        keepId != null) {
+      await open(keepId);
+    }
   }
 
   Future<void> open(String id) async {
-    viewVersion++;
+    final version = ++viewVersion;
     setState(() {
       busy = true;
       error = null;
@@ -145,13 +150,15 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
         '/incidents/${Uri.encodeComponent(id)}',
         null,
       );
-      if (mounted) {
+      if (mounted && version == viewVersion) {
         setState(() => selected = Map<String, dynamic>.from(data as Map));
       }
     } catch (_) {
-      if (mounted) setState(() => error = 'Could not load the incident.');
+      if (mounted && version == viewVersion) {
+        setState(() => error = 'Could not load the incident.');
+      }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted && version == viewVersion) setState(() => busy = false);
     }
   }
 

@@ -1,8 +1,68 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/security_incident_register.dart';
 
 void main() {
+  for (final fails in [false, true]) {
+    testWidgets(
+      'Late incident response cannot replace newer choice failure=$fails',
+      (tester) async {
+        final first = Completer<dynamic>();
+        Map<String, dynamic> incident(String id) => {
+          'id': id,
+          'title': 'Synthetic $id',
+          'description': 'Details for $id',
+          'priority': 'MEDIUM',
+          'status': 'OPEN',
+          'revision': 1,
+          'entries': [],
+        };
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SecurityIncidentRegister(
+                request: (path, body) async {
+                  if (path.contains('?')) {
+                    return {
+                      'items': [incident('first'), incident('second')],
+                      'total': 2,
+                      'open': 2,
+                      'high': 0,
+                      'resolved': 0,
+                    };
+                  }
+                  if (path.endsWith('/first')) return first.future;
+                  return incident('second');
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final buttons = tester
+            .widgetList<TextButton>(find.widgetWithText(TextButton, 'Open'))
+            .toList();
+        // Two queued actions before the next frame disables the controls.
+        buttons[0].onPressed!();
+        buttons[1].onPressed!();
+        await tester.pumpAndSettle();
+        expect(find.text('Details for second'), findsOneWidget);
+        if (fails) {
+          first.completeError(Exception('Synthetic late failure'));
+        } else {
+          first.complete(incident('first'));
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('Details for second'), findsOneWidget);
+        expect(find.text('Details for first'), findsNothing);
+        expect(find.text('Could not load the incident.'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'Background updates preserve selected incident and pause for response form',
     (tester) async {
