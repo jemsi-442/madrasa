@@ -90,51 +90,38 @@ class PlatformOfflineSyncPage extends StatelessWidget {
           ],
         ),
       );
-      final review = panel(
-        'Conflict review',
-        Column(
+      final review = ItSectionPanel(
+        title: 'Conflict review',
+        accent: AfaqDesign.gold,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'REVIEW QUEUE',
-              style: TextStyle(
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Icon(
+                Icons.sync_problem_outlined,
+                size: 32,
                 color: AfaqDesign.gold,
-                letterSpacing: 1.5,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 14),
             const Text(
               'Conflict records are not connected',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 12),
             const Text(
-              'An unavailable queue does not mean there are no conflicts. No record has been selected or marked as resolved.',
+              'The review queue is unavailable. This does not confirm that there are no conflicts.',
               style: TextStyle(color: AfaqDesign.muted, height: 1.5),
-            ),
-            const SizedBox(height: 24),
-            const ItRecordDetails(
-              values: {
-                'Existing version': 'Not available',
-                'Incoming version': 'Not available',
-                'Record changes': 'Not permitted here',
-              },
             ),
             const Divider(height: 32),
             const Text(
-              'IT inspects technical metadata. The responsible teacher or madrasa administrator must review the learning record.',
+              'IT checks technical metadata. Teachers or madrasa administrators review learning records; no records are changed here.',
               style: TextStyle(color: AfaqDesign.muted, height: 1.5),
-            ),
-            const SizedBox(height: 16),
-            const Tooltip(
-              message:
-                  'Requires a received conflict and a scoped review-assignment API',
-              child: FilledButton(
-                onPressed: null,
-                child: Text('Assign for review'),
-              ),
             ),
             const SizedBox(height: 12),
             TextButton(

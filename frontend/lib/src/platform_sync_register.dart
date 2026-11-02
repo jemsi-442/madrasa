@@ -98,19 +98,14 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
   Widget build(BuildContext context) => PlatformOfflineSyncPage(
     onAudit: widget.onAudit,
     onIncidents: widget.onIncidents,
-    receivedUpdates: Container(
-      decoration: AfaqDesign.panelDecoration(),
-      padding: const EdgeInsets.all(22),
+    receivedUpdates: ItSectionPanel(
+      title: 'Received learning updates',
+      accent: AfaqDesign.blue,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Received learning updates',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Accepted teaching events only. Online and offline origins are not distinguished; these are not device-sync counts.',
+            'Accepted teaching events, not device-sync counts.',
             style: TextStyle(color: AfaqDesign.muted, height: 1.5),
           ),
           const SizedBox(height: 16),
@@ -118,14 +113,49 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
           if (error != null)
             Text(error!, style: const TextStyle(color: Colors.red)),
           if (capturedAt != null)
-            Text(
-              'Last checked (UTC): ${itTimestamp(capturedAt)}',
-              style: const TextStyle(color: AfaqDesign.muted),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.schedule, size: 20, color: AfaqDesign.muted),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Last checked (UTC)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AfaqDesign.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          itTimestamp(capturedAt),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           if (!busy && error == null && items.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Text('No received teaching events on this page.'),
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Column(
+                children: [
+                  Icon(Icons.inbox_outlined, size: 36, color: AfaqDesign.blue),
+                  SizedBox(height: 12),
+                  Text(
+                    'No received teaching events on this page.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.w600, height: 1.5),
+                  ),
+                ],
+              ),
             ),
           for (final item in items) ...[
             const Divider(height: 28),
@@ -155,13 +185,19 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
               ),
           ],
           const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+          Text(
+            '$total received events',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 12,
+            runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                '$total received events / Page $page of ${max(1, (total / 20).ceil())}',
-              ),
+              Text('Page $page of ${max(1, (total / 20).ceil())}'),
               TextButton(
                 onPressed: busy || page <= 1
                     ? null
@@ -180,9 +216,22 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
               ),
             ],
           ),
-          TextButton(
-            onPressed: widget.onAudit,
-            child: const Text('Review audit logs'),
+          const SizedBox(height: 12),
+          const Text(
+            'Online and offline origins are not distinguished.',
+            style: TextStyle(
+              color: AfaqDesign.muted,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: widget.onAudit,
+              icon: const Icon(Icons.policy_outlined),
+              label: const Text('Review audit logs'),
+            ),
           ),
         ],
       ),

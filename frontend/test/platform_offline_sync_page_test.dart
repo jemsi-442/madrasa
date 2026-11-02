@@ -29,10 +29,9 @@ void main() {
       );
       expect(find.text('Conflict records are not connected'), findsOneWidget);
       expect(find.text('Synced'), findsNothing);
-      expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull,
-      );
+      expect(find.text('Assign for review'), findsNothing);
+      expect(find.text('Existing version'), findsNothing);
+      expect(find.text('Incoming version'), findsNothing);
       await tester.ensureVisible(find.text('Review audit logs'));
       await tester.tap(find.text('Review audit logs'));
       expect(audit, isTrue);

@@ -4,6 +4,41 @@ import 'package:mif_app/src/platform_sync_register.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final width in [320.0, 1440.0]) {
+    testWidgets(
+      'Empty received updates have distinct metadata and navigation at $width',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 1200);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: PlatformSyncRegister(
+                onAudit: () {},
+                onIncidents: () {},
+                request: (_) async => {
+                  'items': [],
+                  'total': 0,
+                  'capturedAt': '2026-11-02T05:04:00Z',
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Last checked (UTC)'), findsOneWidget);
+        expect(find.text('0 received events'), findsOneWidget);
+        expect(find.text('Page 1 of 1'), findsOneWidget);
+        expect(find.text('Existing version'), findsNothing);
+        await tester.ensureVisible(find.text('Check updates'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   for (final status in [401, 403, 409]) {
     testWidgets('Access failure $status clears metadata and stops polling', (
       tester,
