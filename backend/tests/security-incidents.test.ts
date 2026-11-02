@@ -13,6 +13,23 @@ function fixture(role = 'IT_SECURITY', status = 'ACTIVE') {
   return { tx, service };
 }
 describe('Security incidents', () => {
+  it('builds a bounded priority queue independently of the register page', async () => {
+    const base = fixture().tx;
+    const findMany = vi.fn(async (args: any) => {
+      if (args.skip !== undefined) return [];
+      return [{ id: `synthetic-${args.where.priority}`, title: 'Synthetic concern', priority: args.where.priority }];
+    });
+    const tx = { ...base, securityIncident: { ...base.securityIncident, findMany, count: vi.fn().mockResolvedValue(0) } };
+    const service = new SecurityIncidentsService({ $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient);
+    const result = await service.list(actor, { page: 2, status: 'RESOLVED' });
+    expect(result.attention.map(row => row.priority)).toEqual(['HIGH', 'MEDIUM', 'LOW']);
+    expect(findMany.mock.calls.slice(1).map(([args]) => args.take)).toEqual([3, 2, 1]);
+    for (const [args] of findMany.mock.calls.slice(1)) {
+      expect(args.where.status).toEqual({ not: 'RESOLVED' });
+      expect(args.select).toEqual({ id: true, title: true, priority: true });
+      expect(args.orderBy[0]).toEqual({ createdAt: 'asc' });
+    }
+  });
   it('retries a saved response without duplicating history or overwriting later changes', async () => {
     const base = fixture().tx;
     const receipts = new Map<string, Record<string, unknown>>();

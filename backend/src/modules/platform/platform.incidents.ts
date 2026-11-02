@@ -37,7 +37,17 @@ export class SecurityIncidentsService {
       const now = new Date();
       const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
       const items = await tx.securityIncident.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * 20, take: 20 });
-      return { items, page, total: await tx.securityIncident.count({ where }),
+      const attention: { id: string; title: string; priority: string }[] = [];
+      for (const level of ['HIGH', 'MEDIUM', 'LOW']) {
+        if (attention.length === 3) break;
+        attention.push(...await tx.securityIncident.findMany({
+          where: { status: { not: 'RESOLVED' }, priority: level },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          take: 3 - attention.length,
+          select: { id: true, title: true, priority: true },
+        }));
+      }
+      return { items, attention, page, total: await tx.securityIncident.count({ where }),
         open: await tx.securityIncident.count({ where: { status: { not: 'RESOLVED' } } }),
         high: await tx.securityIncident.count({ where: { priority: 'HIGH', status: { not: 'RESOLVED' } } }),
         resolved: await tx.securityIncident.count({ where: { status: 'RESOLVED', resolvedAt: { gte: start, lte: now } } }),

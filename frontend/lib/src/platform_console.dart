@@ -552,9 +552,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             await api.call('/incidents?page=1') as Map,
           );
           result['incidents'] = {
-            'recentOpen': (incidentData['items'] as List? ?? [])
+            'recentOpen': (incidentData['attention'] as List? ?? [])
                 .whereType<Map>()
-                .where((row) => row['status'] != 'RESOLVED')
                 .take(3)
                 .map(
                   (row) => {

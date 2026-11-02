@@ -147,7 +147,9 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ItSectionPanel(
-            accent: AfaqDesign.gold,
+            accent: statusKnown && !needsAction
+                ? const Color(0xff278457)
+                : AfaqDesign.gold,
             title: 'Needs attention',
             child: Column(
               children: [
@@ -183,7 +185,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                     if (incident['id'] is String && incident['title'] is String)
                       task(
                         incident['title'] as String,
-                        '${incident['priority']} priority / Recent open incident',
+                        '${incident['priority']} priority / Open investigation',
                         Icons.warning_amber_outlined,
                         () => widget.onIncident!(incident['id'] as String),
                       ),
@@ -192,7 +194,9 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                   incidentsReady
                       ? '$openCount open / $highCount high priority. Review the incident register.'
                       : 'Current incident counts are unavailable. Open the register to investigate.',
-                  Icons.warning_amber_outlined,
+                  incidentsReady && openCount == 0
+                      ? Icons.check_circle_outline
+                      : Icons.warning_amber_outlined,
                   widget.onIncidents,
                 ),
                 task(
