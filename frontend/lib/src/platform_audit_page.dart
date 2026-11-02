@@ -38,7 +38,8 @@ class _PlatformAuditPageState extends State<PlatformAuditPage> {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, size) {
-      final rows = widget.records
+      final ready = !widget.busy && widget.error == null;
+      final rows = (ready ? widget.records : <Map<String, dynamic>>[])
           .where(
             (r) =>
                 '${r['id']} ${r['actorId']} ${r['actorRole']} ${r['action']} ${r['entityId']}'
@@ -247,7 +248,11 @@ class _PlatformAuditPageState extends State<PlatformAuditPage> {
                     ],
                   const SizedBox(height: 16),
                   Text(
-                    'Showing ${rows.length} of ${widget.records.length} events on page ${widget.page}',
+                    widget.busy
+                        ? 'Loading audit events...'
+                        : widget.error != null
+                        ? 'Audit events are unavailable. Retry with Refresh.'
+                        : 'Showing ${rows.length} of ${widget.records.length} events on page ${widget.page}',
                     style: const TextStyle(color: AfaqDesign.muted),
                   ),
                   const SizedBox(height: 12),
@@ -255,13 +260,13 @@ class _PlatformAuditPageState extends State<PlatformAuditPage> {
                     spacing: 12,
                     children: [
                       OutlinedButton(
-                        onPressed: widget.busy || widget.page <= 1
+                        onPressed: !ready || widget.page <= 1
                             ? null
                             : () => widget.onPage(widget.page - 1),
                         child: const Text('Previous'),
                       ),
                       OutlinedButton(
-                        onPressed: widget.busy || widget.records.length < 20
+                        onPressed: !ready || widget.records.length < 20
                             ? null
                             : () => widget.onPage(widget.page + 1),
                         child: const Text('Next'),
