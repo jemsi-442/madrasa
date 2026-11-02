@@ -3,6 +3,7 @@ import 'design_tokens.dart';
 import 'foundation_ui.dart' show DashboardMetric;
 import 'it_workspace_visuals.dart';
 import 'status_badge.dart';
+import 'workspace_form_dialog.dart';
 
 class PlatformAccessPage extends StatefulWidget {
   const PlatformAccessPage({
@@ -75,18 +76,10 @@ class _PlatformAccessPageState extends State<PlatformAccessPage> {
     if (!ready || reviewRoute != null) return;
     final route = DialogRoute<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(
-              Icons.account_circle_outlined,
-              color: AfaqDesign.blue,
-              size: 30,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text('${row['fullName'] ?? 'Company account'}')),
-          ],
-        ),
+      builder: (context) => WorkspaceFormDialog(
+        icon: Icons.account_circle_outlined,
+        eyebrow: 'ACCOUNT / READ-ONLY',
+        title: Text('${row['fullName'] ?? 'Company account'}'),
         content: SizedBox(
           width: 600,
           child: SingleChildScrollView(

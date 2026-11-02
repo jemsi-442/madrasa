@@ -2016,7 +2016,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               checkSmtp: () => api.call('/integrations/smtp/check', body: {}),
               checkQuran: () => api.call('/integrations/quran/check', body: {}),
               checkSms: () => api.call('/integrations/sms/check', body: {}),
-              checkPayment: () => api.call('/integrations/payments/check', body: {}),
+              checkPayment: () =>
+                  api.call('/integrations/payments/check', body: {}),
               onAudit: () => navigateTo(PlatformPage.history),
               onHealth: () => navigateTo(PlatformPage.health),
             )
@@ -2656,7 +2657,9 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   Future<void> auditEventDetails(Map<String, dynamic> record) async {
     final next = await sessionDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => WorkspaceFormDialog(
+        icon: Icons.history_rounded,
+        eyebrow: 'AUDIT EVENT / READ-ONLY',
         title: Text('${record['action']}'),
         content: SizedBox(
           width: 650,

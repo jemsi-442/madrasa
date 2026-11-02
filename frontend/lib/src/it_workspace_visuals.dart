@@ -214,14 +214,24 @@ class ItRecordDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
-      final columns = bounds.maxWidth >= 600 ? 2 : 1;
+      final columns =
+          bounds.maxWidth >= 600 &&
+              MediaQuery.textScalerOf(context).scale(14) <= 20
+          ? 2
+          : 1;
       return Wrap(
         spacing: 20,
         runSpacing: 16,
         children: [
           for (final entry in values.entries)
-            SizedBox(
+            Container(
               width: (bounds.maxWidth - (columns - 1) * 20) / columns,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F8FB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFDCE4EB)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -230,17 +240,23 @@ class ItRecordDetails extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       color: AfaqDesign.muted,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 8),
                   SelectableText(
                     entry.key.endsWith('(UTC)')
                         ? itTimestamp(entry.value)
                         : entry.value == null
                         ? 'Not recorded'
                         : '${entry.value}',
-                    style: const TextStyle(color: AfaqDesign.ink, height: 1.5),
+                    style: const TextStyle(
+                      color: AfaqDesign.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
