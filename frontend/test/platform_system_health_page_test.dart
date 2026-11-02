@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_system_health_page.dart';
+import 'package:mif_app/src/it_workspace_visuals.dart';
+import 'package:mif_app/src/design_tokens.dart';
 
 void main() {
   testWidgets('Expired check cannot open a draft before the next timer tick', (
@@ -183,6 +185,13 @@ void main() {
         ),
       );
       expect(find.text('1 / 2'), findsOneWidget);
+      ItSectionPanel attentionPanel() => tester.widget<ItSectionPanel>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is ItSectionPanel && widget.title == 'Service attention',
+        ),
+      );
+      expect(attentionPanel().accent, AfaqDesign.gold);
       expect(find.text('Not measured'), findsWidgets);
       expect(find.text('Shared services'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -203,6 +212,7 @@ void main() {
       await tester.pump(const Duration(seconds: 15));
       expect(find.text('1 / 2'), findsNothing);
       expect(find.text('Not current'), findsWidgets);
+      expect(attentionPanel().accent, AfaqDesign.blue);
       expect(
         find.textContaining('Current availability is unknown'),
         findsOneWidget,

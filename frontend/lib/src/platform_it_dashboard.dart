@@ -59,25 +59,8 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
     super.dispose();
   }
 
-  Widget panel(String title, Widget child) => Container(
-    padding: const EdgeInsets.all(22),
-    decoration: AfaqDesign.panelDecoration(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AfaqDesign.ink,
-          ),
-        ),
-        const SizedBox(height: 18),
-        child,
-      ],
-    ),
-  );
+  Widget panel(String title, Widget child) =>
+      ItSectionPanel(title: title, child: child);
 
   Widget task(
     String title,
@@ -157,9 +140,10 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
       final operations = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          panel(
-            'Needs attention',
-            Column(
+          ItSectionPanel(
+            accent: AfaqDesign.gold,
+            title: 'Needs attention',
+            child: Column(
               children: [
                 if (!fresh || checks.isEmpty)
                   task(

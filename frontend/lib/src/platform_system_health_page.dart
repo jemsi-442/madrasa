@@ -52,27 +52,8 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
     super.dispose();
   }
 
-  Widget panel(String title, Widget body) => Container(
-    decoration: AfaqDesign.panelDecoration(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(22),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AfaqDesign.ink,
-            ),
-          ),
-        ),
-        const Divider(height: 1),
-        Padding(padding: const EdgeInsets.all(22), child: body),
-      ],
-    ),
-  );
+  Widget panel(String title, Widget body) =>
+      ItSectionPanel(title: title, child: body);
 
   @override
   Widget build(BuildContext context) {
@@ -322,9 +303,12 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
     final right = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        panel(
-          'Service attention',
-          Column(
+        ItSectionPanel(
+          accent: fresh && failed.isNotEmpty
+              ? AfaqDesign.gold
+              : AfaqDesign.blue,
+          title: 'Service attention',
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (!fresh)
