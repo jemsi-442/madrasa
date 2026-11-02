@@ -215,6 +215,7 @@ const findStoredRefreshToken = async (refreshToken: string) => {
 const rotateRefreshToken = async (
   storedTokenId: bigint,
   user: SessionUser,
+  ip?: string,
 ) => {
   const nextSession = await buildSessionResponse(user);
   const now = new Date();
@@ -225,6 +226,7 @@ const rotateRefreshToken = async (
         orgId: user.orgId,
         userId: user.id,
         tokenHash: nextSession.refreshTokenHash,
+        ipAddress: sessionIp(ip),
         expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000),
       },
     });
@@ -253,7 +255,7 @@ const rotateRefreshToken = async (
   };
 };
 
-export const login = async (input: LoginInput) => {
+export const login = async (input: LoginInput, ip?: string) => {
   const user = await prisma.user.findFirst({
     where: {
       ...schoolLoginIdentity(input.login),
@@ -290,6 +292,7 @@ export const login = async (input: LoginInput) => {
       orgId: user.orgId,
       userId: user.id,
       tokenHash: session.refreshTokenHash,
+      ipAddress: sessionIp(ip),
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000),
     },
   });
@@ -313,7 +316,7 @@ export const login = async (input: LoginInput) => {
   };
 };
 
-export const refreshSession = async (input: RefreshTokenInput) => {
+export const refreshSession = async (input: RefreshTokenInput, ip?: string) => {
   const storedToken = await findStoredRefreshToken(input.refreshToken);
 
   if (storedToken.revokedAt) {
@@ -325,7 +328,7 @@ export const refreshSession = async (input: RefreshTokenInput) => {
   if ((decodeRefreshToken(input.refreshToken).ver ?? 0) !== user.authVersion) {
     throw new HttpError(401, "Please sign in again");
   }
-  const nextSession = await rotateRefreshToken(storedToken.id, user);
+  const nextSession = await rotateRefreshToken(storedToken.id, user, ip);
 
   return {
     accessToken: nextSession.accessToken,
@@ -353,3 +356,4 @@ export const logout = async (input: RefreshTokenInput) => {
 export const logoutAll = async (userId: string) => {
   await revokeAllUserRefreshTokens(BigInt(userId));
 };
+import { sessionIp } from '../../shared/utils/session-ip';

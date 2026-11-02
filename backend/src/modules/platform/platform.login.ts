@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { HttpError } from "../../shared/errors/http-error";
+import { sessionIp } from '../../shared/utils/session-ip';
 import { PLATFORM_AUDIENCE, PLATFORM_ISSUER } from "./platform.authentication";
 import { decryptMfaSecret, matchTotpStep, validMfaKey } from "./platform.mfa";
 
@@ -60,6 +61,7 @@ export async function loginPlatform(db: PrismaClient, secret: string, options: P
     if (consumed.count !== 1) throw new HttpError(401, "Invalid platform credentials or verification code");
     await tx.platformSession.create({ data: {
       id: sid, accountId: account.id, role: account.role,
+      ipAddress: sessionIp(ip),
       createdAt: new Date(now * 1000), mfaVerifiedAt: new Date(now * 1000), expiresAt: new Date((now + 900) * 1000),
     } });
     await tx.platformAuditEvent.create({ data: {

@@ -254,7 +254,7 @@ void main() {
     await tester.tap(find.byTooltip('Open navigation'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('My sessions'),
+      find.text('Sessions'),
       80,
       scrollable: find.descendant(
         of: find.byType(Drawer),
@@ -262,7 +262,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('My sessions'));
+    await tester.tap(find.text('Sessions'));
     await tester.pumpAndSettle();
     expect(selected, PlatformPage.sessions);
     expect(tester.takeException(), isNull);
@@ -346,7 +346,7 @@ void main() {
         if (role == 'SUPER_ADMIN') {
           expect(find.text('System health'), findsNothing);
           expect(find.text('Audit trail'), findsNothing);
-          expect(find.text('My sessions'), findsNothing);
+          expect(find.text('Sessions'), findsNothing);
           expect(find.text('Madrassa setup'), findsNothing);
           await tester.tap(find.text('Users & Permissions'));
           await tester.pumpAndSettle();

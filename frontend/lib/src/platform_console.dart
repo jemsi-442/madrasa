@@ -383,6 +383,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool offlineSyncView = false;
   bool integrationsView = false;
   bool sessionsView = false;
+  String sessionSource = 'platform';
   bool accountsView = false;
   bool homeView = false;
   bool madrasasView = false;
@@ -597,6 +598,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       queryParameters: {
         'page': '$page',
         'pageSize': '20',
+        if (sessionsView && !isAdmin) 'source': sessionSource,
         if (!accountsView &&
             !sessionsView &&
             !audit &&
@@ -633,7 +635,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       '${accountsView
           ? '/accounts'
           : sessionsView
-          ? '/sessions'
+          ? (isAdmin ? '/sessions' : '/security-sessions')
           : audit
           ? '/audit-events'
           : '/tenant-applications'}?$query',
@@ -1499,7 +1501,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                         accountsView
                             ? 'Read-only company directory. School users are managed separately.'
                             : sessionsView
-                            ? 'Your active sessions. Times are UTC. Only sessions belonging to your account are shown.'
+                            ? 'Session access metadata. Times are UTC.'
                             : audit
                             ? 'Platform activity'
                             : 'Request > Independent review > Madrasa registration > Admin invitation',
@@ -2075,6 +2077,14 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             )
           : sessionsView && !isAdmin
           ? PlatformSessionsPage(
+              oversight: true,
+              source: sessionSource,
+              onSource: (value) => run(() async {
+                sessionSource = value;
+                page = 1;
+                records = [];
+                await load();
+              }),
               records: records,
               busy: busy,
               error: error,
@@ -2521,61 +2531,71 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           ItRecordDetails(
             values: {
               'Session ID': record['id'],
+              if (record['source'] != null) ...{
+                'Account': record['accountName'],
+                'Role': record['role'],
+                'Scope': record['scope'],
+                'IP address': record['ipAddress'],
+                'Access type': record['source'] == 'madrasa'
+                    ? 'Renewable access (not live presence)'
+                    : 'Platform session',
+              },
               'Signed in (UTC)': record['createdAt'],
               'Expires (UTC)': record['expiresAt'],
             },
           ),
           const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: busy
-                ? null
-                : () async {
-                    final confirmed = await sessionDialog<bool>(
-                      context: context,
-                      builder: (context) => WorkspaceFormDialog(
-                        icon: Icons.logout_rounded,
-                        eyebrow: 'SESSION / CONFIRM ACTION',
-                        title: const Text('Revoke this session?'),
-                        content: Text(
-                          record['current'] == true
-                              ? 'You will be signed out of this platform session.'
-                              : 'That session will no longer be able to make new requests. Requests already running may finish.',
+          if (record['canRevoke'] != false)
+            OutlinedButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      final confirmed = await sessionDialog<bool>(
+                        context: context,
+                        builder: (context) => WorkspaceFormDialog(
+                          icon: Icons.logout_rounded,
+                          eyebrow: 'SESSION / CONFIRM ACTION',
+                          title: const Text('Revoke this session?'),
+                          content: Text(
+                            record['current'] == true
+                                ? 'You will be signed out of this platform session.'
+                                : 'That session will no longer be able to make new requests. Requests already running may finish.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Revoke session'),
+                            ),
+                          ],
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Revoke session'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed != true || !mounted || api.user == null) {
-                      return;
-                    }
-                    await run(() async {
-                      final result = await api.call(
-                        '/sessions/${record['id']}/revoke',
-                        body: {},
                       );
-                      if (result['current'] == true) {
-                        api.clear();
-                        expiry?.cancel();
-                        records = [];
-                      } else {
-                        await load();
+                      if (confirmed != true || !mounted || api.user == null) {
+                        return;
                       }
-                    });
-                  },
-            child: Text(
-              record['current'] == true
-                  ? 'Sign out this session'
-                  : 'Revoke session',
+                      await run(() async {
+                        final result = await api.call(
+                          '/sessions/${record['id']}/revoke',
+                          body: {},
+                        );
+                        if (result['current'] == true) {
+                          api.clear();
+                          expiry?.cancel();
+                          records = [];
+                        } else {
+                          await load();
+                        }
+                      });
+                    },
+              child: Text(
+                record['current'] == true
+                    ? 'Sign out this session'
+                    : 'Revoke session',
+              ),
             ),
-          ),
         ],
       ),
     ),

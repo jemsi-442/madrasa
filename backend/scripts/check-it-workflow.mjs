@@ -60,7 +60,7 @@ try {
     ['Overview', 'IT & Security Overview'],
     ['System health', 'System Health'],
     ['Company accounts', 'Access & Roles'],
-    ['My sessions', 'Sessions & Devices'],
+    ['Sessions', 'Sessions'],
     ['Audit trail', 'Audit Logs'],
     ['Security Incidents', 'Security Incidents'],
     ['Vulnerabilities & Updates', 'Vulnerabilities & Updates'],

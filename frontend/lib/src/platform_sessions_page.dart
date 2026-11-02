@@ -14,7 +14,13 @@ class PlatformSessionsPage extends StatefulWidget {
     required this.onPage,
     required this.onRefresh,
     required this.details,
+    this.oversight = false,
+    this.source = 'platform',
+    this.onSource,
   });
+  final bool oversight;
+  final String source;
+  final ValueChanged<String>? onSource;
   final List<Map<String, dynamic>> records;
   final bool busy;
   final String? error;
@@ -75,18 +81,50 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
           .toList();
       final chosen = rows.where((r) => '${r['id']}' == selected).firstOrNull;
       final list = panel(
-        'Your active sessions',
+        widget.oversight ? 'Account sessions' : 'Your active sessions',
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.oversight) ...[
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: widget.source,
+                decoration: const InputDecoration(labelText: 'Account group'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'platform',
+                    child: Text('Platform accounts'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'madrasa',
+                    child: Text('All madrasa accounts'),
+                  ),
+                ],
+                onChanged: ready
+                    ? (value) {
+                        setState(() {
+                          selected = null;
+                          filter = 'all';
+                        });
+                        if (value != null) widget.onSource?.call(value);
+                      }
+                    : null,
+              ),
+              const SizedBox(height: 16),
+            ],
             DropdownButtonFormField<String>(
+              key: ValueKey('session-filter-${widget.source}'),
               initialValue: filter,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Session filter'),
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: 'all',
-                  child: Text('All your sessions'),
+                  child: Text(
+                    widget.oversight
+                        ? 'All listed sessions'
+                        : 'All your sessions',
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'current',
@@ -125,6 +163,7 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                   columns: [
                     for (final label in [
                       'Session',
+                      if (widget.oversight) 'IP address',
                       'Signed in (UTC)',
                       'Expires (UTC)',
                       '',
@@ -147,6 +186,8 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                                 Text(
                                   row['current'] == true
                                       ? 'Current session'
+                                      : widget.oversight
+                                      ? '${row['accountName'] ?? 'Account'}'
                                       : 'Another session',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
@@ -156,6 +197,8 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                                 Text(
                                   row['current'] == true
                                       ? 'This sign-in'
+                                      : widget.oversight
+                                      ? '${row['role'] ?? ''} / ${row['scope'] ?? ''}'
                                       : 'Your account',
                                   style: const TextStyle(
                                     color: AfaqDesign.muted,
@@ -165,6 +208,10 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                               ],
                             ),
                           ),
+                          if (widget.oversight)
+                            DataCell(
+                              Text('${row['ipAddress'] ?? 'Not recorded'}'),
+                            ),
                           DataCell(
                             SizedBox(
                               width: 145,
@@ -218,6 +265,8 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                           Text(
                             row['current'] == true
                                 ? 'Current session'
+                                : widget.oversight
+                                ? '${row['accountName'] ?? 'Account'}'
                                 : 'Another session',
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
@@ -230,6 +279,13 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      if (widget.oversight) ...[
+                        Text('${row['role'] ?? ''} / ${row['scope'] ?? ''}'),
+                        Text(
+                          'IP address: ${row['ipAddress'] ?? 'Not recorded'}',
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       Text(
                         'Signed in: ${itTimestamp(row['createdAt'])}',
                         style: const TextStyle(color: AfaqDesign.muted),
@@ -255,8 +311,10 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
                 const Divider(height: 1),
               ],
             const SizedBox(height: 16),
-            const Text(
-              'Your account only. Session identifiers appear in the selected review.',
+            Text(
+              widget.oversight
+                  ? 'IP is recorded at sign-in or renewal, not live location. Older sessions may have no IP. Madrasa entries represent renewable access, not online devices.'
+                  : 'Your account only. Session identifiers appear in the selected review.',
               style: TextStyle(color: AfaqDesign.muted),
             ),
             const SizedBox(height: 16),
@@ -335,10 +393,11 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const ItPageHeading(
-              title: 'Sessions & Devices',
-              description:
-                  'Review and manage sessions for your signed-in platform account.',
+            ItPageHeading(
+              title: widget.oversight ? 'Sessions' : 'Sessions & Devices',
+              description: widget.oversight
+                  ? 'Inspect account access and recorded IP addresses across the platform and madrasas.'
+                  : 'Review and manage sessions for your signed-in platform account.',
             ),
             Align(
               alignment: Alignment.centerRight,

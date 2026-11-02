@@ -61,7 +61,7 @@ export const sendBrowserSession = (
 };
 
 export const browserLogin = async (req: Request, res: Response) => {
-  sendBrowserSession(res, await login(loginSchema.parse(req.body)));
+  sendBrowserSession(res, await login(loginSchema.parse(req.body), req.ip ?? req.socket.remoteAddress));
 };
 
 export const browserRefresh = async (req: Request, res: Response) => {
@@ -75,7 +75,7 @@ export const browserRefresh = async (req: Request, res: Response) => {
     }
     const refreshToken = readCookie(req);
     if (!refreshToken) throw new HttpError(401, "Please sign in");
-    sendBrowserSession(res, await refreshSession({ refreshToken }));
+    sendBrowserSession(res, await refreshSession({ refreshToken }, req.ip ?? req.socket.remoteAddress));
   } catch (error) {
     if (error instanceof HttpError && error.statusCode === 401) {
       res.clearCookie(cookieName, cookieOptions);

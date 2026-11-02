@@ -18,6 +18,7 @@ export const platformPermissions = [
   "platform.audit.export",
   "platform.office-history.read",
   "platform.session.self",
+  "platform.session.inspect",
   "tenant.onboarding.read",
   "platform.health.read",
   "platform.account.read",
@@ -41,7 +42,7 @@ const grants: Readonly<Record<string, readonly PlatformPermission[]>> = {
     "platform.session.self", "platform.account.read", "platform.account.disable.it",
     "platform.account.restore.it", "platform.overview.read",
   ],
-  IT_SECURITY: ["platform.account.read", "platform.audit.read", "platform.audit.export", "platform.health.read", "platform.session.self", "tenant.onboarding.read", "tenant.provisioning.inspect", "tenant.provisioning.create", "tenant.technical-review.create"],
+  IT_SECURITY: ["platform.session.inspect", "platform.account.read", "platform.audit.read", "platform.audit.export", "platform.health.read", "platform.session.self", "tenant.onboarding.read", "tenant.provisioning.inspect", "tenant.provisioning.create", "tenant.technical-review.create"],
 };
 
 export function hasPlatformPermission(role: string, permission: PlatformPermission): boolean {

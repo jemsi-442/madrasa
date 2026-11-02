@@ -142,8 +142,8 @@ class PlatformTaskIntro extends StatelessWidget {
           'Find recorded events and inspect their context.',
         ),
         PlatformPage.sessions => (
-          'My sessions',
-          'Review devices signed in to your account.',
+          'Sessions',
+          'Inspect account sessions and recorded IP addresses.',
         ),
         PlatformPage.health => (
           'System health',
@@ -181,8 +181,8 @@ class PlatformTaskIntro extends StatelessWidget {
         Icons.monitor_heart_outlined,
       ),
       PlatformPage.sessions => (
-        'Know where you are signed in',
-        'Review your own active sessions. Revoking your current session signs you out; other accounts are not shown here.',
+        'Inspect account access',
+        'Review platform and madrasa access metadata. IP addresses are observations, not proof of device ownership or location.',
         Icons.devices_outlined,
       ),
       _ => ('', '', Icons.info_outline),
@@ -294,7 +294,7 @@ class _PlatformWorkspaceShellState extends State<PlatformWorkspaceShell> {
     ] else ...[
       (PlatformPage.health, 'System health', Icons.monitor_heart_outlined),
       (PlatformPage.accounts, 'Company accounts', Icons.badge_outlined),
-      (PlatformPage.sessions, 'My sessions', Icons.devices_outlined),
+      (PlatformPage.sessions, 'Sessions', Icons.devices_outlined),
       (PlatformPage.history, 'Audit trail', Icons.policy_outlined),
       (
         PlatformPage.incidents,

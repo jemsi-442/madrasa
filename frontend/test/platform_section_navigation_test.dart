@@ -150,7 +150,7 @@ void main() {
         expect(find.text('Office history'), findsNothing);
         expect(find.text('Activity log'), findsNothing);
         expect(find.text('Settings & Security'), findsNothing);
-        expect(find.text('My sessions'), admin ? findsNothing : findsOneWidget);
+        expect(find.text('Sessions'), admin ? findsNothing : findsOneWidget);
         expect(find.text('Audit trail'), admin ? findsNothing : findsOneWidget);
         expect(tester.takeException(), isNull);
       });

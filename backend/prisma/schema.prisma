@@ -75,6 +75,7 @@ model InstitutionalReport {
 }
 
 model PlatformSession {
+  ipAddress     String?      @map("ip_address") @db.VarChar(64)
   id            String       @id @default(uuid()) @db.VarChar(36)
   accountId     String       @map("account_id") @db.VarChar(30)
   role          PlatformRole
@@ -1248,6 +1249,7 @@ model AuditLog {
 }
 
 model RefreshToken {
+  ipAddress     String?      @map("ip_address") @db.VarChar(64)
   id            BigInt       @id @default(autoincrement())
   orgId         BigInt       @map("org_id")
   userId        BigInt       @map("user_id")

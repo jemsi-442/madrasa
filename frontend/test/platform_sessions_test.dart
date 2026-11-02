@@ -42,7 +42,7 @@ void main() {
       );
       await api.login('it@example.test', 'password', '123456');
       await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
-      await openPlatformPage(tester, 'My sessions');
+      await openPlatformPage(tester, 'Sessions');
       expect(find.text('Current session'), findsOneWidget);
       expect(find.text('Sign out this session'), findsNothing);
       await tester.ensureVisible(find.text('Review'));

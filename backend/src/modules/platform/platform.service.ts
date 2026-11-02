@@ -466,6 +466,47 @@ export class PlatformGovernanceService {
     });
   }
 
+  async listSecuritySessions(actor: PlatformContext, input: unknown = {}) {
+    const query = platformPageSchema.extend({
+      source: z.enum(['platform', 'madrasa']).default('platform'),
+    }).strict().parse(input);
+    return this.db.$transaction(async (tx) => {
+      await this.authorize(tx, actor, 'platform.session.inspect');
+      const now = new Date();
+      const pagination = { skip: (query.page - 1) * query.pageSize, take: query.pageSize };
+      if (query.source === 'platform') {
+        const rows = await tx.platformSession.findMany({
+          where: { revokedAt: null, expiresAt: { gt: now },
+            createdAt: { gte: new Date(now.getTime() - 900_000), lte: now },
+            account: { status: 'ACTIVE' } },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], ...pagination,
+          select: { id: true, accountId: true, role: true, ipAddress: true,
+            createdAt: true, expiresAt: true, mfaVerifiedAt: true,
+            account: { select: { fullName: true } } },
+        });
+        return rows.map(({ account, accountId, ...row }) => ({ ...row,
+          accountName: account.fullName, accountId, scope: 'Platform', source: 'platform',
+          current: row.id === actor.sessionId,
+          canRevoke: accountId === actor.accountId,
+        }));
+      }
+      const rows = await tx.refreshToken.findMany({
+        where: { revokedAt: null, expiresAt: { gt: now }, user: { status: 'ACTIVE' },
+          organization: { status: { in: ['ACTIVE', 'TRIAL'] } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], ...pagination,
+        select: { id: true, userId: true, ipAddress: true, createdAt: true, expiresAt: true,
+          user: { select: { fullName: true, role: true } },
+          organization: { select: { name: true } } },
+      });
+      // Refresh credentials indicate renewable access, not a live connected device.
+      return rows.map(({ id, userId, user, organization, ...row }) => ({ ...row,
+        id: `madrasa:${id}`, accountId: String(userId), accountName: user.fullName,
+        role: user.role, scope: organization.name, source: 'madrasa',
+        current: false, canRevoke: false,
+      }));
+    });
+  }
+
   async revokeOwnSession(actor: PlatformContext, input: unknown) {
     const id = platformSessionIdSchema.parse(input);
     return this.db.$transaction(async (tx) => {

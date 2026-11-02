@@ -34,7 +34,7 @@ void main() {
                 } else if (req.method == 'POST') {
                   writes++;
                   data = {};
-                } else if (req.url.path.endsWith('/sessions')) {
+                } else if (req.url.path.endsWith('/security-sessions')) {
                   data = [
                     {
                       'id': 'session',
@@ -64,7 +64,7 @@ void main() {
               MaterialApp(home: PlatformConsole(api: api)),
             );
             if (sessionAction) {
-              await openPlatformPage(tester, 'My sessions');
+              await openPlatformPage(tester, 'Sessions');
               await tester.ensureVisible(find.text('Review'));
               await tester.tap(find.text('Review'));
               await tester.pumpAndSettle();

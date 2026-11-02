@@ -170,7 +170,7 @@ void main() {
         expect(find.text('IT sign-off withdrawn'), findsNothing);
         expect(find.text('Inactive madrassa created'), findsNothing);
         expect(find.text('System health'), findsNothing);
-        expect(find.widgetWithText(ChoiceChip, 'My sessions'), findsOneWidget);
+        expect(find.widgetWithText(ChoiceChip, 'Sessions'), findsOneWidget);
       }
       await tester.ensureVisible(find.text('Madrassa approved').last);
       await tester.tap(find.text('Madrassa approved').last);
@@ -209,7 +209,7 @@ void main() {
         await tester.tap(find.text('Refresh'));
         await tester.pumpAndSettle();
         expect(requests.last.queryParameters['actorId'], 'operator');
-        await openPlatformPage(tester, 'My sessions');
+        await openPlatformPage(tester, 'Sessions');
         await openPlatformPage(tester, 'Audit trail');
         expect(requests.last.path, '/api/platform/audit-events');
         expect(requests.last.queryParameters.containsKey('actorId'), isFalse);

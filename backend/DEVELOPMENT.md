@@ -2,6 +2,20 @@
 
 ## Company Account Read Access
 
+### IT Session Inspection
+
+The IT `Sessions` page reads `/api/platform/security-sessions` with separate
+platform and madrasa account groups and pagination. Only active IT_SECURITY
+accounts have `platform.session.inspect`; other roles retain their existing
+own-session access. Responses include account, role, scope, timestamps and the
+IP observed at login or token renewal, never tokens or password hashes.
+Older sessions show `Not recorded` until a new login or renewal records an IP.
+IP capture uses the server-resolved request IP; configure trusted proxies
+correctly before deployment rather than trusting arbitrary forwarded headers.
+Madrasa entries represent unrevoked, unexpired refresh credentials, not live
+device presence. Cross-account revocation and device trust are not implemented.
+The IP metadata migration is additive and does not reset demo records.
+
 ### Institution Overview
 
 The Superadmin overview includes registered madrasa and learner totals, active

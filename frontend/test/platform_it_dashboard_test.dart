@@ -121,7 +121,7 @@ void main() {
           'Security incidents': 'incidents',
           'Synthetic access concern': 'synthetic-alert',
           'Audit trail': 'audit',
-          'My sessions': 'sessions',
+          'Sessions': 'sessions',
         }.entries) {
           await tester.ensureVisible(find.text(entry.key));
           await tester.tap(find.text(entry.key));

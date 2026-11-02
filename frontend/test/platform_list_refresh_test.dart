@@ -12,7 +12,7 @@ void main() {
   for (final view in [
     'Office history',
     'Company accounts',
-    'My sessions',
+    'Sessions',
   ]) {
     testWidgets(
       '$view hides stale records during failed refresh and permits retry',
@@ -54,6 +54,7 @@ void main() {
                           'status': 'ACTIVE',
                           'adminEmail': 'school@example.test',
                           'fullName': 'snapshot-record',
+                          'accountName': 'snapshot-record',
                           'email': 'it@example.test',
                           'role': 'IT_SECURITY',
                           'actorRole': 'IT_SECURITY',
@@ -74,10 +75,10 @@ void main() {
         await tester.pumpWidget(MaterialApp(home: PlatformConsole(api: api)));
         await openPlatformPage(tester, view);
         final record = find.textContaining(
-          view == 'My sessions' ? 'Another session' : 'snapshot-record',
+          'snapshot-record',
         );
         final empty = find.text(switch (view) {
-          'My sessions' => 'No sessions match this view.',
+          'Sessions' => 'No sessions match this view.',
           'Company accounts' => 'No accounts match this view.',
           _ => 'No audit events match this view.',
         });

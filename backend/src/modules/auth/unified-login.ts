@@ -28,7 +28,7 @@ export function unifiedLogin(db: PrismaClient, signingKey: string,
       return next();
     }
     if (schoolSecrets.includes(signingKey)) throw new HttpError(503, "Sign-in is temporarily unavailable");
-    const result = await loginPlatformPassword(db, signingKey, { email: login, password: data.password });
+    const result = await loginPlatformPassword(db, signingKey, { email: login, password: data.password }, req.ip ?? req.socket.remoteAddress);
     clearSchoolCookie?.(res);
     browserSession?.(req, res, result.accessToken, result.expiresIn);
     res.json({ success: true, data: result });

@@ -61,7 +61,7 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
       if (login.passwordOnly) {
         const input = z.object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1).max(72) }).strict().parse(req.body);
         await login.consumeLimit(input.email, req.ip ?? req.socket.remoteAddress ?? "unknown");
-        const data = await loginPlatformPassword(db, secret, input);
+        const data = await loginPlatformPassword(db, secret, input, req.ip ?? req.socket.remoteAddress);
         res.json({ success: true, data });
         return;
       }
@@ -329,6 +329,10 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
   router.post('/incidents/:id', asyncHandler(async (req, res) => { res.json({ success: true, data: await incidents.update(req.platformContext!, z.string().min(1).max(30).parse(req.params.id), req.body) }); }));
   router.get("/sessions", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.listOwnSessions(req.platformContext!, req.query) });
+  }));
+  router.get('/security-sessions', asyncHandler(async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ success: true, data: await service.listSecuritySessions(req.platformContext!, req.query) });
   }));
   router.get("/accounts", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.listAccounts(req.platformContext!, req.query) });

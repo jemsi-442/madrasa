@@ -43,8 +43,8 @@ void main() {
           await tester.tap(find.byTooltip('Open navigation'));
           await tester.pumpAndSettle();
         }
-        await tester.ensureVisible(find.text('My sessions'));
-        await tester.tap(find.text('My sessions'));
+        await tester.ensureVisible(find.text('Sessions'));
+        await tester.tap(find.text('Sessions'));
         expect(destination, PlatformPage.sessions);
         expect(tester.takeException(), isNull);
       },

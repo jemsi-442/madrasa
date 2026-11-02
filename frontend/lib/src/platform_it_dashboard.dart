@@ -237,7 +237,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                   onAccounts,
                 ),
                 task(
-                  'My sessions',
+                  'Sessions',
                   'Manage your own signed-in devices.',
                   Icons.devices_outlined,
                   onSessions,

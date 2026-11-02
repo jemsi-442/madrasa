@@ -5,7 +5,7 @@ import { login, logout, logoutAll, refreshSession } from "./auth.service";
 
 export const loginHandler = async (req: Request, res: Response) => {
   const input = loginSchema.parse(req.body);
-  const result = await login(input);
+  const result = await login(input, req.ip ?? req.socket.remoteAddress);
 
   res.status(200).json({
     success: true,
@@ -16,7 +16,7 @@ export const loginHandler = async (req: Request, res: Response) => {
 
 export const refreshHandler = async (req: Request, res: Response) => {
   const input = refreshTokenSchema.parse(req.body);
-  const result = await refreshSession(input);
+  const result = await refreshSession(input, req.ip ?? req.socket.remoteAddress);
 
   res.status(200).json({
     success: true,
