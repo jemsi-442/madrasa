@@ -19,6 +19,7 @@ class HomeStorySections extends StatelessWidget {
           children: const [
             _Pillar(
               number: '01',
+              accent: Color(0xFF235B79),
               title: 'Meaningful learning',
               icon: Icons.auto_stories_outlined,
               text:
@@ -26,6 +27,7 @@ class HomeStorySections extends StatelessWidget {
             ),
             _Pillar(
               number: '02',
+              accent: Color(0xFF24705D),
               title: 'Empowered educators',
               icon: Icons.school_outlined,
               text:
@@ -33,6 +35,7 @@ class HomeStorySections extends StatelessWidget {
             ),
             _Pillar(
               number: '03',
+              accent: Color(0xFF88600D),
               title: 'Community-backed support',
               icon: Icons.diversity_3_outlined,
               text:
@@ -144,6 +147,7 @@ class HomeSchoolSection extends StatelessWidget {
           children: [
             _Pillar(
               number: 'PLAN',
+              accent: Color(0xFF235B79),
               title: 'Give lessons a clear direction',
               icon: Icons.route_outlined,
               text:
@@ -151,6 +155,7 @@ class HomeSchoolSection extends StatelessWidget {
             ),
             _Pillar(
               number: 'TEACH',
+              accent: Color(0xFF24705D),
               title: 'Keep records with context',
               icon: Icons.menu_book_outlined,
               text:
@@ -158,6 +163,7 @@ class HomeSchoolSection extends StatelessWidget {
             ),
             _Pillar(
               number: 'SUPPORT',
+              accent: Color(0xFF88600D),
               title: 'Turn records into follow-up',
               icon: Icons.insights_outlined,
               text:
@@ -211,6 +217,7 @@ class HomePartnershipSection extends StatelessWidget {
               children: [
                 _Pillar(
                   number: 'EDUCATORS',
+                  accent: Color(0xFF235B79),
                   title: 'Share knowledge',
                   icon: Icons.people_outline,
                   text:
@@ -218,6 +225,7 @@ class HomePartnershipSection extends StatelessWidget {
                 ),
                 _Pillar(
                   number: 'FAMILIES',
+                  accent: Color(0xFF24705D),
                   title: 'Be part of the journey',
                   icon: Icons.favorite_border,
                   text:
@@ -225,6 +233,7 @@ class HomePartnershipSection extends StatelessWidget {
                 ),
                 _Pillar(
                   number: 'PARTNERS',
+                  accent: Color(0xFF88600D),
                   title: 'Help learning grow',
                   icon: Icons.handshake_outlined,
                   text:
@@ -397,38 +406,54 @@ class _Pillar extends StatelessWidget {
     required this.title,
     required this.text,
     required this.icon,
+    required this.accent,
   });
   final String number, title, text;
   final IconData icon;
+  final Color accent;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(24),
     decoration: BoxDecoration(
-      color: Colors.white,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color.lerp(Colors.white, accent, 0.10)!, Colors.white],
+      ),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFDED5C5)),
+      border: Border.all(color: Color.lerp(Colors.white, accent, 0.25)!),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: publicGold, size: 32),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: Colors.white, size: 30),
+        ),
         const SizedBox(height: 20),
         Text(
           number,
-          style: const TextStyle(
-            color: publicMuted,
+          style: TextStyle(
+            color: accent,
             fontSize: 11,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: publicInk,
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: publicInk,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -449,8 +474,12 @@ class _StoryStep extends StatelessWidget {
   });
   final String year, title, text;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 24),
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 24),
+    padding: const EdgeInsetsDirectional.only(start: 20),
+    decoration: const BoxDecoration(
+      border: BorderDirectional(start: BorderSide(color: publicGold, width: 3)),
+    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
