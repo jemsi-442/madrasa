@@ -31,6 +31,9 @@ class _OfficeHelpScreenState extends State<OfficeHelpScreen> {
 
   bool get recovery => widget.path == '/forgot-password';
   bool get parent => widget.path == '/parent-access';
+  String get returnPath => recovery || parent ? '/login' : '/';
+  String get returnLabel =>
+      recovery || parent ? 'Back to Login' : 'Back to Home';
   String get title => recovery
       ? 'Get Back Into Your Account'
       : parent
@@ -129,8 +132,8 @@ class _OfficeHelpScreenState extends State<OfficeHelpScreen> {
               ),
               const SizedBox(height: 24),
               GoldAction(
-                label: 'Back to Login',
-                onPressed: () => widget.onNavigate('/login'),
+                label: returnLabel,
+                onPressed: () => widget.onNavigate(returnPath),
               ),
             ],
           )
@@ -257,8 +260,8 @@ class _OfficeHelpScreenState extends State<OfficeHelpScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextButton(
-                  onPressed: () => widget.onNavigate('/login'),
-                  child: const Text('Back to Login'),
+                  onPressed: () => widget.onNavigate(returnPath),
+                  child: Text(returnLabel),
                 ),
               ],
             ),
