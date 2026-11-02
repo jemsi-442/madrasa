@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/home_photo.dart';
 import 'package:mif_app/src/home_story_sections.dart';
@@ -68,7 +69,28 @@ void main() {
           await tester.tap(find.byTooltip('Fit image'));
           await tester.pump();
           expect(transform.value, Matrix4.identity());
+          await tester.sendKeyEvent(LogicalKeyboardKey.equal);
+          await tester.pump();
+          expect(transform.value.getMaxScaleOnAxis(), closeTo(1.5, 0.001));
+          transform.value = Matrix4.identity()
+            ..setEntry(0, 0, 1.5)
+            ..setEntry(1, 1, 1.5)
+            ..setEntry(0, 3, -40);
+          await tester.sendKeyEvent(LogicalKeyboardKey.minus);
+          await tester.pump();
+          expect(transform.value, Matrix4.identity());
+          await tester.sendKeyEvent(LogicalKeyboardKey.numpadAdd);
+          await tester.pump();
+          expect(transform.value.getMaxScaleOnAxis(), closeTo(1.5, 0.001));
+          await tester.sendKeyEvent(LogicalKeyboardKey.digit0);
+          await tester.pump();
+          expect(transform.value, Matrix4.identity());
           await tester.tap(find.byTooltip('Close team image'));
+          await tester.pumpAndSettle();
+          expect(find.byType(InteractiveViewer), findsNothing);
+          await tester.tap(find.text('View full team image'));
+          await tester.pumpAndSettle();
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
           await tester.pumpAndSettle();
           expect(find.byType(InteractiveViewer), findsNothing);
           expect(tester.takeException(), isNull);
