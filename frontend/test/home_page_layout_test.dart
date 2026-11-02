@@ -23,6 +23,53 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets(
+    'desktop navigation exposes the selected section and heading structure',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1440, 1000);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(home: PublicHomeScreen(onNavigate: (_) {})),
+      );
+      await tester.pumpAndSettle();
+      Semantics nav(String label) =>
+          tester.widget<Semantics>(find.byKey(ValueKey('home-nav-$label')));
+      expect(nav('Home').properties.selected, isTrue);
+      expect(nav('About').properties.selected, isFalse);
+      final heroHeadings = tester.widgetList<Semantics>(
+        find.ancestor(
+          of: find.text('Knowledge that\nshapes brighter\ntomorrows.'),
+          matching: find.byType(Semantics),
+        ),
+      );
+      expect(
+        heroHeadings.any((node) => node.properties.header == true),
+        isTrue,
+      );
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-nav-About')),
+          matching: find.byType(TextButton),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(nav('About').properties.selected, isTrue);
+      expect(nav('Home').properties.selected, isFalse);
+      final teamHeadings = tester.widgetList<Semantics>(
+        find.ancestor(
+          of: find.text('The people behind Afaq.'),
+          matching: find.byType(Semantics),
+        ),
+      );
+      expect(
+        teamHeadings.any((node) => node.properties.header == true),
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('phone hero actions have matching full-width touch targets', (
     tester,
   ) async {

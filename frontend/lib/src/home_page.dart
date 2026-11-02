@@ -220,13 +220,17 @@ class _HomeHeader extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () => onSection('Home'),
-                borderRadius: BorderRadius.circular(8),
-                child: PublicBrand(
-                  light: true,
-                  compact: compact,
-                  wordmarkSize: 18,
+              child: Semantics(
+                label: 'Afaq home',
+                button: true,
+                child: InkWell(
+                  onTap: () => onSection('Home'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: PublicBrand(
+                    light: true,
+                    compact: compact,
+                    wordmarkSize: 18,
+                  ),
                 ),
               ),
             ),
@@ -234,34 +238,40 @@ class _HomeHeader extends StatelessWidget {
               for (final label in sections)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: TextButton(
-                    onPressed: () => onSection(label),
-                    style: TextButton.styleFrom(foregroundColor: Colors.white),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          label,
-                          style: TextStyle(
-                            color: selected == label
-                                ? publicHeaderAccent
-                                : Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                  child: Semantics(
+                    key: ValueKey('home-nav-$label'),
+                    selected: selected == label,
+                    child: TextButton(
+                      onPressed: () => onSection(label),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            label,
+                            style: TextStyle(
+                              color: selected == label
+                                  ? publicHeaderAccent
+                                  : Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 9),
-                        Container(
-                          width: 28,
-                          height: 2,
-                          decoration: BoxDecoration(
-                            color: selected == label
-                                ? publicHeaderAccent
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(2),
+                          const SizedBox(height: 9),
+                          Container(
+                            width: 28,
+                            height: 2,
+                            decoration: BoxDecoration(
+                              color: selected == label
+                                  ? publicHeaderAccent
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -520,15 +530,18 @@ class _HeroMessage extends StatelessWidget {
       children: [
         const EntryEyebrow('ISLAMIC VALUES. MODERN POSSIBILITIES.'),
         const SizedBox(height: 20),
-        Text(
-          'Knowledge that\nshapes brighter\ntomorrows.',
-          style: TextStyle(
-            color: publicInk,
-            fontFamily: 'NotoSerifDisplay',
-            fontSize: constraints.maxWidth >= 500 ? 56 : 38,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -1.5,
-            height: 1.12,
+        Semantics(
+          header: true,
+          child: Text(
+            'Knowledge that\nshapes brighter\ntomorrows.',
+            style: TextStyle(
+              color: publicInk,
+              fontFamily: 'NotoSerifDisplay',
+              fontSize: constraints.maxWidth >= 500 ? 56 : 38,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -1.5,
+              height: 1.12,
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -748,14 +761,17 @@ class _AboutSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text(
-                  'Rooted in values.\nReady for tomorrow.',
-                  style: TextStyle(
-                    color: publicInk,
-                    fontFamily: 'NotoSerifDisplay',
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
+                Semantics(
+                  header: true,
+                  child: const Text(
+                    'Rooted in values.\nReady for tomorrow.',
+                    style: TextStyle(
+                      color: publicInk,
+                      fontFamily: 'NotoSerifDisplay',
+                      fontSize: 34,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 15),

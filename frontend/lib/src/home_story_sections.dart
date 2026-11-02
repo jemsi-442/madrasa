@@ -453,14 +453,17 @@ class _Section extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Text(
-              title,
-              style: const TextStyle(
-                fontFamily: 'NotoSerifDisplay',
-                fontSize: 32,
-                height: 1.25,
-                fontWeight: FontWeight.w700,
-                color: publicInk,
+            Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'NotoSerifDisplay',
+                  fontSize: 32,
+                  height: 1.25,
+                  fontWeight: FontWeight.w700,
+                  color: publicInk,
+                ),
               ),
             ),
             if (intro != null) ...[
