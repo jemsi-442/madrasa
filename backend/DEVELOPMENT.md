@@ -2217,3 +2217,24 @@ after a load error, or when the snapshot is at least 60 seconds old. Opening a
 draft does not save an incident or establish a breach: IT must supply a summary
 and save through the existing incident endpoint. Cancellation consumes the draft
 so a later new incident does not inherit the previous investigation context.
+
+### IT access and session regression checkpoint
+
+On 2026-11-02, after commit `85ce69e`, a combined run of 17 Flutter test files
+passed 94 tests. It covered account access/history, audit filters and navigation,
+API session binding, dialog/form expiry, logout, session revocation, stale-list
+handling, health freshness and investigation draft navigation. Backend unit
+tests for platform sessions, audit, health and integrations passed 31 tests.
+These were mocked widget/unit tests, not a production or live-provider test.
+
+Access, audit and session pages hide unverified rows during loading/errors and
+disable pagination until a successful read. Local search remains intact. Account
+review dialogs are removed when their data changes or their owning page closes;
+unrelated dialogs are not removed. Health views do not infer availability from
+empty or unrecognised checks, and expired evidence cannot open an incident draft.
+
+Remaining integrations are explicit: audit export, device trust/telemetry,
+backup/restore execution and configuration-change/credential-rotation workflows
+are not completed by these UI checks. Existing checks must not be described as
+security scanning or proof that recovery works. No demo reset, migration, live
+message delivery or production deployment was performed for this checkpoint.
