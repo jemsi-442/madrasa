@@ -245,6 +245,7 @@ class HomePartnershipSection extends StatelessWidget {
       _Section(
         color: Colors.white,
         eyebrow: 'PARTNER WITH AFAQ',
+        maxWidth: 1480,
         title: 'A stronger learning community\nstarts with shared effort.',
         intro:
             'There is more than one way to contribute. Bring your experience, resources or institution into a conversation about meaningful, sustained support for Islamic education.',
@@ -252,6 +253,7 @@ class HomePartnershipSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _Columns(
+              spacing: 32,
               children: [
                 _Pillar(
                   number: 'EDUCATORS',

@@ -23,6 +23,48 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  for (final width in [390.0, 900.0, 1440.0, 1920.0]) {
+    testWidgets('partner cards spread responsively at $width', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width, 1200);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HomePartnershipSection(onNavigate: (_) {}),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Rect card(String title) => tester.getRect(
+        find
+            .ancestor(of: find.text(title), matching: find.byType(Container))
+            .first,
+      );
+      final educators = card('Share knowledge');
+      final families = card('Be part of the journey');
+      final partners = card('Help learning grow');
+      if (width < 640) {
+        expect(families.top, greaterThan(educators.bottom));
+        expect(partners.top, greaterThan(families.bottom));
+      } else {
+        expect(families.left - educators.right, closeTo(32, 0.01));
+        expect(families.top, educators.top);
+        if (width >= 1440) {
+          expect(educators.width, greaterThan(440));
+          expect(partners.top, educators.top);
+          expect(partners.height, educators.height);
+        } else {
+          expect(partners.top, greaterThan(educators.bottom));
+        }
+      }
+      expect(partners.right, lessThanOrEqualTo(width - 24));
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('about has larger copy without duplicate section shortcuts', (
     tester,
   ) async {
