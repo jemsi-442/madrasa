@@ -44,6 +44,12 @@ void main() {
       await tester.ensureVisible(shortcut);
       await tester.tap(shortcut);
       await tester.pumpAndSettle();
+      final scroll = tester
+          .widget<SingleChildScrollView>(
+            find.byKey(const ValueKey('integrations-page-scroll')),
+          )
+          .controller!;
+      expect(scroll.offset, 0);
       expect(find.text('Connected services'), findsNothing);
       expect(find.text('Credential handling'), findsOneWidget);
       expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
@@ -64,6 +70,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Synthetic updated status'), findsOneWidget);
       expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
+      await tester.ensureVisible(find.text('Back to services'));
+      await tester.tap(find.text('Back to services'));
+      await tester.pumpAndSettle();
+      expect(find.text('Connected services'), findsOneWidget);
+      expect(scroll.offset, 0);
+      await tester.ensureVisible(find.text('Credentials'));
+      await tester.tap(find.text('Credentials'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('Quran content')), findsOneWidget);
+      expect(calls, 2);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });

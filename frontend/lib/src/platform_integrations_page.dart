@@ -27,6 +27,17 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   bool accessDenied = false;
   late final AutomaticDataUpdates updates;
   String? error;
+  final pageScroll = ScrollController();
+
+  void selectTab(int value, {String? selectedService}) {
+    setState(() {
+      tab = value;
+      if (selectedService != null) service = selectedService;
+    });
+    // Explicit navigation moves to the new view; background checks do not.
+    if (pageScroll.hasClients) pageScroll.jumpTo(0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +57,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   @override
   void dispose() {
     updates.dispose();
+    pageScroll.dispose();
     super.dispose();
   }
 
@@ -166,6 +178,17 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
     Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (tab == 1) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => selectTab(0),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Back to services'),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         DropdownButtonFormField<String>(
           key: ValueKey(service),
           initialValue: service,
@@ -282,10 +305,8 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
                         const SizedBox(height: 8),
                         TextButton.icon(
                           key: ValueKey('configuration-${services[i]}'),
-                          onPressed: () => setState(() {
-                            service = services[i];
-                            tab = 1;
-                          }),
+                          onPressed: () =>
+                              selectTab(1, selectedService: services[i]),
                           icon: const Icon(Icons.arrow_forward, size: 18),
                           label: const Text('View configuration'),
                         ),
@@ -354,6 +375,8 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
         ),
       );
       return SingleChildScrollView(
+        controller: pageScroll,
+        key: const ValueKey('integrations-page-scroll'),
         padding: EdgeInsets.all(constraints.maxWidth < 600 ? 16 : 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -396,7 +419,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
                 children: [
                   for (var i = 0; i < 4; i++)
                     InkWell(
-                      onTap: () => setState(() => tab = i),
+                      onTap: () => selectTab(i),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 18,
