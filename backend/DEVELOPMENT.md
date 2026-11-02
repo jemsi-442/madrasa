@@ -2233,8 +2233,28 @@ review dialogs are removed when their data changes or their owning page closes;
 unrelated dialogs are not removed. Health views do not infer availability from
 empty or unrecognised checks, and expired evidence cannot open an incident draft.
 
-Remaining integrations are explicit: audit export, device trust/telemetry,
+Remaining integrations are explicit: device trust/telemetry,
 backup/restore execution and configuration-change/credential-rotation workflows
 are not completed by these UI checks. Existing checks must not be described as
 security scanning or proof that recovery works. No demo reset, migration, live
 message delivery or production deployment was performed for this checkpoint.
+
+### IT audit PDF export
+
+Audit Logs now offers the shared Afaq-branded PDF download in the web portal.
+It exports only the current page's visible search results (1 to 20 event IDs),
+not every event matching the server filters. Date/action/role filters determine
+the page, and local search narrows the selection. Loading, failed and empty
+views disable export without clearing the search.
+
+`POST /api/platform/audit-events/pdf` accepts only `{ ids: [...] }`. The service
+rechecks active IT permission, reads records from the database and excludes all
+event metadata. Other roles cannot export the technical audit. Missing records
+reject the entire selection. Report generation records `platform.audit.exported`
+with a unique export reference before returning the PDF; an audit-write failure
+prevents a successful response. Generation is not proof of download or reading.
+
+Verification on 2026-11-02: 76 backend audit/export/governance tests, 3 shared PDF
+renderer tests and 17 Flutter audit/session tests passed. Flutter analysis passed.
+The export tests use synthetic records and mocked database transactions; they
+do not constitute a live database/browser download test. No demo data was reset.

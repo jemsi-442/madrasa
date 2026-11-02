@@ -1,8 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_audit_page.dart';
+import 'package:mif_app/src/report_preview.dart';
 
 void main() {
+  testWidgets(
+    'PDF selection follows search and is disabled for unavailable data',
+    (tester) async {
+      List<String>? exported;
+      Future<void> render({bool busy = false, String? error}) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: PlatformAuditPage(
+                records: [
+                  {'id': 'first', 'action': 'first.action'},
+                  {'id': 'second', 'action': 'second.action'},
+                ],
+                busy: busy,
+                error: error,
+                filters: const SizedBox(),
+                page: 1,
+                onPage: (_) {},
+                onRefresh: () {},
+                onDetails: (_) {},
+                exportPdf: (ids) async {
+                  exported = ids;
+                  return {};
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+      }
+
+      await render();
+      await tester.enterText(find.byType(TextField), 'second');
+      await tester.pump();
+      var button = tester.widget<ReportPdfButton>(find.byType(ReportPdfButton));
+      expect(button.enabled, isTrue);
+      await button.load(button.path);
+      expect(exported, ['second']);
+      await tester.enterText(find.byType(TextField), 'missing');
+      await tester.pump();
+      expect(
+        tester.widget<ReportPdfButton>(find.byType(ReportPdfButton)).enabled,
+        isFalse,
+      );
+      await render(busy: true);
+      expect(
+        tester.widget<ReportPdfButton>(find.byType(ReportPdfButton)).enabled,
+        isFalse,
+      );
+      await render(error: 'Access unavailable');
+      expect(
+        tester.widget<ReportPdfButton>(find.byType(ReportPdfButton)).enabled,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final width in [320.0, 1440.0]) {
     testWidgets('Audit records hidden during loading and errors at $width', (
       tester,

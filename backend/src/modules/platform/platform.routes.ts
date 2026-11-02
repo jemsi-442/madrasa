@@ -300,6 +300,9 @@ export function createPlatformRouter(db: PrismaClient, secret: string, schoolSec
   router.get("/audit-events", asyncHandler(async (req, res) => {
     res.json({ success: true, data: await service.listAuditEvents(req.platformContext!, req.query) });
   }));
+  router.post('/audit-events/pdf', asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await service.exportAuditEvents(req.platformContext!, req.body) });
+  }));
   router.get('/incidents', asyncHandler(async (req, res) => { res.json({ success: true, data: await incidents.list(req.platformContext!, req.query) }); }));
   router.get('/incidents/:id', asyncHandler(async (req, res) => { res.json({ success: true, data: await incidents.detail(req.platformContext!, z.string().min(1).max(30).parse(req.params.id)) }); }));
   router.post('/incidents', asyncHandler(async (req, res) => { res.status(201).json({ success: true, data: await incidents.create(req.platformContext!, req.body) }); }));

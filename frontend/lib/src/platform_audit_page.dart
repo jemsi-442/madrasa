@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'design_tokens.dart';
 import 'foundation_ui.dart' show DashboardMetric;
 import 'it_workspace_visuals.dart';
+import 'report_preview.dart';
 
 class PlatformAuditPage extends StatefulWidget {
   const PlatformAuditPage({
@@ -14,6 +15,7 @@ class PlatformAuditPage extends StatefulWidget {
     required this.onPage,
     required this.onRefresh,
     required this.onDetails,
+    this.exportPdf,
   });
   final List<Map<String, dynamic>> records;
   final bool busy;
@@ -23,6 +25,7 @@ class PlatformAuditPage extends StatefulWidget {
   final ValueChanged<int> onPage;
   final VoidCallback onRefresh;
   final ValueChanged<Map<String, dynamic>> onDetails;
+  final Future<dynamic> Function(List<String> ids)? exportPdf;
   @override
   State<PlatformAuditPage> createState() => _PlatformAuditPageState();
 }
@@ -146,6 +149,24 @@ class _PlatformAuditPageState extends State<PlatformAuditPage> {
                   const SizedBox(height: 16),
                   widget.filters,
                   const SizedBox(height: 20),
+                  if (widget.exportPdf != null) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ReportPdfButton(
+                        enabled: ready && rows.isNotEmpty,
+                        path: '/audit-events/pdf',
+                        load: (_) => widget.exportPdf!(
+                          rows.map((row) => '${row['id']}').toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'PDF includes only the events visible on this page. Each export is recorded in the audit log.',
+                      style: TextStyle(color: AfaqDesign.muted),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   const Divider(height: 1),
                   if (rows.isEmpty && !widget.busy && widget.error == null)
                     const Padding(
@@ -291,8 +312,8 @@ class _PlatformAuditPageState extends State<PlatformAuditPage> {
                     'Only fields returned by the authorised audit API are shown. Failed login actors identify target accounts, not verified people.',
                   ),
                   (
-                    'Export unavailable',
-                    'Audit export is not connected. This page does not grant permission to export sensitive records.',
+                    'Controlled export',
+                    'IT exports contain selected events only, without event metadata or secrets. Share only with authorised recipients.',
                   ),
                 ])
                   Container(

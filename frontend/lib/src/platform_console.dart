@@ -2051,6 +2051,8 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               page: page,
               filters: auditPageFilters(),
               onDetails: auditEventDetails,
+              exportPdf: (ids) =>
+                  api.call('/audit-events/pdf', body: {'ids': ids}),
               onRefresh: () => run(load),
               onPage: (value) => run(() async {
                 page = value;
@@ -2587,6 +2589,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
             'tenant.technical-review.recorded': 'IT sign-off recorded',
             'tenant.technical-review.withdrawn': 'IT sign-off withdrawn',
             'platform.login.failed': 'Failed login',
+            'platform.audit.exported': 'Audit PDF generated',
             'platform.login.succeeded': 'Successful login',
             'tenant.application.requested': 'Madrassa requested',
             'tenant.application.approved': 'Madrassa approved',
