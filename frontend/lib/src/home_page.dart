@@ -743,7 +743,7 @@ class _AboutSection extends StatelessWidget {
     ),
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1320),
+        constraints: const BoxConstraints(maxWidth: 1480),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide =

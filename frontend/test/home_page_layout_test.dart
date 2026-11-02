@@ -23,6 +23,31 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('approach cards share the wider homepage layout', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1920, 1200);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: SingleChildScrollView(child: HomeStorySections())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Rect card(String title) => tester.getRect(
+      find
+          .ancestor(of: find.text(title), matching: find.byType(Container))
+          .first,
+    );
+    final first = card('Meaningful learning');
+    final second = card('Empowered educators');
+    final last = card('Community-backed support');
+    expect(last.right - first.left, 1480);
+    expect(second.left - first.right, closeTo(32, 0.01));
+    expect(last.top, first.top);
+    expect(last.height, first.height);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [390.0, 900.0, 1440.0, 1920.0]) {
     testWidgets('partner cards spread responsively at $width', (tester) async {
       tester.view.devicePixelRatio = 1;

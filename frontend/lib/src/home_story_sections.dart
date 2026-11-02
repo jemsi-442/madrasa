@@ -173,7 +173,6 @@ class HomeSchoolSection extends StatelessWidget {
   Widget build(BuildContext context) => _Section(
     color: const Color(0xFFEAF0F5),
     eyebrow: 'FOR SCHOOLS & MADRASAS',
-    maxWidth: 1480,
     title: 'Support the teacher.\nConnect the learning journey.',
     intro:
         'The Afaq platform brings learning plans, classroom records and communication into one connected workspace. Technology supports the people doing the teaching; it does not replace their judgement.',
@@ -181,7 +180,6 @@ class HomeSchoolSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _Columns(
-          spacing: 32,
           children: [
             _Pillar(
               number: 'PLAN',
@@ -245,7 +243,6 @@ class HomePartnershipSection extends StatelessWidget {
       _Section(
         color: Colors.white,
         eyebrow: 'PARTNER WITH AFAQ',
-        maxWidth: 1480,
         title: 'A stronger learning community\nstarts with shared effort.',
         intro:
             'There is more than one way to contribute. Bring your experience, resources or institution into a conversation about meaningful, sustained support for Islamic education.',
@@ -253,7 +250,6 @@ class HomePartnershipSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _Columns(
-              spacing: 32,
               children: [
                 _Pillar(
                   number: 'EDUCATORS',
@@ -293,6 +289,7 @@ class HomePartnershipSection extends StatelessWidget {
       _Section(
         key: faqKey,
         eyebrow: 'QUESTIONS & ANSWERS',
+        maxWidth: 1160,
         title: 'A little clarity before you begin.',
         child: Column(
           children: [
@@ -431,7 +428,7 @@ class _Section extends StatelessWidget {
     required this.child,
     this.intro,
     this.color = publicCream,
-    this.maxWidth = 1160,
+    this.maxWidth = 1480,
   });
   final String eyebrow, title;
   final String? intro;
@@ -541,9 +538,9 @@ const _sectionActionStyle = ButtonStyle(
 );
 
 class _Columns extends StatelessWidget {
-  const _Columns({required this.children, this.spacing = 24});
+  const _Columns({required this.children});
   final List<Widget> children;
-  final double spacing;
+  static const double spacing = 32;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, size) {
@@ -587,7 +584,7 @@ class _Columns extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (var i = 0; i < children.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 28),
+                  if (i > 0) SizedBox(width: spacing),
                   Expanded(child: children[i]),
                 ],
               ],
@@ -596,7 +593,7 @@ class _Columns extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (var i = 0; i < children.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 24),
+                  if (i > 0) SizedBox(height: spacing),
                   children[i],
                 ],
               ],
