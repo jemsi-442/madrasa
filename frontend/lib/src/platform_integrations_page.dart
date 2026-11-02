@@ -250,27 +250,8 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
     'Backup storage',
     'Quran content',
   ];
-  Widget panel(String title, Widget body) => Container(
-    decoration: AfaqDesign.panelDecoration(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(22),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AfaqDesign.ink,
-            ),
-          ),
-        ),
-        const Divider(height: 1),
-        Padding(padding: const EdgeInsets.all(22), child: body),
-      ],
-    ),
-  );
+  Widget panel(String title, Widget body) =>
+      ItSectionPanel(title: title, child: body);
   Widget note(String text) =>
       Text(text, style: const TextStyle(color: AfaqDesign.muted, height: 1.5));
   Widget configurationChecks() {

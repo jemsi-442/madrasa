@@ -38,21 +38,29 @@ class ItPageHeading extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
-        'AFAQ / IT WORKSPACE',
-        style: TextStyle(
-          color: AfaqDesign.gold,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-          letterSpacing: 1.5,
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5ECD6),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFE5D4AB)),
+        ),
+        child: const Text(
+          'AFAQ / IT WORKSPACE',
+          style: TextStyle(
+            color: AfaqDesign.actionGold,
+            fontWeight: FontWeight.w800,
+            fontSize: 11,
+            letterSpacing: 1.4,
+          ),
         ),
       ),
       const SizedBox(height: 12),
       Text(
         title,
         style: const TextStyle(
-          fontSize: 30,
-          fontWeight: FontWeight.w700,
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
           color: AfaqDesign.ink,
           height: 1.2,
         ),
@@ -64,6 +72,69 @@ class ItPageHeading extends StatelessWidget {
       ),
       const SizedBox(height: 24),
     ],
+  );
+}
+
+/// A consistent, high-contrast section surface for operational dashboards.
+class ItSectionPanel extends StatelessWidget {
+  const ItSectionPanel({super.key, required this.title, required this.child});
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFFD5DEE7)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0A011F3D),
+          blurRadius: 22,
+          offset: Offset(0, 6),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFEDF3F8), Color(0xFFF9FAFC)],
+            ),
+            border: Border(bottom: BorderSide(color: Color(0xFFD5DEE7))),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: AfaqDesign.gold,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AfaqDesign.ink,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(padding: const EdgeInsets.all(22), child: child),
+      ],
+    ),
   );
 }
 
@@ -118,15 +189,26 @@ class ItWorkspaceSurface extends StatelessWidget {
     data: Theme.of(context).copyWith(
       cardTheme: CardThemeData(
         color: Colors.white,
-        elevation: 0,
+        elevation: 1,
+        shadowColor: const Color(0x18011F3D),
+        surfaceTintColor: Colors.transparent,
         margin: const EdgeInsets.only(bottom: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AfaqDesign.border),
+          side: const BorderSide(color: Color(0xFFD5DEE7)),
         ),
       ),
-      dividerTheme: const DividerThemeData(color: AfaqDesign.border, space: 24),
+      dividerTheme: const DividerThemeData(color: Color(0xFFDCE4EB), space: 24),
     ),
-    child: child,
+    child: DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF3F6FA), Color(0xFFFBF9F4)],
+        ),
+      ),
+      child: child,
+    ),
   );
 }
