@@ -23,6 +23,34 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('feature descriptions align when headings wrap on desktop', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 1000);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_featuresAtWidth(960));
+    await tester.pumpAndSettle();
+    final tops = [
+      'Follow memorization and recitation',
+      'Organize and support every learner',
+      'See growth and celebrate progress',
+      'Connect families and teachers',
+    ].map((text) => tester.getTopLeft(find.text(text)).dy).toList();
+    expect(tops.every((top) => (top - tops.first).abs() < 1), isTrue);
+    final colors = tester
+        .widgetList<Icon>(
+          find.descendant(
+            of: find.byType(PublicHomeFeatures),
+            matching: find.byType(Icon),
+          ),
+        )
+        .map((icon) => icon.color)
+        .toSet();
+    expect(colors.length, 4);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('homepage feature icons and copy use larger readable sizes', (
     tester,
   ) async {

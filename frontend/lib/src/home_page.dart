@@ -615,23 +615,53 @@ class PublicHomeFeatures extends StatelessWidget {
           Icons.menu_book_outlined,
           "Qur'an Tracking",
           'Follow memorization and recitation',
+          Color(0xFF175D88),
+          Color(0xFFE0EFF9),
         ),
         (
           Icons.groups_outlined,
           'Student Management',
           'Organize and support every learner',
+          Color(0xFF236A50),
+          Color(0xFFE2F3EB),
         ),
         (
           Icons.bar_chart_rounded,
           'Progress Reports',
           'See growth and celebrate progress',
+          Color(0xFF8A5D0C),
+          Color(0xFFF8EDCF),
         ),
         (
           Icons.favorite_border_rounded,
           'Community Support',
           'Connect families and teachers',
+          Color(0xFF246A73),
+          Color(0xFFDFF2F3),
         ),
       ];
+      const titleStyle = TextStyle(
+        color: publicInk,
+        fontWeight: FontWeight.w700,
+        fontSize: 22,
+        height: 1.35,
+      );
+      var titleHeight = 0.0;
+      // Align descriptions when a longer heading wraps in multi-column layouts.
+      if (columns > 1) {
+        for (final feature in features) {
+          final painter = TextPainter(
+            text: TextSpan(
+              text: feature.$2,
+              style: DefaultTextStyle.of(context).style.merge(titleStyle),
+            ),
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout(maxWidth: width);
+          if (painter.height > titleHeight) titleHeight = painter.height;
+          painter.dispose();
+        }
+      }
       return Wrap(
         spacing: 24,
         runSpacing: 36,
@@ -646,25 +676,24 @@ class PublicHomeFeatures extends StatelessWidget {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFEAF0F5), Color(0xFFF6F6F5)],
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [feature.$5, Colors.white],
+                        ),
+                        border: Border.all(
+                          color: feature.$4.withValues(alpha: 0.12),
                         ),
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Icon(
-                        feature.$1,
-                        color: const Color(0xFF123C62),
-                        size: 48,
-                      ),
+                      child: Icon(feature.$1, color: feature.$4, size: 48),
                     ),
                     const SizedBox(height: 18),
-                    Text(
-                      feature.$2,
-                      style: const TextStyle(
-                        color: publicInk,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 22,
-                        height: 1.35,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: titleHeight),
+                      child: Semantics(
+                        header: true,
+                        child: Text(feature.$2, style: titleStyle),
                       ),
                     ),
                     const SizedBox(height: 10),
