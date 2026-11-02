@@ -52,6 +52,9 @@ void main() {
   for (final checks in <List<dynamic>>[
     [],
     [
+      {'name': 'database', 'status': 'available'},
+    ],
+    [
       {'name': 'redis', 'status': 'unknown'},
       {'name': 'unknown-service', 'status': 'available'},
     ],
@@ -88,6 +91,13 @@ void main() {
           findsNothing,
         );
         expect(find.text('Unavailable'), findsNothing);
+        if (checks.length == 1) {
+          expect(find.text('Missing checks: Redis.'), findsOneWidget);
+          expect(find.text('Incomplete'), findsOneWidget);
+          expect(find.text('1 / 2'), findsOneWidget);
+          expect(find.text('1 / 1'), findsNothing);
+        }
+        expect(find.textContaining('Incident snapshot:'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },

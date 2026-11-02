@@ -117,6 +117,10 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
           !age.isNegative &&
           age < const Duration(seconds: 60);
       final available = checks.where((c) => c['status'] == 'available').length;
+      final missing = [
+        'database',
+        'redis',
+      ].where((name) => !checks.any((check) => check['name'] == name)).toList();
       final failed = checks.where((c) => c['status'] != 'available').toList();
       final incidents = widget.snapshot?['incidents'];
       final incidentChecked = DateTime.tryParse(
@@ -142,7 +146,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
       final incidentsReady = error == null && incidentFresh && validCounts;
       final needsAction =
           (fresh && failed.isNotEmpty) || (incidentsReady && openCount > 0);
-      final statusKnown = fresh && checks.length == 2 && incidentsReady;
+      final statusKnown = fresh && missing.isEmpty && incidentsReady;
       final operations = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -153,10 +157,12 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
             title: 'Needs attention',
             child: Column(
               children: [
-                if (!fresh || checks.isEmpty)
+                if (!fresh || missing.isNotEmpty)
                   task(
                     'Check current service status',
-                    'The latest service state is not verified.',
+                    fresh && missing.isNotEmpty
+                        ? 'Missing checks: ${missing.map((name) => name == 'database' ? 'Database' : 'Redis').join(', ')}.'
+                        : 'The latest service state is not verified.',
                     Icons.schedule,
                     onHealth,
                   ),
@@ -169,7 +175,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                     Icons.warning_amber_outlined,
                     onHealth,
                   ),
-                if (fresh && checks.isNotEmpty && failed.isEmpty)
+                if (fresh && missing.isEmpty && failed.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(bottom: 12),
                     child: Text(
@@ -411,15 +417,17 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
       final metrics = [
         (
           'Failed service checks',
-          checks.isEmpty || !fresh ? 'Not current' : '${failed.length}',
+          checks.isEmpty || !fresh
+              ? 'Not current'
+              : missing.isNotEmpty
+              ? 'Incomplete'
+              : '${failed.length}',
           Icons.report_problem_outlined,
           const Color(0xff346bb0),
         ),
         (
           'Service health',
-          checks.isEmpty || !fresh
-              ? 'Not current'
-              : '$available / ${checks.length}',
+          checks.isEmpty || !fresh ? 'Not current' : '$available / 2',
           Icons.dns_outlined,
           const Color(0xff278457),
         ),
@@ -520,6 +528,14 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                   const SizedBox(height: 10),
                   Text(
                     'Service snapshot: ${itTimestamp(widget.snapshot?['checkedAt'])}',
+                    style: const TextStyle(
+                      color: AfaqDesign.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Incident snapshot: ${itTimestamp(incidents is Map ? incidents['checkedAt'] : null)}',
                     style: const TextStyle(
                       color: AfaqDesign.muted,
                       fontSize: 12,
