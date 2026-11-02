@@ -2169,3 +2169,10 @@ The backup-request, security-incident, integration and sync backend unit suites
 passed 36 tests. Flutter analysis reported no issues. These mocked/widget checks
 do not establish live provider delivery, restore execution or production readiness;
 no database reset or migration was performed for this verification.
+
+The received-learning-updates view now uses the shared lifecycle-aware refresh
+controller. It pauses in the background and checks again when the app resumes.
+Transient failures retain previous metadata with a warning; session/permission
+failures clear receipts, counts and the last-checked timestamp and stop polling.
+Changing pages clears the old timestamp. Device reporting and conflict resolution
+remain unconnected: received teaching events are not proof of device sync.

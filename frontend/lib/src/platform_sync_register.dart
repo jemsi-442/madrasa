@@ -1,9 +1,11 @@
-import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
 import 'it_workspace_visuals.dart';
 import 'platform_offline_sync_page.dart';
+import 'automatic_data_updates.dart';
+import 'api_client.dart';
+import 'live_data.dart';
 
 class PlatformSyncRegister extends StatefulWidget {
   const PlatformSyncRegister({
@@ -23,22 +25,26 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
   int page = 1, total = 0;
   bool busy = false;
   String? error, capturedAt;
-  Timer? timer;
+  bool accessDenied = false;
+  late final AutomaticDataUpdates updates;
   @override
   void initState() {
     super.initState();
+    updates = AutomaticDataUpdates(
+      canUpdate: () =>
+          mounted &&
+          !busy &&
+          !accessDenied &&
+          !dataWriteInProgress &&
+          ModalRoute.of(context)?.isCurrent != false,
+      update: load,
+    );
     load();
-    timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
-          (ModalRoute.of(context)?.isCurrent ?? false)) {
-        load();
-      }
-    });
   }
 
   @override
   void dispose() {
-    timer?.cancel();
+    updates.dispose();
     super.dispose();
   }
 
@@ -55,14 +61,24 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
           total = data['total'] as int;
           capturedAt = data['capturedAt'] as String;
           error = null;
+          accessDenied = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        setState(
-          () => error =
-              'Updates could not be checked. Previously loaded records may be out of date.',
-        );
+        setState(() {
+          if (e is ApiException && [401, 403, 409].contains(e.statusCode)) {
+            accessDenied = true;
+            items = [];
+            total = 0;
+            capturedAt = null;
+            error =
+                'Access could not be verified. Sign in again or check your permissions.';
+          } else {
+            error =
+                'Updates could not be checked. Previously loaded records may be out of date.';
+          }
+        });
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -72,6 +88,7 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
   void changePage(int next) {
     page = next;
     items = [];
+    capturedAt = null;
     load();
   }
 
