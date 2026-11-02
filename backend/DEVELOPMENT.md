@@ -2274,3 +2274,18 @@ These tests mock HTTP responses and intercept the browser anchor click so no
 test files are saved. They verify download initiation, not a completed disk
 download, live database authorization or the contents of a real exported PDF.
 The shared renderer and backend export have separate tests described above.
+
+HTTP follow-up on 2026-11-02: 76 tests passed across `platform-routes.test.ts`,
+`platform-audit-export.test.ts` and `tabular-report-pdf.test.ts`. Eight new route
+cases exercise the real Express router, signed JWT verification and service.
+The successful request renders actual PDF bytes and records export generation;
+missing credentials, school tokens, revoked/expired sessions and Superadmin
+access are rejected. Client-supplied report contents return 422; a missing event
+selection returns 409 rather than a partial PDF. Responses use `no-store`.
+Prisma is mocked: this does not verify a database transaction rollback or a
+live deployment. Existing demo records and running servers were not changed.
+
+```bash
+cd backend
+npm test -- --run tests/platform-routes.test.ts tests/platform-audit-export.test.ts tests/tabular-report-pdf.test.ts
+```

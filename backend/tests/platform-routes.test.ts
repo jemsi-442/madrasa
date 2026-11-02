@@ -45,6 +45,67 @@ function fixture(role = "SUPER_ADMIN", secret = key) {
 }
 
 describe("platform HTTP boundary", () => {
+  it('exports a real audit PDF through authenticated IT routing and records generation', async () => {
+    const f = fixture('IT_SECURITY');
+    f.db.platformAuditEvent.findMany.mockResolvedValue([{
+      id: 'synthetic-event', actorId: 'operator', actorRole: 'IT_SECURITY',
+      action: 'platform.login.succeeded', entityType: 'PlatformAccount', entityId: 'operator',
+      createdAt: new Date('2026-11-02T08:00:00Z'),
+    }]);
+    const response = await request(f.app).post('/api/platform/audit-events/pdf')
+      .set('Authorization', `Bearer ${f.token}`).send({ ids: ['synthetic-event'] });
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.fileName).toMatch(/^afaq-audit-.*\.pdf$/);
+    const pdf = Buffer.from(response.body.data.base64, 'base64');
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(pdf.length).toBeGreaterThan(1000);
+    expect(f.db.platformAuditEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      actorId: 'operator', actorRole: 'IT_SECURITY', action: 'platform.audit.exported',
+      entityType: 'AuditExport', entityId: expect.any(String),
+      metadata: expect.objectContaining({ count: 1, eventIds: ['synthetic-event'] }),
+    }) });
+  });
+
+  it.each(['missing', 'school-token', 'revoked', 'expired', 'superadmin'])('blocks audit export with %s access', async kind => {
+    const f = fixture(kind === 'superadmin' ? 'SUPER_ADMIN' : 'IT_SECURITY');
+    if (kind === 'revoked') f.session.revokedAt = new Date();
+    if (kind === 'expired') f.session.expiresAt = new Date(Date.now() - 1000);
+    const call = request(f.app).post('/api/platform/audit-events/pdf');
+    if (kind !== 'missing') {
+      const token = kind === 'school-token'
+        ? jwt.sign({ sub: 'teacher', role: 'TEACHER' }, schoolKey)
+        : f.token;
+      call.set('Authorization', `Bearer ${token}`);
+    }
+    const response = await call.send({ ids: ['synthetic-event'] });
+    expect(response.status).toBe(kind === 'superadmin' ? 403 : 401);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body.data?.base64).toBeUndefined();
+    expect(f.db.platformAuditEvent.findMany).not.toHaveBeenCalled();
+    expect(f.db.platformAuditEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects client-supplied PDF contents at the HTTP boundary', async () => {
+    const f = fixture('IT_SECURITY');
+    const response = await request(f.app).post('/api/platform/audit-events/pdf')
+      .set('Authorization', `Bearer ${f.token}`)
+      .send({ ids: ['synthetic-event'], rows: ['untrusted-content'] });
+    expect(response.status).toBe(422);
+    expect(f.db.platformAuditEvent.findMany).not.toHaveBeenCalled();
+    expect(f.db.platformAuditEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('returns a conflict rather than a partial audit PDF', async () => {
+    const f = fixture('IT_SECURITY');
+    const response = await request(f.app).post('/api/platform/audit-events/pdf')
+      .set('Authorization', `Bearer ${f.token}`).send({ ids: ['missing-event'] });
+    expect(response.status).toBe(409);
+    expect(response.body.data?.base64).toBeUndefined();
+    expect(f.db.platformAuditEvent.create).not.toHaveBeenCalled();
+  });
+
   it('requires a framework version token for draft writes and publication', async () => {
     const f = fixture();
     for (const [method, path] of [
