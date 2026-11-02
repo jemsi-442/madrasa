@@ -33,11 +33,13 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   int viewVersion = 0;
   late final AutomaticDataUpdates updates;
   String? error;
+  String? sourceDraft;
   int page = 1;
   String? statusFilter, priorityFilter;
   @override
   void initState() {
     super.initState();
+    sourceDraft = widget.initialDescription;
     updates = AutomaticDataUpdates(
       canUpdate: () =>
           mounted &&
@@ -173,9 +175,8 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
     final request = widget.request;
     final original = selected;
     final title = TextEditingController();
-    final note = TextEditingController(
-      text: update ? '' : widget.initialDescription,
-    );
+    final note = TextEditingController(text: update ? '' : sourceDraft);
+    if (!update) sourceDraft = null;
     final form = GlobalKey<FormState>();
     var choice = update ? '${original!['status']}' : 'MEDIUM';
     var saving = false;
