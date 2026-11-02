@@ -23,6 +23,44 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  for (final width in [700.0, 900.0, 1440.0]) {
+    testWidgets('school cards have comfortable columns at $width', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width, 1200);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HomeSchoolSection(onNavigate: (_) {}),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Rect card(String title) => tester.getRect(
+        find
+            .ancestor(of: find.text(title), matching: find.byType(Container))
+            .first,
+      );
+      final plan = card('Give lessons a clear direction');
+      final teach = card('Keep records with context');
+      final support = card('Turn records into follow-up');
+      expect(plan.top, teach.top);
+      expect(plan.height, teach.height);
+      expect(plan.width, greaterThan(300));
+      if (width < 1100) {
+        expect(support.top, greaterThan(plan.bottom));
+      } else {
+        expect(support.top, plan.top);
+        expect(support.height, plan.height);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final width in [320.0, 1440.0]) {
     testWidgets('expanded homepage content and actions at $width', (
       tester,

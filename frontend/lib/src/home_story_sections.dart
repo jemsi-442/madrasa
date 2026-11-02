@@ -456,9 +456,41 @@ class _Columns extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, size) {
-      final wide =
-          size.maxWidth >= 800 &&
-          MediaQuery.textScalerOf(context).scale(16) < 25;
+      final largeText = MediaQuery.textScalerOf(context).scale(16) >= 25;
+      if (children.every((child) => child is _Pillar)) {
+        final columns = largeText || size.maxWidth < 640
+            ? 1
+            : size.maxWidth < 1050
+            ? 2
+            : 3;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var start = 0; start < children.length; start += columns) ...[
+              if (start > 0) const SizedBox(height: 24),
+              if (columns == 1)
+                children[start]
+              else
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (
+                        var i = start;
+                        i < start + columns && i < children.length;
+                        i++
+                      ) ...[
+                        if (i > start) const SizedBox(width: 24),
+                        Expanded(child: children[i]),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        );
+      }
+      final wide = size.maxWidth >= 800 && !largeText;
       return wide
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.start,
