@@ -21,16 +21,61 @@ class HomePhoto extends StatelessWidget {
         asset,
         fit: BoxFit.contain,
         semanticLabel: description,
-        errorBuilder: (context, error, stack) => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Photo unavailable',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF405772), fontSize: 16),
+        frameBuilder: (context, child, frame, synchronous) =>
+            synchronous || frame != null
+            ? child
+            : _PhotoStatus(description: description, loading: true),
+        errorBuilder: (context, error, stack) =>
+            _PhotoStatus(description: description, loading: false),
+      ),
+    ),
+  );
+}
+
+class _PhotoStatus extends StatelessWidget {
+  const _PhotoStatus({required this.description, required this.loading});
+  final String description;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '${loading ? 'Loading photo' : 'Photo unavailable'}: $description',
+    child: ExcludeSemantics(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showText =
+              constraints.maxWidth >= 180 && constraints.maxHeight >= 100;
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      loading
+                          ? Icons.photo_outlined
+                          : Icons.hide_image_outlined,
+                      size: 32,
+                      color: const Color(0xFF405772),
+                    ),
+                    if (showText) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        loading ? 'Loading photo' : 'Photo unavailable',
+                        style: const TextStyle(
+                          color: Color(0xFF405772),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     ),
   );
