@@ -3,6 +3,80 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_system_health_page.dart';
 
 void main() {
+  testWidgets('Expired check cannot open a draft before the next timer tick', (
+    tester,
+  ) async {
+    final checked = DateTime.utc(2026, 11, 2);
+    var now = checked;
+    var drafts = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlatformSystemHealthPage(
+            snapshot: {
+              'checkedAt': checked.toIso8601String(),
+              'checks': [
+                {'name': 'redis', 'status': 'unavailable'},
+              ],
+            },
+            busy: false,
+            error: null,
+            now: () => now,
+            onRefresh: () {},
+            onInvestigate: (_) => drafts++,
+          ),
+        ),
+      ),
+    );
+    final button = find.widgetWithText(
+      OutlinedButton,
+      'Investigate failed checks',
+    );
+    await tester.ensureVisible(button);
+    expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
+    now = checked.add(const Duration(seconds: 60));
+    await tester.tap(button);
+    await tester.pump();
+    expect(drafts, 0);
+    expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final status in [null, 'unknown', 'checking']) {
+    testWidgets('Unverified status is not a failed check: $status', (
+      tester,
+    ) async {
+      final now = DateTime.utc(2026, 11, 2);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformSystemHealthPage(
+              snapshot: {
+                'checkedAt': now.toIso8601String(),
+                'checks': [
+                  {'name': 'redis', 'status': status},
+                ],
+              },
+              busy: false,
+              error: null,
+              now: () => now,
+              onRefresh: () {},
+              onInvestigate: (_) =>
+                  fail('Unverified status must not create a draft'),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Unavailable'), findsNothing);
+      expect(find.text('Investigate failed checks'), findsNothing);
+      expect(find.text('No failed connectivity checks.'), findsNothing);
+      expect(
+        find.textContaining('Availability has not been verified'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   testWidgets('Only fresh verified failures can open investigation drafts', (
     tester,
   ) async {

@@ -29,6 +29,14 @@ class PlatformSystemHealthPage extends StatefulWidget {
 
 class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
   Timer? timer;
+  bool isFresh(DateTime? checked) {
+    if (checked == null) return false;
+    final age = (widget.now ?? DateTime.now)().toUtc().difference(
+      checked.toUtc(),
+    );
+    return !age.isNegative && age < const Duration(seconds: 60);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,13 +78,10 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
     final checks = (widget.snapshot?['checks'] as List? ?? [])
         .whereType<Map>()
         .where((row) => ['database', 'redis'].contains(row['name']))
+        .where((row) => ['available', 'unavailable'].contains(row['status']))
         .toList();
     final checked = DateTime.tryParse('${widget.snapshot?['checkedAt']}');
-    final age = checked == null
-        ? null
-        : (widget.now ?? DateTime.now)().toUtc().difference(checked.toUtc());
-    final fresh =
-        age != null && !age.isNegative && age < const Duration(seconds: 60);
+    final fresh = isFresh(checked);
     final failed = checks.where((row) => row['status'] != 'available').toList();
     final metrics = [
       (
@@ -352,12 +357,19 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
                 OutlinedButton.icon(
                   onPressed: widget.busy || widget.error != null || !fresh
                       ? null
-                      : () => widget.onInvestigate!(
-                          'Connectivity checks for investigation. This does not establish a security breach.\n'
-                          'Checked (UTC): ${checked!.toUtc().toIso8601String()}\n'
-                          'Unavailable services: ${failed.map((row) => row['name'] == 'database' ? 'Database' : 'Redis').join(', ')}\n\n'
-                          'Investigation reason:',
-                        ),
+                      : () {
+                          // The snapshot may expire between rendering and clicking.
+                          if (!isFresh(checked)) {
+                            setState(() {});
+                            return;
+                          }
+                          widget.onInvestigate!(
+                            'Connectivity checks for investigation. This does not establish a security breach.\n'
+                            'Checked (UTC): ${checked!.toUtc().toIso8601String()}\n'
+                            'Unavailable services: ${failed.map((row) => row['name'] == 'database' ? 'Database' : 'Redis').join(', ')}\n\n'
+                            'Investigation reason:',
+                          );
+                        },
                   icon: const Icon(Icons.assignment_outlined),
                   label: const Text('Investigate failed checks'),
                 ),
