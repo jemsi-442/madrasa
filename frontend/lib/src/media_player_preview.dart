@@ -36,7 +36,7 @@ class MediaPlayerPreviewButton extends StatelessWidget {
     child: LayoutBuilder(
       builder: (context, constraints) {
         final compact =
-            constraints.maxWidth < 640 ||
+            constraints.maxWidth < 900 ||
             MediaQuery.textScalerOf(context).scale(16) > 24;
         final stackedIntro =
             constraints.maxWidth < 420 ||
@@ -252,7 +252,22 @@ class _MediaPlayerPreviewPageState extends State<MediaPlayerPreviewPage> {
                       ChoiceChip(
                         key: ValueKey('preview-${value.name}'),
                         selected: sample == value,
-                        avatar: Icon(lessonResourceIcon(value.kind), size: 19),
+                        selectedColor: ink,
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        labelStyle: TextStyle(
+                          color: sample == value ? Colors.white : ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        avatar: Icon(
+                          lessonResourceIcon(value.kind),
+                          size: 24,
+                          color: sample == value ? Colors.white : ink,
+                        ),
                         label: Text(value.label),
                         showCheckmark: false,
                         onSelected: (_) => select(value),

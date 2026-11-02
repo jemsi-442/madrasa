@@ -70,6 +70,13 @@ void main() {
         );
         final button = find.byKey(const ValueKey('open-media-player-preview'));
         expect(t.getSize(button).height, greaterThanOrEqualTo(56));
+        if (width <= 700 || scale == 2) {
+          expect(t.getSize(button).width, closeTo(width - 50, 1));
+          expect(
+            t.getTopLeft(button).dy,
+            greaterThan(t.getBottomLeft(find.text('Media player')).dy),
+          );
+        }
         expect(
           t.getSize(find.byKey(const ValueKey('media-player-launcher'))).width,
           width,
