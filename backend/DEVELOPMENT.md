@@ -2149,3 +2149,11 @@ Responses arriving after editing starts or a write occurs are discarded. Network
 errors retain previously loaded history with a stale-data notice; permission or
 session errors clear history and stop automatic polling. This is polling of
 recorded requests, not live backup execution monitoring.
+
+Security incident lists and the selected incident also poll every 30 seconds
+while visible and active. The current page and status/priority filters are reused.
+Polling pauses while a create/response form is open or a write is in progress;
+background results cannot replace a newer manual selection or filter request.
+Transient failures retain the prior view with a stale-data warning. Session or
+permission failures clear the incident view and stop background polling. This
+refreshes recorded incidents; it does not detect security threats automatically.

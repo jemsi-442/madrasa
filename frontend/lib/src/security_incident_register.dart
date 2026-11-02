@@ -4,6 +4,9 @@ import 'design_tokens.dart';
 import 'foundation_ui.dart' show DashboardMetric;
 import 'it_workspace_visuals.dart';
 import 'platform_form_dialog.dart';
+import 'automatic_data_updates.dart';
+import 'live_data.dart';
+import 'api_client.dart';
 
 class SecurityIncidentRegister extends StatefulWidget {
   const SecurityIncidentRegister({
@@ -24,13 +27,72 @@ class SecurityIncidentRegister extends StatefulWidget {
 class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   Map<String, dynamic>? snapshot, selected;
   bool busy = false;
+  bool editing = false, accessDenied = false;
+  int viewVersion = 0;
+  late final AutomaticDataUpdates updates;
   String? error;
   int page = 1;
   String? statusFilter, priorityFilter;
   @override
   void initState() {
     super.initState();
+    updates = AutomaticDataUpdates(
+      canUpdate: () =>
+          mounted &&
+          !busy &&
+          !editing &&
+          !accessDenied &&
+          !dataWriteInProgress &&
+          ModalRoute.of(context)?.isCurrent != false,
+      update: updateInBackground,
+    );
     initialize();
+  }
+
+  @override
+  void dispose() {
+    updates.dispose();
+    super.dispose();
+  }
+
+  String get listPath =>
+      '/incidents?${Uri(queryParameters: {'page': '$page', if (statusFilter != null) 'status': statusFilter!, if (priorityFilter != null) 'priority': priorityFilter!}).query}';
+
+  Future<void> updateInBackground() async {
+    final version = viewVersion, revision = dataChanges.value;
+    final id = selected?['id'] as String?;
+    bool current() => mounted && version == viewVersion;
+    bool canApply() =>
+        current() && !editing && !busy && revision == dataChanges.value;
+    try {
+      final data = await widget.request(listPath, null);
+      if (!canApply()) return;
+      final detail = id == null
+          ? null
+          : await widget.request('/incidents/${Uri.encodeComponent(id)}', null);
+      if (!canApply()) return;
+      setState(() {
+        snapshot = Map<String, dynamic>.from(data as Map);
+        selected = detail == null
+            ? null
+            : Map<String, dynamic>.from(detail as Map);
+        error = null;
+      });
+    } catch (e) {
+      if (!current()) return;
+      final denied =
+          e is ApiException && [401, 403, 409].contains(e.statusCode);
+      if (!denied && !canApply()) return;
+      setState(() {
+        if (denied) {
+          accessDenied = true;
+          snapshot = selected = null;
+        }
+        error = denied
+            ? 'Access could not be verified. Sign in again or check your permissions.'
+            : 'Updates could not be checked. Displayed records may be out of date; retrying automatically.';
+      });
+    }
   }
 
   Future<void> initialize() async {
@@ -41,22 +103,17 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   }
 
   Future<void> refresh({String? incidentId}) async {
+    viewVersion++;
     final keepId = incidentId ?? selected?['id'] as String?;
     setState(() {
       busy = true;
       error = null;
     });
     try {
-      final query = Uri(
-        queryParameters: {
-          'page': '$page',
-          if (statusFilter != null) 'status': statusFilter!,
-          if (priorityFilter != null) 'priority': priorityFilter!,
-        },
-      ).query;
-      final data = await widget.request('/incidents?$query', null);
+      final data = await widget.request(listPath, null);
       if (mounted) {
         setState(() {
+          accessDenied = false;
           snapshot = Map<String, dynamic>.from(data as Map);
           if (keepId == null) selected = null;
         });
@@ -77,6 +134,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   }
 
   Future<void> open(String id) async {
+    viewVersion++;
     setState(() {
       busy = true;
       error = null;
@@ -98,6 +156,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   }
 
   Future<void> edit({bool update = false}) async {
+    editing = true;
     final request = widget.request;
     final original = selected;
     final title = TextEditingController();
@@ -246,6 +305,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
         ),
       ),
     );
+    editing = false;
     // Wait for the dialog route to finish its closing animation before disposal.
     await Future<void>.delayed(const Duration(milliseconds: 300));
     title.dispose();

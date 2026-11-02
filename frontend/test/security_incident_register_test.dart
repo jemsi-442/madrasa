@@ -4,6 +4,76 @@ import 'package:mif_app/src/security_incident_register.dart';
 
 void main() {
   testWidgets(
+    'Background updates preserve selected incident and pause for response form',
+    (tester) async {
+      var lists = 0, details = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SecurityIncidentRegister(
+              initialIncidentId: 'synthetic-incident',
+              request: (path, body) async {
+                expect(body, isNull);
+                if (path.contains('?')) {
+                  lists++;
+                  return {
+                    'items': [],
+                    'total': 0,
+                    'open': 1,
+                    'high': 0,
+                    'resolved': 0,
+                  };
+                }
+                details++;
+                return {
+                  'id': 'synthetic-incident',
+                  'title': 'Synthetic concern',
+                  'description': 'Synthetic investigation',
+                  'priority': 'MEDIUM',
+                  'status': 'OPEN',
+                  'revision': details,
+                  'entries': [],
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(lists, 1);
+      expect(details, 1);
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(lists, 2);
+      expect(details, 2);
+      expect(find.text('Synthetic concern'), findsOneWidget);
+      await tester.ensureVisible(find.text('Update response'));
+      await tester.tap(find.text('Update response'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextFormField),
+        'Synthetic unsaved response',
+      );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump(const Duration(seconds: 60));
+      await tester.pumpAndSettle();
+      expect(lists, 2);
+      expect(details, 2);
+      expect(find.text('Synthetic unsaved response'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(lists, 3);
+      expect(details, 3);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 30));
+      expect(lists, 3);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'response retry keeps its payload and reloads after confirmation',
     (tester) async {
       final submissions = <Map<String, dynamic>>[];
