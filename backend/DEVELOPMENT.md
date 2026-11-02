@@ -2258,3 +2258,19 @@ Verification on 2026-11-02: 76 backend audit/export/governance tests, 3 shared P
 renderer tests and 17 Flutter audit/session tests passed. Flutter analysis passed.
 The export tests use synthetic records and mocked database transactions; they
 do not constitute a live database/browser download test. No demo data was reset.
+
+Browser follow-up on 2026-11-02: three Chromium tests passed for the actual
+Audit Logs PDF button. They check the filtered IDs in the POST body, suppression
+of repeated clicks during generation, and the browser Blob/download handoff.
+Denied permission and session expiry while waiting both prevent the handoff;
+the search text remains unchanged. Static analysis of the test passed.
+
+```bash
+cd frontend
+CHROME_EXECUTABLE=/usr/bin/chromium flutter test --no-pub --platform chrome --reporter expanded test/platform_audit_download_browser_test.dart
+```
+
+These tests mock HTTP responses and intercept the browser anchor click so no
+test files are saved. They verify download initiation, not a completed disk
+download, live database authorization or the contents of a real exported PDF.
+The shared renderer and backend export have separate tests described above.
