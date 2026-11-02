@@ -134,8 +134,8 @@ void main() {
     await tester.pumpAndSettle();
     final register = find.byKey(const ValueKey('hero-register'));
     final explore = find.byKey(const ValueKey('hero-explore'));
-    expect(tester.getSize(register), const Size(342, 58));
-    expect(tester.getSize(explore), const Size(342, 58));
+    expect(tester.getSize(register), const Size(342, 64));
+    expect(tester.getSize(explore), const Size(342, 64));
     await tester.ensureVisible(register);
     await tester.tap(register);
     expect(destinations, ['/register']);

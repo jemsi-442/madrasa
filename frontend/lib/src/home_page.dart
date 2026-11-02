@@ -598,6 +598,7 @@ class _HeroMessage extends StatelessWidget {
               width: constraints.maxWidth < 480 ? constraints.maxWidth : null,
               child: GoldAction(
                 key: const ValueKey('hero-register'),
+                prominent: true,
                 label: 'Get Started',
                 icon: Icons.arrow_forward_rounded,
                 fullWidth: constraints.maxWidth < 480,
@@ -606,7 +607,7 @@ class _HeroMessage extends StatelessWidget {
             ),
             SizedBox(
               width: constraints.maxWidth < 480 ? constraints.maxWidth : null,
-              height: 58,
+              height: 64,
               child: OutlinedButton.icon(
                 key: const ValueKey('hero-explore'),
                 onPressed: onExplore,
@@ -618,13 +619,10 @@ class _HeroMessage extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                 ),
-                icon: const Icon(
-                  Icons.auto_stories_outlined,
-                  size: AfaqDesign.iconSmall,
-                ),
+                icon: const Icon(Icons.auto_stories_outlined, size: 28),
                 label: const Text(
                   'Explore Learning',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
                 ),
               ),
             ),

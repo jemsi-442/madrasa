@@ -265,6 +265,7 @@ class GoldAction extends StatelessWidget {
     this.busy = false,
     this.icon,
     this.fullWidth = true,
+    this.prominent = false,
   });
 
   final String label;
@@ -272,11 +273,12 @@ class GoldAction extends StatelessWidget {
   final bool busy;
   final IconData? icon;
   final bool fullWidth;
+  final bool prominent;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     width: fullWidth ? double.infinity : null,
-    height: 58,
+    height: prominent ? 64 : 58,
     child: FilledButton(
       onPressed: busy ? null : onPressed,
       style: FilledButton.styleFrom(
@@ -285,10 +287,10 @@ class GoldAction extends StatelessWidget {
         disabledBackgroundColor: publicGold.withValues(alpha: 0.65),
         disabledForegroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 26),
-        textStyle: const TextStyle(
+        textStyle: TextStyle(
           fontFamily: AfaqDesign.bodyFont,
           fontWeight: FontWeight.w700,
-          fontSize: 16,
+          fontSize: prominent ? 18 : 16,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -308,7 +310,7 @@ class GoldAction extends StatelessWidget {
                 Flexible(child: Text(label, textAlign: TextAlign.center)),
                 if (icon != null) ...[
                   const SizedBox(width: 14),
-                  Icon(icon, size: AfaqDesign.iconSmall),
+                  Icon(icon, size: prominent ? 28 : AfaqDesign.iconSmall),
                 ],
               ],
             ),
