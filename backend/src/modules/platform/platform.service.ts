@@ -1,7 +1,7 @@
 import { Prisma, PlatformRole, UserRole, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { randomUUID } from 'node:crypto';
-import { tabularReportPdf } from '../../shared/utils/tabular-report-pdf';
+import { auditReportPdf } from '../../shared/utils/audit-report-pdf';
 import { allocateMadrasaCode } from './madrasa-code';
 import { locationSuggestions } from './location-suggestions';
 import { directoryLocationFilters, directoryLocationValues } from './directory-location';
@@ -685,18 +685,8 @@ export class PlatformGovernanceService {
       });
       if (events.length !== ids.length) throw new HttpError(409, 'Audit selection changed; refresh before exporting');
       const generatedAt = new Date().toISOString();
-      const pdf = await tabularReportPdf('Security audit report', 'Selected page events | IT workspace',
-        ['Time (UTC)', 'Actor / role', 'Action', 'Reference', 'Event ID'],
-        events.map(event => [event.createdAt.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC'),
-          `${event.actorId ?? 'Not recorded'}\n${event.actorRole ?? 'Not recorded'}`, event.action,
-          `${event.entityType ?? 'Not recorded'}\n${event.entityId ?? ''}`, event.id]), {
-          columnWeights: [3, 3, 4, 3, 3],
-          metadata: [{ label: 'Scope', value: `${events.length} selected events, not the full audit log` },
-            { label: 'Generated (UTC)', value: generatedAt.replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC') }],
-          notes: ['Only the visible page selection is included. Search and filters determine the selected event IDs.',
-            'No event metadata, passwords, tokens or message bodies are included. Failed login actors are targets, not verified people.',
-            'Report generation is audited. This does not prove that the recipient downloaded or read the file.'],
-        });
+      const pdf = await auditReportPdf(events.map(({ id, actorId, actorRole, action, entityType, entityId, createdAt }) =>
+        ({ id, actorId, actorRole, action, entityType, entityId, createdAt })), generatedAt);
       await tx.platformAuditEvent.create({ data: {
         actorId: account.id, actorRole: account.role, action: 'platform.audit.exported',
         entityType: 'AuditExport', entityId: randomUUID(), metadata: { count: events.length, eventIds: ids, generatedAt },

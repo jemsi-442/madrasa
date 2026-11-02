@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
 import { PlatformGovernanceService } from '../src/modules/platform/platform.service';
-import { tabularReportPdf } from '../src/shared/utils/tabular-report-pdf';
+import { auditReportPdf } from '../src/shared/utils/audit-report-pdf';
 
-vi.mock('../src/shared/utils/tabular-report-pdf', () => ({ tabularReportPdf: vi.fn() }));
+vi.mock('../src/shared/utils/audit-report-pdf', () => ({ auditReportPdf: vi.fn() }));
 const actor = { scope: 'platform' as const, accountId: 'it', sessionId: 'session' };
 function fixture(role = 'IT_SECURITY', status = 'ACTIVE') {
   const tx = {
@@ -22,7 +22,7 @@ function fixture(role = 'IT_SECURITY', status = 'ACTIVE') {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(tabularReportPdf).mockResolvedValue(Buffer.from('%PDF-test'));
+  vi.mocked(auditReportPdf).mockResolvedValue(Buffer.from('%PDF-test'));
 });
 describe('IT audit PDF export', () => {
   it('renders server records only and audits generation before returning the PDF', async () => {
@@ -32,10 +32,12 @@ describe('IT audit PDF export', () => {
       where: { id: { in: ['event'] } },
       select: { id: true, actorId: true, actorRole: true, action: true, entityType: true, entityId: true, createdAt: true },
     }));
-    expect(JSON.stringify(vi.mocked(tabularReportPdf).mock.calls)).not.toContain('private-test-marker');
-    expect(vi.mocked(tabularReportPdf).mock.calls[0]?.[3][0]).toEqual([
-      '2026-11-02 10:00:00 UTC', 'operator\nIT_SECURITY', 'platform.login.failed', 'Account\ntarget', 'event',
-    ]);
+    expect(JSON.stringify(vi.mocked(auditReportPdf).mock.calls)).not.toContain('private-test-marker');
+    expect(vi.mocked(auditReportPdf).mock.calls[0]?.[0][0]).toEqual({
+      id: 'event', actorId: 'operator', actorRole: 'IT_SECURITY',
+      action: 'platform.login.failed', entityType: 'Account', entityId: 'target',
+      createdAt: new Date('2026-11-02T10:00:00Z'),
+    });
     expect(tx.platformAuditEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({
       actorId: 'it', action: 'platform.audit.exported',
       metadata: expect.objectContaining({ count: 1, eventIds: ['event'] }),
@@ -47,7 +49,7 @@ describe('IT audit PDF export', () => {
     const { tx, service } = fixture(role);
     await expect(service.exportAuditEvents(actor, { ids: ['event'] })).rejects.toMatchObject({ statusCode: 403 });
     expect(tx.platformAuditEvent.findMany).not.toHaveBeenCalled();
-    expect(tabularReportPdf).not.toHaveBeenCalled();
+    expect(auditReportPdf).not.toHaveBeenCalled();
   });
   it('rejects disabled IT accounts', async () => {
     const { tx, service } = fixture('IT_SECURITY', 'DISABLED');
@@ -64,12 +66,12 @@ describe('IT audit PDF export', () => {
     const { tx, service } = fixture();
     tx.platformAuditEvent.findMany.mockResolvedValue([]);
     await expect(service.exportAuditEvents(actor, { ids: ['event'] })).rejects.toMatchObject({ statusCode: 409 });
-    expect(tabularReportPdf).not.toHaveBeenCalled();
+    expect(auditReportPdf).not.toHaveBeenCalled();
     expect(tx.platformAuditEvent.create).not.toHaveBeenCalled();
   });
   it('does not record success when rendering fails', async () => {
     const { tx, service } = fixture();
-    vi.mocked(tabularReportPdf).mockRejectedValueOnce(new Error('render failed'));
+    vi.mocked(auditReportPdf).mockRejectedValueOnce(new Error('render failed'));
     await expect(service.exportAuditEvents(actor, { ids: ['event'] })).rejects.toThrow('render failed');
     expect(tx.platformAuditEvent.create).not.toHaveBeenCalled();
   });
