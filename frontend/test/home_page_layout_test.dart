@@ -23,6 +23,50 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  testWidgets('about has larger copy and usable section shortcuts', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 1000);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final destinations = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(home: PublicHomeScreen(onNavigate: destinations.add)),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<Text>(find.text('Rooted in values.\nReady for tomorrow.'))
+          .style!
+          .fontSize,
+      48,
+    );
+    expect(
+      tester.widget<Text>(find.text('Faith & understanding')).style!.fontSize,
+      22,
+    );
+    final join = find.byKey(const ValueKey('home-about-join'));
+    await tester.ensureVisible(join);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(join).height, greaterThanOrEqualTo(56));
+    await tester.tap(join);
+    expect(destinations, ['/register']);
+    for (final label in [
+      'Our story',
+      'Learning in practice',
+      'Our team',
+      'For Schools',
+      'Partners',
+      'FAQs',
+    ]) {
+      expect(
+        tester.getSize(find.byKey(ValueKey('home-shortcut-$label'))).height,
+        greaterThanOrEqualTo(56),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('story sections have clear desktop headings and touch targets', (
     tester,
   ) async {

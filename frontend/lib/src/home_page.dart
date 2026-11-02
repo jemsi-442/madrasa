@@ -1,4 +1,3 @@
-import 'design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -156,10 +155,22 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                             'FAQs',
                           ])
                             OutlinedButton.icon(
+                              key: ValueKey('home-shortcut-$label'),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 56),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14,
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               onPressed: () => openSection(label),
                               icon: const Icon(
                                 Icons.arrow_downward_rounded,
-                                size: 22,
+                                size: 26,
                               ),
                               label: Text(label),
                             ),
@@ -767,14 +778,17 @@ class _AboutSection extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     color: Colors.white,
-    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 60),
+    padding: EdgeInsets.symmetric(
+      horizontal: 28,
+      vertical: MediaQuery.sizeOf(context).width >= 1000 ? 80 : 48,
+    ),
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1160),
+        constraints: const BoxConstraints(maxWidth: 1320),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide =
-                constraints.maxWidth > 760 &&
+                constraints.maxWidth >= 1000 &&
                 MediaQuery.textScalerOf(context).scale(16) < 25;
             final message = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -796,7 +810,7 @@ class _AboutSection extends StatelessWidget {
                     style: TextStyle(
                       color: publicInk,
                       fontFamily: 'NotoSerifDisplay',
-                      fontSize: wide ? 42 : 34,
+                      fontSize: wide ? 48 : 34,
                       fontWeight: FontWeight.w700,
                       height: 1.2,
                     ),
@@ -807,21 +821,26 @@ class _AboutSection extends StatelessWidget {
                   'From a child\'s first lesson to lifelong study, we bring faith, knowledge and practical skills together.',
                   style: TextStyle(
                     color: publicMuted,
-                    fontSize: 18,
+                    fontSize: 20,
                     height: 1.65,
                   ),
                 ),
                 const SizedBox(height: 18),
                 TextButton.icon(
+                  key: const ValueKey('home-about-join'),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 56),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 12,
+                    ),
+                  ),
                   onPressed: onJoin,
                   iconAlignment: IconAlignment.end,
-                  icon: const Icon(
-                    Icons.arrow_forward_rounded,
-                    size: AfaqDesign.iconSmall,
-                  ),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 28),
                   label: const Text(
                     'Start your learning journey',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
                   ),
                 ),
               ],
@@ -833,13 +852,13 @@ class _AboutSection extends StatelessWidget {
                   title: 'Faith & understanding',
                   text: 'Qur\'an, Arabic and Islamic studies.',
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 28),
                 _LearningPath(
                   icon: Icons.computer_outlined,
                   title: 'Skills for today',
                   text: 'Technology and practical online courses.',
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 28),
                 _LearningPath(
                   icon: Icons.people_outline_rounded,
                   title: 'A connected community',
@@ -879,15 +898,16 @@ class _LearningPath extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Container(
-        width: 52,
-        height: 52,
+        width: 68,
+        height: 68,
         decoration: BoxDecoration(
           color: const Color(0xFFF5EFE2),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: publicGold, size: 32),
+        child: Icon(icon, color: publicGold, size: 40),
       ),
       const SizedBox(width: 17),
       Expanded(
@@ -899,7 +919,8 @@ class _LearningPath extends StatelessWidget {
               style: const TextStyle(
                 color: publicInk,
                 fontWeight: FontWeight.w700,
-                fontSize: 18,
+                fontSize: 22,
+                height: 1.35,
               ),
             ),
             const SizedBox(height: 4),
@@ -907,7 +928,7 @@ class _LearningPath extends StatelessWidget {
               text,
               style: const TextStyle(
                 color: publicMuted,
-                fontSize: 16,
+                fontSize: 18,
                 height: 1.5,
               ),
             ),
