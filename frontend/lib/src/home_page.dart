@@ -101,7 +101,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                             onPressed: () => openSection(label),
                             icon: const Icon(
                               Icons.arrow_downward_rounded,
-                              size: 18,
+                              size: 22,
                             ),
                             label: Text(label),
                           ),
@@ -183,7 +183,7 @@ class _HomeHeader extends StatelessWidget {
                             color: selected == label
                                 ? publicHeaderAccent
                                 : Colors.white,
-                            fontSize: 13,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -329,7 +329,7 @@ class _HomeHero extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: publicGold,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.4,
                       height: 1.6,
@@ -416,7 +416,7 @@ class _HeroMessage extends StatelessWidget {
         const SizedBox(height: 10),
         const Text(
           'Explore Islamic education and practical skills in one connected space for learners, families and teachers.',
-          style: TextStyle(color: publicMuted, fontSize: 16, height: 1.7),
+          style: TextStyle(color: publicMuted, fontSize: 18, height: 1.7),
         ),
         const SizedBox(height: 30),
         Wrap(
@@ -522,7 +522,7 @@ class PublicHomeFeatures extends StatelessWidget {
                       child: Icon(
                         feature.$1,
                         color: const Color(0xFF123C62),
-                        size: 30,
+                        size: 36,
                       ),
                     ),
                     const SizedBox(height: 13),
@@ -531,7 +531,7 @@ class PublicHomeFeatures extends StatelessWidget {
                       style: const TextStyle(
                         color: publicInk,
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: 17,
                         height: 1.35,
                       ),
                     ),
@@ -540,7 +540,7 @@ class PublicHomeFeatures extends StatelessWidget {
                       feature.$3,
                       style: const TextStyle(
                         color: Color(0xFF405772),
-                        fontSize: 12,
+                        fontSize: 15,
                         height: 1.5,
                       ),
                     ),
@@ -576,7 +576,7 @@ class _AboutSection extends StatelessWidget {
                   'A PLACE TO LEARN AND BELONG',
                   style: TextStyle(
                     color: publicGold,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.3,
                   ),
@@ -597,7 +597,7 @@ class _AboutSection extends StatelessWidget {
                   'From a child\'s first lesson to lifelong study, we bring faith, knowledge and practical skills together.',
                   style: TextStyle(
                     color: publicMuted,
-                    fontSize: 15,
+                    fontSize: 18,
                     height: 1.65,
                   ),
                 ),
@@ -677,7 +677,7 @@ class _LearningPath extends StatelessWidget {
           color: const Color(0xFFF5EFE2),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: publicGold),
+        child: Icon(icon, color: publicGold, size: 32),
       ),
       const SizedBox(width: 17),
       Expanded(
@@ -689,7 +689,7 @@ class _LearningPath extends StatelessWidget {
               style: const TextStyle(
                 color: publicInk,
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
+                fontSize: 18,
               ),
             ),
             const SizedBox(height: 4),
@@ -697,7 +697,7 @@ class _LearningPath extends StatelessWidget {
               text,
               style: const TextStyle(
                 color: publicMuted,
-                fontSize: 13,
+                fontSize: 16,
                 height: 1.5,
               ),
             ),

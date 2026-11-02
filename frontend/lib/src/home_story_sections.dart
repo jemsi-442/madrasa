@@ -297,7 +297,11 @@ class HomePartnershipSection extends StatelessWidget {
                   collapsedShape: const Border(),
                   title: Text(
                     item.$1,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      height: 1.4,
+                    ),
                   ),
                   childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
@@ -305,7 +309,11 @@ class HomePartnershipSection extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         item.$2,
-                        style: const TextStyle(height: 1.7, color: publicMuted),
+                        style: const TextStyle(
+                          height: 1.7,
+                          color: publicMuted,
+                          fontSize: 17,
+                        ),
                       ),
                     ),
                   ],
@@ -403,7 +411,7 @@ class _Section extends StatelessWidget {
               eyebrow,
               style: const TextStyle(
                 color: publicGold,
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.5,
               ),
@@ -427,7 +435,7 @@ class _Section extends StatelessWidget {
                   intro!,
                   style: const TextStyle(
                     color: publicMuted,
-                    fontSize: 16,
+                    fontSize: 18,
                     height: 1.75,
                   ),
                 ),
@@ -506,14 +514,14 @@ class _Pillar extends StatelessWidget {
             color: accent,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(icon, color: Colors.white, size: 30),
+          child: Icon(icon, color: Colors.white, size: 36),
         ),
         const SizedBox(height: 20),
         Text(
           number,
           style: TextStyle(
             color: accent,
-            fontSize: 11,
+            fontSize: 13,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w700,
           ),
@@ -524,7 +532,7 @@ class _Pillar extends StatelessWidget {
           child: Text(
             title,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
               color: publicInk,
             ),
@@ -533,7 +541,7 @@ class _Pillar extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           text,
-          style: const TextStyle(color: publicMuted, height: 1.7, fontSize: 15),
+          style: const TextStyle(color: publicMuted, height: 1.7, fontSize: 17),
         ),
       ],
     ),
@@ -569,7 +577,7 @@ class _StoryStep extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 20,
+            fontSize: 22,
             color: publicInk,
             fontWeight: FontWeight.w700,
           ),
@@ -577,7 +585,7 @@ class _StoryStep extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           text,
-          style: const TextStyle(height: 1.7, color: publicMuted, fontSize: 15),
+          style: const TextStyle(height: 1.7, color: publicMuted, fontSize: 17),
         ),
       ],
     ),
@@ -606,7 +614,7 @@ class _Photo extends StatelessWidget {
       const SizedBox(height: 14),
       Text(
         caption,
-        style: const TextStyle(color: publicMuted, fontSize: 13, height: 1.6),
+        style: const TextStyle(color: publicMuted, fontSize: 15, height: 1.6),
       ),
     ],
   );
