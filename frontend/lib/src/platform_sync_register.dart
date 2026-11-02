@@ -13,9 +13,11 @@ class PlatformSyncRegister extends StatefulWidget {
     required this.request,
     required this.onAudit,
     required this.onIncidents,
+    this.onInvestigate,
   });
   final Future<dynamic> Function(String) request;
   final VoidCallback onAudit, onIncidents;
+  final ValueChanged<String>? onInvestigate;
   @override
   State<PlatformSyncRegister> createState() => _PlatformSyncRegisterState();
 }
@@ -135,6 +137,22 @@ class _PlatformSyncRegisterState extends State<PlatformSyncRegister> {
                 'Outcome': 'Accepted',
               },
             ),
+            if (widget.onInvestigate != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.manage_search),
+                  label: const Text('Investigate receipt'),
+                  onPressed: busy || accessDenied
+                      ? null
+                      : () => widget.onInvestigate!(
+                          'Received teaching event for investigation. This does not establish a sync failure.\n'
+                          'Receipt: ${item['receiptId']}\nMadrasa reference: ${item['madrasaId']}\n'
+                          'Received (UTC): ${itTimestamp(item['receivedAt'])}\n\n'
+                          'Investigation reason: ',
+                        ),
+                ),
+              ),
           ],
           const SizedBox(height: 16),
           Wrap(

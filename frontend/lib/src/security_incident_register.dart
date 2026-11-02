@@ -13,10 +13,12 @@ class SecurityIncidentRegister extends StatefulWidget {
     super.key,
     required this.request,
     this.initialIncidentId,
+    this.initialDescription,
     this.showForm = showPlatformForm,
   });
   final PlatformFormPresenter showForm;
   final String? initialIncidentId;
+  final String? initialDescription;
   final Future<dynamic> Function(String path, Map<String, dynamic>? body)
   request;
   @override
@@ -99,6 +101,10 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
     await refresh();
     if (mounted && widget.initialIncidentId != null) {
       await open(widget.initialIncidentId!);
+    } else if (mounted &&
+        snapshot != null &&
+        widget.initialDescription != null) {
+      await edit();
     }
   }
 
@@ -167,7 +173,9 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
     final request = widget.request;
     final original = selected;
     final title = TextEditingController();
-    final note = TextEditingController();
+    final note = TextEditingController(
+      text: update ? '' : widget.initialDescription,
+    );
     final form = GlobalKey<FormState>();
     var choice = update ? '${original!['status']}' : 'MEDIUM';
     var saving = false;

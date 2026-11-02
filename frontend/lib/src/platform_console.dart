@@ -379,6 +379,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
   bool healthView = false;
   bool incidentsView = false;
   String? incidentToOpen;
+  String? incidentDraft;
   bool updatesView = false;
   bool backupsView = false;
   bool offlineSyncView = false;
@@ -1108,6 +1109,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       healthView = destination == PlatformPage.health;
       incidentsView = destination == PlatformPage.incidents;
       if (!incidentsView) incidentToOpen = null;
+      if (!incidentsView) incidentDraft = null;
       updatesView = destination == PlatformPage.updates;
       backupsView = destination == PlatformPage.backups;
       offlineSyncView = destination == PlatformPage.offlineSync;
@@ -2009,6 +2011,11 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               request: (path) => api.call(path),
               onAudit: () => navigateTo(PlatformPage.history),
               onIncidents: () => navigateTo(PlatformPage.incidents),
+              onInvestigate: (description) {
+                incidentToOpen = null;
+                incidentDraft = description;
+                navigateTo(PlatformPage.incidents);
+              },
             )
           : backupsView && !isAdmin
           ? PlatformBackupRequests(
@@ -2028,6 +2035,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
           : incidentsView && !isAdmin
           ? SecurityIncidentRegister(
               initialIncidentId: incidentToOpen,
+              initialDescription: incidentDraft,
               request: api.bindSession(),
               showForm: (context, builder) => sessionDialog<bool>(
                 context: context,

@@ -2176,3 +2176,12 @@ Transient failures retain previous metadata with a warning; session/permission
 failures clear receipts, counts and the last-checked timestamp and stop polling.
 Changing pages clears the old timestamp. Device reporting and conflict resolution
 remain unconnected: received teaching events are not proof of device sync.
+
+IT can choose `Investigate receipt` to open an incident draft from a received
+teaching event. Only the displayed receipt ID, madrasa reference and receipt time
+are copied into an editable description. No learner data or arbitrary event
+payload is copied, and no incident is created until the operator supplies a
+summary and saves through the existing authorized incident endpoint. This is a
+human investigation shortcut, not an automatic failure classification or a
+database-enforced receipt-to-incident relationship. The draft is not persisted
+until saved; cancelling or navigating away must not be treated as a saved report.
