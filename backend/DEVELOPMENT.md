@@ -2307,3 +2307,35 @@ configuration uses the existing provider validator. The UI explicitly states
 that configuration readiness is not verified connectivity or delivery. Old checks
 are hidden during rechecks. Six backend tests and six Flutter widget tests passed,
 including narrow/wide layouts and mixed ready/not-ready states; analysis passed.
+
+### Combined IT checkpoint after 456f7bd
+
+On 2026-11-02, 125 Flutter tests across 21 files and 136 backend tests across
+nine files passed together. Backend TypeScript typecheck also passed. This run
+covered access/history, sessions and logout, audit navigation/export, health and
+incident handoffs, integrations, backup request forms and received sync metadata.
+It included preservation of form input on failure, session-change guards,
+permission-denial handling, background polling and narrow/wide layouts.
+
+The frontend files were `platform_access_page`, `platform_access_feedback`,
+`platform_account_history`, `platform_api_session`, `platform_audit_page`,
+`platform_audit`, `platform_dialog_session`, `platform_it_form_session`,
+`platform_it_workflow`, `platform_list_refresh`, `platform_logout`,
+`platform_sessions_page`, `platform_sessions`, `platform_health`,
+`platform_it_dashboard`, `platform_system_health_page`,
+`platform_sync_incident_navigation`, `platform_integrations_page`,
+`platform_backup_requests`, `platform_sync_register` and
+`security_incident_register` (all under `frontend/test`, suffix `_test.dart`).
+
+```bash
+cd backend
+npm test -- --run tests/platform-audit-export.test.ts tests/platform-audit.test.ts tests/platform-routes.test.ts tests/platform-sessions.test.ts tests/platform-health.test.ts tests/platform-integrations.test.ts tests/security-incidents.test.ts tests/backup-requests.test.ts tests/platform-sync.test.ts
+npm run typecheck
+```
+
+This was local mocked unit/widget/HTTP coverage, not GitHub CI or production
+verification. Browser export tests are documented separately above and were not
+part of the 125-test run. Provider connectivity, actual backup/restore execution,
+device trust/telemetry and configuration changes remain unverified or unconnected.
+The running frontend and API both returned HTTP 200; no server restart, demo
+reset, credential change, migration or production deployment was performed.
