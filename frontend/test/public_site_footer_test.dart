@@ -10,6 +10,35 @@ import 'package:mif_app/src/public_shell.dart';
 import 'package:mif_app/src/public_site_footer.dart';
 
 void main() {
+  testWidgets('footer stacks readable links with large text on phones', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: PublicSiteFooter(onNavigate: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.text('Information')).dy,
+      greaterThan(tester.getBottomRight(find.text('Help Signing In')).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
   const channel = MethodChannel('plugins.flutter.io/url_launcher');
   for (final size in [const Size(320, 640), const Size(1440, 900)]) {
     testWidgets('footer links and divider work at ${size.width}', (

@@ -23,6 +23,8 @@ class PublicSiteFooter extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 1160),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
+                    final largeText =
+                        MediaQuery.textScalerOf(context).scale(16) >= 25;
                     const introduction = Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -40,7 +42,7 @@ class PublicSiteFooter extends StatelessWidget {
                           'Faith, knowledge and a community that grows together.',
                           style: TextStyle(
                             color: Color(0xFFBCCBDC),
-                            fontSize: 14,
+                            fontSize: 16,
                             height: 1.6,
                           ),
                         ),
@@ -68,7 +70,7 @@ class PublicSiteFooter extends StatelessWidget {
                       ],
                       onNavigate: onNavigate,
                     );
-                    if (constraints.maxWidth >= 850) {
+                    if (constraints.maxWidth >= 1000 && !largeText) {
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -85,7 +87,7 @@ class PublicSiteFooter extends StatelessWidget {
                       children: [
                         introduction,
                         const SizedBox(height: 32),
-                        if (constraints.maxWidth >= 250)
+                        if (constraints.maxWidth >= 480 && !largeText)
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -118,7 +120,7 @@ class _InstagramIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox.square(
-    dimension: 46,
+    dimension: 52,
     child: DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xFF123652),
@@ -130,7 +132,7 @@ class _InstagramIcon extends StatelessWidget {
         tooltip: 'Instagram link coming soon',
         onPressed: null,
         disabledColor: Color(0xFFD3E0ED),
-        icon: FaIcon(FontAwesomeIcons.instagram, size: 24),
+        icon: FaIcon(FontAwesomeIcons.instagram, size: 30),
       ),
     ),
   );
@@ -172,9 +174,9 @@ class _WhatsAppContact extends StatelessWidget {
         onPressed: () => _openWhatsApp(context),
         style: IconButton.styleFrom(
           foregroundColor: const Color(0xFF65DB98),
-          minimumSize: const Size(46, 46),
+          minimumSize: const Size(52, 52),
         ),
-        icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 24),
+        icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 30),
       ),
       const SizedBox(width: 10),
       Flexible(
@@ -182,7 +184,7 @@ class _WhatsAppContact extends StatelessWidget {
           phone,
           style: const TextStyle(
             color: Color(0xFFE3EAF2),
-            fontSize: 15,
+            fontSize: 17,
             height: 1.5,
           ),
         ),
@@ -212,7 +214,7 @@ class _FooterLinks extends StatelessWidget {
           title,
           style: const TextStyle(
             color: publicHeaderAccent,
-            fontSize: 14,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -225,10 +227,10 @@ class _FooterLinks extends StatelessWidget {
             foregroundColor: const Color(0xFFE3EAF2),
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(vertical: 10),
-            minimumSize: const Size(48, 44),
+            minimumSize: const Size(48, 48),
             textStyle: const TextStyle(
               fontFamily: AfaqDesign.bodyFont,
-              fontSize: 14,
+              fontSize: 16,
               height: 1.4,
             ),
           ),
