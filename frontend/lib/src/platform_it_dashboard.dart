@@ -481,11 +481,6 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Check service availability, prioritise incidents and investigate account access.',
-              style: TextStyle(color: AfaqDesign.muted, height: 1.5),
-            ),
             if (busy)
               const Padding(
                 padding: EdgeInsets.only(top: 16),
@@ -502,48 +497,6 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                   ),
                 ),
               ),
-            const SizedBox(height: 24),
-            ItSectionPanel(
-              accent: needsAction
-                  ? AfaqDesign.gold
-                  : statusKnown
-                  ? const Color(0xff278457)
-                  : const Color(0xff346bb0),
-              title: needsAction
-                  ? 'Action required'
-                  : statusKnown
-                  ? 'No open issues in current checks'
-                  : 'Status needs verification',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    needsAction
-                        ? 'Start with failed services and open incidents below.'
-                        : statusKnown
-                        ? 'Database and Redis checks passed; no open incidents were reported.'
-                        : 'Some checks are missing, stale or unavailable. Do not treat this as an all-clear.',
-                    style: const TextStyle(color: AfaqDesign.ink, height: 1.5),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Service snapshot: ${itTimestamp(widget.snapshot?['checkedAt'])}',
-                    style: const TextStyle(
-                      color: AfaqDesign.muted,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Incident snapshot: ${itTimestamp(incidents is Map ? incidents['checkedAt'] : null)}',
-                    style: const TextStyle(
-                      color: AfaqDesign.muted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 24),
             Wrap(
               spacing: 16,

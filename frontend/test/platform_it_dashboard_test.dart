@@ -39,11 +39,11 @@ void main() {
       );
       expect(
         find.text('No open issues in current checks'),
-        error == null ? findsOneWidget : findsNothing,
+        findsNothing,
       );
       expect(
         find.text('Status needs verification'),
-        error == null ? findsNothing : findsOneWidget,
+        findsNothing,
       );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
@@ -97,7 +97,9 @@ void main() {
           expect(find.text('1 / 2'), findsOneWidget);
           expect(find.text('1 / 1'), findsNothing);
         }
-        expect(find.textContaining('Incident snapshot:'), findsOneWidget);
+        expect(find.textContaining('Incident snapshot:'), findsNothing);
+        expect(find.textContaining('Service snapshot:'), findsNothing);
+        expect(find.textContaining('Check service availability,'), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
@@ -171,7 +173,7 @@ void main() {
         expect(find.text('3'), findsOneWidget);
         expect(find.textContaining('3 open / 1 high priority'), findsOneWidget);
         expect(find.text('Investigate access'), findsOneWidget);
-        expect(find.text('Action required'), findsOneWidget);
+        expect(find.text('Action required'), findsNothing);
         expect(find.text('Failed service checks'), findsOneWidget);
         expect(find.text('High-priority incidents'), findsOneWidget);
         expect(find.text('Not measured'), findsNothing);
@@ -192,7 +194,7 @@ void main() {
         now = now.add(const Duration(seconds: 61));
         await tester.pump(const Duration(seconds: 61));
         expect(find.text('Not current'), findsNWidgets(6));
-        expect(find.text('Status needs verification'), findsOneWidget);
+        expect(find.text('Status needs verification'), findsNothing);
         expect(find.text('3'), findsNothing);
         expect(find.text('1 / 2'), findsNothing);
         await tester.pumpWidget(const SizedBox());
