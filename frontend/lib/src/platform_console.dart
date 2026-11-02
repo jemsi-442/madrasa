@@ -2002,6 +2002,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
       ],
       child: integrationsView && !isAdmin
           ? PlatformIntegrationsPage(
+              key: ValueKey('integrations-${api.sessionVersion}'),
               request: () => api.call('/integrations'),
               onAudit: () => navigateTo(PlatformPage.history),
               onHealth: () => navigateTo(PlatformPage.health),

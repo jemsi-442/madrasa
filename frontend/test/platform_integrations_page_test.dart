@@ -5,6 +5,60 @@ import 'package:mif_app/src/platform_integrations_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final denied in [false, true]) {
+    testWidgets(
+      'Old integration request cannot replace a new session: denied=$denied',
+      (tester) async {
+        final oldRequest = Completer<dynamic>();
+        Future<void> render(
+          String session,
+          Future<dynamic> Function() request,
+        ) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: PlatformIntegrationsPage(
+                  key: ValueKey('integrations-$session'),
+                  onAudit: () {},
+                  onHealth: () {},
+                  request: request,
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+        }
+
+        await render('old', () => oldRequest.future);
+        await render(
+          'new',
+          () async => {
+            'services': {'Authentication': 'New session configuration'},
+          },
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('New session configuration'), findsWidgets);
+        if (denied) {
+          oldRequest.completeError(
+            const ApiException('Old session denied', 403),
+          );
+        } else {
+          oldRequest.complete({
+            'services': {'Authentication': 'Old session configuration'},
+          });
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('New session configuration'), findsWidgets);
+        expect(find.text('Old session configuration'), findsNothing);
+        expect(
+          find.textContaining('Access could not be verified'),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   for (final width in [320.0, 1440.0]) {
     testWidgets('Service shortcut preserves context during recheck at $width', (
       tester,
