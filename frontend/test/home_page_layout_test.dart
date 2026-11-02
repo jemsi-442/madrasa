@@ -75,6 +75,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(HomeStorySections), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-back-to-top')), findsNothing);
       final photo = tester.widget<Image>(
         find.descendant(
           of: find.byKey(const ValueKey('home-hero-photo')),
@@ -118,6 +119,13 @@ void main() {
         await tester.tap(action);
         expect(routes.last, route);
       }
+      await tester.tap(find.byTooltip('Back to top'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('home-back-to-top')), findsNothing);
+      final scroll = tester.widget<SingleChildScrollView>(
+        find.byType(SingleChildScrollView).first,
+      );
+      expect(scroll.controller!.offset, closeTo(0, 1));
       expect(tester.takeException(), isNull);
     });
   }

@@ -15,6 +15,8 @@ class PublicHomeScreen extends StatefulWidget {
 }
 
 class _PublicHomeScreenState extends State<PublicHomeScreen> {
+  final scrollController = ScrollController();
+  bool showBackToTop = false;
   final topKey = GlobalKey();
   final aboutKey = GlobalKey();
   final featuresKey = GlobalKey();
@@ -24,6 +26,23 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
   final partnersKey = GlobalKey();
   final faqKey = GlobalKey();
   String selected = 'Home';
+
+  @override
+  void initState() {
+    super.initState();
+    scrollController.addListener(updateScrollActions);
+  }
+
+  void updateScrollActions() {
+    final visible = scrollController.offset > 700;
+    if (visible != showBackToTop) setState(() => showBackToTop = visible);
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
 
   void openSection(String label) {
     if (label == 'Contact') {
@@ -58,6 +77,16 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
     data: publicTheme(context),
     child: Scaffold(
       backgroundColor: publicCream,
+      floatingActionButton: showBackToTop
+          ? FloatingActionButton.small(
+              key: const ValueKey('home-back-to-top'),
+              tooltip: 'Back to top',
+              backgroundColor: publicInk,
+              foregroundColor: Colors.white,
+              onPressed: () => openSection('Home'),
+              child: const Icon(Icons.arrow_upward_rounded, size: 28),
+            )
+          : null,
       body: Column(
         children: [
           _HomeHeader(
@@ -67,7 +96,7 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              primary: true,
+              controller: scrollController,
               child: Column(
                 children: [
                   _HomeHero(
