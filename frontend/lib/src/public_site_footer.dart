@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'design_tokens.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -157,8 +158,31 @@ class _WhatsAppContact extends StatelessWidget {
     if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          duration: const Duration(seconds: 8),
           content: Text(
             'Could not open WhatsApp. Copy $phone and contact us directly.',
+          ),
+          action: SnackBarAction(
+            label: 'Copy number',
+            onPressed: () async {
+              var copied = false;
+              try {
+                await Clipboard.setData(ClipboardData(text: phone));
+                copied = true;
+              } on PlatformException {
+                copied = false;
+              }
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    copied
+                        ? 'Phone number copied.'
+                        : 'Could not copy. Select the number in the footer to copy it manually.',
+                  ),
+                ),
+              );
+            },
           ),
         ),
       );

@@ -151,6 +151,17 @@ void main() {
     testWidgets('WhatsApp launch failure has a useful fallback ($throwsError)', (
       tester,
     ) async {
+      String? copiedNumber;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'Clipboard.setData')
+              copiedNumber = call.arguments['text'] as String;
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null),
+      );
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (_) async {
             if (throwsError) {
@@ -184,6 +195,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('+255715735335'), findsOneWidget);
+      await tester.tap(find.text('Copy number'));
+      await tester.pumpAndSettle();
+      expect(copiedNumber, '+255715735335');
+      expect(find.text('Phone number copied.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
