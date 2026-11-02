@@ -236,7 +236,17 @@ class DashboardMetric extends StatelessWidget {
               ? 18
               : 22,
         ),
-        decoration: AfaqDesign.panelDecoration(),
+        decoration: AfaqDesign.panelDecoration().copyWith(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(Colors.white, accent, .17)!,
+              Color.lerp(Colors.white, accent, .055)!,
+            ],
+          ),
+          border: Border.all(color: Color.lerp(Colors.white, accent, .3)!),
+        ),
         child: compact && !dense
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -77,17 +77,23 @@ class ItPageHeading extends StatelessWidget {
 
 /// A consistent, high-contrast section surface for operational dashboards.
 class ItSectionPanel extends StatelessWidget {
-  const ItSectionPanel({super.key, required this.title, required this.child});
+  const ItSectionPanel({
+    super.key,
+    required this.title,
+    required this.child,
+    this.accent = AfaqDesign.blue,
+  });
   final String title;
   final Widget child;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) => Container(
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: Color.lerp(Colors.white, accent, .035),
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xFFD5DEE7)),
+      border: Border.all(color: Color.lerp(Colors.white, accent, .24)!),
       boxShadow: const [
         BoxShadow(
           color: Color(0x0A011F3D),
@@ -101,11 +107,16 @@ class ItSectionPanel extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFFEDF3F8), Color(0xFFF9FAFC)],
+              colors: [
+                Color.lerp(Colors.white, accent, .16)!,
+                Color.lerp(Colors.white, accent, .06)!,
+              ],
             ),
-            border: Border(bottom: BorderSide(color: Color(0xFFD5DEE7))),
+            border: Border(
+              bottom: BorderSide(color: Color.lerp(Colors.white, accent, .22)!),
+            ),
           ),
           child: Row(
             children: [
@@ -113,7 +124,7 @@ class ItSectionPanel extends StatelessWidget {
                 width: 4,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: AfaqDesign.gold,
+                  color: accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -155,7 +166,14 @@ class ItMetricCard extends StatelessWidget {
     constraints: const BoxConstraints(minHeight: 150),
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: Colors.white,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color.lerp(Colors.white, accent, .17)!,
+          Color.lerp(Colors.white, accent, .055)!,
+        ],
+      ),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: accent.withValues(alpha: .25)),
       boxShadow: const [

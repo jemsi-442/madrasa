@@ -303,9 +303,10 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
     );
   }
 
-  Widget credentials() => panel(
-    'Credential handling',
-    Column(
+  Widget credentials() => ItSectionPanel(
+    accent: AfaqDesign.gold,
+    title: 'Credential handling',
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (tab == 1) ...[

@@ -31,6 +31,19 @@ void main() {
       final value = tester.widget<Text>(find.text('Not measured'));
       expect(value.maxLines, isNull);
       expect(value.overflow, isNot(TextOverflow.ellipsis));
+      final surface = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(ItMetricCard),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      final decoration = surface.decoration! as BoxDecoration;
+      expect(
+        (decoration.gradient! as LinearGradient).colors.first,
+        Color.lerp(Colors.white, Colors.blue, .17),
+      );
       expect(tester.takeException(), isNull);
     });
   }

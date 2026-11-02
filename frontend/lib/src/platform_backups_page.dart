@@ -74,9 +74,10 @@ class PlatformBackupsPage extends StatelessWidget {
           ],
         ),
       );
-      final workflow = panel(
-        'Restore workflow',
-        Column(
+      final workflow = ItSectionPanel(
+        accent: AfaqDesign.gold,
+        title: 'Restore workflow',
+        child: Column(
           children: [
             for (final step in [
               (
