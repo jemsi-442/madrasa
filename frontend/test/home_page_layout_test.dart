@@ -23,7 +23,7 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
-  testWidgets('about has larger copy and usable section shortcuts', (
+  testWidgets('about has larger copy without duplicate section shortcuts', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -60,10 +60,7 @@ void main() {
       'Partners',
       'FAQs',
     ]) {
-      expect(
-        tester.getSize(find.byKey(ValueKey('home-shortcut-$label'))).height,
-        greaterThanOrEqualTo(56),
-      );
+      expect(find.byKey(ValueKey('home-shortcut-$label')), findsNothing);
     }
     expect(tester.takeException(), isNull);
   });
@@ -470,7 +467,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
-  testWidgets('homepage shortcuts reach their sections on a phone', (
+  testWidgets('header menu reaches homepage sections on a phone', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -487,7 +484,9 @@ void main() {
       ('Partners', 'PARTNER WITH AFAQ'),
       ('FAQs', 'QUESTIONS & ANSWERS'),
     ]) {
-      final shortcut = find.widgetWithText(OutlinedButton, label);
+      await tester.tap(find.byTooltip('Open menu'));
+      await tester.pumpAndSettle();
+      final shortcut = find.widgetWithText(CheckedPopupMenuItem<String>, label);
       await tester.ensureVisible(shortcut);
       await tester.pumpAndSettle();
       await tester.tap(shortcut);

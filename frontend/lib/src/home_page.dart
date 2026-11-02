@@ -136,47 +136,6 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                       key: aboutKey,
                       onJoin: () => widget.onNavigate('/register'),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 20,
-                      ),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          for (final label in [
-                            'Our story',
-                            'Learning in practice',
-                            'Our team',
-                            'For Schools',
-                            'Partners',
-                            'FAQs',
-                          ])
-                            OutlinedButton.icon(
-                              key: ValueKey('home-shortcut-$label'),
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size(0, 56),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 14,
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              onPressed: () => openSection(label),
-                              icon: const Icon(
-                                Icons.arrow_downward_rounded,
-                                size: 26,
-                              ),
-                              label: Text(label),
-                            ),
-                        ],
-                      ),
-                    ),
                     HomeStorySections(
                       storyKey: storyKey,
                       practiceKey: practiceKey,
