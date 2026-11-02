@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'public_shell.dart';
 import 'home_photo.dart';
+import 'home_team_viewer.dart';
 
 /// Public copy adapted from the supplied pitch deck and event proposal.
 /// Projections, fundraising targets and personal biographies are not published.
@@ -156,34 +157,7 @@ class HomeTeamSection extends StatelessWidget {
           label: const Text('View full team image'),
           onPressed: () => showDialog<void>(
             context: context,
-            builder: (context) => Dialog.fullscreen(
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: IconButton(
-                        tooltip: 'Close team image',
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                    Expanded(
-                      child: InteractiveViewer(
-                        maxScale: 6,
-                        child: Center(
-                          child: Image.asset(
-                            'assets/home/team.png',
-                            fit: BoxFit.contain,
-                            semanticLabel: 'Original Afaq team image',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            builder: (context) => const HomeTeamViewer(),
           ),
         ),
       ],
