@@ -193,8 +193,11 @@ void main() {
         await tester.tap(find.text('Details').first);
         await tester.pumpAndSettle();
         expect(find.text('Status at opening'), findsOneWidget);
+        expect(find.text('SERVICE / HEALTH DETAILS'), findsOneWidget);
+        expect(tester.takeException(), isNull);
         await tester.tap(find.text('Close'));
         await tester.pumpAndSettle();
+        expect(find.text('SERVICE / HEALTH DETAILS'), findsNothing);
       }
       now = now.add(const Duration(seconds: 61));
       await tester.pump(const Duration(seconds: 15));

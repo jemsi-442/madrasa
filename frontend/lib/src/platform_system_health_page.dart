@@ -5,6 +5,7 @@ import 'foundation_ui.dart' show DashboardMetric;
 import 'it_workspace_visuals.dart';
 import 'status_badge.dart';
 import 'workspace_chrome.dart';
+import 'workspace_form_dialog.dart';
 
 class PlatformSystemHealthPage extends StatefulWidget {
   const PlatformSystemHealthPage({
@@ -176,7 +177,9 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
                         ? null
                         : () => showDialog<void>(
                             context: context,
-                            builder: (_) => AlertDialog(
+                            builder: (dialogContext) => WorkspaceFormDialog(
+                              icon: Icons.monitor_heart_outlined,
+                              eyebrow: 'SERVICE / HEALTH DETAILS',
                               title: Text(service.$1),
                               content: SizedBox(
                                 width: 520,
@@ -197,7 +200,7 @@ class _PlatformSystemHealthPageState extends State<PlatformSystemHealthPage> {
                               ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context),
+                                  onPressed: () => Navigator.pop(dialogContext),
                                   child: const Text('Close'),
                                 ),
                               ],

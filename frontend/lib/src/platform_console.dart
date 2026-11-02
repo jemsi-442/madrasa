@@ -263,7 +263,9 @@ class _AccountHistoryDialogState extends State<_AccountHistoryDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => WorkspaceFormDialog(
+    icon: Icons.manage_history_rounded,
+    eyebrow: 'ACCOUNT / ACCESS HISTORY',
     title: const Text('Access history'),
     content: SizedBox(
       width: 560,
@@ -279,9 +281,10 @@ class _AccountHistoryDialogState extends State<_AccountHistoryDialog> {
             ),
             const SizedBox(height: 8),
             Text('Page $page. Times are UTC.'),
-            const SizedBox(height: 6),
-            const Text(
-              'Newest first. New activity may shift records between pages.',
+            const SizedBox(height: 12),
+            const WorkspaceFormNotice(
+              message:
+                  'Newest first. New activity may shift records between pages.',
             ),
             const SizedBox(height: 12),
             if (loading) const LinearProgressIndicator(),
@@ -313,13 +316,8 @@ class _AccountHistoryDialogState extends State<_AccountHistoryDialog> {
                 },
               ),
               const SizedBox(height: 14),
-              const Text(
-                'Reason',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 6),
-              SelectableText(
-                event['reason'] as String? ?? 'No reason recorded.',
+              ItRecordDetails(
+                values: {'Reason': event['reason'] ?? 'No reason recorded.'},
               ),
               const Divider(height: 24),
             ],
@@ -2534,7 +2532,9 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                 : () async {
                     final confirmed = await sessionDialog<bool>(
                       context: context,
-                      builder: (context) => AlertDialog(
+                      builder: (context) => WorkspaceFormDialog(
+                        icon: Icons.logout_rounded,
+                        eyebrow: 'SESSION / CONFIRM ACTION',
                         title: const Text('Revoke this session?'),
                         content: Text(
                           record['current'] == true
