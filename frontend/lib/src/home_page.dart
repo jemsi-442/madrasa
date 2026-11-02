@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'public_shell.dart';
 import 'public_entry_visuals.dart';
 import 'public_site_footer.dart';
+import 'home_story_sections.dart';
 
 class PublicHomeScreen extends StatefulWidget {
   const PublicHomeScreen({super.key, required this.onNavigate});
@@ -71,10 +72,13 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
                     key: aboutKey,
                     onJoin: () => widget.onNavigate('/register'),
                   ),
-                  PublicSiteFooter(
+                  const HomeStorySections(),
+                  HomeSchoolSection(
                     key: schoolsKey,
                     onNavigate: widget.onNavigate,
                   ),
+                  HomePartnershipSection(onNavigate: widget.onNavigate),
+                  PublicSiteFooter(onNavigate: widget.onNavigate),
                 ],
               ),
             ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/home_page.dart';
+import 'package:mif_app/src/home_story_sections.dart';
 
 const _featureTitles = [
   "Qur'an Tracking",
@@ -22,6 +23,45 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 );
 
 void main() {
+  for (final width in [320.0, 1440.0]) {
+    testWidgets('expanded homepage content and actions at $width', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width, 900);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final routes = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(home: PublicHomeScreen(onNavigate: routes.add)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeStorySections), findsOneWidget);
+      expect(find.text('OUR STORY'), findsOneWidget);
+      expect(find.text('PARTNER WITH AFAQ'), findsOneWidget);
+      if (width >= 1150) {
+        await tester.tap(find.text('For Schools'));
+        await tester.pumpAndSettle();
+        final schoolTop = tester
+            .getTopLeft(find.text('FOR SCHOOLS & MADRASAS'))
+            .dy;
+        expect(schoolTop, greaterThanOrEqualTo(0));
+        expect(schoolTop, lessThan(400));
+      }
+      await tester.ensureVisible(find.text('Discuss your madrasa'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Discuss your madrasa'));
+      expect(routes, ['/contact']);
+      await tester.ensureVisible(find.text('What is Afaq?'));
+      await tester.tap(find.text('What is Afaq?'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('The digital platform supports this wider'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final width in [0.0, 1.0, 10.0, 19.0, 20.0, 54.0, 120.0]) {
     testWidgets('home features tolerate a transient width of $width', (
       tester,
