@@ -2142,3 +2142,10 @@ the same request ID and payload. A confirmed retry closes the form and reloads
 request history. To change the details, cancel and check history before creating
 a new request: the earlier submission may already have been saved. This records
 a request only; no backup worker or restore execution is connected by this flow.
+
+Restore request history checks for updates every 30 seconds while visible and
+active. It pauses for the entire restore form lifetime and during data writes.
+Responses arriving after editing starts or a write occurs are discarded. Network
+errors retain previously loaded history with a stale-data notice; permission or
+session errors clear history and stop automatic polling. This is polling of
+recorded requests, not live backup execution monitoring.

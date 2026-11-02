@@ -4,6 +4,9 @@ import 'platform_backups_page.dart';
 import 'design_tokens.dart';
 import 'it_workspace_visuals.dart';
 import 'platform_form_dialog.dart';
+import 'automatic_data_updates.dart';
+import 'live_data.dart';
+import 'api_client.dart';
 
 class PlatformBackupRequests extends StatefulWidget {
   const PlatformBackupRequests({
@@ -24,20 +27,40 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
   int page = 1, total = 0;
   int loadVersion = 0;
   bool loading = false;
+  bool formOpen = false;
+  bool accessDenied = false;
+  late final AutomaticDataUpdates updates;
   String? error;
   @override
   void initState() {
     super.initState();
+    updates = AutomaticDataUpdates(
+      canUpdate: () =>
+          mounted &&
+          !accessDenied &&
+          !loading &&
+          !formOpen &&
+          !dataWriteInProgress &&
+          ModalRoute.of(context)?.isCurrent != false,
+      update: () => load(background: true),
+    );
     load();
   }
 
-  Future<void> load() async {
+  @override
+  void dispose() {
+    updates.dispose();
+    super.dispose();
+  }
+
+  Future<void> load({bool background = false}) async {
     final version = ++loadVersion;
     final requestedPage = page;
+    final revision = dataChanges.value;
     setState(() {
       loading = true;
       error = null;
-      items = [];
+      if (!background) items = [];
     });
     try {
       final data = await widget.request(
@@ -45,14 +68,25 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
         null,
       );
       if (mounted && version == loadVersion) {
+        if (background && (formOpen || revision != dataChanges.value)) return;
         setState(() {
+          accessDenied = false;
           items = data['items'] as List;
           total = data['total'] as int;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted && version == loadVersion) {
-        setState(() => error = 'Could not load restore requests. Try again.');
+        if (background && (formOpen || revision != dataChanges.value)) return;
+        setState(() {
+          if (e is ApiException && [401, 403, 409].contains(e.statusCode)) {
+            accessDenied = true;
+            items = [];
+          }
+          error = background && items.isNotEmpty
+              ? 'Showing previous requests. Updates will retry automatically.'
+              : 'Could not load restore requests. Try again.';
+        });
       }
     } finally {
       if (mounted && version == loadVersion) {
@@ -62,6 +96,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
   }
 
   Future<void> create() async {
+    formOpen = true;
     final request = widget.request;
     final snapshot = TextEditingController();
     final reason = TextEditingController();
@@ -172,6 +207,7 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
         ),
       ),
     );
+    formOpen = false;
     await Future<void>.delayed(const Duration(milliseconds: 300));
     snapshot.dispose();
     reason.dispose();

@@ -3,6 +3,48 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_backup_requests.dart';
 
 void main() {
+  testWidgets(
+    'Automatic updates pause throughout editing and resume after close',
+    (tester) async {
+      var reads = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformBackupRequests(
+              onAudit: () {},
+              request: (path, body) async {
+                reads++;
+                return {'items': [], 'total': 0};
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(reads, 1);
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(reads, 2);
+      await tester.tap(find.text('Request restore test'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, 'BKP-DRAFT');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump(const Duration(seconds: 60));
+      await tester.pumpAndSettle();
+      expect(reads, 2);
+      expect(find.text('BKP-DRAFT'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(reads, 3);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 30));
+      expect(reads, 3);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Failed next page hides previous records and retries that page', (
     tester,
   ) async {
