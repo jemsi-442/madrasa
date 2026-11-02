@@ -3,6 +3,76 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_access_page.dart';
 
 void main() {
+  for (final busy in [true, false]) {
+    testWidgets(
+      'Access review closes when data becomes unavailable busy=$busy',
+      (tester) async {
+        var reviews = 0;
+        final rows = List.generate(
+          20,
+          (i) => <String, dynamic>{
+            'id': 'synthetic-$i',
+            'fullName': 'Synthetic Operator $i',
+            'role': 'IT_SECURITY',
+            'status': 'ACTIVE',
+          },
+        );
+        Future<void> render({bool loading = false, String? error}) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: PlatformAccessPage(
+                  records: rows,
+                  busy: loading,
+                  error: error,
+                  page: 2,
+                  role: '',
+                  onRole: (_) {},
+                  onPage: (_) => fail('Unavailable accounts must not paginate'),
+                  onRefresh: () {},
+                  onReview: (_) => reviews++,
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+        }
+
+        await render();
+        await tester.enterText(find.byType(TextField), 'synthetic-19');
+        await tester.pump();
+        await tester.ensureVisible(find.text('Review'));
+        await tester.tap(find.text('Review'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsOneWidget);
+        await render(loading: busy, error: busy ? null : 'Access denied');
+        await tester.pump();
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(find.text('Synthetic Operator 19'), findsNothing);
+        expect(find.text('Access history'), findsNothing);
+        for (final label in ['Previous', 'Next']) {
+          expect(
+            tester
+                .widget<OutlinedButton>(
+                  find.widgetWithText(OutlinedButton, label),
+                )
+                .onPressed,
+            isNull,
+          );
+        }
+        expect(reviews, 0);
+        await render();
+        expect(find.text('Synthetic Operator 19'), findsOneWidget);
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'synthetic-19',
+        );
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   for (final width in [320.0, 1600.0]) {
     testWidgets('Access layout and local search at $width', (tester) async {
       tester.view.physicalSize = Size(width, 1600);

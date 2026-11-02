@@ -37,6 +37,23 @@ class PlatformAccessPage extends StatefulWidget {
 class _PlatformAccessPageState extends State<PlatformAccessPage> {
   String query = '';
   final search = TextEditingController();
+  DialogRoute<bool>? reviewRoute;
+  bool get ready => !widget.busy && widget.error == null;
+
+  @override
+  void didUpdateWidget(covariant PlatformAccessPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!ready || !identical(oldWidget.records, widget.records)) {
+      final route = reviewRoute;
+      if (route != null) {
+        reviewRoute = null;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (route.isActive) route.navigator?.removeRoute(route);
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     search.dispose();
@@ -50,7 +67,8 @@ class _PlatformAccessPageState extends State<PlatformAccessPage> {
   };
 
   Future<void> review(Map<String, dynamic> row) async {
-    final history = await showDialog<bool>(
+    if (!ready || reviewRoute != null) return;
+    final route = DialogRoute<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
@@ -109,7 +127,14 @@ class _PlatformAccessPageState extends State<PlatformAccessPage> {
         ],
       ),
     );
-    if (mounted && history == true && !widget.busy) widget.onReview(row);
+    reviewRoute = route;
+    final history = await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(route);
+    final valid = identical(reviewRoute, route);
+    if (valid) reviewRoute = null;
+    if (mounted && valid && history == true && ready) widget.onReview(row);
   }
 
   String roleName(dynamic role) => switch (role) {
@@ -142,7 +167,7 @@ class _PlatformAccessPageState extends State<PlatformAccessPage> {
   );
   @override
   Widget build(BuildContext context) {
-    final rows = widget.records
+    final rows = (ready ? widget.records : <Map<String, dynamic>>[])
         .where(
           (r) => '${r['fullName']} ${r['id']} ${roleName(r['role'])}'
               .toLowerCase()
@@ -213,7 +238,11 @@ class _PlatformAccessPageState extends State<PlatformAccessPage> {
           ],
           const SizedBox(height: 20),
           Text(
-            '${rows.length} of ${widget.records.length} accounts on this page',
+            widget.busy
+                ? 'Loading accounts...'
+                : widget.error != null
+                ? 'Accounts are unavailable. Retry with Refresh.'
+                : '${rows.length} of ${widget.records.length} accounts on this page',
             style: const TextStyle(color: AfaqDesign.muted),
           ),
           const SizedBox(height: 12),
@@ -315,13 +344,13 @@ class _PlatformAccessPageState extends State<PlatformAccessPage> {
             children: [
               Text('Page ${widget.page}'),
               OutlinedButton(
-                onPressed: widget.busy || widget.page <= 1
+                onPressed: !ready || widget.page <= 1
                     ? null
                     : () => widget.onPage(widget.page - 1),
                 child: const Text('Previous'),
               ),
               OutlinedButton(
-                onPressed: widget.busy || widget.records.length < 20
+                onPressed: !ready || widget.records.length < 20
                     ? null
                     : () => widget.onPage(widget.page + 1),
                 child: const Text('Next'),
