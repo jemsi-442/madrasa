@@ -2191,3 +2191,21 @@ through `Continue receipt draft`, explicitly marked as not saved. Session/access
 denial disables creation until access is verified again. Opening the draft consumes
 the prefill once; cancelling it leaves subsequent new incident forms blank.
 This is in-memory recovery on the current page, not offline draft persistence.
+
+### Chromium IT flow verification
+
+On 2026-11-02, 28 tests passed in Chromium across receipt-to-incident navigation,
+integration settings, received sync metadata, restore requests and incident
+records. Coverage includes narrow/wide navigation, retained form input after
+failed saves, stable retry payloads, stale-response protection, polling pauses
+while editing, and clearing protected data after access denial.
+
+Run from `frontend` with Flutter on PATH:
+
+```bash
+CHROME_EXECUTABLE=/usr/bin/chromium flutter test --no-pub --platform chrome --reporter expanded test/platform_sync_incident_navigation_test.dart test/platform_integrations_page_test.dart test/platform_sync_register_test.dart test/platform_backup_requests_test.dart test/security_incident_register_test.dart
+```
+
+These tests execute Flutter in a real browser with mocked API responses. They do
+not verify live SMS/email delivery, actual backup restoration or production
+connectivity. No demo records were changed by this run.
