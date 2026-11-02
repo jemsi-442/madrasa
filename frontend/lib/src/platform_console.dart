@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_client.dart';
+import 'audit_labels.dart';
 import 'browser_state.dart';
 import 'foundation_ui.dart';
 import 'platform_onboarding_progress.dart';
@@ -2648,25 +2649,12 @@ class _PlatformConsoleState extends State<PlatformConsole> {
         spacing: 12,
         runSpacing: 12,
         children: [
-          auditFilter('Event', auditAction, const {
-            '': 'All events',
-            'tenant.technical-review.recorded': 'IT sign-off recorded',
-            'tenant.technical-review.withdrawn': 'IT sign-off withdrawn',
-            'platform.login.failed': 'Failed login',
-            'platform.audit.exported': 'Audit PDF generated',
-            'platform.login.succeeded': 'Successful login',
-            'tenant.application.requested': 'Madrassa requested',
-            'tenant.application.approved': 'Madrassa approved',
-            'tenant.application.rejected': 'Madrassa rejected',
-            'tenant.school.provisioned': 'Inactive madrassa created',
-            'tenant.admin.invitation.issued': 'Admin invitation recorded',
-            'tenant.school.activated': 'Madrassa activated',
-            'platform.session.revoked': 'Session revoked',
-            'platform.sessions.revoked': 'All sessions revoked',
-            'platform.account.bootstrapped': 'Reviewer created',
-            'platform.account.disabled': 'IT account disabled',
-            'platform.account.restored': 'IT account restored',
-          }, (value) => auditAction = value),
+          auditFilter(
+            'Event',
+            auditAction,
+            auditActionLabels,
+            (value) => auditAction = value,
+          ),
           auditFilter('Role', auditRole, const {
             '': 'All roles',
             'SUPER_ADMIN': 'Super Admin',

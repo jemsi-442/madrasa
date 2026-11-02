@@ -167,6 +167,11 @@ void main() {
         ),
       );
       expect(find.text('Audit Logs'), findsOneWidget);
+      expect(find.text('Failed login'), findsOneWidget);
+      expect(find.text('IT / Security'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'Failed login');
+      await tester.pump();
+      expect(find.text('Details'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(find.text('Details'));
       await tester.tap(find.text('Details'));
@@ -177,7 +182,7 @@ void main() {
       await tester.ensureVisible(find.byTooltip('Clear search'));
       await tester.tap(find.byTooltip('Clear search'));
       await tester.pump();
-      expect(find.text('platform.login.failed'), findsOneWidget);
+      expect(find.text('Failed login'), findsOneWidget);
       expect(find.text('Delete'), findsNothing);
       expect(tester.takeException(), isNull);
     });

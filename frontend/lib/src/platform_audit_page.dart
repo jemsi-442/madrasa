@@ -3,6 +3,7 @@ import 'design_tokens.dart';
 import 'foundation_ui.dart' show DashboardMetric;
 import 'it_workspace_visuals.dart';
 import 'report_preview.dart';
+import 'audit_labels.dart';
 
 class PlatformAuditPage extends StatefulWidget {
   const PlatformAuditPage({
@@ -45,7 +46,7 @@ class _PlatformAuditPageState extends State<PlatformAuditPage> {
       final rows = (ready ? widget.records : <Map<String, dynamic>>[])
           .where(
             (r) =>
-                '${r['id']} ${r['actorId']} ${r['actorRole']} ${r['action']} ${r['entityId']}'
+                '${r['id']} ${r['actorId']} ${r['actorRole']} ${r['action']} ${r['entityId']} ${auditActionLabel(r['action'])} ${auditRoleLabel(r['actorRole'])}'
                     .toLowerCase()
                     .contains(search.text.trim().toLowerCase()),
           )
@@ -119,182 +120,219 @@ class _PlatformAuditPageState extends State<PlatformAuditPage> {
               ],
             ),
             const SizedBox(height: 24),
-            Container(
-              decoration: AfaqDesign.panelDecoration(),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Security audit trail',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: search,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Search this page',
-                      hintText: 'Event ID, actor or action',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear search',
-                              icon: const Icon(Icons.close),
-                              onPressed: () => setState(search.clear),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  widget.filters,
-                  const SizedBox(height: 20),
-                  if (widget.exportPdf != null) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: ReportPdfButton(
-                        enabled: ready && rows.isNotEmpty,
-                        path: '/audit-events/pdf',
-                        load: (_) => widget.exportPdf!(
-                          rows.map((row) => '${row['id']}').toList(),
-                        ),
+            ItSectionPanel(
+              title: 'Security audit trail',
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: search,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'Search this page',
+                        hintText: 'Event ID, actor or action',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: search.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                icon: const Icon(Icons.close),
+                                onPressed: () => setState(search.clear),
+                              ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'PDF includes only the events visible on this page. Each export is recorded in the audit log.',
-                      style: TextStyle(color: AfaqDesign.muted),
                     ),
                     const SizedBox(height: 16),
-                  ],
-                  const Divider(height: 1),
-                  if (rows.isEmpty && !widget.busy && widget.error == null)
-                    const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text('No audit events match this view.'),
-                    ),
-                  if (size.maxWidth >= 1000 && rows.isNotEmpty)
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        headingRowColor: const WidgetStatePropertyAll(
-                          Color(0xfff5f7f8),
+                    widget.filters,
+                    const SizedBox(height: 20),
+                    if (widget.exportPdf != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AfaqDesign.blue.withValues(alpha: .06),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        columnSpacing: 24,
-                        dataRowMinHeight: 72,
-                        dataRowMaxHeight: 90,
-                        columns: [
-                          for (final title in [
-                            'Time (UTC)',
-                            'Actor role',
-                            'Action',
-                            'Reference',
-                            '',
-                          ])
-                            DataColumn(label: Text(title)),
-                        ],
-                        rows: [
-                          for (final r in rows)
-                            DataRow(
-                              cells: [
-                                DataCell(
-                                  SizedBox(
-                                    width: 165,
-                                    child: Text(itTimestamp(r['createdAt'])),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text('${r['actorRole'] ?? 'Not recorded'}'),
-                                ),
-                                DataCell(
-                                  SizedBox(
-                                    width: 260,
-                                    child: Text('${r['action']}'),
-                                  ),
-                                ),
-                                DataCell(
-                                  SizedBox(
-                                    width: 160,
-                                    child: Text(
-                                      '${r['entityType'] ?? 'Not recorded'}',
-                                      overflow: TextOverflow.ellipsis,
+                        child: Wrap(
+                          spacing: 24,
+                          runSpacing: 12,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 260,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Export visible events',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                ),
-                                DataCell(
-                                  TextButton(
-                                    onPressed: widget.busy
-                                        ? null
-                                        : () => widget.onDetails(r),
-                                    child: const Text('Details'),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Current page only. Each PDF export is recorded in the audit log.',
+                                    style: TextStyle(
+                                      color: AfaqDesign.muted,
+                                      height: 1.5,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    )
-                  else
-                    for (final r in rows) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              '${r['action']}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              itTimestamp(r['createdAt']),
-                              style: const TextStyle(color: AfaqDesign.muted),
-                            ),
-                            Text('${r['actorRole'] ?? 'Role not recorded'}'),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: widget.busy
-                                    ? null
-                                    : () => widget.onDetails(r),
-                                child: const Text('Details'),
+                            ReportPdfButton(
+                              enabled: ready && rows.isNotEmpty,
+                              path: '/audit-events/pdf',
+                              load: (_) => widget.exportPdf!(
+                                rows.map((row) => '${row['id']}').toList(),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Divider(height: 1),
+                      const SizedBox(height: 16),
                     ],
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.busy
-                        ? 'Loading audit events...'
-                        : widget.error != null
-                        ? 'Audit events are unavailable. Retry with Refresh.'
-                        : 'Showing ${rows.length} of ${widget.records.length} events on page ${widget.page}',
-                    style: const TextStyle(color: AfaqDesign.muted),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    children: [
-                      OutlinedButton(
-                        onPressed: !ready || widget.page <= 1
-                            ? null
-                            : () => widget.onPage(widget.page - 1),
-                        child: const Text('Previous'),
+                    const Divider(height: 1),
+                    if (rows.isEmpty && !widget.busy && widget.error == null)
+                      const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('No audit events match this view.'),
                       ),
-                      OutlinedButton(
-                        onPressed: !ready || widget.records.length < 20
-                            ? null
-                            : () => widget.onPage(widget.page + 1),
-                        child: const Text('Next'),
-                      ),
-                    ],
-                  ),
-                ],
+                    if (size.maxWidth >= 1000 && rows.isNotEmpty)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          headingRowColor: const WidgetStatePropertyAll(
+                            Color(0xfff5f7f8),
+                          ),
+                          columnSpacing: 24,
+                          dataRowMinHeight: 72,
+                          dataRowMaxHeight: 90,
+                          columns: [
+                            for (final title in [
+                              'Time (UTC)',
+                              'Actor role',
+                              'Action',
+                              'Reference',
+                              '',
+                            ])
+                              DataColumn(label: Text(title)),
+                          ],
+                          rows: [
+                            for (final r in rows)
+                              DataRow(
+                                cells: [
+                                  DataCell(
+                                    SizedBox(
+                                      width: 165,
+                                      child: Text(itTimestamp(r['createdAt'])),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(auditRoleLabel(r['actorRole'])),
+                                  ),
+                                  DataCell(
+                                    SizedBox(
+                                      width: 260,
+                                      child: Text(
+                                        auditActionLabel(r['action']),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    SizedBox(
+                                      width: 160,
+                                      child: Text(
+                                        auditReferenceLabel(r['entityType']),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    TextButton(
+                                      onPressed: widget.busy
+                                          ? null
+                                          : () => widget.onDetails(r),
+                                      child: const Text('Details'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      )
+                    else
+                      for (final r in rows) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                auditActionLabel(r['action']),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                itTimestamp(r['createdAt']),
+                                style: const TextStyle(color: AfaqDesign.muted),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(auditRoleLabel(r['actorRole'])),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: widget.busy
+                                      ? null
+                                      : () => widget.onDetails(r),
+                                  child: const Text('Details'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1),
+                      ],
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.busy
+                          ? 'Loading audit events...'
+                          : widget.error != null
+                          ? 'Audit events are unavailable. Retry with Refresh.'
+                          : 'Showing ${rows.length} of ${widget.records.length} events on page ${widget.page}',
+                      style: const TextStyle(color: AfaqDesign.muted),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          'Page ${widget.page}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        OutlinedButton(
+                          onPressed: !ready || widget.page <= 1
+                              ? null
+                              : () => widget.onPage(widget.page - 1),
+                          child: const Text('Previous'),
+                        ),
+                        OutlinedButton(
+                          onPressed: !ready || widget.records.length < 20
+                              ? null
+                              : () => widget.onPage(widget.page + 1),
+                          child: const Text('Next'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
