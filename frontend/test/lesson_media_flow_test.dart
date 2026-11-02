@@ -128,7 +128,7 @@ void main() {
     expect(f.writes, isEmpty);
   });
   testWidgets(
-    'desktop video keeps a full picture allocation above transport controls',
+    'desktop video fits the viewport without an oversized outer frame',
     (t) async {
       await host(
         t,
@@ -141,7 +141,9 @@ void main() {
         ),
       );
       final size = t.getSize(find.byKey(const ValueKey('lesson-media-stage')));
-      expect(size.height, greaterThanOrEqualTo(size.width * 9 / 16 + 128));
+      expect(size.height, closeTo(size.width * 9 / 16 + 128, 1));
+      expect(size.height, lessThanOrEqualTo(900 * .72));
+      expect(size.width, lessThanOrEqualTo(960));
       await t.pumpWidget(const SizedBox());
     },
   );

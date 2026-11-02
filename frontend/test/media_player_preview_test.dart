@@ -62,7 +62,7 @@ void main() {
         expect(find.text('Media player'), findsOneWidget);
         expect(find.text('PREVIEW'), findsOneWidget);
         if (width == 320 || scale == 2) {
-            expect(t.getTopLeft(find.text('Media player')).dx, closeTo(24, 2));
+          expect(t.getTopLeft(find.text('Media player')).dx, closeTo(24, 2));
         }
         expect(
           find.text('Preview sample media before starting a lesson.'),
@@ -157,11 +157,8 @@ void main() {
         expect(find.text('Sample ${sample.index + 1} of 5'), findsOneWidget);
         expect(find.text('Mark complete'), findsNothing);
         expect(find.byType(LessonMediaViewer), findsOneWidget);
-        final guide = find.byKey(ValueKey('preview-guide-${sample.name}'));
-        expect(guide, findsOneWidget);
+        expect(find.byType(ExpansionTile), findsNothing);
         expect(find.text(sample.instructions), findsNothing);
-        await tap(t, find.text('How to use ${sample.label.toLowerCase()}'));
-        expect(find.text(sample.instructions), findsOneWidget);
       }
       expect(observer.pushed.length, routes);
       expect(f.paths, isEmpty);

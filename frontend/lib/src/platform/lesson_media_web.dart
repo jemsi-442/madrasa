@@ -30,6 +30,40 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface> {
   bool closed = false;
   bool mediaReady = false, hasError = false, buffering = false;
 
+  void restoreInlineControls(web.HTMLMediaElement node) {
+    node.controls = false;
+    node.style.pointerEvents = 'none';
+    node.tabIndex = -1;
+    node.setAttribute('aria-hidden', 'true');
+  }
+
+  late final JSFunction fullscreenChanged = ((web.Event event) {
+    final node = media;
+    if (closed || node == null) return;
+    if (web.document.fullscreenElement != node) restoreInlineControls(node);
+  }).toJS;
+
+  Future<void> openFullscreen() async {
+    final node = media;
+    if (node == null || !mediaReady || hasError) return;
+    // The video enters the browser top layer, so it needs native controls there.
+    node.controls = true;
+    node.style.pointerEvents = 'auto';
+    node.tabIndex = 0;
+    node.removeAttribute('aria-hidden');
+    try {
+      await node.requestFullscreen().toDart;
+    } catch (_) {
+      restoreInlineControls(node);
+      if (!mounted || closed) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Fullscreen is unavailable in this browser.'),
+        ),
+      );
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -169,6 +203,9 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface> {
       return;
     }
     element = node;
+    if (widget.delivery.kind == 'VIDEO') {
+      web.document.addEventListener('fullscreenchange', fullscreenChanged);
+    }
     node.style
       ..width = '100%'
       ..height = '100%'
@@ -216,6 +253,7 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface> {
   }
 
   void release() {
+    web.document.removeEventListener('fullscreenchange', fullscreenChanged);
     closed = true;
     final node = element;
     element = null;
@@ -304,7 +342,10 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface> {
             : null,
         onMute: mute,
         onLoop: enabled ? () => control((m) => m.loop = !m.loop) : null,
-        onFocus: widget.onToggleFocus,
+        onFocus: widget.delivery.kind == 'VIDEO'
+            ? (enabled ? () => unawaited(openFullscreen()) : null)
+            : widget.onToggleFocus,
+        fullscreenControl: widget.delivery.kind == 'VIDEO',
         focusView: widget.focusView,
       ),
       child: view,

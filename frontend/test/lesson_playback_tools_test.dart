@@ -3,6 +3,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_playback_tools.dart';
 
 void main() {
+  testWidgets('browser fullscreen has a distinct control and action', (t) async {
+    var requests = 0;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LessonPlaybackTools(
+            speed: 1,
+            fullscreenControl: true,
+            onFocus: () => requests++,
+          ),
+        ),
+      ),
+    );
+    expect(find.byTooltip('Expand player'), findsNothing);
+    await t.tap(find.byTooltip('Fullscreen'));
+    expect(requests, 1);
+  });
+
   for (final width in [320.0, 680.0, 1200.0]) {
     testWidgets('player groups fit at width $width', (t) async {
       t.view.physicalSize = Size(width, 800);

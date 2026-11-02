@@ -211,7 +211,12 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         width < 652 || MediaQuery.textScalerOf(context).scale(13) > 20;
     // Controls sit below the picture, not inside its 16:9 allocation.
     final toolbar = compact ? 250.0 : 128.0;
-    return width * 9 / 16 + toolbar;
+    final naturalHeight = width * 9 / 16 + toolbar;
+    final availableHeight = MediaQuery.sizeOf(context).height * .72;
+    return naturalHeight.clamp(
+      toolbar + 160,
+      availableHeight < toolbar + 160 ? toolbar + 160 : availableHeight,
+    );
   }
 
   Widget surface(LessonMediaDelivery source) {
@@ -263,221 +268,261 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
   }
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: playback ? playbackPanel : Colors.white,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-      side: const BorderSide(color: line),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: delivery?.kind == 'VIDEO'
+            ? ((MediaQuery.sizeOf(context).height * .72 - 128).clamp(
+                    200.0,
+                    540.0,
+                  ) *
+                  16 /
+                  9)
+            : double.infinity,
+      ),
+      child: Material(
+        color: playback ? playbackPanel : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: line),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(lessonResourceIcon(delivery?.kind ?? ''), color: gold),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      delivery?.title ?? widget.title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: playback ? Colors.white : ink,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        lessonResourceIcon(delivery?.kind ?? ''),
+                        color: gold,
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          delivery?.title ?? widget.title,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: playback ? Colors.white : ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      TeacherTag(
+                        loading
+                            ? 'Opening resource'
+                            : error != null
+                            ? 'Needs attention'
+                            : ready
+                            ? 'Ready'
+                            : 'Loading controls',
+                        color: playback
+                            ? (error != null
+                                  ? playbackAccent
+                                  : const Color(0xFF7DDCB4))
+                            : (error != null ? gold : forest),
+                      ),
+                      if (delivery != null)
+                        Text(
+                          delivery!.kind,
+                          style: TextStyle(color: secondary, fontSize: 11),
+                        ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: playback ? playbackAccent : ink,
+                        ),
+                        onPressed: loading ? null : reload,
+                        icon: const Icon(
+                          Icons.refresh,
+                          size: AfaqDesign.iconSmall,
+                        ),
+                        label: Text(
+                          playback ? 'Reload player' : 'Reload resource',
+                        ),
+                      ),
+                      if (widget.onToggleFocus != null)
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: playback ? playbackAccent : ink,
+                          ),
+                          key: const ValueKey('media-focus-view'),
+                          onPressed: widget.onToggleFocus,
+                          icon: Icon(
+                            widget.focusView
+                                ? Icons.close_fullscreen
+                                : Icons.open_in_full,
+                            size: AfaqDesign.iconSmall,
+                          ),
+                          label: Text(
+                            widget.focusView ? 'Exit focus view' : 'Focus view',
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  TeacherTag(
-                    loading
-                        ? 'Opening resource'
-                        : error != null
-                        ? 'Needs attention'
-                        : ready
-                        ? 'Ready'
-                        : 'Loading controls',
-                    color: playback
-                        ? (error != null
-                              ? playbackAccent
-                              : const Color(0xFF7DDCB4))
-                        : (error != null ? gold : forest),
+            ),
+            if (widget.position != null)
+              Container(
+                key: const ValueKey('media-resource-navigation'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: playback ? const Color(0xFF191A1C) : paper,
+                  border: Border(
+                    top: BorderSide(color: playback ? Colors.white12 : line),
+                    bottom: BorderSide(color: playback ? Colors.white12 : line),
                   ),
-                  if (delivery != null)
+                ),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
                     Text(
-                      delivery!.kind,
-                      style: TextStyle(color: secondary, fontSize: 11),
+                      widget.previewSample == null
+                          ? 'Resource ${widget.position} of ${widget.total} available'
+                          : 'Sample ${widget.position} of ${widget.total}',
+                      style: TextStyle(color: secondary, fontSize: 13),
                     ),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      foregroundColor: playback ? playbackAccent : ink,
+                    if ((widget.total ?? 0) > 1)
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            style: playback
+                                ? OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    disabledForegroundColor: Colors.white30,
+                                    side: const BorderSide(
+                                      color: Colors.white24,
+                                    ),
+                                  )
+                                : null,
+                            key: const ValueKey('previous-resource'),
+                            onPressed: widget.onPrevious,
+                            icon: const Icon(
+                              Icons.chevron_left,
+                              size: AfaqDesign.iconSmall,
+                            ),
+                            label: const Text('Previous'),
+                          ),
+                          OutlinedButton.icon(
+                            style: playback
+                                ? OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    disabledForegroundColor: Colors.white30,
+                                    side: const BorderSide(
+                                      color: Colors.white24,
+                                    ),
+                                  )
+                                : null,
+                            key: const ValueKey('next-resource'),
+                            onPressed: widget.onNext,
+                            icon: const Icon(
+                              Icons.chevron_right,
+                              size: AfaqDesign.iconSmall,
+                            ),
+                            label: const Text('Next'),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            if (loading)
+              const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            if (delivery case final source?) ...[
+              surface(source),
+              if (error != null || !ready || !playback)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                  child: Text(
+                    error != null
+                        ? 'Playback needs attention. Reload the player or choose another resource.'
+                        : source.kind == 'EMBED'
+                        ? 'Use the embedded player controls without leaving your lesson.'
+                        : ready
+                        ? switch (source.kind) {
+                            'PDF' =>
+                              'Scroll through the pages or use the page and zoom controls.',
+                            'IMAGE' =>
+                              'Pinch or scroll to zoom. Drag to move around the image.',
+                            'TEXT' => 'Read your lesson resource here.',
+                            _ =>
+                              'Use the player controls to play, pause and seek.',
+                          }
+                        : 'Loading media controls...',
+                    style: TextStyle(
+                      color: secondary,
+                      fontSize: 12,
+                      height: 1.6,
                     ),
-                    onPressed: loading ? null : reload,
-                    icon: const Icon(Icons.refresh, size: AfaqDesign.iconSmall),
-                    label: Text(playback ? 'Reload player' : 'Reload resource'),
                   ),
-                  if (widget.onToggleFocus != null)
+                ),
+            ],
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+                child: TeacherNotice(error!, warning: true),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (widget.onClose != null)
                     TextButton.icon(
                       style: TextButton.styleFrom(
                         foregroundColor: playback ? playbackAccent : ink,
                       ),
-                      key: const ValueKey('media-focus-view'),
-                      onPressed: widget.onToggleFocus,
-                      icon: Icon(
-                        widget.focusView
-                            ? Icons.close_fullscreen
-                            : Icons.open_in_full,
+                      key: const ValueKey('return-to-lesson-text'),
+                      onPressed: widget.onClose,
+                      icon: const Icon(
+                        Icons.menu_book_outlined,
                         size: AfaqDesign.iconSmall,
                       ),
-                      label: Text(
-                        widget.focusView ? 'Exit focus view' : 'Focus view',
-                      ),
+                      label: const Text('Back to lesson text'),
                     ),
+                  Text(
+                    widget.previewSample == null
+                        ? 'Opening media does not mark the lesson complete.'
+                        : 'Sample only. No school records or learning progress are saved.',
+                    style: TextStyle(
+                      color: secondary,
+                      fontSize: 11,
+                      height: 1.5,
+                    ),
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        if (widget.position != null)
-          Container(
-            key: const ValueKey('media-resource-navigation'),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: playback ? const Color(0xFF191A1C) : paper,
-              border: Border(
-                top: BorderSide(color: playback ? Colors.white12 : line),
-                bottom: BorderSide(color: playback ? Colors.white12 : line),
-              ),
-            ),
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                Text(
-                  widget.previewSample == null
-                      ? 'Resource ${widget.position} of ${widget.total} available'
-                      : 'Sample ${widget.position} of ${widget.total}',
-                  style: TextStyle(color: secondary, fontSize: 13),
-                ),
-                if ((widget.total ?? 0) > 1)
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        style: playback
-                            ? OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                disabledForegroundColor: Colors.white30,
-                                side: const BorderSide(color: Colors.white24),
-                              )
-                            : null,
-                        key: const ValueKey('previous-resource'),
-                        onPressed: widget.onPrevious,
-                        icon: const Icon(
-                          Icons.chevron_left,
-                          size: AfaqDesign.iconSmall,
-                        ),
-                        label: const Text('Previous'),
-                      ),
-                      OutlinedButton.icon(
-                        style: playback
-                            ? OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                disabledForegroundColor: Colors.white30,
-                                side: const BorderSide(color: Colors.white24),
-                              )
-                            : null,
-                        key: const ValueKey('next-resource'),
-                        onPressed: widget.onNext,
-                        icon: const Icon(
-                          Icons.chevron_right,
-                          size: AfaqDesign.iconSmall,
-                        ),
-                        label: const Text('Next'),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        if (loading)
-          const SizedBox(
-            height: 200,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        if (delivery case final source?) ...[
-          surface(source),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-            child: Text(
-              error != null
-                  ? 'Playback needs attention. Reload the player or choose another resource.'
-                  : source.kind == 'EMBED'
-                  ? 'Use the embedded player controls without leaving your lesson.'
-                  : ready
-                  ? switch (source.kind) {
-                      'PDF' =>
-                        'Scroll through the pages or use the page and zoom controls.',
-                      'IMAGE' =>
-                        'Pinch or scroll to zoom. Drag to move around the image.',
-                      'TEXT' => 'Read your lesson resource here.',
-                      _ => 'Use the player controls to play, pause and seek.',
-                    }
-                  : 'Loading media controls...',
-              style: TextStyle(color: secondary, fontSize: 12, height: 1.6),
-            ),
-          ),
-        ],
-        if (error != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-            child: TeacherNotice(error!, warning: true),
-          ),
-        Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.onClose != null)
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: playback ? playbackAccent : ink,
-                  ),
-                  key: const ValueKey('return-to-lesson-text'),
-                  onPressed: widget.onClose,
-                  icon: const Icon(
-                    Icons.menu_book_outlined,
-                    size: AfaqDesign.iconSmall,
-                  ),
-                  label: const Text('Back to lesson text'),
-                ),
-              Text(
-                widget.previewSample == null
-                    ? 'Opening media does not mark the lesson complete.'
-                    : 'Sample only. No school records or learning progress are saved.',
-                style: TextStyle(color: secondary, fontSize: 11, height: 1.5),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     ),
   );
 }

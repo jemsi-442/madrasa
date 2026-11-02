@@ -296,53 +296,6 @@ class _MediaPlayerPreviewPageState extends State<MediaPlayerPreviewPage> {
                             select(MediaPlayerSample.values[sample.index + 1]),
                 ),
               ),
-              if (!focusView) ...[
-                const SizedBox(height: 20),
-                SurfacePanel(
-                  child: ExpansionTile(
-                    key: ValueKey('preview-guide-${sample.name}'),
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: const EdgeInsets.only(top: 12, bottom: 8),
-                    shape: const Border(),
-                    collapsedShape: const Border(),
-                    iconColor: ink,
-                    collapsedIconColor: ink,
-                    title: Text(
-                      'How to use ${sample.label.toLowerCase()}',
-                      style: const TextStyle(
-                        color: ink,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          sample.instructions,
-                          style: const TextStyle(
-                            color: ink,
-                            fontSize: 16,
-                            height: 1.6,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Samples never autoplay or count towards course completion.',
-                          style: TextStyle(
-                            color: muted,
-                            fontSize: 14,
-                            height: 1.6,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
         ),

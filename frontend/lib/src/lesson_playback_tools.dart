@@ -35,11 +35,13 @@ class LessonPlaybackTools extends StatefulWidget {
     this.onMute,
     this.onLoop,
     this.onFocus,
+    this.fullscreenControl = false,
   });
 
   final double speed, volume;
   final Duration position, duration;
   final bool playing, looping, focusView;
+  final bool fullscreenControl;
   final VoidCallback? onPlay,
       onStop,
       onBackward,
@@ -204,7 +206,11 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
                   ),
                   if (widget.onFocus != null)
                     button(
-                      widget.focusView ? 'Reduce player' : 'Expand player',
+                      widget.fullscreenControl
+                          ? 'Fullscreen'
+                          : widget.focusView
+                          ? 'Reduce player'
+                          : 'Expand player',
                       widget.focusView
                           ? Icons.fullscreen_exit
                           : Icons.fullscreen,

@@ -129,7 +129,7 @@ void main() {
       );
       expect(find.text('Practice recording'), findsOneWidget);
       await tap(tester, 'Simulate ready');
-      expect(find.textContaining('Use the player controls'), findsOneWidget);
+      expect(find.textContaining('Use the player controls'), findsNothing);
       expect(
         find.textContaining('does not mark the lesson complete'),
         findsOneWidget,
