@@ -80,7 +80,7 @@ export function auditReportPdf(events: AuditEvent[], generatedAt: string): Promi
     events.forEach((event, index) => {
       const cells = [`${index + 1}`, timestamp(event.createdAt), roleLabel(event.actorRole), labels[event.action] ?? event.action];
       doc.font('body').fontSize(9);
-      const height = Math.max(44, ...cells.map((cell, i) => doc.heightOfString(cell, { width: widths[i]! - 14, lineGap: 3 }) + 20));
+      const height = Math.max(36, ...cells.map((cell, i) => doc.heightOfString(cell, { width: widths[i]! - 14, lineGap: 3 }) + 20));
       if (y + height > bottom) { newPage('Event summary / continued'); tableHeader(); }
       doc.rect(36, y, width, height).fill(index % 2 ? '#FFFFFF' : '#F3F5F7');
       cells.forEach((cell, i) => text(cell, xs[i]! + 7, y + 10, widths[i]! - 14));
@@ -91,34 +91,47 @@ export function auditReportPdf(events: AuditEvent[], generatedAt: string): Promi
     y += 28;
     text('Match each numbered record to the event summary. Identifiers are preserved in full.', 36, y, width, false, 9, '#63758A');
     y += 40;
-    events.forEach((event, index) => {
-      const fields = [
+    const referenceWidth = (width - 16) / 2;
+    const referenceFields = (event: AuditEvent) => [
         ['Event ID', event.id], ['Actor ID', event.actorId ?? 'Not recorded'],
         ['Action code', event.action], ['Record type', event.entityType ?? 'Not recorded'],
         ['Reference ID', event.entityId ?? 'Not recorded'],
       ];
-      doc.font('body').fontSize(9);
-      const heights = fields.map(([, value]) => Math.max(19, doc.heightOfString(value!, { width: width - 144, lineGap: 3 }) + 8));
-      const height = 45 + heights.reduce((a, b) => a + b, 0);
+    for (let index = 0; index < events.length; index += 2) {
+      const cards = events.slice(index, index + 2).map(event => {
+        const fields = referenceFields(event);
+        doc.font('body').fontSize(9);
+        const heights = fields.map(([, value]) =>
+          16 + doc.heightOfString(value!, { width: referenceWidth - 28, lineGap: 3 }) + 8);
+        return { fields, heights, height: 42 + heights.reduce((a, b) => a + b, 0) };
+      });
+      const height = Math.max(...cards.map(card => card.height));
       if (y + height > bottom) newPage('Event references / continued');
-      doc.roundedRect(36, y, width, height, 7).fill('#F3F5F7');
-      text(`Event ${index + 1}`, 50, y + 12, width - 28, true, 11);
-      let fieldY = y + 37;
-      fields.forEach(([label, value], i) => {
-        text(label!, 50, fieldY, 102, true, 8, '#63758A');
-        text(value!, 166, fieldY, width - 144);
-        fieldY += heights[i]!;
+      cards.forEach((card, column) => {
+        const x = 36 + column * (referenceWidth + 16);
+        doc.roundedRect(x, y, referenceWidth, height, 7).fill('#F3F5F7');
+        text(`Event ${index + column + 1}`, x + 14, y + 12, referenceWidth - 28, true, 11);
+        let fieldY = y + 37;
+        card.fields.forEach(([label, value], i) => {
+          text(label!, x + 14, fieldY, referenceWidth - 28, true, 8, '#63758A');
+          text(value!, x + 14, fieldY + 16, referenceWidth - 28);
+          fieldY += card.heights[i]!;
+        });
       });
       y += height + 14;
-    });
-    if (y + 135 > bottom) newPage('Report handling');
-    text('03  Reading and sharing', 36, y, width, true, 14);
-    y += 30;
-    for (const note of [
+    }
+    const notes = [
       'Scope: only the selected page events are included, not the full audit history.',
       'Privacy: event metadata, secrets and message bodies are excluded. Failed login actors identify target accounts, not verified people.',
       'Traceability: generation is audited; it does not prove the file was read. Share only with authorised recipients.',
-    ]) {
+    ];
+    doc.font('body').fontSize(9);
+    const notesHeight = 30 + notes.reduce((sum, note) =>
+      sum + doc.heightOfString(note, { width, lineGap: 3 }) + 10, 0);
+    if (y + notesHeight > bottom) newPage('Report handling');
+    text('03  Reading and sharing', 36, y, width, true, 14);
+    y += 30;
+    for (const note of notes) {
       text(note, 36, y, width, false, 9, '#526477');
       y = doc.y + 10;
     }

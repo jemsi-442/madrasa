@@ -14,5 +14,18 @@ it('renders a branded multipage audit summary with full reference records', asyn
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
   expect(pdf.toString('latin1')).toContain('/Subtype /Image');
   expect(pdf.toString('latin1')).not.toContain('/Count 1\n');
+  const pageCount = Number(pdf.toString('latin1').match(/\/Type \/Pages\s+[\s\S]*?\/Count (\d+)/)?.[1]);
+  expect(pageCount).toBeGreaterThan(1);
+  expect(pageCount).toBeLessThanOrEqual(7);
   if (process.env.AFAQ_PDF_PREVIEW === 'true') writeFileSync('/tmp/afaq-audit-preview.pdf', pdf);
+});
+
+it('renders an unpaired reference card with missing optional identifiers', async () => {
+  const pdf = await auditReportPdf([{
+    id: 'synthetic-single', actorId: null, actorRole: null,
+    action: 'synthetic.unknown.action', entityType: null, entityId: null,
+    createdAt: new Date('2026-11-02T10:00:00Z'),
+  }], '2026-11-02T11:00:00Z');
+  expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(pdf.toString('latin1')).toContain('/Count 2\n');
 });
