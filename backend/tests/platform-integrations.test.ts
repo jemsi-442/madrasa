@@ -1,6 +1,37 @@
 import { expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { integrationSummary, readIntegrations, smtpConnectionCheck, quranConnectionCheck } from '../src/modules/platform/platform.integrations';
+import { integrationSummary, readIntegrations, smtpConnectionCheck, quranConnectionCheck, smsConnectionCheck } from '../src/modules/platform/platform.integrations';
+
+it.each([true, false])('reads RodSMS credits and sender approval without sending: %s', async approved => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const http = vi.fn().mockResolvedValueOnce(Response.json({ success: true, data: { sms_credits: 20, currency: 'credits' } }))
+    .mockResolvedValueOnce(Response.json({ success: true, data: approved ? [{ sender_id: 'AFAQ', country: 'TZ' }] : [] }));
+  const check = smsConnectionCheck(db, { SMS_ENABLED: 'true', SMS_PROVIDER: 'rodsms', RODSMS_API_KEY: 'secret-sentinel', RODSMS_SENDER_ID: 'AFAQ' }, http);
+  const actor = { scope: 'platform' as const, accountId: 'synthetic', sessionId: 'synthetic' };
+  const result = await check(actor);
+  expect(result).toMatchObject({ status: approved ? 'CONNECTED' : 'DEGRADED', smsCredits: 20, senderApproved: approved });
+  expect(JSON.stringify(result)).not.toContain('secret-sentinel');
+  expect(http.mock.calls.map(call => call[0])).toEqual(['https://www.rodsms.com/api/v1/balance', 'https://www.rodsms.com/api/v1/sender-ids']);
+  expect(http.mock.calls.every(call => call[1].method === 'GET' && call[1].redirect === 'error')).toBe(true);
+  await expect(check(actor)).rejects.toThrow('one minute');
+});
+
+it('denies SMS checks for non-IT accounts before any network request', async () => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'SUPER_ADMIN', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const http = vi.fn();
+  await expect(smsConnectionCheck(db, {}, http)({ scope: 'platform', accountId: 'synthetic', sessionId: 'synthetic' })).rejects.toThrow('restricted');
+  expect(http).not.toHaveBeenCalled();
+});
+
+it.each([403, 500, 200])('handles denied, unavailable or malformed RodSMS responses: %s', async status => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const http = vi.fn().mockResolvedValue(Response.json({ error: 'secret-sentinel' }, { status }));
+  const check = smsConnectionCheck(db, { SMS_ENABLED: 'true', SMS_PROVIDER: 'rodsms', RODSMS_API_KEY: 'synthetic', RODSMS_SENDER_ID: 'AFAQ' }, http);
+  const result = await check({ scope: 'platform', accountId: 'synthetic', sessionId: 'synthetic' });
+  expect(result.status).toBe(status === 403 ? 'ACCESS_DENIED' : 'FAILED');
+  expect(JSON.stringify(result)).not.toContain('secret-sentinel');
+  expect(http).toHaveBeenCalledOnce();
+});
 import type { QuranContentClient } from '../src/modules/teacher-workspace/quran-content';
 
 it.each(['CONNECTED', 'FAILED', 'NOT_CONFIGURED'])('returns safe Quran check status %s', async expected => {

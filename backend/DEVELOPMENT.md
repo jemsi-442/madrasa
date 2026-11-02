@@ -2349,7 +2349,7 @@ closes the transport and returns only a fixed status and check timestamp.
 Checks are limited to once per minute per API process; this is not a distributed
 rate limit. Results are displayed in the current page, not persisted as history.
 SMTP authentication success does not establish inbox delivery. Missing settings
-remain NOT_CONFIGURED, not Connected. SMS, payment and backup provider
+remain NOT_CONFIGURED, not Connected. Payment and backup provider
 connectivity checks are still unconnected. No live SMTP probe was run during
 implementation; backend checks use synthetic mocked transports.
 
@@ -2361,6 +2361,15 @@ text, inspect learner records, or certify every verse/audio endpoint. Errors
 are sanitized and active IT authorization precedes provider access. The same
 per-process one-minute throttle applies. Results are local to the current page;
 no live provider probe was executed during implementation.
+
+RodSMS checks now use `POST /api/platform/integrations/sms/check` in the same
+panel. The backend performs only `GET /balance` and `GET /sender-ids`, documented
+at https://www.rodsms.com/docs (checked 2026-11-02); `sms:read` scope is required.
+It returns credits and whether the configured sender ID is approved. Empty
+credits or an unapproved sender is DEGRADED, not delivery success. Redirects
+are refused and the API key is sent only to the fixed RodSMS API host. Disabled
+SMS is not probed; other providers are explicitly unsupported. Active IT checks
+and per-process throttling apply. Tests use mocked HTTP; no live SMS was sent.
 
 On 2026-11-02, an isolated Chromium browser signed in using the saved local IT
 demo account and opened all ten IT pages against the running API: Overview,

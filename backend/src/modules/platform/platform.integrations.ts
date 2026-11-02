@@ -4,6 +4,44 @@ import { smtpEmailConfig, createSmtpEmail } from '../../shared/notifications/smt
 import { HttpError } from '../../shared/errors/http-error';
 import type { PlatformContext } from './platform.service';
 import { QuranContentClient } from '../teacher-workspace/quran-content';
+import { z } from 'zod';
+
+export function smsConnectionCheck(db: PrismaClient, environment = process.env, request: typeof fetch = fetch) {
+  let running = false;
+  let nextCheck = 0;
+  return async (actor: PlatformContext) => {
+    await readIntegrations(db, actor, undefined);
+    if (running || Date.now() < nextCheck) throw new HttpError(429, 'Wait one minute before checking again');
+    running = true;
+    nextCheck = Date.now() + 60_000;
+    const checked = (status: string) => ({ status, checkedAt: new Date().toISOString() });
+    try {
+      const config = smsConfig(environment);
+      if (environment.SMS_ENABLED !== 'true' || !config) return checked('NOT_CONFIGURED');
+      if (config.provider !== 'rodsms') return checked('UNSUPPORTED');
+      const get = (path: string) => request(`https://www.rodsms.com/api/v1/${path}`, {
+        method: 'GET', redirect: 'error', signal: AbortSignal.timeout(10000),
+        headers: { Authorization: `Bearer ${config.apiKey}`, Accept: 'application/json' },
+      });
+      try {
+        const balance = await get('balance');
+        if (balance.status === 401 || balance.status === 403) return checked('ACCESS_DENIED');
+        if (!balance.ok) return checked('FAILED');
+        const body = z.object({ success: z.literal(true), data: z.object({ sms_credits: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER), currency: z.literal('credits') }) }).safeParse(await balance.json());
+        if (!body.success) return checked('FAILED');
+        const credits = body.data.data.sms_credits;
+        const senders = await get('sender-ids');
+        if (senders.status === 401 || senders.status === 403) return checked('ACCESS_DENIED');
+        if (!senders.ok) return checked('FAILED');
+        const ids = z.object({ success: z.literal(true), data: z.array(z.object({ sender_id: z.string() })) }).safeParse(await senders.json());
+        if (!ids.success) return checked('FAILED');
+        const approved = ids.data.data.some(id => id.sender_id === config.senderId);
+        return { ...checked(approved && credits > 0 ? 'CONNECTED' : 'DEGRADED'),
+          smsCredits: credits, senderId: config.senderId, senderApproved: approved };
+      } catch { return checked('FAILED'); }
+    } finally { running = false; }
+  };
+}
 
 export function quranConnectionCheck(db: PrismaClient, environment = process.env,
   create = () => new QuranContentClient({ enabled: true,

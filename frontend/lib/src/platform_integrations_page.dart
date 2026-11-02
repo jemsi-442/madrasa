@@ -13,11 +13,13 @@ class PlatformIntegrationsPage extends StatefulWidget {
     this.request,
     this.checkSmtp,
     this.checkQuran,
+    this.checkSms,
   });
   final VoidCallback onAudit, onHealth;
   final Future<dynamic> Function()? request;
   final Future<dynamic> Function()? checkSmtp;
   final Future<dynamic> Function()? checkQuran;
+  final Future<dynamic> Function()? checkSms;
   @override
   State<PlatformIntegrationsPage> createState() =>
       _PlatformIntegrationsPageState();
@@ -30,6 +32,43 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   bool loading = false;
   bool checkingSmtp = false;
   String? smtpResult;
+  bool checkingSms = false;
+  String? smsResult;
+
+  Future<void> verifySms() async {
+    if (checkingSms || widget.checkSms == null) return;
+    setState(() {
+      checkingSms = true;
+      smsResult = null;
+    });
+    try {
+      final result = await widget.checkSms!();
+      if (!mounted) return;
+      final label = switch (result['status']) {
+        'CONNECTED' || 'DEGRADED' =>
+          'RodSMS: ${result['status'] == 'CONNECTED' ? 'Ready' : 'Needs attention'}. Credits: ${result['smsCredits']}. Sender ${result['senderId']}: ${result['senderApproved'] == true ? 'approved' : 'not in approved sender list'}. Delivery not tested.',
+        'NOT_CONFIGURED' =>
+          'Enable SMS and complete provider configuration first.',
+        'UNSUPPORTED' =>
+          'Connection checks are currently available for RodSMS only.',
+        'ACCESS_DENIED' =>
+          'Provider access denied. Check the API key and sms:read permission.',
+        _ =>
+          'RodSMS connection could not be verified. Check connectivity and provider configuration.',
+      };
+      setState(() => smsResult = '$label\nChecked: ${result['checkedAt']}');
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => smsResult =
+              'Check unavailable. Verify access or wait one minute before retrying.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => checkingSms = false);
+    }
+  }
+
   bool checkingQuran = false;
   String? quranResult;
 
@@ -116,6 +155,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
           !loading &&
           !checkingSmtp &&
           !checkingQuran &&
+          !checkingSms &&
           !accessDenied &&
           !dataWriteInProgress &&
           ModalRoute.of(context)?.isCurrent != false,
@@ -304,6 +344,24 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
             ),
         ],
         if (service == 'Email & SMS gateway') ...[
+          const SizedBox(height: 16),
+          const Text(
+            'RodSMS: reads credits and approved sender IDs only. No SMS is sent.',
+          ),
+          OutlinedButton.icon(
+            onPressed: checkingSms || accessDenied || widget.checkSms == null
+                ? null
+                : verifySms,
+            icon: const Icon(Icons.sms_outlined),
+            label: Text(
+              checkingSms ? 'Checking RodSMS...' : 'Check RodSMS connection',
+            ),
+          ),
+          if (smsResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(smsResult!),
+            ),
           const SizedBox(height: 16),
           const Text(
             'Checks SMTP authentication and connection only. No email or SMS is sent.',
