@@ -17,6 +17,51 @@ http.Response loginResponse(String id) => success({
 });
 
 void main() {
+  for (final replace in [false, true]) {
+    test(
+      'bound form rejects old session before HTTP replace=$replace',
+      () async {
+        var logins = 0, writes = 0;
+        final api = PlatformApi(
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/login')) {
+              return loginResponse('${++logins}');
+            }
+            writes++;
+            expect(request.headers['Authorization'], 'Bearer token-$logins');
+            return success({'id': 'synthetic-record'});
+          }),
+        );
+        addTearDown(api.close);
+        await api.login('first@example.test', 'synthetic', '123456');
+        final oldForm = api.bindSession();
+        expect(await oldForm('/incidents', {'title': 'Synthetic'}), {
+          'id': 'synthetic-record',
+        });
+        expect(writes, 1);
+        if (replace) {
+          await api.login('second@example.test', 'synthetic', '654321');
+        } else {
+          api.clear();
+        }
+        await expectLater(
+          oldForm('/incidents', {'title': 'Synthetic'}),
+          throwsA(
+            isA<ApiException>().having((e) => e.statusCode, 'status', 409),
+          ),
+        );
+        expect(writes, 1);
+        expect(api.user?['id'], replace ? '2' : isNull);
+        if (replace) {
+          await api.bindSession()('/incidents', {
+            'title': 'New synthetic request',
+          });
+          expect(writes, 2);
+        }
+      },
+    );
+  }
+
   for (final status in [200, 401]) {
     test('late $status response cannot affect a new session', () async {
       final pending = Completer<http.Response>();

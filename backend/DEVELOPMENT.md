@@ -2157,3 +2157,15 @@ background results cannot replace a newer manual selection or filter request.
 Transient failures retain the prior view with a stale-data warning. Session or
 permission failures clear the incident view and stop background polling. This
 refreshes recorded incidents; it does not detect security threats automatically.
+
+### IT regression verification
+
+The focused IT regression run covers overview/navigation, responsive layouts,
+access, sessions, audit, health, incidents, updates, backups, sync and integrations:
+77 Flutter tests passed. The API-session suite separately passed 7 tests, including
+two additional cases proving an old form callback sends no HTTP request after
+logout or replacement login, while a newly bound callback remains usable.
+The backup-request, security-incident, integration and sync backend unit suites
+passed 36 tests. Flutter analysis reported no issues. These mocked/widget checks
+do not establish live provider delivery, restore execution or production readiness;
+no database reset or migration was performed for this verification.
