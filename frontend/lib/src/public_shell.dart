@@ -239,13 +239,13 @@ class PublicFooter extends StatelessWidget {
             top: false,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
               child: Text(
                 '\u00a9 ${DateTime.now().year} $publicBrandName. All rights reserved.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFFE3EAF2),
-                  fontSize: 12,
+                  fontSize: 15,
                   height: 1.5,
                 ),
               ),
