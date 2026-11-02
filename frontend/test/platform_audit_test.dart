@@ -324,6 +324,37 @@ void main() {
         await tester.tap(find.text('Failed login').last);
         await tester.pumpAndSettle();
       }
+      await tester.ensureVisible(find.text('All roles'));
+      await tester.tap(find.text('All roles'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('IT / Security').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('All time'));
+      await tester.tap(find.text('All time'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Last 7 days').last);
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['action'], 'platform.login.failed');
+      expect(requests.last.queryParameters['actorRole'], 'IT_SECURITY');
+      expect(requests.last.queryParameters['from'], isNotNull);
+      await tester.ensureVisible(find.text('Reset filters'));
+      await tester.tap(find.text('Reset filters'));
+      await tester.pumpAndSettle();
+      expect(requests.last.queryParameters['page'], '1');
+      for (final key in [
+        'action',
+        'actorRole',
+        'from',
+        'actorId',
+        'applicationId',
+        'technicalReviewId',
+      ]) {
+        expect(requests.last.queryParameters.containsKey(key), isFalse);
+      }
+      expect(find.text('Reset filters'), findsNothing);
+      expect(find.text('All events'), findsOneWidget);
+      expect(find.text('All roles'), findsOneWidget);
+      expect(find.text('All time'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       api.close();

@@ -2636,6 +2636,14 @@ class _PlatformConsoleState extends State<PlatformConsole> {
                     );
             },
           ),
+          if (auditAction.isNotEmpty ||
+              auditRole.isNotEmpty ||
+              auditPeriod.isNotEmpty)
+            TextButton.icon(
+              onPressed: busy ? null : () => openApplicationAudit(null),
+              icon: const Icon(Icons.filter_alt_off_outlined),
+              label: const Text('Reset filters'),
+            ),
         ],
       ),
     ],
