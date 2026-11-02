@@ -21,11 +21,97 @@ class MediaPlayerPreviewButton extends StatelessWidget {
   final LessonMediaBuilder? surfaceBuilder;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
-    onPressed: () =>
-        openMediaPlayerPreview(context, surfaceBuilder: surfaceBuilder),
-    icon: const Icon(Icons.play_circle_outline),
-    label: const Text('Try media player'),
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('media-player-launcher'),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(18),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF102C43), Color(0xFF214A61)],
+      ),
+      border: Border.all(color: const Color(0xFF365B70)),
+    ),
+    padding: const EdgeInsets.all(24),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final compact =
+            constraints.maxWidth < 640 ||
+            MediaQuery.textScalerOf(context).scale(16) > 24;
+        final introduction = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0B351),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.play_circle_outline,
+                size: 36,
+                color: ink,
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Media player',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Preview sample media before starting a lesson.',
+                    style: TextStyle(
+                      color: Color(0xFFD2E0E9),
+                      fontSize: 16,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+        final action = FilledButton.icon(
+          key: const ValueKey('open-media-player-preview'),
+          onPressed: () =>
+              openMediaPlayerPreview(context, surfaceBuilder: surfaceBuilder),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFE0B351),
+            foregroundColor: ink,
+            minimumSize: const Size(0, 56),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            textStyle: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          icon: const Icon(Icons.play_arrow_rounded, size: 28),
+          label: const Text('Try media player'),
+        );
+        if (compact) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [introduction, const SizedBox(height: 20), action],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: introduction),
+            const SizedBox(width: 32),
+            action,
+          ],
+        );
+      },
+    ),
   );
 }
 

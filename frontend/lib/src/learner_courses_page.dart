@@ -158,12 +158,9 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
+      const SizedBox(height: 24),
       catalogue(),
-      const SizedBox(height: 18),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
-      ),
     ],
   );
 

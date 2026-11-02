@@ -351,7 +351,7 @@ void main() {
         findsOneWidget,
       );
       data.deliveryStatus = 'PENDING_SOURCE';
-      await tap(tester, 'Reload player');
+      await tap(tester, 'Reload resource');
       expect(find.textContaining('not connected yet'), findsOneWidget);
       expect(find.text('Inline PDF'), findsNothing);
       expect(data.writes, isEmpty);
