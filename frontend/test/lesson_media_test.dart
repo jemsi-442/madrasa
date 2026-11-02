@@ -158,7 +158,7 @@ void main() {
       expect(find.text('Access has expired'), findsOneWidget);
       expect(find.text('Open in browser'), findsNothing);
       expect(find.text('Native VIDEO controls'), findsNothing);
-      await tap(tester, 'Reload player');
+      await tap(tester, 'Reload resource');
       await tap(tester, 'Simulate ready');
       expect(attempts, 2);
       await tester.pumpWidget(const SizedBox());
@@ -185,6 +185,8 @@ void main() {
     expect(calls, 1);
     await tap(tester, 'Simulate ready');
     expect(calls, 1);
+    await tester.ensureVisible(find.text('Reload player'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Reload player'));
     await tester.pump();
     expect(find.text('Native VIDEO controls'), findsNothing);
@@ -197,7 +199,7 @@ void main() {
           .map((w) => w.data)
           .join(' / '),
     );
-    await tester.tap(find.text('Reload player'));
+    await tester.tap(find.text('Reload resource'));
     expect(calls, 2);
     pending.completeError(ApiException('Permission removed', 403));
     await tester.pumpAndSettle();
@@ -313,7 +315,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Open in browser'), findsNothing);
-      expect(find.text('Reload player'), findsOneWidget);
+      expect(find.text('Reload resource'), findsOneWidget);
       expect(find.textContaining('Native EXTERNAL'), findsNothing);
     },
   );

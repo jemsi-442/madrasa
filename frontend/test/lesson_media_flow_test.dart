@@ -114,8 +114,21 @@ Future<void> tap(WidgetTester t, Finder target) async {
 }
 
 void main() {
+  testWidgets('document and audio lessons have no empty video player', (
+    t,
+  ) async {
+    final f = MediaFixture();
+    await host(t, f.reader(builder: f.surface));
+    expect(find.byKey(const ValueKey('load-lesson-player')), findsNothing);
+    expect(find.text('Lesson player'), findsNothing);
+    expect(find.text('Load sample video'), findsNothing);
+    await tap(t, find.byKey(const ValueKey('open-resource-30')));
+    expect(find.text('Test PDF surface'), findsOneWidget);
+    expect(find.text('Reload resource'), findsOneWidget);
+    expect(f.writes, isEmpty);
+  });
   testWidgets(
-    'desktop video reserves viewport space for its transport controls',
+    'desktop video keeps a full picture allocation above transport controls',
     (t) async {
       await host(
         t,
@@ -128,8 +141,7 @@ void main() {
         ),
       );
       final size = t.getSize(find.byKey(const ValueKey('lesson-media-stage')));
-      expect(size.height, lessThanOrEqualTo(500));
-      expect(size.height, greaterThanOrEqualTo(360));
+      expect(size.height, greaterThanOrEqualTo(size.width * 9 / 16 + 128));
       await t.pumpWidget(const SizedBox());
     },
   );

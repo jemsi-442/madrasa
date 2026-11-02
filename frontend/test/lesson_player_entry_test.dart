@@ -25,7 +25,7 @@ class InlinePlayerFixture extends MediaFixture {
 
 void main() {
   for (final width in [320.0, 1440.0]) {
-    testWidgets('empty lesson has an inline player at $width and large text', (
+    testWidgets('empty lesson has no unused player at $width and large text', (
       t,
     ) async {
       final f = InlinePlayerFixture(), routes = RouteLog();
@@ -36,44 +36,19 @@ void main() {
         scale: 2,
         observer: routes,
       );
-      expect(find.text('Lesson player'), findsOneWidget);
-      expect(find.byType(LessonPlaybackTools), findsOneWidget);
-      expect(
-        t.getTopLeft(find.text('Lesson player')).dy,
-        lessThan(t.getTopLeft(find.text('Lesson notes')).dy),
-      );
-      expect(find.text('Load sample video'), findsOneWidget);
-      expect(find.text('Load sample audio'), findsOneWidget);
+      expect(find.text('Lesson player'), findsNothing);
+      expect(find.byType(LessonPlaybackTools), findsNothing);
+      expect(find.text('Lesson notes'), findsOneWidget);
+      expect(find.text('Load sample video'), findsNothing);
+      expect(find.text('Load sample audio'), findsNothing);
       expect(find.byType(MediaPlayerPreviewPage), findsNothing);
       expect(find.byType(LessonMediaViewer), findsNothing);
       expect(f.paths, ['/api/learner/lessons/22']);
       expect(f.writes, isEmpty);
       expect(t.takeException(), isNull);
 
-      final before = routes.pushed.length;
-      await tap(t, find.text('Load sample video'));
-      expect(find.text('Test VIDEO surface'), findsOneWidget);
-      expect(find.textContaining('Practice sample only'), findsOneWidget);
-      expect(find.byType(MediaPlayerPreviewPage), findsNothing);
-      expect(find.byType(Dialog), findsNothing);
-      expect(routes.pushed.length, before);
-      final viewer = t.widget<LessonMediaViewer>(
-        find.byType(LessonMediaViewer),
-      );
-      expect(viewer.previewSample!.delivery.uri.scheme, 'asset');
-      await tap(t, find.byKey(const ValueKey('media-focus-view')));
-      expect(find.text('Lesson notes'), findsNothing);
-      expect(f.events, ['mount VIDEO']);
-      await tap(t, find.byKey(const ValueKey('return-to-lesson-text')));
-      expect(find.text('Lesson notes').hitTestable(), findsOneWidget);
-      expect(find.text('Lesson player'), findsOneWidget);
-      expect(f.events.last, 'dispose VIDEO');
-      await tap(t, find.text('Load sample audio'));
-      expect(find.text('Test AUDIO surface'), findsOneWidget);
-      expect(f.paths, ['/api/learner/lessons/22']);
-      expect(f.writes, isEmpty);
       await t.pumpWidget(const SizedBox());
-      expect(f.events.last, 'dispose AUDIO');
+      expect(f.events, isEmpty);
     });
   }
 
@@ -100,7 +75,12 @@ void main() {
       expect(find.text('Load sample video'), findsNothing);
       expect(find.text('Load sample audio'), findsNothing);
       expect(f.paths, ['/api/learner/lessons/22']);
-      await tap(t, find.byKey(const ValueKey('load-lesson-player')));
+      await tap(
+        t,
+        find.byKey(
+          ValueKey(kind == 'VIDEO' ? 'load-lesson-player' : 'open-resource-30'),
+        ),
+      );
       expect(find.text('Test $kind surface'), findsOneWidget);
       expect(find.text('Resource 1 of 1 available'), findsOneWidget);
       expect(
@@ -131,12 +111,12 @@ void main() {
       f.asset('30', 'Reading notes', 'OPEN', true),
     ];
     await host(t, f.reader(builder: f.surface));
-    await tap(t, find.text('Load sample video'));
+    expect(find.text('Load sample video'), findsNothing);
     expect(f.paths, ['/api/learner/lessons/22']);
     await tap(t, find.byKey(const ValueKey('open-resource-30')));
     expect(find.textContaining('Practice sample only'), findsNothing);
     expect(find.text('Test PDF surface'), findsOneWidget);
-    expect(f.events, ['mount VIDEO', 'dispose VIDEO', 'mount PDF']);
+    expect(f.events, ['mount PDF']);
     expect(f.paths, ['/api/learner/lessons/22', '/api/learner/assets/30/open']);
     expect(f.writes, isEmpty);
     await t.pumpWidget(const SizedBox());
@@ -159,9 +139,10 @@ void main() {
   });
 
   testWidgets(
-    'changing lessons releases the inline sample and resets the player',
+    'changing lessons releases the resource without creating an empty player',
     (t) async {
       final f = InlinePlayerFixture();
+      f.assets = [f.asset('30', 'Reading notes', 'OPEN', true)];
       await host(
         t,
         LearnerLessonReader(
@@ -176,12 +157,16 @@ void main() {
           ],
         ),
       );
-      await tap(t, find.text('Load sample audio'));
+      await tap(t, find.byKey(const ValueKey('open-resource-30')));
       await tap(t, find.byKey(const ValueKey('next-lesson')));
-      expect(find.text('Lesson player'), findsOneWidget);
+      expect(find.text('Lesson player'), findsNothing);
       expect(find.byType(LessonMediaViewer), findsNothing);
-      expect(f.events, ['mount AUDIO', 'dispose AUDIO']);
-      expect(f.paths, ['/api/learner/lessons/22', '/api/learner/lessons/23']);
+      expect(f.events, ['mount PDF', 'dispose PDF']);
+      expect(f.paths, [
+        '/api/learner/lessons/22',
+        '/api/learner/assets/30/open',
+        '/api/learner/lessons/23',
+      ]);
       expect(f.writes, isEmpty);
     },
   );
@@ -190,31 +175,22 @@ void main() {
     t,
   ) async {
     final f = InlinePlayerFixture()..pendingSave = Completer<dynamic>();
+    f.assets = [
+      {...f.asset('30', 'Video lesson', 'OPEN', true), 'assetType': 'VIDEO'},
+    ];
     await host(t, f.reader(builder: f.surface));
     await t.ensureVisible(find.text('Mark complete'));
     await t.tap(find.text('Mark complete'));
     await t.pump();
     expect(
       t
-          .widget<FilledButton>(
+          .widget<OutlinedButton>(
             find.byKey(const ValueKey('load-lesson-player')),
           )
           .onPressed,
       isNull,
     );
-    expect(
-      t
-          .widget<OutlinedButton>(
-            find.byKey(const ValueKey('load-lesson-sample-audio')),
-          )
-          .onPressed,
-      isNull,
-    );
-    final controls = t.widget<LessonPlaybackTools>(
-      find.byType(LessonPlaybackTools),
-    );
-    expect(controls.onPlay, isNull);
-    expect(controls.onFocus, isNull);
+    expect(find.byType(LessonPlaybackTools), findsNothing);
     f.pendingSave!.complete();
     await t.pumpAndSettle();
     expect(find.text('Lesson completed'), findsOneWidget);

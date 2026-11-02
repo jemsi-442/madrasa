@@ -207,16 +207,11 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
   }
 
   double videoHeight(BuildContext context, double width) {
-    final toolbar = width < 680 ? 270.0 : 140.0;
-    // Reserve desktop space for the title, resource navigation and transport
-    // footer, so Focus view does not push playback controls below the screen.
-    final limit = width >= 700
-        ? (MediaQuery.sizeOf(context).height - 400).clamp(
-            360.0,
-            widget.focusView ? 900.0 : 620.0,
-          )
-        : (widget.focusView ? 600.0 : 520.0);
-    return (width * 9 / 16 + toolbar).clamp(360.0, limit);
+    final compact =
+        width < 652 || MediaQuery.textScalerOf(context).scale(13) > 20;
+    // Controls sit below the picture, not inside its 16:9 allocation.
+    final toolbar = compact ? 250.0 : 128.0;
+    return width * 9 / 16 + toolbar;
   }
 
   Widget surface(LessonMediaDelivery source) {
@@ -280,31 +275,20 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: gold.withValues(alpha: .12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      lessonResourceIcon(delivery?.kind ?? ''),
-                      color: gold,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
+                  Icon(lessonResourceIcon(delivery?.kind ?? ''), color: gold),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       delivery?.title ?? widget.title,
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: playback ? Colors.white : ink,
                       ),
@@ -343,7 +327,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                     ),
                     onPressed: loading ? null : reload,
                     icon: const Icon(Icons.refresh, size: AfaqDesign.iconSmall),
-                    label: const Text('Reload player'),
+                    label: Text(playback ? 'Reload player' : 'Reload resource'),
                   ),
                   if (widget.onToggleFocus != null)
                     TextButton.icon(

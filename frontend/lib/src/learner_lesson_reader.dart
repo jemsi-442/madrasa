@@ -8,8 +8,6 @@ import 'foundation_ui.dart';
 import 'learning_page.dart';
 import 'lesson_media_viewer.dart';
 import 'lesson_contents.dart';
-import 'lesson_player_entry.dart';
-import 'media_player_samples.dart';
 import 'teacher_ui.dart';
 
 class _ExitMediaFocusIntent extends Intent {
@@ -46,7 +44,6 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   final notesFocus = FocusNode(debugLabel: 'Lesson notes');
   bool saving = false, focusView = false;
   Map<String, dynamic>? savedProgress, selectedAsset;
-  MediaPlayerSample? selectedSample;
   String? error;
   double readingSize = 16;
   final progressByLesson = <String, Map<String, dynamic>>{};
@@ -112,7 +109,6 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     setState(() {
       lessonId = id;
       selectedAsset = null;
-      selectedSample = null;
       savedProgress = null;
       error = null;
       focusView = false;
@@ -142,16 +138,6 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     if (saving || !canOpen(asset)) return;
     setState(() {
       selectedAsset = asset;
-      selectedSample = null;
-    });
-    reveal(mediaAnchor, mediaFocus);
-  }
-
-  void playSample(MediaPlayerSample sample) {
-    if (saving) return;
-    setState(() {
-      selectedAsset = null;
-      selectedSample = sample;
     });
     reveal(mediaAnchor, mediaFocus);
   }
@@ -166,7 +152,6 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     setState(() {
       focusView = false;
       selectedAsset = null;
-      selectedSample = null;
     });
     reveal(notesAnchor, notesFocus);
   }
@@ -568,7 +553,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                 final playback = available
                     .where(
                       (asset) =>
-                          ['VIDEO', 'AUDIO'].contains(asset['assetType']),
+                          ['VIDEO', 'EMBED'].contains(asset['assetType']),
                     )
                     .firstOrNull;
                 final selectedIndex = available.indexWhere(
@@ -578,40 +563,22 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                 final stage = Focus(
                   key: mediaAnchor,
                   focusNode: mediaFocus,
-                  child: selectedSample != null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const TeacherNotice(
-                              'Practice sample only, not lesson content. Your learning progress is unchanged.',
-                            ),
-                            const SizedBox(height: 12),
-                            LessonMediaViewer.preview(
-                              key: ValueKey(selectedSample),
-                              sample: selectedSample!,
-                              surfaceBuilder: widget.surfaceBuilder,
-                              onClose: returnToNotes,
-                              onToggleFocus: saving ? null : toggleFocus,
-                              focusView: focusView,
-                            ),
-                          ],
-                        )
-                      : selectedAsset == null
-                      ? LessonPlayerEntry(
-                          resourceTitle: playback == null
-                              ? null
-                              : recordText(
-                                  playback['title'],
-                                  'Lesson resource',
+                  child: selectedAsset == null
+                      ? playback == null
+                            ? const SizedBox.shrink()
+                            : Align(
+                                alignment: Alignment.centerLeft,
+                                child: OutlinedButton.icon(
+                                  key: const ValueKey('load-lesson-player'),
+                                  onPressed: saving
+                                      ? null
+                                      : () => play(playback),
+                                  icon: const Icon(Icons.play_circle_outline),
+                                  label: Text(
+                                    'Watch video: ${recordText(playback['title'], 'Lesson video')}',
+                                  ),
                                 ),
-                          audio: playback?['assetType'] == 'AUDIO',
-                          onOpen: saving || playback == null
-                              ? null
-                              : () => play(playback),
-                          onSample: saving ? null : playSample,
-                          onFocus: saving ? null : toggleFocus,
-                          focusView: focusView,
-                        )
+                              )
                       : LessonMediaViewer(
                           key: ValueKey(selectedAsset!['id']),
                           assetId: recordText(selectedAsset!['id']),
