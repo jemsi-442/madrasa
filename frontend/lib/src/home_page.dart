@@ -412,9 +412,12 @@ class _HomeHero extends StatelessWidget {
   Widget build(BuildContext context) => EntryBackdrop(
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1384),
+        constraints: const BoxConstraints(maxWidth: 1600),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.sizeOf(context).width >= 1000 ? 32 : 24,
+            vertical: MediaQuery.sizeOf(context).width >= 1000 ? 64 : 40,
+          ),
           child: LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth == 0) return const SizedBox.shrink();
@@ -458,7 +461,7 @@ class _HomeHero extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: publicInk,
-                      fontSize: 16,
+                      fontSize: 18,
                       height: 1.5,
                       fontWeight: FontWeight.w600,
                     ),
@@ -469,7 +472,7 @@ class _HomeHero extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: publicGold,
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.4,
                       height: 1.6,
@@ -480,31 +483,44 @@ class _HomeHero extends StatelessWidget {
               return Column(
                 children: [
                   EntryReveal(
-                    child: wide
-                        ? Row(
-                            children: [
-                              Expanded(flex: 6, child: message),
-                              const SizedBox(width: 64),
-                              Expanded(flex: 5, child: portrait),
-                            ],
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              message,
-                              const SizedBox(height: 36),
-                              Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 520,
+                    child: ConstrainedBox(
+                      key: const ValueKey('home-hero-primary'),
+                      constraints: BoxConstraints(
+                        minHeight: wide
+                            ? (MediaQuery.sizeOf(context).height * 0.78).clamp(
+                                640.0,
+                                880.0,
+                              )
+                            : 0,
+                      ),
+                      child: Center(
+                        child: wide
+                            ? Row(
+                                children: [
+                                  Expanded(child: message),
+                                  const SizedBox(width: 48),
+                                  Expanded(child: portrait),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  message,
+                                  const SizedBox(height: 36),
+                                  Center(
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 680,
+                                      ),
+                                      child: portrait,
+                                    ),
                                   ),
-                                  child: portrait,
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: wide ? 64 : 40),
                   const Divider(color: Color(0xFFDED5C5), height: 1),
                   const SizedBox(height: 32),
                   PublicHomeFeatures(key: featuresKey),
@@ -537,7 +553,12 @@ class _HeroMessage extends StatelessWidget {
             style: TextStyle(
               color: publicInk,
               fontFamily: 'NotoSerifDisplay',
-              fontSize: constraints.maxWidth >= 500 ? 56 : 38,
+              fontSize: switch (constraints.maxWidth) {
+                >= 620 => 72,
+                >= 500 => 64,
+                >= 360 => 48,
+                _ => 40,
+              },
               fontWeight: FontWeight.w700,
               letterSpacing: -1.5,
               height: 1.12,
@@ -545,13 +566,13 @@ class _HeroMessage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Container(width: 52, height: 3, color: publicGold),
+        Container(width: 76, height: 4, color: publicGold),
         const SizedBox(height: 24),
         const Text(
           'Rooted in faith. Built for your future.',
           style: TextStyle(
             color: publicInk,
-            fontSize: 18,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
             height: 1.5,
           ),
@@ -559,7 +580,7 @@ class _HeroMessage extends StatelessWidget {
         const SizedBox(height: 10),
         const Text(
           'Explore Islamic education and practical skills in one connected space for learners, families and teachers.',
-          style: TextStyle(color: publicMuted, fontSize: 18, height: 1.7),
+          style: TextStyle(color: publicMuted, fontSize: 20, height: 1.65),
         ),
         const SizedBox(height: 30),
         Wrap(

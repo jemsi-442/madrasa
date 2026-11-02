@@ -24,6 +24,37 @@ Widget _featuresAtWidth(double width) => MaterialApp(
 
 void main() {
   testWidgets(
+    'desktop hero gives the headline and original photo a larger stage',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1920, 1080);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(home: PublicHomeScreen(onNavigate: (_) {})),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-hero-primary'))).height,
+        greaterThanOrEqualTo(840),
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('home-hero-photo'))).width,
+        greaterThanOrEqualTo(740),
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.text('Knowledge that\nshapes brighter\ntomorrows.'),
+            )
+            .style!
+            .fontSize,
+        72,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'desktop navigation exposes the selected section and heading structure',
     (tester) async {
       tester.view.devicePixelRatio = 1;
