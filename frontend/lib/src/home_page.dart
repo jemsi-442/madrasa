@@ -501,9 +501,11 @@ class PublicHomeFeatures extends StatelessWidget {
     builder: (context, constraints) {
       // Window-size transitions can briefly leave no space after page padding.
       if (constraints.maxWidth == 0) return const SizedBox.shrink();
-      final columns = switch (constraints.maxWidth) {
-        >= 600 => 4,
-        >= 260 => 2,
+      final textScale = MediaQuery.textScalerOf(context).scale(17) / 17;
+      final readableWidth = constraints.maxWidth / textScale.clamp(1.0, 3.0);
+      final columns = switch (readableWidth) {
+        >= 960 => 4,
+        >= 480 => 2,
         _ => 1,
       };
       final width = (constraints.maxWidth - 20 * (columns - 1)) / columns;
@@ -511,22 +513,22 @@ class PublicHomeFeatures extends StatelessWidget {
         (
           Icons.menu_book_outlined,
           "Qur'an Tracking",
-          'Follow memorization\nand recitation',
+          'Follow memorization and recitation',
         ),
         (
           Icons.groups_outlined,
           'Student Management',
-          'Organize and support\nevery learner',
+          'Organize and support every learner',
         ),
         (
           Icons.bar_chart_rounded,
           'Progress Reports',
-          'See growth and\ncelebrate progress',
+          'See growth and celebrate progress',
         ),
         (
           Icons.favorite_border_rounded,
           'Community Support',
-          'Connect families\nand teachers',
+          'Connect families and teachers',
         ),
       ];
       return Wrap(

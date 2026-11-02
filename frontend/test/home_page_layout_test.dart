@@ -212,16 +212,24 @@ void main() {
 
   for (final (width, columns) in [
     (240.0, 1),
-    (260.0, 2),
-    (272.0, 2),
-    (342.0, 2),
+    (260.0, 1),
+    (272.0, 1),
+    (342.0, 1),
+    (479.0, 1),
+    (480.0, 2),
     (599.0, 2),
-    (600.0, 4),
-    (790.0, 4),
+    (600.0, 2),
+    (790.0, 2),
+    (959.0, 2),
+    (960.0, 4),
   ]) {
     testWidgets('home features use $columns columns at width $width', (
       tester,
     ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1200, 1000);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(_featuresAtWidth(width));
       expect(tester.takeException(), isNull);
       final tops = _featureTitles
@@ -251,6 +259,37 @@ void main() {
           expect(find.text(title), findsOneWidget);
         }
       }
+    }
+  });
+
+  testWidgets('feature columns respond to accessibility text size', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 1000);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final (scale, columns) in [(1.0, 4), (2.0, 2), (3.0, 1)]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: const Scaffold(
+            body: SingleChildScrollView(child: PublicHomeFeatures()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final first = tester.getTopLeft(find.text(_featureTitles.first)).dy;
+      for (var i = 1; i < _featureTitles.length; i++) {
+        final top = tester.getTopLeft(find.text(_featureTitles[i])).dy;
+        expect(top, i < columns ? equals(first) : greaterThan(first));
+      }
+      expect(tester.takeException(), isNull);
     }
   });
 
