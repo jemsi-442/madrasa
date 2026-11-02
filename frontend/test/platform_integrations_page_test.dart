@@ -1,8 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_integrations_page.dart';
+import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets(
+    'Auto checks preserve selected service and stop on permission denial',
+    (tester) async {
+      var calls = 0;
+      var denied = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformIntegrationsPage(
+              onAudit: () {},
+              onHealth: () {},
+              request: () async {
+                calls++;
+                if (denied) throw const ApiException('Synthetic denial', 403);
+                return {
+                  'services': {
+                    'Quran content': 'Synthetic configuration $calls',
+                  },
+                  'timezone': 'Africa/Dar_es_Salaam',
+                  'checkedAt': '2026-11-02T00:00:00Z',
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Credentials'));
+      await tester.tap(find.text('Credentials'));
+      await tester.pumpAndSettle();
+      final dropdown = find.byType(DropdownButtonFormField<String>);
+      await tester.ensureVisible(dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 30));
+      expect(calls, 1);
+      await tester.tap(find.text('Quran content').last);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(calls, 2);
+      expect(find.text('Synthetic configuration 2'), findsOneWidget);
+      expect(find.text('Credential handling'), findsOneWidget);
+      denied = true;
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic configuration 2'), findsNothing);
+      expect(
+        find.text(
+          'Access could not be verified. Sign in again or check your permissions.',
+        ),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 60));
+      await tester.pumpAndSettle();
+      expect(calls, 3);
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'Loads backend configuration and clears stale status on failure',
     (tester) async {

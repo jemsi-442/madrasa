@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
 import 'it_workspace_visuals.dart';
+import 'automatic_data_updates.dart';
+import 'api_client.dart';
+import 'live_data.dart';
 
 class PlatformIntegrationsPage extends StatefulWidget {
   const PlatformIntegrationsPage({
@@ -21,11 +24,29 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   String service = 'Authentication';
   Map<String, dynamic>? snapshot;
   bool loading = false;
+  bool accessDenied = false;
+  late final AutomaticDataUpdates updates;
   String? error;
   @override
   void initState() {
     super.initState();
+    updates = AutomaticDataUpdates(
+      canUpdate: () =>
+          mounted &&
+          widget.request != null &&
+          !loading &&
+          !accessDenied &&
+          !dataWriteInProgress &&
+          ModalRoute.of(context)?.isCurrent != false,
+      update: load,
+    );
     if (widget.request != null) load();
+  }
+
+  @override
+  void dispose() {
+    updates.dispose();
+    super.dispose();
   }
 
   Future<void> load() async {
@@ -37,13 +58,20 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
     try {
       final data = await widget.request!();
       if (mounted) {
-        setState(() => snapshot = Map<String, dynamic>.from(data as Map));
+        setState(() {
+          accessDenied = false;
+          snapshot = Map<String, dynamic>.from(data as Map);
+        });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() {
           snapshot = null;
-          error = 'Configuration status could not be loaded. Try again.';
+          accessDenied =
+              e is ApiException && [401, 403, 409].contains(e.statusCode);
+          error = accessDenied
+              ? 'Access could not be verified. Sign in again or check your permissions.'
+              : 'Configuration status could not be loaded. Try again.';
         });
       }
     } finally {
