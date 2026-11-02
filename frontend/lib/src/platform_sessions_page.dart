@@ -65,7 +65,8 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, size) {
       final compact = size.maxWidth < 1100;
-      final rows = widget.records
+      final ready = !widget.busy && widget.error == null;
+      final rows = (ready ? widget.records : <Map<String, dynamic>>[])
           .where(
             (r) =>
                 filter == 'all' ||
@@ -97,7 +98,11 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
             ),
             const SizedBox(height: 20),
             Text(
-              '${rows.length} of ${widget.records.length} sessions on this page',
+              widget.busy
+                  ? 'Loading sessions...'
+                  : widget.error != null
+                  ? 'Sessions are unavailable. Retry with Refresh.'
+                  : '${rows.length} of ${widget.records.length} sessions on this page',
               style: const TextStyle(color: AfaqDesign.muted),
             ),
             const SizedBox(height: 12),
@@ -261,13 +266,13 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
               children: [
                 Text('Page ${widget.page}'),
                 OutlinedButton(
-                  onPressed: widget.busy || widget.page <= 1
+                  onPressed: !ready || widget.page <= 1
                       ? null
                       : () => widget.onPage(widget.page - 1),
                   child: const Text('Previous'),
                 ),
                 OutlinedButton(
-                  onPressed: widget.busy || widget.records.length < 20
+                  onPressed: !ready || widget.records.length < 20
                       ? null
                       : () => widget.onPage(widget.page + 1),
                   child: const Text('Next'),
@@ -282,18 +287,22 @@ class _PlatformSessionsPageState extends State<PlatformSessionsPage> {
         child: panel(
           'Session review',
           chosen == null
-              ? const Padding(
+              ? Padding(
                   padding: EdgeInsets.symmetric(vertical: 36),
                   child: Column(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.touch_app_outlined,
                         size: 36,
                         color: AfaqDesign.muted,
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
-                        'Select a session to review its details.',
+                        widget.busy
+                            ? 'Checking session access...'
+                            : widget.error != null
+                            ? 'Session details are hidden until access is verified again.'
+                            : 'Select a session to review its details.',
                         textAlign: TextAlign.center,
                       ),
                     ],

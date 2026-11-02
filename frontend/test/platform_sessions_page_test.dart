@@ -4,6 +4,66 @@ import 'package:mif_app/src/platform_sessions_page.dart';
 
 void main() {
   for (final width in [320.0, 1440.0]) {
+    testWidgets('Session actions require a successful read at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final rows = List.generate(
+        20,
+        (i) => <String, dynamic>{'id': 'synthetic-$i', 'current': i == 0},
+      );
+      Future<void> render({bool busy = false, String? error}) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: PlatformSessionsPage(
+                records: rows,
+                busy: busy,
+                error: error,
+                page: 2,
+                onPage: (_) => fail('Unavailable sessions must not paginate'),
+                onRefresh: () {},
+                details: (row) => TextButton(
+                  onPressed: () {},
+                  child: Text('Revoke ${row['id']}'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+      }
+
+      await render();
+      await tester.ensureVisible(find.text('Review').first);
+      await tester.tap(find.text('Review').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Revoke synthetic-0'), findsOneWidget);
+      for (final busy in [true, false]) {
+        await render(busy: busy, error: busy ? null : 'Access denied');
+        expect(find.text('Revoke synthetic-0'), findsNothing);
+        expect(find.text('Review'), findsNothing);
+        for (final label in ['Previous', 'Next']) {
+          expect(
+            tester
+                .widget<OutlinedButton>(
+                  find.widgetWithText(OutlinedButton, label),
+                )
+                .onPressed,
+            isNull,
+          );
+        }
+      }
+      await render();
+      expect(find.text('Revoke synthetic-0'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+  for (final width in [320.0, 1440.0]) {
     testWidgets('Session selection and removal at $width', (tester) async {
       tester.view.physicalSize = Size(width, 1200);
       tester.view.devicePixelRatio = 1;
