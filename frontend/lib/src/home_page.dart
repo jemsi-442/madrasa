@@ -6,6 +6,7 @@ import 'public_shell.dart';
 import 'public_entry_visuals.dart';
 import 'public_site_footer.dart';
 import 'home_story_sections.dart';
+import 'home_photo.dart';
 
 class PublicHomeScreen extends StatefulWidget {
   const PublicHomeScreen({super.key, required this.onNavigate});
@@ -415,14 +416,11 @@ class _HomeHero extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(18),
-                      child: AspectRatio(
+                      child: HomePhoto(
                         aspectRatio: 1100 / 619,
-                        child: Image.asset(
-                          'assets/home/shared-learning.jpg',
-                          fit: BoxFit.contain,
-                          semanticLabel:
-                              'Learners working together before a Quran session.',
-                        ),
+                        asset: 'assets/home/shared-learning.jpg',
+                        description:
+                            'Learners working together before a Quran session.',
                       ),
                     ),
                   ),

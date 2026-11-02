@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'public_shell.dart';
+import 'home_photo.dart';
 
 /// Public copy adapted from the supplied pitch deck and event proposal.
 /// Projections, fundraising targets and personal biographies are not published.
@@ -55,6 +56,7 @@ class HomeStorySections extends StatelessWidget {
           children: [
             const _Photo(
               asset: 'assets/home/shared-learning.jpg',
+              aspectRatio: 1100 / 619,
               description:
                   'Learners working together on schoolwork before a Quran session.',
               caption: 'Learning together, with faith at the centre.',
@@ -95,6 +97,7 @@ class HomeStorySections extends StatelessWidget {
           children: [
             const _Photo(
               asset: 'assets/home/digital-learning.jpg',
+              aspectRatio: 900 / 507,
               description: 'A learner using a laptop to take attendance.',
               caption:
                   'Digital skills and responsibility in everyday learning.',
@@ -629,18 +632,20 @@ class _Photo extends StatelessWidget {
     required this.asset,
     required this.description,
     required this.caption,
+    required this.aspectRatio,
   });
   final String asset, description, caption;
+  final double aspectRatio;
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        child: Image.asset(
-          asset,
-          semanticLabel: description,
-          fit: BoxFit.contain,
+        child: HomePhoto(
+          asset: asset,
+          description: description,
+          aspectRatio: aspectRatio,
         ),
       ),
       const SizedBox(height: 14),
