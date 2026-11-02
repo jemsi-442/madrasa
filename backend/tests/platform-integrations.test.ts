@@ -1,6 +1,37 @@
 import { expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { integrationSummary, readIntegrations, smtpConnectionCheck, quranConnectionCheck, smsConnectionCheck } from '../src/modules/platform/platform.integrations';
+import { integrationSummary, readIntegrations, smtpConnectionCheck, quranConnectionCheck, smsConnectionCheck, paymentConnectionCheck } from '../src/modules/platform/platform.integrations';
+
+it('checks Snippe with GET and never returns financial balances', async () => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const http = vi.fn().mockResolvedValue(Response.json({ status: 'success', code: 200, data: { object: 'balance', available: { currency: 'TZS', value: 6943 }, balance: { currency: 'TZS', value: 6943 } } }));
+  const check = paymentConnectionCheck(db, { SNIPPE_API_KEY: 'secret-sentinel' }, http);
+  const actor = { scope: 'platform' as const, accountId: 'synthetic', sessionId: 'synthetic' };
+  const result = await check(actor);
+  expect(result.status).toBe('CONNECTED');
+  expect(Object.keys(result).sort()).toEqual(['checkedAt', 'status']);
+  expect(http).toHaveBeenCalledWith('https://api.snippe.sh/v1/payments/balance', expect.objectContaining({ method: 'GET', redirect: 'error' }));
+  await expect(check(actor)).rejects.toThrow('one minute');
+});
+
+it.each([
+  [{ SNIPPE_MOCK_MODE: 'true' }, 'MOCK_MODE'],
+  [{}, 'NOT_CONFIGURED'],
+  [{ SNIPPE_API_KEY: 'synthetic', SNIPPE_BASE_URL: 'https://untrusted.example' }, 'NOT_CONFIGURED'],
+] as const)('does not probe mock or invalid payment configuration', async (environment, status) => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const http = vi.fn();
+  expect(await paymentConnectionCheck(db, environment, http)({ scope: 'platform', accountId: 'synthetic', sessionId: 'synthetic' })).toMatchObject({ status });
+  expect(http).not.toHaveBeenCalled();
+});
+
+it.each([403, 500, 200])('sanitizes failed payment checks %s', async status => {
+  const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;
+  const http = vi.fn().mockResolvedValue(Response.json({ message: 'secret-sentinel' }, { status }));
+  const result = await paymentConnectionCheck(db, { SNIPPE_API_KEY: 'synthetic' }, http)({ scope: 'platform', accountId: 'synthetic', sessionId: 'synthetic' });
+  expect(result.status).toBe(status === 403 ? 'ACCESS_DENIED' : 'FAILED');
+  expect(JSON.stringify(result)).not.toContain('secret-sentinel');
+});
 
 it.each([true, false])('reads RodSMS credits and sender approval without sending: %s', async approved => {
   const db = { platformAccount: { findUnique: vi.fn().mockResolvedValue({ role: 'IT_SECURITY', status: 'ACTIVE' }) } } as unknown as PrismaClient;

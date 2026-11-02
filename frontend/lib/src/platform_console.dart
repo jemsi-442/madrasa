@@ -2016,6 +2016,7 @@ class _PlatformConsoleState extends State<PlatformConsole> {
               checkSmtp: () => api.call('/integrations/smtp/check', body: {}),
               checkQuran: () => api.call('/integrations/quran/check', body: {}),
               checkSms: () => api.call('/integrations/sms/check', body: {}),
+              checkPayment: () => api.call('/integrations/payments/check', body: {}),
               onAudit: () => navigateTo(PlatformPage.history),
               onHealth: () => navigateTo(PlatformPage.health),
             )

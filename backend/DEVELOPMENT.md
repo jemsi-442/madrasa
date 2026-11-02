@@ -2349,7 +2349,7 @@ closes the transport and returns only a fixed status and check timestamp.
 Checks are limited to once per minute per API process; this is not a distributed
 rate limit. Results are displayed in the current page, not persisted as history.
 SMTP authentication success does not establish inbox delivery. Missing settings
-remain NOT_CONFIGURED, not Connected. Payment and backup provider
+remain NOT_CONFIGURED, not Connected. Backup provider
 connectivity checks are still unconnected. No live SMTP probe was run during
 implementation; backend checks use synthetic mocked transports.
 
@@ -2370,6 +2370,15 @@ credits or an unapproved sender is DEGRADED, not delivery success. Redirects
 are refused and the API key is sent only to the fixed RodSMS API host. Disabled
 SMS is not probed; other providers are explicitly unsupported. Active IT checks
 and per-process throttling apply. Tests use mocked HTTP; no live SMS was sent.
+
+Snippe read connectivity is available through
+`POST /api/platform/integrations/payments/check`. Per the provider documentation
+https://docs.snippe.sh/docs/2026-01-25/payments, it reads only
+`GET https://api.snippe.sh/v1/payments/balance` with `collection:read` access.
+Only status and timestamp reach IT; balances and provider payloads are discarded.
+Mock mode skips the network, custom hosts are rejected, and redirects are refused.
+This does not verify webhook delivery, payment collection or payouts. No payment
+or live provider call was made during implementation; tests use synthetic responses.
 
 On 2026-11-02, an isolated Chromium browser signed in using the saved local IT
 demo account and opened all ten IT pages against the running API: Overview,

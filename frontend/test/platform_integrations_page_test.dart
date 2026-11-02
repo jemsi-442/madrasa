@@ -6,6 +6,47 @@ import 'package:mif_app/src/api_client.dart';
 
 void main() {
   testWidgets(
+    'Payment check distinguishes mock mode without claiming connection',
+    (tester) async {
+      var calls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformIntegrationsPage(
+              onAudit: () {},
+              onHealth: () {},
+              checkPayment: () async {
+                calls++;
+                return {
+                  'status': 'MOCK_MODE',
+                  'checkedAt': '2026-11-02T00:00:00Z',
+                };
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.ensureVisible(find.text('Credentials'));
+      await tester.tap(find.text('Credentials'));
+      await tester.pumpAndSettle();
+      final dropdown = find.byType(DropdownButtonFormField<String>);
+      await tester.ensureVisible(dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Payment connection').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Check payment connection'));
+      await tester.tap(find.text('Check payment connection'));
+      await tester.pumpAndSettle();
+      expect(calls, 1);
+      expect(
+        find.textContaining('No provider request was made.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'Quran check shows limited content and prevents duplicate probes',
     (tester) async {
       final result = Completer<dynamic>();

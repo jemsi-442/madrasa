@@ -14,12 +14,14 @@ class PlatformIntegrationsPage extends StatefulWidget {
     this.checkSmtp,
     this.checkQuran,
     this.checkSms,
+    this.checkPayment,
   });
   final VoidCallback onAudit, onHealth;
   final Future<dynamic> Function()? request;
   final Future<dynamic> Function()? checkSmtp;
   final Future<dynamic> Function()? checkQuran;
   final Future<dynamic> Function()? checkSms;
+  final Future<dynamic> Function()? checkPayment;
   @override
   State<PlatformIntegrationsPage> createState() =>
       _PlatformIntegrationsPageState();
@@ -32,6 +34,42 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
   bool loading = false;
   bool checkingSmtp = false;
   String? smtpResult;
+  bool checkingPayment = false;
+  String? paymentResult;
+
+  Future<void> verifyPayment() async {
+    if (checkingPayment || widget.checkPayment == null) return;
+    setState(() {
+      checkingPayment = true;
+      paymentResult = null;
+    });
+    try {
+      final result = await widget.checkPayment!();
+      if (!mounted) return;
+      final label = switch (result['status']) {
+        'CONNECTED' =>
+          'Snippe read connection verified. Payment collection and webhook delivery have not been tested.',
+        'MOCK_MODE' => 'Mock mode is enabled. No provider request was made.',
+        'NOT_CONFIGURED' =>
+          'Complete the Snippe API key and approved base URL configuration first.',
+        'ACCESS_DENIED' =>
+          'Provider access denied. Check the API key and collection:read permission.',
+        _ =>
+          'Snippe connection could not be verified. Check configuration and connectivity.',
+      };
+      setState(() => paymentResult = '$label\nChecked: ${result['checkedAt']}');
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => paymentResult =
+              'Check unavailable. Verify access or wait one minute before retrying.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => checkingPayment = false);
+    }
+  }
+
   bool checkingSms = false;
   String? smsResult;
 
@@ -156,6 +194,7 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
           !checkingSmtp &&
           !checkingQuran &&
           !checkingSms &&
+          !checkingPayment &&
           !accessDenied &&
           !dataWriteInProgress &&
           ModalRoute.of(context)?.isCurrent != false,
@@ -319,6 +358,29 @@ class _PlatformIntegrationsPageState extends State<PlatformIntegrationsPage> {
         ),
         const SizedBox(height: 20),
         configurationChecks(),
+        if (service == 'Payment connection') ...[
+          const SizedBox(height: 16),
+          const Text(
+            'Read-only Snippe connection check. No payment, payout or USSD prompt is created. Financial balances are not displayed.',
+          ),
+          OutlinedButton.icon(
+            onPressed:
+                checkingPayment || accessDenied || widget.checkPayment == null
+                ? null
+                : verifyPayment,
+            icon: const Icon(Icons.network_check),
+            label: Text(
+              checkingPayment
+                  ? 'Checking Snippe...'
+                  : 'Check payment connection',
+            ),
+          ),
+          if (paymentResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(paymentResult!),
+            ),
+        ],
         if (service == 'Quran content') ...[
           const SizedBox(height: 16),
           const Text(

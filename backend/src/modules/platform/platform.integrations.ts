@@ -6,6 +6,36 @@ import type { PlatformContext } from './platform.service';
 import { QuranContentClient } from '../teacher-workspace/quran-content';
 import { z } from 'zod';
 
+export function paymentConnectionCheck(db: PrismaClient, environment = process.env, request: typeof fetch = fetch) {
+  let running = false;
+  let nextCheck = 0;
+  return async (actor: PlatformContext) => {
+    await readIntegrations(db, actor, undefined);
+    if (running || Date.now() < nextCheck) throw new HttpError(429, 'Wait one minute before checking again');
+    running = true;
+    nextCheck = Date.now() + 60_000;
+    const checked = (status: string) => ({ status, checkedAt: new Date().toISOString() });
+    try {
+      if (environment.SNIPPE_MOCK_MODE === 'true') return checked('MOCK_MODE');
+      if (!environment.SNIPPE_API_KEY?.trim() ||
+          (environment.SNIPPE_BASE_URL ?? 'https://api.snippe.sh').replace(/\/+$/, '') !== 'https://api.snippe.sh') return checked('NOT_CONFIGURED');
+      try {
+        const response = await request('https://api.snippe.sh/v1/payments/balance', {
+          method: 'GET', redirect: 'error', signal: AbortSignal.timeout(10000),
+          headers: { Authorization: `Bearer ${environment.SNIPPE_API_KEY.trim()}`, Accept: 'application/json' },
+        });
+        if ([401, 403].includes(response.status)) return checked('ACCESS_DENIED');
+        if (!response.ok) return checked('FAILED');
+        const money = z.object({ currency: z.literal('TZS'), value: z.number().finite() });
+        const result = z.object({ status: z.literal('success'), code: z.literal(200),
+          data: z.object({ object: z.literal('balance'), available: money, balance: money }) }).safeParse(await response.json());
+        // Do not expose balances or provider payloads to the technical dashboard.
+        return checked(result.success ? 'CONNECTED' : 'FAILED');
+      } catch { return checked('FAILED'); }
+    } finally { running = false; }
+  };
+}
+
 export function smsConnectionCheck(db: PrismaClient, environment = process.env, request: typeof fetch = fetch) {
   let running = false;
   let nextCheck = 0;
