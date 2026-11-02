@@ -162,11 +162,23 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
         null,
       );
       if (mounted && version == viewVersion) {
-        setState(() => selected = Map<String, dynamic>.from(data as Map));
+        setState(() {
+          accessDenied = false;
+          selected = Map<String, dynamic>.from(data as Map);
+        });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted && version == viewVersion) {
-        setState(() => error = 'Could not load the incident.');
+        setState(() {
+          if (e is ApiException && [401, 403, 409].contains(e.statusCode)) {
+            accessDenied = true;
+            snapshot = selected = null;
+            error =
+                'Access could not be verified. Sign in again or check your permissions.';
+          } else {
+            error = 'Could not load the incident.';
+          }
+        });
       }
     } finally {
       if (mounted && version == viewVersion) setState(() => busy = false);
@@ -174,6 +186,7 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
   }
 
   Future<void> edit({bool update = false}) async {
+    if (busy || editing || accessDenied || (update && selected == null)) return;
     final request = widget.request;
     final original = selected;
     final title = TextEditingController();
@@ -447,7 +460,9 @@ class _SecurityIncidentRegisterState extends State<SecurityIncidentRegister> {
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
-                    onPressed: busy ? null : () => edit(update: true),
+                    onPressed: busy || accessDenied
+                        ? null
+                        : () => edit(update: true),
                     child: const Text('Update response'),
                   ),
                   const SizedBox(height: 20),

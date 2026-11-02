@@ -5,6 +5,66 @@ import 'package:mif_app/src/security_incident_register.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final status in [401, 403, 409]) {
+    testWidgets(
+      'Detail denial locks writes until a successful access check status=$status',
+      (tester) async {
+        var denied = true;
+        var reads = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SecurityIncidentRegister(
+                initialIncidentId: 'synthetic-private',
+                request: (path, body) async {
+                  expect(body, isNull);
+                  reads++;
+                  if (!path.contains('?') || denied && reads > 2) {
+                    throw ApiException('Synthetic denial', status);
+                  }
+                  return {
+                    'items': [
+                      {
+                        'id': 'synthetic-private',
+                        'title': 'Private synthetic incident',
+                        'priority': 'LOW',
+                        'status': 'OPEN',
+                      },
+                    ],
+                    'total': 1,
+                    'open': 1,
+                    'high': 0,
+                    'resolved': 0,
+                  };
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Private synthetic incident'), findsNothing);
+        final create = find.ancestor(
+          of: find.text('Record incident'),
+          matching: find.byWidgetPredicate((w) => w is FilledButton),
+        );
+        expect(tester.widget<FilledButton>(create).onPressed, isNull);
+        await tester.pump(const Duration(seconds: 60));
+        await tester.pumpAndSettle();
+        expect(reads, 2);
+        await tester.tap(find.text('Refresh'));
+        await tester.pumpAndSettle();
+        expect(tester.widget<FilledButton>(create).onPressed, isNull);
+        denied = false;
+        await tester.tap(find.text('Refresh'));
+        await tester.pumpAndSettle();
+        expect(tester.widget<FilledButton>(create).onPressed, isNotNull);
+        expect(find.text('Private synthetic incident'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final denied in [false, true]) {
     testWidgets('Failed initial read retains receipt draft denied=$denied', (
       tester,
@@ -27,10 +87,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.textContaining('Not saved yet'), findsOneWidget);
-        final button = find.ancestor(
-          of: find.text('Continue receipt draft'),
-          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
-        );
+      final button = find.ancestor(
+        of: find.text('Continue receipt draft'),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      );
       expect(
         tester.widget<FilledButton>(button).onPressed,
         denied ? isNull : isNotNull,
