@@ -15,6 +15,45 @@ Map<String, dynamic> get snapshot => <String, dynamic>{
 };
 
 void main() {
+  for (final checks in <List<dynamic>>[
+    [],
+    [
+      {'name': 'database', 'status': 'available'},
+    ],
+    [
+      {'name': 'redis', 'status': 'checking'},
+      'invalid',
+    ],
+  ]) {
+    testWidgets('Incomplete evidence cannot claim healthy: $checks', (
+      tester,
+    ) async {
+      final now = DateTime.utc(2026, 11, 2);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlatformHealthPanel(
+              snapshot: {
+                'status': 'healthy',
+                'checkedAt': now.toIso8601String(),
+                'checks': checks,
+              },
+              loading: false,
+              now: () => now,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Core services available'), findsNothing);
+      expect(
+        find.text('Service availability is not fully verified'),
+        findsOneWidget,
+      );
+      expect(find.text('Operator next steps'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   testWidgets(
     'fresh results expire without fetching and recover on new snapshot',
     (tester) async {
@@ -22,7 +61,10 @@ void main() {
       final data = <String, dynamic>{
         'status': 'healthy',
         'checkedAt': now.toIso8601String(),
-        'checks': <dynamic>[],
+        'checks': <dynamic>[
+          {'name': 'database', 'status': 'available'},
+          {'name': 'redis', 'status': 'available'},
+        ],
       };
       Widget panel() => MaterialApp(
         home: Scaffold(
@@ -39,6 +81,8 @@ void main() {
       await tester.pump(const Duration(seconds: 15));
       expect(find.text('Health results need refreshing'), findsOneWidget);
       expect(find.text('Core services available'), findsNothing);
+      expect(find.text('Available'), findsNothing);
+      expect(find.text('Current availability unknown'), findsNWidgets(2));
       data['checkedAt'] = now.toIso8601String();
       await tester.pumpWidget(panel());
       expect(find.text('Core services available'), findsOneWidget);

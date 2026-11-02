@@ -122,6 +122,8 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
       final wide = bounds.maxWidth >= 1050;
       final checks = (widget.snapshot?['checks'] as List? ?? [])
           .whereType<Map>()
+          .where((row) => ['database', 'redis'].contains(row['name']))
+          .where((row) => ['available', 'unavailable'].contains(row['status']))
           .toList();
       final checked = DateTime.tryParse('${widget.snapshot?['checkedAt']}');
       final age = checked == null
@@ -160,7 +162,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
             'Needs attention',
             Column(
               children: [
-                if (!fresh)
+                if (!fresh || checks.isEmpty)
                   task(
                     'Check current service status',
                     'The latest service state is not verified.',
@@ -176,7 +178,7 @@ class _PlatformItDashboardState extends State<PlatformItDashboard> {
                     Icons.warning_amber_outlined,
                     onHealth,
                   ),
-                if (fresh && failed.isEmpty)
+                if (fresh && checks.isNotEmpty && failed.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(bottom: 12),
                     child: Text(

@@ -2774,8 +2774,14 @@ class _PlatformHealthPanelState extends State<PlatformHealthPanel> {
     final age = checkedAt == null ? null : now.difference(checkedAt.toUtc());
     final timeUnknown = age == null || age.isNegative;
     final stale = !timeUnknown && age >= const Duration(seconds: 60);
-    final healthy = snapshot?['status'] == 'healthy';
-    final checks = (snapshot?['checks'] as List?) ?? [];
+    final checks = (snapshot?['checks'] as List? ?? [])
+        .whereType<Map>()
+        .where((row) => ['database', 'redis'].contains(row['name']))
+        .where((row) => ['available', 'unavailable'].contains(row['status']))
+        .toList();
+    final healthy =
+        checks.map((row) => row['name']).toSet().length == 2 &&
+        checks.every((row) => row['status'] == 'available');
     final databaseUnavailable = checks.any(
       (check) => check['name'] == 'database' && check['status'] != 'available',
     );
@@ -2802,6 +2808,8 @@ class _PlatformHealthPanelState extends State<PlatformHealthPanel> {
                       ? 'Health results need refreshing'
                       : healthy
                       ? 'Core services available'
+                      : !databaseUnavailable && !redisUnavailable
+                      ? 'Service availability is not fully verified'
                       : 'Service attention needed',
                   style: const TextStyle(
                     fontSize: 24,
@@ -2837,10 +2845,14 @@ class _PlatformHealthPanelState extends State<PlatformHealthPanel> {
           Card(
             child: ListTile(
               leading: Icon(
-                check['status'] == 'available'
+                timeUnknown || stale
+                    ? Icons.schedule
+                    : check['status'] == 'available'
                     ? Icons.check_circle_outline
                     : Icons.error_outline,
-                color: check['status'] == 'available'
+                color: timeUnknown || stale
+                    ? Colors.grey
+                    : check['status'] == 'available'
                     ? const Color(0xff197447)
                     : const Color(0xffa32e2e),
               ),
@@ -2850,7 +2862,9 @@ class _PlatformHealthPanelState extends State<PlatformHealthPanel> {
                     : 'Redis / login rate limiting',
               ),
               subtitle: Text(
-                check['status'] == 'available'
+                timeUnknown || stale
+                    ? 'Current availability unknown'
+                    : check['status'] == 'available'
                     ? 'Available'
                     : 'Unavailable. Escalate to the on-call operator.',
               ),

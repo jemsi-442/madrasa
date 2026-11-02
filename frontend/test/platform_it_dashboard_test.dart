@@ -3,6 +3,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_it_dashboard.dart';
 
 void main() {
+  for (final checks in <List<dynamic>>[
+    [],
+    [
+      {'name': 'redis', 'status': 'unknown'},
+      {'name': 'unknown-service', 'status': 'available'},
+    ],
+  ]) {
+    testWidgets(
+      'Overview requests verification without valid checks: $checks',
+      (tester) async {
+        final now = DateTime.utc(2026, 11, 2);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: PlatformItDashboard(
+                busy: false,
+                error: null,
+                now: () => now,
+                snapshot: {
+                  'status': 'healthy',
+                  'checkedAt': now.toIso8601String(),
+                  'checks': checks,
+                },
+                onRefresh: () {},
+                onHealth: () {},
+                onIncidents: () {},
+                onAccounts: () {},
+                onAudit: () {},
+                onSessions: () {},
+              ),
+            ),
+          ),
+        );
+        expect(find.text('Check current service status'), findsOneWidget);
+        expect(
+          find.textContaining('No failed connectivity checks.'),
+          findsNothing,
+        );
+        expect(find.text('Unavailable'), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   for (final width in [320.0, 1440.0]) {
     for (final busy in [false, true]) {
       testWidgets('IT overview width=$width busy=$busy', (tester) async {
