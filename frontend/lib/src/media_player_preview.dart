@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'learning_page.dart';
 import 'lesson_media_viewer.dart';
@@ -230,7 +229,7 @@ class _MediaPlayerPreviewPageState extends State<MediaPlayerPreviewPage> {
               const SizedBox(height: 12),
               if (!focusView) ...[
                 const Text(
-                  'Make yourself at home with the player',
+                  'Explore the media viewer',
                   style: TextStyle(
                     color: ink,
                     fontSize: 28,
@@ -240,8 +239,8 @@ class _MediaPlayerPreviewPageState extends State<MediaPlayerPreviewPage> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'No video uploaded yet? Explore these built-in samples. They use the same controls as your lessons, without changing any learning records.',
-                  style: TextStyle(color: muted, height: 1.6),
+                  'Choose a sample to try the controls. Your learning records stay unchanged.',
+                  style: TextStyle(color: muted, fontSize: 16, height: 1.6),
                 ),
                 const SizedBox(height: 20),
                 Wrap(
@@ -300,21 +299,44 @@ class _MediaPlayerPreviewPageState extends State<MediaPlayerPreviewPage> {
               if (!focusView) ...[
                 const SizedBox(height: 20),
                 SurfacePanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  child: ExpansionTile(
+                    key: ValueKey('preview-guide-${sample.name}'),
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(top: 12, bottom: 8),
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    iconColor: ink,
+                    collapsedIconColor: ink,
+                    title: Text(
+                      'How to use ${sample.label.toLowerCase()}',
+                      style: const TextStyle(
+                        color: ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     children: [
-                      const PanelHeading('Try it for yourself'),
-                      Text(
-                        sample.instructions,
-                        style: const TextStyle(color: muted, height: 1.6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          sample.instructions,
+                          style: const TextStyle(
+                            color: ink,
+                            fontSize: 16,
+                            height: 1.6,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Nothing starts playing automatically. You can switch samples, reload or return to your work at any time.',
-                        style: TextStyle(
-                          color: muted,
-                          fontSize: 12,
-                          height: 1.6,
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Samples never autoplay or count towards course completion.',
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 14,
+                            height: 1.6,
+                          ),
                         ),
                       ),
                     ],
