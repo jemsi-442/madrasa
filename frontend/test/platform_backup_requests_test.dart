@@ -3,6 +3,66 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_backup_requests.dart';
 
 void main() {
+  testWidgets('Failed next page hides previous records and retries that page', (
+    tester,
+  ) async {
+    final paths = <String>[];
+    var failed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: PlatformBackupRequests(
+              onAudit: () {},
+              request: (path, body) async {
+                paths.add(path);
+                if (path.endsWith('page=2') && !failed) {
+                  failed = true;
+                  throw Exception('Synthetic network failure');
+                }
+                return {
+                  'total': 21,
+                  'items': [
+                    {
+                      'createdAt': '2026-10-01T00:00:00Z',
+                      'metadata': {
+                        'snapshot': path.endsWith('page=2')
+                            ? 'BKP-SECOND'
+                            : 'BKP-FIRST',
+                        'reason': 'Synthetic recovery scope',
+                      },
+                    },
+                  ],
+                };
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('BKP-FIRST'), findsOneWidget);
+    await tester.ensureVisible(find.text('Next'));
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('BKP-FIRST'), findsNothing);
+    expect(
+      find.text('Could not load restore requests. Try again.'),
+      findsOneWidget,
+    );
+    expect(find.text('No restore tests requested yet.'), findsNothing);
+    await tester.ensureVisible(find.text('Check requests'));
+    await tester.tap(find.text('Check requests'));
+    await tester.pumpAndSettle();
+    expect(find.text('BKP-SECOND'), findsOneWidget);
+    expect(paths, [
+      '/backups/requests?page=1',
+      '/backups/requests?page=2',
+      '/backups/requests?page=2',
+    ]);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Failed save keeps form and retry identity', (tester) async {
     final attempts = <Map<String, dynamic>>[];
     await tester.pumpWidget(

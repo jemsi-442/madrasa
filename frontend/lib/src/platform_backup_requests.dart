@@ -22,6 +22,7 @@ class PlatformBackupRequests extends StatefulWidget {
 class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
   List<dynamic> items = [];
   int page = 1, total = 0;
+  int loadVersion = 0;
   bool loading = false;
   String? error;
   @override
@@ -31,24 +32,32 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
   }
 
   Future<void> load() async {
+    final version = ++loadVersion;
+    final requestedPage = page;
     setState(() {
       loading = true;
       error = null;
+      items = [];
     });
     try {
-      final data = await widget.request('/backups/requests?page=$page', null);
-      if (mounted) {
+      final data = await widget.request(
+        '/backups/requests?page=$requestedPage',
+        null,
+      );
+      if (mounted && version == loadVersion) {
         setState(() {
           items = data['items'] as List;
           total = data['total'] as int;
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && version == loadVersion) {
         setState(() => error = 'Could not load restore requests. Try again.');
       }
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted && version == loadVersion) {
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -130,7 +139,8 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
                 onPressed: saving
                     ? null
                     : () async {
-                        if (submitted == null && !key.currentState!.validate()) {
+                        if (submitted == null &&
+                            !key.currentState!.validate()) {
                           return;
                         }
                         change(() {
