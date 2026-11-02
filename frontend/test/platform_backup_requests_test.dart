@@ -1,8 +1,71 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/platform_backup_requests.dart';
+import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets(
+    'Permission failure during editing clears history and stops polling',
+    (tester) async {
+      var reads = 0;
+      final response = Completer<dynamic>();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PlatformBackupRequests(
+                onAudit: () {},
+                request: (path, body) async {
+                  reads++;
+                  if (reads > 1) return response.future;
+                  return {
+                    'total': 1,
+                    'items': [
+                      {
+                        'createdAt': '2026-10-01T00:00:00Z',
+                        'metadata': {
+                          'snapshot': 'BKP-PRIVATE',
+                          'reason': 'Synthetic recovery scope',
+                        },
+                      },
+                    ],
+                  };
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('BKP-PRIVATE'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pump();
+      expect(reads, 2);
+      await tester.ensureVisible(find.text('Request restore test'));
+      await tester.tap(find.text('Request restore test'));
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.enterText(find.byType(TextFormField).first, 'BKP-DRAFT');
+      response.completeError(const ApiException('Permission denied', 403));
+      await tester.pumpAndSettle();
+      expect(find.text('BKP-DRAFT'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('BKP-PRIVATE'), findsNothing);
+      expect(
+        find.text(
+          'Access could not be verified. Sign in again or check your permissions.',
+        ),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 60));
+      await tester.pumpAndSettle();
+      expect(reads, 2);
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'Automatic updates pause throughout editing and resume after close',
     (tester) async {

@@ -77,13 +77,22 @@ class _PlatformBackupRequestsState extends State<PlatformBackupRequests> {
       }
     } catch (e) {
       if (mounted && version == loadVersion) {
-        if (background && (formOpen || revision != dataChanges.value)) return;
+        final denied =
+            e is ApiException && [401, 403, 409].contains(e.statusCode);
+        if (!denied &&
+            background &&
+            (formOpen || revision != dataChanges.value)) {
+          return;
+        }
         setState(() {
-          if (e is ApiException && [401, 403, 409].contains(e.statusCode)) {
+          if (denied) {
             accessDenied = true;
             items = [];
+            total = 0;
           }
-          error = background && items.isNotEmpty
+          error = denied
+              ? 'Access could not be verified. Sign in again or check your permissions.'
+              : background && items.isNotEmpty
               ? 'Showing previous requests. Updates will retry automatically.'
               : 'Could not load restore requests. Try again.';
         });
