@@ -173,6 +173,7 @@ class HomeSchoolSection extends StatelessWidget {
   Widget build(BuildContext context) => _Section(
     color: const Color(0xFFEAF0F5),
     eyebrow: 'FOR SCHOOLS & MADRASAS',
+    maxWidth: 1480,
     title: 'Support the teacher.\nConnect the learning journey.',
     intro:
         'The Afaq platform brings learning plans, classroom records and communication into one connected workspace. Technology supports the people doing the teaching; it does not replace their judgement.',
@@ -180,6 +181,7 @@ class HomeSchoolSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _Columns(
+          spacing: 32,
           children: [
             _Pillar(
               number: 'PLAN',
@@ -427,11 +429,13 @@ class _Section extends StatelessWidget {
     required this.child,
     this.intro,
     this.color = publicCream,
+    this.maxWidth = 1160,
   });
   final String eyebrow, title;
   final String? intro;
   final Widget child;
   final Color color;
+  final double maxWidth;
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
@@ -439,7 +443,7 @@ class _Section extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 56),
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1160),
+        constraints: BoxConstraints(maxWidth: maxWidth),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -535,8 +539,9 @@ const _sectionActionStyle = ButtonStyle(
 );
 
 class _Columns extends StatelessWidget {
-  const _Columns({required this.children});
+  const _Columns({required this.children, this.spacing = 24});
   final List<Widget> children;
+  final double spacing;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, size) {
@@ -551,7 +556,7 @@ class _Columns extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (var start = 0; start < children.length; start += columns) ...[
-              if (start > 0) const SizedBox(height: 24),
+              if (start > 0) SizedBox(height: spacing),
               if (columns == 1)
                 children[start]
               else
@@ -564,7 +569,7 @@ class _Columns extends StatelessWidget {
                         i < start + columns && i < children.length;
                         i++
                       ) ...[
-                        if (i > start) const SizedBox(width: 24),
+                        if (i > start) SizedBox(width: spacing),
                         Expanded(child: children[i]),
                       ],
                     ],

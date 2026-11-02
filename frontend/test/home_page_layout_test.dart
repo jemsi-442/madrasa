@@ -380,6 +380,10 @@ void main() {
       expect(plan.top, teach.top);
       expect(plan.height, teach.height);
       expect(plan.width, greaterThan(300));
+      expect(teach.left - plan.right, 32);
+      if (width >= 1440) {
+        expect(plan.width, greaterThan(440));
+      }
       if (width < 1100) {
         expect(support.top, greaterThan(plan.bottom));
       } else {
