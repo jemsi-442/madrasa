@@ -37,6 +37,24 @@ abstract final class AfaqDesign {
   static const badgePadding = EdgeInsets.symmetric(horizontal: 10, vertical: 6);
   static const panelPadding = EdgeInsets.all(22);
 
+  /// Bright surfaces preserve the accent hue while keeping text readable.
+  static Color cardTint(Color accent, double strength) {
+    final hsl = HSLColor.fromColor(accent);
+    final vivid = hsl.withSaturation(hsl.saturation.clamp(.65, 1.0)).toColor();
+    return Color.lerp(Colors.white, vivid, strength)!;
+  }
+
+  static LinearGradient cardGradient(Color accent) => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: const [0, .6, 1],
+    colors: [
+      cardTint(accent, .30),
+      cardTint(accent, .18),
+      cardTint(accent, .08),
+    ],
+  );
+
   static BoxDecoration panelDecoration({Color color = surface}) =>
       BoxDecoration(
         color: color,

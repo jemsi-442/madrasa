@@ -110,8 +110,8 @@ class ItSectionPanel extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Color.lerp(Colors.white, accent, .16)!,
-                Color.lerp(Colors.white, accent, .06)!,
+                AfaqDesign.cardTint(accent, .25),
+                AfaqDesign.cardTint(accent, .10),
               ],
             ),
             border: Border(
@@ -166,16 +166,9 @@ class ItMetricCard extends StatelessWidget {
     constraints: const BoxConstraints(minHeight: 150),
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color.lerp(Colors.white, accent, .17)!,
-          Color.lerp(Colors.white, accent, .055)!,
-        ],
-      ),
+      gradient: AfaqDesign.cardGradient(accent),
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: accent.withValues(alpha: .25)),
+      border: Border.all(color: AfaqDesign.cardTint(accent, .45)),
       boxShadow: const [
         BoxShadow(
           color: Color(0x08011F3D),
@@ -193,7 +186,7 @@ class ItMetricCard extends StatelessWidget {
               child: Text(
                 label,
                 style: const TextStyle(
-                  color: AfaqDesign.muted,
+                  color: AfaqDesign.ink,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   height: 1.4,

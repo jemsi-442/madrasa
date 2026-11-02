@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/it_workspace_visuals.dart';
+import 'package:mif_app/src/design_tokens.dart';
 
 void main() {
+  test('Card palette keeps navy text readable across gradient stops', () {
+    for (final accent in [
+      AfaqDesign.blue,
+      AfaqDesign.green,
+      AfaqDesign.gold,
+      AfaqDesign.purple,
+      Colors.red,
+      Colors.grey,
+    ]) {
+      for (final background in AfaqDesign.cardGradient(accent).colors) {
+        final contrast =
+            (background.computeLuminance() + .05) /
+            (AfaqDesign.ink.computeLuminance() + .05);
+        expect(contrast, greaterThanOrEqualTo(4.5));
+      }
+    }
+  });
   for (final width in [220.0, 320.0, 600.0]) {
     testWidgets('IT metric preserves long values at $width with large text', (
       tester,
@@ -42,7 +60,7 @@ void main() {
       final decoration = surface.decoration! as BoxDecoration;
       expect(
         (decoration.gradient! as LinearGradient).colors.first,
-        Color.lerp(Colors.white, Colors.blue, .17),
+        AfaqDesign.cardTint(Colors.blue, .30),
       );
       expect(tester.takeException(), isNull);
     });

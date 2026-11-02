@@ -220,7 +220,7 @@ class DashboardMetric extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: muted,
+                color: ink,
                 fontSize: AfaqDesign.secondarySize,
               ),
             ),
@@ -237,15 +237,8 @@ class DashboardMetric extends StatelessWidget {
               : 22,
         ),
         decoration: AfaqDesign.panelDecoration().copyWith(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(Colors.white, accent, .17)!,
-              Color.lerp(Colors.white, accent, .055)!,
-            ],
-          ),
-          border: Border.all(color: Color.lerp(Colors.white, accent, .3)!),
+          gradient: AfaqDesign.cardGradient(accent),
+          border: Border.all(color: AfaqDesign.cardTint(accent, .45)),
         ),
         child: compact && !dense
             ? Column(
