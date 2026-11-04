@@ -134,6 +134,11 @@ export const deliverLearnerAssetHandler = async (req: Request, res: Response) =>
   // The signed redirect is intentionally consumable by the separate web origin.
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   res.setHeader("Referrer-Policy", "strict-origin");
+  if ('filePath' in detail) {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.sendFile(detail.filePath);
+    return;
+  }
   res.redirect(302, detail.redirectUrl);
 };
 

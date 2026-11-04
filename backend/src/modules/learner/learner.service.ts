@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { learnerMediaSource } from "./learner-media-source";
+import { demoMedia } from "../learning/demo-media";
 import { Prisma } from "@prisma/client";
 
 import { env } from "../../config/env";
@@ -1029,7 +1030,7 @@ export const getLearnerLessonDetail = async (authUser: AuthenticatedUser, lesson
         visibility: asset.visibility,
         downloadAllowed: asset.downloadAllowed,
         streamingProfile: asset.streamingProfile,
-        sourceReady: Boolean(learnerMediaSource(asset)),
+        sourceReady: Boolean(demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset)),
         accessState: getAssetAccessState(
           lesson.course.visibility,
           lesson.visibility,
@@ -1100,7 +1101,7 @@ export const openLearnerAsset = async (authUser: AuthenticatedUser, assetId: str
     throw new HttpError(403, "This lesson item is not open for this learner yet");
   }
 
-  const source = learnerMediaSource(asset);
+  const source = demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset);
   const token = buildLearnerAssetDeliveryToken(authUser, asset.id);
   const deliveryPath = `/api/learner/assets/${asset.id.toString()}/deliver?token=${encodeURIComponent(token)}`;
   const expiresAt = new Date(Date.now() + LEARNER_ASSET_OPEN_TTL_SECONDS * 1000).toISOString();
@@ -1156,7 +1157,7 @@ export const openLearnerAsset = async (authUser: AuthenticatedUser, assetId: str
   };
 };
 
-export const resolveLearnerAssetDelivery = async (assetId: string, token: string) => {
+export const resolveLearnerAssetDelivery = async (assetId: string, token: string): Promise<{ filePath: string } | { redirectUrl: string }> => {
   const payload = decodeLearnerAssetDeliveryToken(token);
 
   if (payload.assetId !== assetId) {
@@ -1174,6 +1175,8 @@ export const resolveLearnerAssetDelivery = async (assetId: string, token: string
     throw new HttpError(403, "This lesson item is not open for this learner yet");
   }
 
+  const sample = demoMedia(asset, env.NODE_ENV);
+  if (sample) return { filePath: sample.filePath };
   const source = learnerMediaSource(asset);
   if (!source) {
     throw new HttpError(409, "This lesson item source is not connected yet");

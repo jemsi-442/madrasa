@@ -170,6 +170,35 @@ Future<void> tap(WidgetTester tester, String label) async {
 }
 
 void main() {
+  for (final locked in [false, true]) {
+    testWidgets(
+      'automatic course entry respects unavailable catalogue $locked',
+      (tester) async {
+        final data = CoursesFixture();
+        await host(
+          tester,
+          LearnerCoursesPage(
+            embeddedCourses: true,
+            load: (path) async {
+              data.paths.add(path);
+              if (path == '/api/learner/courses') {
+                return locked
+                    ? [data.course('1', 'Restricted course', 'LOCKED')]
+                    : [];
+              }
+              throw StateError('An unavailable course must not open');
+            },
+            submit: data.submit,
+            apiBaseUrl: 'https://school.test',
+          ),
+        );
+        expect(data.paths, ['/api/learner/courses']);
+        expect(find.text('Try media player'), findsNothing);
+        expect(data.writes, isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   for (final width in [390.0, 1440.0]) {
     testWidgets('My courses opens lesson inside workspace at $width', (
       tester,
@@ -193,9 +222,6 @@ void main() {
         ),
         width: width,
       );
-      final open = find.text('View lessons').first;
-      await tester.ensureVisible(open);
-      await tester.tap(open);
       await tester.pumpAndSettle();
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.text('Course curriculum'), findsNothing);

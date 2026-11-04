@@ -1,5 +1,20 @@
 # MMS Backend Development Setup
 
+## Independent Learner Workspace Demo
+
+From `backend`, run `node scripts/prepare-learner-workspace-demo.mjs --confirm-local-development`.
+This adds a published, free synthetic course for `COURSE_STUDENT` in the existing
+`demo-madrasa`, with three lessons and bundled video, audio, PDF and text samples.
+It reuses the existing technology subject and administrator; reruns keep the
+existing demo unchanged. It does not reset accounts, drafts, assignments or progress.
+The command rejects production and non-local database configurations.
+
+Embedded My courses opens an available course automatically, preferring a resume
+candidate. Use My courses inside the lesson workspace to return to the catalogue.
+Empty or locked catalogues do not auto-open a lesson. Viewing media does not save
+completion. Local sample delivery is development-only and still checks the signed
+link, learner, programme, publication and asset access before serving the file.
+
 ## Company Account Read Access
 
 ### IT Session Inspection

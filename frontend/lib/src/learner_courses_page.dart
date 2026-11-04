@@ -7,7 +7,6 @@ import 'learner_lesson_reader.dart';
 import 'learning_page.dart';
 import 'learning_library_ui.dart';
 import 'lesson_media_viewer.dart';
-import 'media_player_preview.dart';
 import 'teacher_ui.dart';
 
 bool courseIsAvailable(dynamic state) => state == 'OPEN' || state == 'PREVIEW';
@@ -44,6 +43,7 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   int changes = 0;
   Map<String, dynamic>? selectedCourse;
   bool resumeSelected = false;
+  bool initialCourseHandled = false;
 
   Future<void> openCourse(
     Map<String, dynamic> course, {
@@ -183,14 +183,7 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
             changes++;
           }),
         )
-      : Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
-            const SizedBox(height: 24),
-            catalogue(),
-          ],
-        );
+      : catalogue();
 
   Widget catalogue() => TeacherData(
     load: widget.load,
@@ -198,6 +191,26 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
     refreshToken: widget.refreshToken + changes,
     builder: (raw) {
       final courses = recordList(raw), subjects = <String, String>{};
+      if (widget.embeddedCourses && !initialCourseHandled) {
+        initialCourseHandled = true;
+        final available = courses
+            .where(
+              (course) =>
+                  courseIsAvailable(course['accessState']) &&
+                  recordNumber(recordMap(course['progress'])['totalLessons']) >
+                      0,
+            )
+            .toList();
+        final initial = courseToResume(available) ?? available.firstOrNull;
+        if (initial != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && selectedCourse == null) {
+              openCourse(initial, resume: true);
+            }
+          });
+          return const Center(child: CircularProgressIndicator());
+        }
+      }
       for (final course in courses) {
         final row = recordMap(course['subject']);
         subjects[recordText(row['id'])] = recordText(row['name']);
