@@ -732,6 +732,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
     if (session.role == 'LEARNER' && selectedIndex == 1) {
       return LearnerCoursesPage(
+        embeddedCourses: true,
         load: widget.state.load,
         submit: widget.state.submit,
         apiBaseUrl: widget.state.api.baseUrl,

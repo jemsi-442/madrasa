@@ -23,12 +23,17 @@ class LearnerLessonReader extends StatefulWidget {
     required this.apiBaseUrl,
     this.surfaceBuilder,
     this.outline = const [],
+    this.embedded = false,
+    this.onBack,
+    this.openVideoOnLoad = false,
   });
   final String id, apiBaseUrl;
   final PageLoader load;
   final PageSubmitter submit;
   final LessonMediaBuilder? surfaceBuilder;
   final List<Map<String, dynamic>> outline;
+  final bool embedded, openVideoOnLoad;
+  final VoidCallback? onBack;
   @override
   State<LearnerLessonReader> createState() => _LearnerLessonReaderState();
 }
@@ -47,6 +52,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   Map<String, dynamic>? savedProgress, selectedAsset;
   String? error;
   String resourceFilter = 'ALL';
+  String? autoOpenedLesson;
   double readingSize = 16;
   final progressByLesson = <String, Map<String, dynamic>>{};
 
@@ -646,7 +652,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               key: const ValueKey('course-outline'),
-              onPressed: saving ? null : () => Navigator.pop(context),
+              onPressed: saving ? null : goBack,
               icon: const Icon(Icons.view_list_outlined),
               label: const Text('Return to curriculum'),
             ),
@@ -654,6 +660,14 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         ],
       ),
     );
+  }
+
+  void goBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -678,13 +692,18 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
           ),
         },
         child: LearningPage(
+          embedded: widget.embedded,
           title: 'Lesson reader',
-          backLabel: focusView ? 'Back to lesson' : 'Back to course',
+          backLabel: focusView
+              ? 'Back to lesson'
+              : widget.embedded
+              ? 'My courses'
+              : 'Back to course',
           onBack: saving
               ? null
               : focusView
               ? toggleFocus
-              : () => Navigator.pop(context),
+              : goBack,
           child: Focus(
             key: lessonAnchor,
             focusNode: lessonFocus,
@@ -708,6 +727,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                           ['VIDEO', 'EMBED'].contains(asset['assetType']),
                     )
                     .firstOrNull;
+                // Load the authorised video surface, without autoplay or progress writes.
+                if (widget.openVideoOnLoad && autoOpenedLesson != lessonId) {
+                  autoOpenedLesson = lessonId;
+                  selectedAsset = playback;
+                }
                 final selectedIndex = available.indexWhere(
                   (asset) => asset['id'] == selectedAsset?['id'],
                 );
@@ -782,10 +806,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                       builder: (context, box) {
                         final name = Text(
                           recordText(recordMap(lesson['course'])['title']),
-                          style: const TextStyle(
-                            color: blue,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                          style: TextStyle(
+                            color: widget.embedded ? ink : blue,
+                            fontSize: widget.embedded ? 30 : 16,
+                            fontWeight: FontWeight.w700,
                           ),
                         );
                         if (focusView || widget.outline.isEmpty) return name;
@@ -835,8 +859,8 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                     const SizedBox(height: 8),
                     Text(
                       recordText(lesson['title']),
-                      style: const TextStyle(
-                        fontSize: 30,
+                      style: TextStyle(
+                        fontSize: widget.embedded ? 22 : 30,
                         fontWeight: FontWeight.w700,
                         color: ink,
                         height: 1.2,

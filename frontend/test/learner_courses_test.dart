@@ -170,6 +170,50 @@ Future<void> tap(WidgetTester tester, String label) async {
 }
 
 void main() {
+  for (final width in [390.0, 1440.0]) {
+    testWidgets('My courses opens lesson inside workspace at $width', (
+      tester,
+    ) async {
+      final data = CoursesFixture()..kind = 'VIDEO';
+      await host(
+        tester,
+        LearnerCoursesPage(
+          embeddedCourses: true,
+          load: (path) async {
+            final result = await data.load(path);
+            if (path.contains('/lessons/')) {
+              result['lesson']['assets'][0]['assetType'] = 'VIDEO';
+            }
+            return result;
+          },
+          submit: data.submit,
+          apiBaseUrl: 'https://school.test',
+          surfaceBuilder: (_, ready, failed) =>
+              const Text('Course video surface'),
+        ),
+        width: width,
+      );
+      final open = find.text('View lessons').first;
+      await tester.ensureVisible(open);
+      await tester.tap(open);
+      await tester.pumpAndSettle();
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.text('Course curriculum'), findsNothing);
+      expect(find.text('Course video surface'), findsOneWidget);
+      expect(data.paths, contains('/api/learner/lessons/22'));
+      expect(data.paths, contains('/api/learner/assets/30/open'));
+      expect(data.paths, isNot(contains('/api/learner/lessons/21')));
+      expect(data.writes, isEmpty);
+      expect(find.text('Lesson resources'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tap(tester, 'My courses');
+      expect(find.text('View lessons'), findsWidgets);
+      expect(find.text('Course video surface'), findsNothing);
+      expect(find.byType(Scaffold), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
   testWidgets('search, subject and access filters work in grid and list', (
     tester,
   ) async {

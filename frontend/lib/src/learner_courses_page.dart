@@ -26,12 +26,14 @@ class LearnerCoursesPage extends StatefulWidget {
     required this.apiBaseUrl,
     this.refreshToken = 0,
     this.surfaceBuilder,
+    this.embeddedCourses = false,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final String apiBaseUrl;
   final int refreshToken;
   final LessonMediaBuilder? surfaceBuilder;
+  final bool embeddedCourses;
   @override
   State<LearnerCoursesPage> createState() => _LearnerCoursesPageState();
 }
@@ -40,11 +42,20 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   String search = '', subject = 'all', access = 'all';
   bool grid = true;
   int changes = 0;
+  Map<String, dynamic>? selectedCourse;
+  bool resumeSelected = false;
 
   Future<void> openCourse(
     Map<String, dynamic> course, {
     bool resume = false,
   }) async {
+    if (widget.embeddedCourses) {
+      setState(() {
+        selectedCourse = course;
+        resumeSelected = resume;
+      });
+      return;
+    }
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (context) => CourseCurriculumPage(
@@ -155,14 +166,31 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
   );
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
-      const SizedBox(height: 24),
-      catalogue(),
-    ],
-  );
+  Widget build(BuildContext context) => selectedCourse != null
+      ? CourseCurriculumPage(
+          key: ValueKey('course-workspace-${selectedCourse!['id']}'),
+          id: recordText(selectedCourse!['id']),
+          load: widget.load,
+          submit: widget.submit,
+          apiBaseUrl: widget.apiBaseUrl,
+          surfaceBuilder: widget.surfaceBuilder,
+          embedded: true,
+          resumeLessonId: resumeSelected
+              ? recordMap(selectedCourse!['resumeLesson'])['id'] as String?
+              : null,
+          onBack: () => setState(() {
+            selectedCourse = null;
+            changes++;
+          }),
+        )
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            MediaPlayerPreviewButton(surfaceBuilder: widget.surfaceBuilder),
+            const SizedBox(height: 24),
+            catalogue(),
+          ],
+        );
 
   Widget catalogue() => TeacherData(
     load: widget.load,
@@ -625,6 +653,8 @@ class CourseCurriculumPage extends StatefulWidget {
     this.surfaceBuilder,
     this.resumeLessonId,
     this.backLabel = 'Back to courses',
+    this.embedded = false,
+    this.onBack,
   });
   final String id, apiBaseUrl;
   final PageLoader load;
@@ -632,6 +662,8 @@ class CourseCurriculumPage extends StatefulWidget {
   final LessonMediaBuilder? surfaceBuilder;
   final String? resumeLessonId;
   final String backLabel;
+  final bool embedded;
+  final VoidCallback? onBack;
   @override
   State<CourseCurriculumPage> createState() => _CourseCurriculumPageState();
 }
@@ -657,190 +689,225 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
   }
 
   @override
-  Widget build(BuildContext context) => LearningPage(
-    title: 'Course curriculum',
-    backLabel: widget.backLabel,
-    onBack: () => Navigator.pop(context),
-    child: TeacherData(
-      load: widget.load,
-      path: '/api/learner/courses/${widget.id}',
-      refreshToken: refresh,
-      builder: (raw) {
-        final course = recordMap(recordMap(raw)['course']),
-            modules = recordList(course['modules']);
-        final lessons = [
-          for (final module in modules)
-            for (final row in recordList(module['lessons']))
-              {
-                ...row,
-                'moduleTitle': recordText(module['title']),
-                'moduleId': module['id'],
-              },
-        ];
-        final next = lessons
+  Widget build(BuildContext context) => widget.embedded
+      ? courseBody()
+      : LearningPage(
+          title: 'Course curriculum',
+          backLabel: widget.backLabel,
+          onBack: widget.onBack ?? () => Navigator.pop(context),
+          child: courseBody(),
+        );
+
+  Widget courseBody() => TeacherData(
+    load: widget.load,
+    path: '/api/learner/courses/${widget.id}',
+    refreshToken: refresh,
+    builder: (raw) {
+      final course = recordMap(recordMap(raw)['course']),
+          modules = recordList(course['modules']);
+      final lessons = [
+        for (final module in modules)
+          for (final row in recordList(module['lessons']))
+            {
+              ...row,
+              'moduleTitle': recordText(module['title']),
+              'moduleId': module['id'],
+            },
+      ];
+      final next = lessons
+          .where(
+            (l) =>
+                courseIsAvailable(l['accessState']) &&
+                recordNumber(recordMap(l['progress'])['progressPercent']) < 100,
+          )
+          .firstOrNull;
+      if (widget.embedded) {
+        final requested = lessons
             .where(
-              (l) =>
-                  courseIsAvailable(l['accessState']) &&
-                  recordNumber(recordMap(l['progress'])['progressPercent']) <
-                      100,
+              (row) =>
+                  recordText(row['id']) == widget.resumeLessonId &&
+                  courseIsAvailable(row['accessState']),
             )
             .firstOrNull;
-        if (!resumeHandled && widget.resumeLessonId != null) {
-          resumeHandled = true;
-          final target = lessons
-              .where(
-                (row) =>
-                    recordText(row['id']) == widget.resumeLessonId &&
-                    courseIsAvailable(row['accessState']),
-              )
-              .firstOrNull;
-          if (target == null) {
-            resumeNotice =
-                'That lesson is no longer available. Choose an available lesson below.';
-          } else {
-            // A resume hint is not authorization. Use the freshly loaded outline.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) lesson(recordText(target['id']), lessons);
-            });
-          }
+        final first = lessons
+            .where((row) => courseIsAvailable(row['accessState']))
+            .firstOrNull;
+        final target = requested ?? next ?? first;
+        if (target != null) {
+          return LearnerLessonReader(
+            key: ValueKey('course-reader-${widget.id}'),
+            id: recordText(target['id']),
+            load: widget.load,
+            submit: widget.submit,
+            apiBaseUrl: widget.apiBaseUrl,
+            surfaceBuilder: widget.surfaceBuilder,
+            outline: lessons,
+            embedded: true,
+            openVideoOnLoad: true,
+            onBack: widget.onBack,
+          );
         }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (resumeNotice != null) ...[
-              TeacherNotice(resumeNotice!, warning: true),
-              const SizedBox(height: 16),
-            ],
-            CourseCover(
-              subject: recordText(
-                recordMap(course['subject'])['name'],
-                'Course curriculum',
+      }
+      if (!resumeHandled && widget.resumeLessonId != null) {
+        resumeHandled = true;
+        final target = lessons
+            .where(
+              (row) =>
+                  recordText(row['id']) == widget.resumeLessonId &&
+                  courseIsAvailable(row['accessState']),
+            )
+            .firstOrNull;
+        if (target == null) {
+          resumeNotice =
+              'That lesson is no longer available. Choose an available lesson below.';
+        } else {
+          // A resume hint is not authorization. Use the freshly loaded outline.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) lesson(recordText(target['id']), lessons);
+          });
+        }
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.embedded)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: widget.onBack,
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('My courses'),
               ),
-              lessons: lessons.length,
             ),
-            const SizedBox(height: 20),
-            Text(
-              recordText(course['title']),
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              recordText(course['summary']),
-              style: const TextStyle(color: muted),
-            ),
-            const SizedBox(height: 14),
-            if (course['description'] != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: SelectableText(recordText(course['description'])),
-              ),
-            Wrap(
-              spacing: 12,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                TeacherTag(
-                  courseAccessLabel(course['accessState']),
-                  color: gold,
-                ),
-                Text(
-                  '${recordMap(course['progress'])['completedLessons']} / ${recordMap(course['progress'])['totalLessons']} lessons complete',
-                ),
-                if (next != null)
-                  FilledButton.icon(
-                    onPressed: () => lesson(recordText(next['id']), lessons),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Continue learning'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            if (!courseIsAvailable(course['accessState']))
-              const Padding(
-                padding: EdgeInsets.only(bottom: 18),
-                child: TeacherNotice(
-                  'Some lessons require school-approved access. Available previews can be opened below. Contact the school about enrolment or payment.',
-                  warning: true,
-                ),
-              ),
-            if (modules.isEmpty)
-              const EmptyRecords('No published lessons in this course yet.'),
-            for (final module in modules)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 18),
-                child: SurfacePanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      PanelHeading(
-                        recordText(module['title']),
-                        subtitle: module['summary'] as String?,
-                      ),
-                      for (final row in recordList(module['lessons']))
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Wrap(
-                            spacing: 14,
-                            runSpacing: 10,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Icon(
-                                recordNumber(
-                                          recordMap(
-                                            row['progress'],
-                                          )['progressPercent'],
-                                        ) >=
-                                        100
-                                    ? Icons.check_circle
-                                    : courseIsAvailable(row['accessState'])
-                                    ? Icons.menu_book_outlined
-                                    : Icons.lock_outline,
-                                color:
-                                    recordNumber(
-                                          recordMap(
-                                            row['progress'],
-                                          )['progressPercent'],
-                                        ) >=
-                                        100
-                                    ? forest
-                                    : muted,
-                              ),
-                              SizedBox(
-                                width: 210,
-                                child: Text(
-                                  recordText(row['title']),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              TeacherTag(courseAccessLabel(row['accessState'])),
-                              if (row['estimatedMinutes'] != null)
-                                Text(
-                                  '${row['estimatedMinutes']} min',
-                                  style: const TextStyle(color: muted),
-                                ),
-                              OutlinedButton(
-                                onPressed: courseIsAvailable(row['accessState'])
-                                    ? () =>
-                                          lesson(recordText(row['id']), lessons)
-                                    : null,
-                                child: Text(
-                                  courseIsAvailable(row['accessState'])
-                                      ? 'Open lesson'
-                                      : 'Locked',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+          if (resumeNotice != null) ...[
+            TeacherNotice(resumeNotice!, warning: true),
+            const SizedBox(height: 16),
           ],
-        );
-      },
-    ),
+          CourseCover(
+            subject: recordText(
+              recordMap(course['subject'])['name'],
+              'Course curriculum',
+            ),
+            lessons: lessons.length,
+          ),
+          const SizedBox(height: 20),
+          Text(
+            recordText(course['title']),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            recordText(course['summary']),
+            style: const TextStyle(color: muted),
+          ),
+          const SizedBox(height: 14),
+          if (course['description'] != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: SelectableText(recordText(course['description'])),
+            ),
+          Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              TeacherTag(courseAccessLabel(course['accessState']), color: gold),
+              Text(
+                '${recordMap(course['progress'])['completedLessons']} / ${recordMap(course['progress'])['totalLessons']} lessons complete',
+              ),
+              if (next != null)
+                FilledButton.icon(
+                  onPressed: () => lesson(recordText(next['id']), lessons),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Continue learning'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          if (!courseIsAvailable(course['accessState']))
+            const Padding(
+              padding: EdgeInsets.only(bottom: 18),
+              child: TeacherNotice(
+                'Some lessons require school-approved access. Available previews can be opened below. Contact the school about enrolment or payment.',
+                warning: true,
+              ),
+            ),
+          if (modules.isEmpty)
+            const EmptyRecords('No published lessons in this course yet.'),
+          for (final module in modules)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: SurfacePanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PanelHeading(
+                      recordText(module['title']),
+                      subtitle: module['summary'] as String?,
+                    ),
+                    for (final row in recordList(module['lessons']))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Wrap(
+                          spacing: 14,
+                          runSpacing: 10,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Icon(
+                              recordNumber(
+                                        recordMap(
+                                          row['progress'],
+                                        )['progressPercent'],
+                                      ) >=
+                                      100
+                                  ? Icons.check_circle
+                                  : courseIsAvailable(row['accessState'])
+                                  ? Icons.menu_book_outlined
+                                  : Icons.lock_outline,
+                              color:
+                                  recordNumber(
+                                        recordMap(
+                                          row['progress'],
+                                        )['progressPercent'],
+                                      ) >=
+                                      100
+                                  ? forest
+                                  : muted,
+                            ),
+                            SizedBox(
+                              width: 210,
+                              child: Text(
+                                recordText(row['title']),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            TeacherTag(courseAccessLabel(row['accessState'])),
+                            if (row['estimatedMinutes'] != null)
+                              Text(
+                                '${row['estimatedMinutes']} min',
+                                style: const TextStyle(color: muted),
+                              ),
+                            OutlinedButton(
+                              onPressed: courseIsAvailable(row['accessState'])
+                                  ? () => lesson(recordText(row['id']), lessons)
+                                  : null,
+                              child: Text(
+                                courseIsAvailable(row['accessState'])
+                                    ? 'Open lesson'
+                                    : 'Locked',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    },
   );
 }

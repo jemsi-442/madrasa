@@ -10,64 +10,82 @@ class LearningPage extends StatelessWidget {
     required this.backLabel,
     required this.onBack,
     required this.child,
+    this.embedded = false,
   });
 
   final String title, backLabel;
   final VoidCallback? onBack;
   final Widget child;
+  final bool embedded;
 
   @override
-  Widget build(BuildContext context) => PageSelection(
-    child: Scaffold(
-      backgroundColor: paper,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: ink,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        shape: const Border(bottom: BorderSide(color: line)),
-        leading: IconButton(
-          tooltip: backLabel,
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back),
-        ),
-        title: Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 17),
-        ),
-        actions: [
-          if (MediaQuery.sizeOf(context).width >= 700)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'LEARNING SPACE',
-                style: TextStyle(
-                  color: muted,
-                  fontSize: 11,
-                  letterSpacing: 1.4,
+  Widget build(BuildContext context) => embedded
+      ? Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back, size: 20),
+                label: Text(backLabel),
+              ),
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        )
+      : PageSelection(
+          child: Scaffold(
+            backgroundColor: paper,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              foregroundColor: ink,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              shape: const Border(bottom: BorderSide(color: line)),
+              leading: IconButton(
+                tooltip: backLabel,
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 17),
+              ),
+              actions: [
+                if (MediaQuery.sizeOf(context).width >= 700)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'LEARNING SPACE',
+                      style: TextStyle(
+                        color: muted,
+                        fontSize: 11,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            body: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                primary: true,
+                padding: EdgeInsets.all(
+                  MediaQuery.sizeOf(context).width < 600 ? 16 : 32,
+                ),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1320),
+                    child: child,
+                  ),
                 ),
               ),
             ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          primary: true,
-          padding: EdgeInsets.all(
-            MediaQuery.sizeOf(context).width < 600 ? 16 : 32,
           ),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1320),
-              child: child,
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
+        );
 }
