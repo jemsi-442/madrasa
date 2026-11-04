@@ -184,6 +184,16 @@ void main() {
       }
       expect(f.events.where((event) => event == 'mount VIDEO').length, 1);
       expect(f.events, isNot(contains('dispose VIDEO')));
+      await tap(t, find.byKey(const ValueKey('close-separate-PDF')));
+      expect(find.text('Test PDF surface'), findsNothing);
+      for (final kind in ['VIDEO', 'AUDIO', 'TEXT', 'IMAGE']) {
+        expect(find.text('Test $kind surface'), findsOneWidget);
+        expect(f.events, isNot(contains('dispose $kind')));
+      }
+      expect(f.events, contains('dispose PDF'));
+      await tap(t, find.byKey(const ValueKey('open-separate-resource-30')));
+      expect(find.text('Test PDF surface'), findsOneWidget);
+      expect(f.paths.where((path) => path.endsWith('/30/open')).length, 2);
       expect(f.writes, isEmpty);
       final locked = t.widget<OutlinedButton>(
         find.byKey(const ValueKey('open-separate-resource-31')),
