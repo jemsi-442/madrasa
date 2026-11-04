@@ -240,6 +240,10 @@ void main() {
       final size = t.getSize(find.byKey(const ValueKey('lesson-media-stage')));
       expect(size.width, closeTo(width, 1));
       expect(size.height, closeTo(size.width * 9 / 16, 1));
+      final stage = t.getRect(find.byKey(const ValueKey('lesson-media-stage')));
+      final reload = t.getRect(find.byTooltip('Reload player'));
+      expect(stage.contains(reload.center), isTrue);
+      expect(reload.height, greaterThanOrEqualTo(48));
       expect(t.takeException(), isNull);
       await t.pumpWidget(const SizedBox());
     });

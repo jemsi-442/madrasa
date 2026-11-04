@@ -209,6 +209,36 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
     super.dispose();
   }
 
+  Widget compactActions() => Material(
+    color: const Color(0xCC0D0E10),
+    borderRadius: BorderRadius.circular(12),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Reload player',
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          visualDensity: VisualDensity.standard,
+          onPressed: loading ? null : reload,
+          color: Colors.white,
+          icon: const Icon(Icons.refresh),
+        ),
+        if (widget.onToggleFocus != null)
+          IconButton(
+            key: const ValueKey('media-focus-view'),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            visualDensity: VisualDensity.standard,
+            tooltip: widget.focusView ? 'Exit focus view' : 'Focus view',
+            onPressed: widget.onToggleFocus,
+            color: Colors.white,
+            icon: Icon(
+              widget.focusView ? Icons.close_fullscreen : Icons.open_in_full,
+            ),
+          ),
+      ],
+    ),
+  );
+
   double videoHeight(BuildContext context, double width) {
     final compact =
         width < 652 || MediaQuery.textScalerOf(context).scale(13) > 20;
@@ -495,7 +525,15 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                 child: Center(child: CircularProgressIndicator()),
               ),
             if (delivery case final source?) ...[
-              surface(source),
+              if (widget.compactVideo)
+                Stack(
+                  children: [
+                    SizedBox(width: double.infinity, child: surface(source)),
+                    Positioned(top: 8, right: 8, child: compactActions()),
+                  ],
+                )
+              else
+                surface(source),
               if (error != null ||
                   (!widget.compactVideo && (!ready || !playback)))
                 Padding(
@@ -529,32 +567,8 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
                 child: TeacherNotice(error!, warning: true),
               ),
-            if (widget.compactVideo)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    tooltip: 'Reload player',
-                    onPressed: loading ? null : reload,
-                    color: playbackAccent,
-                    icon: const Icon(Icons.refresh),
-                  ),
-                  if (widget.onToggleFocus != null)
-                    IconButton(
-                      key: const ValueKey('media-focus-view'),
-                      tooltip: widget.focusView
-                          ? 'Exit focus view'
-                          : 'Focus view',
-                      onPressed: widget.onToggleFocus,
-                      color: playbackAccent,
-                      icon: Icon(
-                        widget.focusView
-                            ? Icons.close_fullscreen
-                            : Icons.open_in_full,
-                      ),
-                    ),
-                ],
-              ),
+            if (widget.compactVideo && delivery == null)
+              Align(alignment: Alignment.centerRight, child: compactActions()),
             if (!widget.compactVideo)
               Padding(
                 padding: const EdgeInsets.symmetric(
