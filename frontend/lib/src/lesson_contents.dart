@@ -53,15 +53,12 @@ class LessonContents extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         for (final entry in groups.entries)
-          ExpansionTile(
-            shape: const Border(),
-            collapsedShape: const Border(),
+          _LessonGroup(
+            collapsible: groups.length > 1,
             key: ValueKey('module-${entry.key}-$currentId'),
             initiallyExpanded: entry.value.any(
               (lesson) => recordText(lesson['id']) == currentId,
             ),
-            tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             title: Text(
               recordText(entry.value.first['moduleTitle'], 'Lessons'),
               style: const TextStyle(
@@ -134,8 +131,8 @@ class LessonContents extends StatelessWidget {
                                     : done
                                     ? Icons.check_circle
                                     : active
-                                    ? Icons.play_circle_outline
-                                    : Icons.menu_book_outlined,
+                                    ? Icons.play_circle_filled
+                                    : Icons.radio_button_unchecked,
                                 size: AfaqDesign.iconSmall,
                                 color: !allowed
                                     ? muted
@@ -143,7 +140,7 @@ class LessonContents extends StatelessWidget {
                                     ? forest
                                     : active
                                     ? gold
-                                    : blue,
+                                    : muted,
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -194,4 +191,37 @@ class LessonContents extends StatelessWidget {
       ],
     );
   }
+}
+
+class _LessonGroup extends StatelessWidget {
+  const _LessonGroup({
+    super.key,
+    required this.collapsible,
+    required this.initiallyExpanded,
+    required this.title,
+    required this.children,
+  });
+
+  final bool collapsible, initiallyExpanded;
+  final Widget title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => collapsible
+      ? ExpansionTile(
+          shape: const Border(),
+          collapsedShape: const Border(),
+          initiallyExpanded: initiallyExpanded,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          title: title,
+          children: children,
+        )
+      : Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        );
 }
