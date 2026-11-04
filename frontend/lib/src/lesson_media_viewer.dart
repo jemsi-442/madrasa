@@ -218,6 +218,13 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         ? (largeText || width < 292 ? 250.0 : 190.0)
         : 128.0;
     final naturalHeight = width * 9 / 16 + toolbar;
+    if (widget.compactVideo && !compact) {
+      return (width * 9 / 16).clamp(
+        320.0,
+        (MediaQuery.sizeOf(context).height * (widget.focusView ? .72 : .48))
+            .clamp(320.0, 900.0),
+      );
+    }
     final availableHeight =
         MediaQuery.sizeOf(context).height *
         (widget.compactVideo && !widget.focusView ? .48 : .72);
@@ -262,6 +269,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                       onError: onFailed,
                     )
                   : platform.LessonMediaSurface(
+                      overlayControls: widget.compactVideo,
                       delivery: source,
                       onReady: onLoaded,
                       onError: onFailed,

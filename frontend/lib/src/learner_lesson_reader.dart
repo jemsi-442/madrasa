@@ -226,7 +226,9 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         ],
         LayoutBuilder(
           builder: (context, box) {
-            final columns = box.maxWidth >= 1080
+            final columns = box.maxWidth >= 1180
+                ? 5
+                : box.maxWidth >= 960
                 ? 4
                 : box.maxWidth >= 760
                 ? 3
@@ -263,30 +265,45 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  lessonResourceIcon(
-                                    recordText(asset['assetType']),
-                                  ),
-                                  color: gold,
-                                  size: 28,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    recordText(
-                                      asset['title'],
-                                      'Lesson resource',
+                            Container(
+                              height: 76,
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: resourceAccent(
+                                  recordText(asset['assetType']),
+                                ).withValues(alpha: .1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    lessonResourceIcon(
+                                      recordText(asset['assetType']),
                                     ),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: ink,
+                                    color: resourceAccent(
+                                      recordText(asset['assetType']),
                                     ),
+                                    size: 36,
                                   ),
-                                ),
-                              ],
+                                  const Spacer(),
+                                  if (selectedAsset?['id'] == asset['id'])
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: forest,
+                                      size: 22,
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              recordText(asset['title'], 'Lesson resource'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: ink,
+                                fontSize: 15,
+                                height: 1.35,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -340,6 +357,14 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       ],
     ),
   );
+
+  Color resourceAccent(String kind) => switch (kind) {
+    'PDF' => const Color(0xFFB73435),
+    'AUDIO' => const Color(0xFF996C14),
+    'IMAGE' => const Color(0xFF207C66),
+    'VIDEO' || 'EMBED' => ink,
+    _ => blue,
+  };
 
   Widget reading(Map<String, dynamic> lesson) => Focus(
     key: notesAnchor,

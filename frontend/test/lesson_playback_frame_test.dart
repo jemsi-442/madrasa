@@ -5,6 +5,55 @@ import 'package:mif_app/src/lesson_playback_frame.dart';
 import 'package:mif_app/src/lesson_playback_tools.dart';
 
 void main() {
+  for (final size in [const Size(800, 450), const Size(390, 420)]) {
+    testWidgets('course video uses responsive overlay controls at $size', (
+      t,
+    ) async {
+      var plays = 0;
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: size.width,
+                height: size.height,
+                child: LessonPlaybackFrame(
+                  overlayControls: true,
+                  ready: true,
+                  failed: false,
+                  onPlay: () => plays++,
+                  controls: SizedBox(
+                    height: 80,
+                    child: TextButton(
+                      onPressed: () => plays++,
+                      child: const Text('Transport play'),
+                    ),
+                  ),
+                  child: const ColoredBox(color: Colors.blue),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final overlay = size.width >= 652;
+      expect(
+        find.byKey(const ValueKey('video-overlay-layout')),
+        overlay ? findsOneWidget : findsNothing,
+      );
+      expect(
+        t.getSize(find.byKey(const ValueKey('playback-screen'))).height,
+        overlay ? size.height : size.height - 80,
+      );
+      await t.tap(find.text('Transport play'));
+      expect(plays, 1);
+      await t.tap(find.byTooltip('Play video'));
+      expect(plays, 2);
+      expect(t.takeException(), isNull);
+    });
+  }
+
   testWidgets('central Play gives the stage keyboard focus', (t) async {
     var plays = 0, fullscreen = 0;
     await t.pumpWidget(

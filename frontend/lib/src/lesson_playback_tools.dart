@@ -36,12 +36,14 @@ class LessonPlaybackTools extends StatefulWidget {
     this.onLoop,
     this.onFocus,
     this.fullscreenControl = false,
+    this.transparent = false,
   });
 
   final double speed, volume;
   final Duration position, duration;
   final bool playing, looping, focusView;
   final bool fullscreenControl;
+  final bool transparent;
   final VoidCallback? onPlay,
       onStop,
       onBackward,
@@ -121,7 +123,7 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
     final position = (scrubbing ?? widget.position.inMilliseconds.toDouble())
         .clamp(0.0, max > 0 ? max : 1.0);
     return Material(
-      color: playbackPanel,
+      color: widget.transparent ? Colors.transparent : playbackPanel,
       child: Theme(
         data: Theme.of(context).copyWith(
           brightness: Brightness.dark,

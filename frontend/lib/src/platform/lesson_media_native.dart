@@ -15,11 +15,13 @@ class LessonMediaSurface extends StatefulWidget {
     required this.onError,
     this.onToggleFocus,
     this.focusView = false,
+    this.overlayControls = false,
   });
   final LessonMediaDelivery delivery;
   final VoidCallback onReady, onError;
   final VoidCallback? onToggleFocus;
   final bool focusView;
+  final bool overlayControls;
   @override
   State<LessonMediaSurface> createState() => _LessonMediaSurfaceState();
 }
@@ -209,6 +211,7 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
           )
         : null;
     return LessonPlaybackFrame(
+      overlayControls: widget.overlayControls,
       ready: ready,
       failed: failed,
       audio: widget.delivery.kind == 'AUDIO',
@@ -219,6 +222,7 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface>
       onForward: forward,
       onMute: ready ? mute : null,
       controls: LessonPlaybackTools(
+        transparent: widget.overlayControls,
         speed: value?.playbackSpeed ?? 1,
         position: value?.position ?? Duration.zero,
         duration: value?.duration ?? Duration.zero,
