@@ -219,11 +219,8 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         : 128.0;
     final naturalHeight = width * 9 / 16 + toolbar;
     if (widget.compactVideo && !compact) {
-      return (width * 9 / 16).clamp(
-        320.0,
-        (MediaQuery.sizeOf(context).height * (widget.focusView ? .72 : .48))
-            .clamp(320.0, 900.0),
-      );
+      // Inline course video fills its column without cropping its aspect ratio.
+      return width * 9 / 16;
     }
     final availableHeight =
         MediaQuery.sizeOf(context).height *
@@ -288,7 +285,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
     alignment: Alignment.topCenter,
     child: ConstrainedBox(
       constraints: BoxConstraints(
-        maxWidth: delivery?.kind == 'VIDEO'
+        maxWidth: delivery?.kind == 'VIDEO' && !widget.compactVideo
             ? ((MediaQuery.sizeOf(context).height * .72 - 128).clamp(
                     200.0,
                     540.0,

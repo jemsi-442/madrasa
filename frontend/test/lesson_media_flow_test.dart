@@ -222,6 +222,29 @@ void main() {
     );
   }
 
+  for (final width in [720.0, 1100.0]) {
+    testWidgets('inline video fills its column at width $width', (t) async {
+      await host(
+        t,
+        SizedBox(
+          width: width,
+          child: LessonMediaViewer(
+            assetId: '3',
+            apiBaseUrl: 'https://school.test',
+            load: (_) async => response(),
+            compactVideo: true,
+            surfaceBuilder: (_, ready, failed) => const Text('Video'),
+          ),
+        ),
+      );
+      final size = t.getSize(find.byKey(const ValueKey('lesson-media-stage')));
+      expect(size.width, closeTo(width, 1));
+      expect(size.height, closeTo(size.width * 9 / 16, 1));
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+    });
+  }
+
   testWidgets('phone focus action stays beside the video title', (t) async {
     t.view.physicalSize = const Size(390, 844);
     t.view.devicePixelRatio = 1;
