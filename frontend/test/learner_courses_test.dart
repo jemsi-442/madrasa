@@ -205,6 +205,35 @@ void main() {
       expect(data.paths, isNot(contains('/api/learner/lessons/21')));
       expect(data.writes, isEmpty);
       expect(find.text('Lesson resources'), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('lesson-media-stage'))).height,
+        lessThanOrEqualTo(1400 * .48),
+      );
+      expect(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('workspace-lesson-title')))
+            .dy,
+        greaterThan(tester.getBottomLeft(find.text('Course video surface')).dy),
+      );
+      final videoRequests = data.paths
+          .where((p) => p.endsWith('/assets/30/open'))
+          .length;
+      for (final tab in ['Resources', 'About', 'Lessons']) {
+        final target = find.byKey(ValueKey('course-tab-$tab'));
+        await tester.ensureVisible(target);
+        await tester.tap(target);
+        await tester.pumpAndSettle();
+        expect(find.text('Course video surface'), findsOneWidget);
+      }
+      expect(
+        data.paths.where((p) => p.endsWith('/assets/30/open')).length,
+        videoRequests,
+      );
+      expect(data.writes, isEmpty);
+      expect(
+        find.text('Opening media does not mark the lesson complete.'),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
       await tap(tester, 'My courses');
       expect(find.text('View lessons'), findsWidgets);

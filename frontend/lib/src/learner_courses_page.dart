@@ -744,6 +744,7 @@ class _CourseCurriculumPageState extends State<CourseCurriculumPage> {
             outline: lessons,
             embedded: true,
             openVideoOnLoad: true,
+            courseInfo: course,
             onBack: widget.onBack,
           );
         }

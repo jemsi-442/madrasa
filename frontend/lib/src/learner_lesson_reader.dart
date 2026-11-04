@@ -8,6 +8,7 @@ import 'foundation_ui.dart';
 import 'learning_page.dart';
 import 'lesson_media_viewer.dart';
 import 'lesson_contents.dart';
+import 'learning_library_ui.dart';
 import 'teacher_ui.dart';
 
 class _ExitMediaFocusIntent extends Intent {
@@ -26,6 +27,7 @@ class LearnerLessonReader extends StatefulWidget {
     this.embedded = false,
     this.onBack,
     this.openVideoOnLoad = false,
+    this.courseInfo = const {},
   });
   final String id, apiBaseUrl;
   final PageLoader load;
@@ -34,6 +36,7 @@ class LearnerLessonReader extends StatefulWidget {
   final List<Map<String, dynamic>> outline;
   final bool embedded, openVideoOnLoad;
   final VoidCallback? onBack;
+  final Map<String, dynamic> courseInfo;
   @override
   State<LearnerLessonReader> createState() => _LearnerLessonReaderState();
 }
@@ -47,6 +50,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   final notesAnchor = GlobalKey();
   final mediaFocus = FocusNode(debugLabel: 'Lesson resource');
   final notesFocus = FocusNode(debugLabel: 'Lesson notes');
+  final resourcesAnchor = GlobalKey();
+  final resourcesFocus = FocusNode(debugLabel: 'Lesson resources');
+  final aboutAnchor = GlobalKey();
+  final aboutFocus = FocusNode(debugLabel: 'About course');
+  String workspaceTab = 'Lessons';
   final contentsScroll = ScrollController();
   bool saving = false, focusView = false;
   Map<String, dynamic>? savedProgress, selectedAsset;
@@ -69,6 +77,8 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     lessonFocus.dispose();
     mediaFocus.dispose();
     notesFocus.dispose();
+    resourcesFocus.dispose();
+    aboutFocus.dispose();
     contentsScroll.dispose();
     super.dispose();
   }
@@ -122,6 +132,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       error = null;
       focusView = false;
       resourceFilter = 'ALL';
+      workspaceTab = 'Lessons';
       // The outline is navigation context, not authorization. Load each lesson
       // again so revoked access and updated progress are checked by the server.
       current = requestLesson(lessonId);
@@ -420,11 +431,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Mark complete when you finish this lesson. Opening a resource does not save completion.',
-            style: TextStyle(color: muted, fontSize: 12, height: 1.6),
-          ),
+          if (!widget.embedded) const SizedBox(height: 12),
+          if (!widget.embedded)
+            const Text(
+              'Mark complete when you finish this lesson. Opening a resource does not save completion.',
+              style: TextStyle(color: muted, fontSize: 12, height: 1.6),
+            ),
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -434,6 +446,82 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       ),
     );
   }
+
+  Widget workspaceTabs() => Container(
+    margin: const EdgeInsets.only(top: 24, bottom: 20),
+    decoration: const BoxDecoration(
+      border: Border(bottom: BorderSide(color: line)),
+    ),
+    child: Wrap(
+      spacing: 16,
+      children: [
+        for (final item in const {
+          'Lessons': Icons.play_circle_outline,
+          'About': Icons.info_outline,
+          'Resources': Icons.layers_outlined,
+        }.entries)
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: workspaceTab == item.key ? gold : Colors.transparent,
+                  width: 3,
+                ),
+              ),
+            ),
+            child: TextButton.icon(
+              key: ValueKey('course-tab-${item.key}'),
+              style: TextButton.styleFrom(
+                foregroundColor: workspaceTab == item.key ? gold : ink,
+                minimumSize: const Size(0, 52),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () {
+                setState(() => workspaceTab = item.key);
+                switch (item.key) {
+                  case 'Lessons':
+                    reveal(mediaAnchor, mediaFocus);
+                  case 'About':
+                    reveal(aboutAnchor, aboutFocus);
+                  case 'Resources':
+                    reveal(resourcesAnchor, resourcesFocus);
+                }
+              },
+              icon: Icon(item.value, size: 24),
+              label: Text(item.key),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  Widget lessonHeading(Map<String, dynamic> lesson, int index) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        '${index < 0 ? '' : 'Lesson ${index + 1}: '}${recordText(lesson['title'])}',
+        key: const ValueKey('workspace-lesson-title'),
+        style: const TextStyle(
+          color: ink,
+          fontSize: 24,
+          height: 1.25,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      if (recordText(lesson['summary'], '').trim().isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text(
+          recordText(lesson['summary']),
+          style: const TextStyle(color: muted, fontSize: 16, height: 1.5),
+        ),
+      ],
+      const SizedBox(height: 14),
+    ],
+  );
 
   Widget adjacentLesson(Map<String, dynamic>? lesson, {required bool next}) {
     final available = lesson != null && lessonAvailable(lesson);
@@ -772,6 +860,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                 ),
                               )
                       : LessonMediaViewer(
+                          compactVideo:
+                              widget.embedded &&
+                              [
+                                'VIDEO',
+                                'EMBED',
+                              ].contains(selectedAsset!['assetType']),
                           key: ValueKey(selectedAsset!['id']),
                           assetId: recordText(selectedAsset!['id']),
                           title: recordText(
@@ -804,7 +898,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                   children: [
                     LayoutBuilder(
                       builder: (context, box) {
-                        final name = Text(
+                        final title = Text(
                           recordText(recordMap(lesson['course'])['title']),
                           style: TextStyle(
                             color: widget.embedded ? ink : blue,
@@ -812,6 +906,58 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                             fontWeight: FontWeight.w700,
                           ),
                         );
+                        final subject = recordText(
+                          recordMap(widget.courseInfo['subject'])['name'],
+                          '',
+                        );
+                        final name = widget.embedded
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [gold, Color(0xFF916315)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Icon(
+                                      subjectStyle(subject).$1,
+                                      color: Colors.white,
+                                      size: 34,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 18),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        title,
+                                        if (recordText(
+                                          widget.courseInfo['summary'],
+                                          '',
+                                        ).isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            recordText(
+                                              widget.courseInfo['summary'],
+                                            ),
+                                            style: const TextStyle(
+                                              color: muted,
+                                              fontSize: 16,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : title;
                         if (focusView || widget.outline.isEmpty) return name;
                         if (box.maxWidth < 760) {
                           return Column(
@@ -835,7 +981,8 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         );
                       },
                     ),
-                    if (lessonIndex >= 0) ...[
+                    if (widget.embedded && !focusView) workspaceTabs(),
+                    if (!widget.embedded && lessonIndex >= 0) ...[
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 12,
@@ -856,17 +1003,18 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         ],
                       ),
                     ],
-                    const SizedBox(height: 8),
-                    Text(
-                      recordText(lesson['title']),
-                      style: TextStyle(
-                        fontSize: widget.embedded ? 22 : 30,
-                        fontWeight: FontWeight.w700,
-                        color: ink,
-                        height: 1.2,
+                    if (!widget.embedded) const SizedBox(height: 8),
+                    if (!widget.embedded)
+                      Text(
+                        recordText(lesson['title']),
+                        style: TextStyle(
+                          fontSize: widget.embedded ? 22 : 30,
+                          fontWeight: FontWeight.w700,
+                          color: ink,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                    if (lesson['summary'] != null)
+                    if (!widget.embedded && lesson['summary'] != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 10),
                         child: Text(
@@ -874,7 +1022,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                           style: const TextStyle(color: muted, height: 1.6),
                         ),
                       ),
-                    const SizedBox(height: 24),
+                    if (!widget.embedded) const SizedBox(height: 24),
                     if (focusView) stage,
                     if (!focusView)
                       LayoutBuilder(
@@ -891,8 +1039,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     children: [
                                       stage,
                                       const SizedBox(height: 20),
-                                      reading(lesson),
-                                      const SizedBox(height: 20),
+                                      if (widget.embedded)
+                                        lessonHeading(lesson, lessonIndex),
+                                      if (!widget.embedded) reading(lesson),
+                                      if (!widget.embedded)
+                                        const SizedBox(height: 20),
                                       completion(progress),
                                     ],
                                   ),
@@ -919,20 +1070,63 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                             children: [
                               stage,
                               const SizedBox(height: 20),
+                              if (widget.embedded) ...[
+                                lessonHeading(lesson, lessonIndex),
+                                completion(progress),
+                                const SizedBox(height: 20),
+                              ],
                               if (widget.outline.isNotEmpty) ...[
                                 contents(progress, compact: true),
                                 const SizedBox(height: 18),
                               ],
-                              reading(lesson),
-                              const SizedBox(height: 20),
-                              completion(progress),
+                              if (!widget.embedded) ...[
+                                reading(lesson),
+                                const SizedBox(height: 20),
+                                completion(progress),
+                              ],
                             ],
                           );
                         },
                       ),
                     if (!focusView) ...[
                       const SizedBox(height: 24),
-                      resources(assets),
+                      Focus(
+                        key: resourcesAnchor,
+                        focusNode: resourcesFocus,
+                        child: resources(assets),
+                      ),
+                      if (widget.embedded) ...[
+                        const SizedBox(height: 24),
+                        reading(lesson),
+                        const SizedBox(height: 24),
+                        Focus(
+                          key: aboutAnchor,
+                          focusNode: aboutFocus,
+                          child: SurfacePanel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const PanelHeading('About this course'),
+                                const SizedBox(height: 12),
+                                Text(
+                                  recordText(
+                                    widget.courseInfo['description'],
+                                    recordText(
+                                      widget.courseInfo['summary'],
+                                      'No course description provided.',
+                                    ),
+                                  ),
+                                  style: const TextStyle(
+                                    color: muted,
+                                    fontSize: 16,
+                                    height: 1.6,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                     if (!focusView && lessonIndex >= 0) ...[
                       const SizedBox(height: 20),

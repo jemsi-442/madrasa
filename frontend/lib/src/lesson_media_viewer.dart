@@ -44,6 +44,7 @@ class LessonMediaViewer extends StatefulWidget {
     this.onNext,
     this.onToggleFocus,
     this.focusView = false,
+    this.compactVideo = false,
     this.surfaceBuilder,
   }) : previewSample = null,
        assert((position == null) == (total == null)),
@@ -61,6 +62,7 @@ class LessonMediaViewer extends StatefulWidget {
     this.surfaceBuilder,
     this.onClose,
   }) : previewSample = sample,
+       compactVideo = false,
        teacherResource = false,
        assetId = '',
        apiBaseUrl = '',
@@ -76,6 +78,7 @@ class LessonMediaViewer extends StatefulWidget {
   final int? position, total;
   final VoidCallback? onPrevious, onNext, onToggleFocus;
   final bool focusView;
+  final bool compactVideo;
   final LessonMediaBuilder? surfaceBuilder;
   @override
   State<LessonMediaViewer> createState() => _LessonMediaViewerState();
@@ -215,7 +218,9 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         ? (largeText || width < 292 ? 250.0 : 190.0)
         : 128.0;
     final naturalHeight = width * 9 / 16 + toolbar;
-    final availableHeight = MediaQuery.sizeOf(context).height * .72;
+    final availableHeight =
+        MediaQuery.sizeOf(context).height *
+        (widget.compactVideo && !widget.focusView ? .48 : .72);
     return naturalHeight.clamp(
       toolbar + 160,
       availableHeight < toolbar + 160 ? toolbar + 160 : availableHeight,
@@ -295,112 +300,118 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        lessonResourceIcon(delivery?.kind ?? ''),
-                        color: gold,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          delivery?.title ?? widget.title,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: playback ? Colors.white : ink,
+            if (!widget.compactVideo)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          lessonResourceIcon(delivery?.kind ?? ''),
+                          color: gold,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            delivery?.title ?? widget.title,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: playback ? Colors.white : ink,
+                            ),
                           ),
                         ),
-                      ),
-                      if (widget.onToggleFocus != null &&
-                          MediaQuery.sizeOf(context).width < 600)
-                        IconButton(
-                          key: const ValueKey('media-focus-view'),
-                          tooltip: widget.focusView
-                              ? 'Exit focus view'
-                              : 'Focus view',
-                          onPressed: widget.onToggleFocus,
-                          color: playback ? playbackAccent : ink,
-                          constraints: const BoxConstraints(
-                            minWidth: 48,
-                            minHeight: 48,
+                        if (widget.onToggleFocus != null &&
+                            MediaQuery.sizeOf(context).width < 600)
+                          IconButton(
+                            key: const ValueKey('media-focus-view'),
+                            tooltip: widget.focusView
+                                ? 'Exit focus view'
+                                : 'Focus view',
+                            onPressed: widget.onToggleFocus,
+                            color: playback ? playbackAccent : ink,
+                            constraints: const BoxConstraints(
+                              minWidth: 48,
+                              minHeight: 48,
+                            ),
+                            icon: Icon(
+                              widget.focusView
+                                  ? Icons.close_fullscreen
+                                  : Icons.open_in_full,
+                            ),
                           ),
-                          icon: Icon(
-                            widget.focusView
-                                ? Icons.close_fullscreen
-                                : Icons.open_in_full,
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        TeacherTag(
+                          loading
+                              ? 'Opening resource'
+                              : error != null
+                              ? 'Needs attention'
+                              : ready
+                              ? 'Ready'
+                              : 'Loading controls',
+                          color: playback
+                              ? (error != null
+                                    ? playbackAccent
+                                    : const Color(0xFF7DDCB4))
+                              : (error != null ? gold : forest),
+                        ),
+                        if (delivery != null)
+                          Text(
+                            delivery!.kind,
+                            style: TextStyle(color: secondary, fontSize: 11),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      TeacherTag(
-                        loading
-                            ? 'Opening resource'
-                            : error != null
-                            ? 'Needs attention'
-                            : ready
-                            ? 'Ready'
-                            : 'Loading controls',
-                        color: playback
-                            ? (error != null
-                                  ? playbackAccent
-                                  : const Color(0xFF7DDCB4))
-                            : (error != null ? gold : forest),
-                      ),
-                      if (delivery != null)
-                        Text(
-                          delivery!.kind,
-                          style: TextStyle(color: secondary, fontSize: 11),
-                        ),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: playback ? playbackAccent : ink,
-                        ),
-                        onPressed: loading ? null : reload,
-                        icon: const Icon(
-                          Icons.refresh,
-                          size: AfaqDesign.iconSmall,
-                        ),
-                        label: Text(
-                          playback ? 'Reload player' : 'Reload resource',
-                        ),
-                      ),
-                      if (widget.onToggleFocus != null &&
-                          MediaQuery.sizeOf(context).width >= 600)
                         TextButton.icon(
                           style: TextButton.styleFrom(
                             foregroundColor: playback ? playbackAccent : ink,
                           ),
-                          key: const ValueKey('media-focus-view'),
-                          onPressed: widget.onToggleFocus,
-                          icon: Icon(
-                            widget.focusView
-                                ? Icons.close_fullscreen
-                                : Icons.open_in_full,
+                          onPressed: loading ? null : reload,
+                          icon: const Icon(
+                            Icons.refresh,
                             size: AfaqDesign.iconSmall,
                           ),
                           label: Text(
-                            widget.focusView ? 'Exit focus view' : 'Focus view',
+                            playback ? 'Reload player' : 'Reload resource',
                           ),
                         ),
-                    ],
-                  ),
-                ],
+                        if (widget.onToggleFocus != null &&
+                            MediaQuery.sizeOf(context).width >= 600)
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: playback ? playbackAccent : ink,
+                            ),
+                            key: const ValueKey('media-focus-view'),
+                            onPressed: widget.onToggleFocus,
+                            icon: Icon(
+                              widget.focusView
+                                  ? Icons.close_fullscreen
+                                  : Icons.open_in_full,
+                              size: AfaqDesign.iconSmall,
+                            ),
+                            label: Text(
+                              widget.focusView
+                                  ? 'Exit focus view'
+                                  : 'Focus view',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (widget.position != null)
+            if (widget.position != null && !widget.compactVideo)
               Container(
                 key: const ValueKey('media-resource-navigation'),
                 padding: const EdgeInsets.symmetric(
@@ -480,7 +491,8 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
               ),
             if (delivery case final source?) ...[
               surface(source),
-              if (error != null || !ready || !playback)
+              if (error != null ||
+                  (!widget.compactVideo && (!ready || !playback)))
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
                   child: Text(
@@ -512,37 +524,67 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
                 child: TeacherNotice(error!, warning: true),
               ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            if (widget.compactVideo)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (widget.onClose != null)
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        foregroundColor: playback ? playbackAccent : ink,
-                      ),
-                      key: const ValueKey('return-to-lesson-text'),
-                      onPressed: widget.onClose,
-                      icon: const Icon(
-                        Icons.menu_book_outlined,
-                        size: AfaqDesign.iconSmall,
-                      ),
-                      label: const Text('Back to lesson text'),
-                    ),
-                  Text(
-                    widget.previewSample == null
-                        ? 'Opening media does not mark the lesson complete.'
-                        : 'Sample only. No school records or learning progress are saved.',
-                    style: TextStyle(
-                      color: secondary,
-                      fontSize: 11,
-                      height: 1.5,
-                    ),
+                  IconButton(
+                    tooltip: 'Reload player',
+                    onPressed: loading ? null : reload,
+                    color: playbackAccent,
+                    icon: const Icon(Icons.refresh),
                   ),
+                  if (widget.onToggleFocus != null)
+                    IconButton(
+                      key: const ValueKey('media-focus-view'),
+                      tooltip: widget.focusView
+                          ? 'Exit focus view'
+                          : 'Focus view',
+                      onPressed: widget.onToggleFocus,
+                      color: playbackAccent,
+                      icon: Icon(
+                        widget.focusView
+                            ? Icons.close_fullscreen
+                            : Icons.open_in_full,
+                      ),
+                    ),
                 ],
               ),
-            ),
+            if (!widget.compactVideo)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.onClose != null)
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: playback ? playbackAccent : ink,
+                        ),
+                        key: const ValueKey('return-to-lesson-text'),
+                        onPressed: widget.onClose,
+                        icon: const Icon(
+                          Icons.menu_book_outlined,
+                          size: AfaqDesign.iconSmall,
+                        ),
+                        label: const Text('Back to lesson text'),
+                      ),
+                    Text(
+                      widget.previewSample == null
+                          ? 'Opening media does not mark the lesson complete.'
+                          : 'Sample only. No school records or learning progress are saved.',
+                      style: TextStyle(
+                        color: secondary,
+                        fontSize: 11,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
