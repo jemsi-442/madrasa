@@ -473,7 +473,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   }
 
   Widget workspaceTabs() => Container(
-    margin: const EdgeInsets.only(top: 24, bottom: 20),
+    margin: const EdgeInsets.only(top: 16, bottom: 16),
     decoration: const BoxDecoration(
       border: Border(bottom: BorderSide(color: line)),
     ),
@@ -498,7 +498,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
               key: ValueKey('course-tab-${item.key}'),
               style: TextButton.styleFrom(
                 foregroundColor: workspaceTab == item.key ? gold : ink,
-                minimumSize: const Size(0, 52),
+                minimumSize: const Size(0, 48),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 textStyle: const TextStyle(
                   fontSize: 16,
@@ -923,11 +923,15 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                   children: [
                     LayoutBuilder(
                       builder: (context, box) {
+                        final compactHeader = box.maxWidth < 600;
                         final title = Text(
+                          key: const ValueKey('workspace-course-title'),
                           recordText(recordMap(lesson['course'])['title']),
                           style: TextStyle(
                             color: widget.embedded ? ink : blue,
-                            fontSize: widget.embedded ? 30 : 16,
+                            fontSize: widget.embedded
+                                ? (compactHeader ? 24 : 30)
+                                : 16,
                             fontWeight: FontWeight.w700,
                           ),
                         );
@@ -940,8 +944,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Container(
-                                    width: 64,
-                                    height: 64,
+                                    key: const ValueKey(
+                                      'workspace-course-icon',
+                                    ),
+                                    width: compactHeader ? 48 : 64,
+                                    height: compactHeader ? 48 : 64,
                                     decoration: BoxDecoration(
                                       gradient: const LinearGradient(
                                         colors: [gold, Color(0xFF916315)],
@@ -951,10 +958,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     child: Icon(
                                       subjectStyle(subject).$1,
                                       color: Colors.white,
-                                      size: 34,
+                                      size: compactHeader ? 28 : 34,
                                     ),
                                   ),
-                                  const SizedBox(width: 18),
+                                  SizedBox(width: compactHeader ? 12 : 18),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:

@@ -205,6 +205,16 @@ void main() {
       expect(data.paths, isNot(contains('/api/learner/lessons/21')));
       expect(data.writes, isEmpty);
       expect(find.text('Lesson resources'), findsOneWidget);
+      final heading = tester.widget<Text>(
+        find.byKey(const ValueKey('workspace-course-title')),
+      );
+      expect(heading.style?.fontSize, width < 600 ? 24 : 30);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('workspace-course-icon'))),
+        width < 600 ? const Size(48, 48) : const Size(64, 64),
+      );
+      final tabs = find.byKey(const ValueKey('course-tab-Lessons'));
+      expect(tester.getSize(tabs).height, greaterThanOrEqualTo(48));
       expect(
         tester.getSize(find.byKey(const ValueKey('lesson-media-stage'))).height,
         lessThanOrEqualTo(1400 * .48),

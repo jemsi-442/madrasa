@@ -31,7 +31,7 @@ class LearningPage extends StatelessWidget {
                 label: Text(backLabel),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             child,
           ],
         )
