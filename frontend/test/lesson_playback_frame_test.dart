@@ -5,6 +5,64 @@ import 'package:mif_app/src/lesson_playback_frame.dart';
 import 'package:mif_app/src/lesson_playback_tools.dart';
 
 void main() {
+  testWidgets('central Play gives the stage keyboard focus', (t) async {
+    var plays = 0, fullscreen = 0;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 440,
+            child: LessonPlaybackFrame(
+              ready: true,
+              failed: false,
+              onPlay: () => plays++,
+              onFullscreen: () => fullscreen++,
+              controls: const SizedBox(height: 80),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.byTooltip('Play video'));
+    await t.pump();
+    expect(plays, 1);
+    await t.sendKeyEvent(LogicalKeyboardKey.space);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyF);
+    expect(plays, 2);
+    expect(fullscreen, 1);
+  });
+
+  for (final audio in [true, false]) {
+    testWidgets(
+      'fullscreen shortcut is ignored for ${audio ? 'audio' : 'failed video'}',
+      (t) async {
+        var requests = 0;
+        await t.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                height: 440,
+                child: LessonPlaybackFrame(
+                  ready: audio,
+                  failed: !audio,
+                  audio: audio,
+                  onFullscreen: () => requests++,
+                  controls: const SizedBox(height: 80),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ),
+          ),
+        );
+        await t.tap(find.byKey(const ValueKey('playback-screen')));
+        await t.pump();
+        await t.sendKeyEvent(LogicalKeyboardKey.keyF);
+        expect(requests, 0);
+      },
+    );
+  }
+
   testWidgets('short frames keep the stage visible and controls scrollable', (
     t,
   ) async {
@@ -53,7 +111,7 @@ void main() {
   testWidgets('stage shortcuts control playback without stealing button keys', (
     t,
   ) async {
-    var plays = 0, back = 0, forward = 0, mutes = 0, stops = 0;
+    var plays = 0, back = 0, forward = 0, mutes = 0, stops = 0, fullscreen = 0;
     await t.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -67,6 +125,7 @@ void main() {
               onBackward: () => back++,
               onForward: () => forward++,
               onMute: () => mutes++,
+              onFullscreen: () => fullscreen++,
               controls: LessonPlaybackTools(speed: 1, onStop: () => stops++),
               child: const SizedBox.expand(),
             ),
@@ -81,13 +140,19 @@ void main() {
     await t.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await t.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await t.sendKeyEvent(LogicalKeyboardKey.keyM);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyF);
+    expect(fullscreen, 1);
     expect([plays, back, forward, mutes], [2, 1, 1, 1]);
     await t.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyF);
     await t.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await t.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
     expect(back, 1);
+    expect(fullscreen, 1);
     await t.sendKeyEvent(LogicalKeyboardKey.tab);
     await t.pump();
+    await t.sendKeyEvent(LogicalKeyboardKey.keyF);
+    expect(fullscreen, 1);
     await t.sendKeyEvent(LogicalKeyboardKey.space);
     await t.pump();
     expect(stops, 1);

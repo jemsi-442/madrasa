@@ -17,10 +17,11 @@ class LessonPlaybackFrame extends StatefulWidget {
     this.onBackward,
     this.onForward,
     this.onMute,
+    this.onFullscreen,
   });
   final Widget child, controls;
   final bool ready, failed, audio, buffering, playing;
-  final VoidCallback? onPlay, onBackward, onForward, onMute;
+  final VoidCallback? onPlay, onBackward, onForward, onMute, onFullscreen;
   @override
   State<LessonPlaybackFrame> createState() => _LessonPlaybackFrameState();
 }
@@ -52,6 +53,7 @@ class _LessonPlaybackFrameState extends State<LessonPlaybackFrame> {
         LogicalKeyboardKey.arrowLeft => widget.onBackward,
         LogicalKeyboardKey.arrowRight => widget.onForward,
         LogicalKeyboardKey.keyM => widget.onMute,
+        LogicalKeyboardKey.keyF => widget.audio ? null : widget.onFullscreen,
         _ => null,
       };
       if (action == null) return KeyEventResult.ignored;
@@ -134,7 +136,12 @@ class _LessonPlaybackFrameState extends State<LessonPlaybackFrame> {
                       Center(
                         child: IconButton.filled(
                           tooltip: 'Play video',
-                          onPressed: widget.onPlay,
+                          onPressed: widget.onPlay == null
+                              ? null
+                              : () {
+                                  keyboard.requestFocus();
+                                  widget.onPlay!();
+                                },
                           style: IconButton.styleFrom(
                             backgroundColor: Colors.black.withValues(
                               alpha: .72,

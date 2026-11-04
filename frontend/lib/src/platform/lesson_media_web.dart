@@ -317,6 +317,9 @@ class _LessonMediaSurfaceState extends State<LessonMediaSurface> {
       onBackward: backward,
       onForward: forward,
       onMute: mute,
+      onFullscreen: enabled && widget.delivery.kind == 'VIDEO'
+          ? openFullscreen
+          : null,
       controls: LessonPlaybackTools(
         speed: node?.playbackRate ?? 1,
         position: Duration(
