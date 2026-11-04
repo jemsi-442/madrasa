@@ -115,6 +115,86 @@ Future<void> tap(WidgetTester t, Finder target) async {
 
 void main() {
   for (final width in [390.0, 1440.0]) {
+    testWidgets('embedded media open in separate panels at $width', (t) async {
+      final f = MediaFixture();
+      await host(
+        t,
+        SizedBox(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: LearnerLessonReader(
+              id: '22',
+              embedded: true,
+              openVideoOnLoad: true,
+              apiBaseUrl: 'https://school.test',
+              submit: f.submit,
+              surfaceBuilder: f.surface,
+              load: (path) async {
+                for (final entry in {
+                  '34': 'VIDEO',
+                  '35': 'TEXT',
+                  '36': 'IMAGE',
+                }.entries) {
+                  if (path.endsWith('/${entry.key}/open')) {
+                    return response(
+                      kind: entry.value,
+                      url:
+                          '/api/learner/assets/${entry.key}/deliver?token=signed',
+                    );
+                  }
+                }
+                final result = await f.load(path);
+                if (path == '/api/learner/lessons/22') {
+                  for (final entry in {
+                    '34': 'VIDEO',
+                    '35': 'TEXT',
+                    '36': 'IMAGE',
+                  }.entries) {
+                    result['lesson']['assets'].add({
+                      ...f.asset(
+                        entry.key,
+                        'Sample ${entry.value}',
+                        'OPEN',
+                        true,
+                      ),
+                      'assetType': entry.value,
+                    });
+                  }
+                }
+                return result;
+              },
+            ),
+          ),
+        ),
+        width: width,
+      );
+      expect(find.text('Test VIDEO surface'), findsOneWidget);
+      for (final entry in {
+        '30': 'PDF',
+        '33': 'AUDIO',
+        '35': 'TEXT',
+        '36': 'IMAGE',
+      }.entries) {
+        await tap(
+          t,
+          find.byKey(ValueKey('open-separate-resource-${entry.key}')),
+        );
+        expect(find.text('Test ${entry.value} surface'), findsOneWidget);
+        expect(find.text('Test VIDEO surface'), findsOneWidget);
+      }
+      expect(f.events.where((event) => event == 'mount VIDEO').length, 1);
+      expect(f.events, isNot(contains('dispose VIDEO')));
+      expect(f.writes, isEmpty);
+      final locked = t.widget<OutlinedButton>(
+        find.byKey(const ValueKey('open-separate-resource-31')),
+      );
+      expect(locked.onPressed, isNull);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+    });
+  }
+
+  for (final width in [390.0, 1440.0]) {
     testWidgets('long course contents scroll independently at $width', (
       t,
     ) async {

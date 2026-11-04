@@ -58,6 +58,8 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   final contentsScroll = ScrollController();
   bool saving = false, focusView = false;
   Map<String, dynamic>? savedProgress, selectedAsset;
+  final separateAssets = <String, Map<String, dynamic>>{};
+  final resourceAnchors = <String, GlobalKey>{};
   String? error;
   String resourceFilter = 'ALL';
   String? autoOpenedLesson;
@@ -117,6 +119,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       ['OPEN', 'PREVIEW'].contains(asset['accessState']) &&
       asset['sourceReady'] == true;
 
+  bool resourceOpen(Map<String, dynamic> asset) =>
+      selectedAsset?['id'] == asset['id'] ||
+      separateAssets[asset['assetType']]?['id'] == asset['id'];
+
   bool lessonAvailable(Map<String, dynamic> lesson) =>
       ['OPEN', 'PREVIEW'].contains(lesson['accessState']);
 
@@ -128,6 +134,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     setState(() {
       lessonId = id;
       selectedAsset = null;
+      separateAssets.clear();
       savedProgress = null;
       error = null;
       focusView = false;
@@ -157,6 +164,18 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
 
   void play(Map<String, dynamic> asset) {
     if (saving || !canOpen(asset)) return;
+    final kind = recordText(asset['assetType']);
+    if (widget.embedded && ['AUDIO', 'TEXT', 'IMAGE', 'PDF'].contains(kind)) {
+      setState(() {
+        focusView = false;
+        separateAssets[kind] = asset;
+      });
+      reveal(
+        resourceAnchors.putIfAbsent(kind, () => GlobalKey()),
+        resourcesFocus,
+      );
+      return;
+    }
     setState(() {
       selectedAsset = asset;
     });
@@ -176,6 +195,89 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     });
     reveal(notesAnchor, notesFocus);
   }
+
+  Widget separateMedia(List<Map<String, dynamic>> assets) => LayoutBuilder(
+    builder: (context, box) {
+      final wide =
+          box.maxWidth >= 1100 &&
+          MediaQuery.textScalerOf(context).scale(16) <= 24;
+      return Wrap(
+        spacing: 20,
+        runSpacing: 20,
+        children: [
+          for (final kind in ['AUDIO', 'TEXT', 'IMAGE', 'PDF'])
+            if (assets.any((asset) => asset['assetType'] == kind))
+              SizedBox(
+                width: wide ? (box.maxWidth - 20) / 2 : box.maxWidth,
+                child: SurfacePanel(
+                  key: resourceAnchors.putIfAbsent(kind, () => GlobalKey()),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            lessonResourceIcon(kind),
+                            color: resourceAccent(kind),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              switch (kind) {
+                                'AUDIO' => 'Audio lesson',
+                                'TEXT' => 'Text resources',
+                                'IMAGE' => 'Images',
+                                _ => 'PDF resources',
+                              },
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: ink,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      for (final asset in assets.where(
+                        (asset) => asset['assetType'] == kind,
+                      ))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: OutlinedButton.icon(
+                            key: ValueKey(
+                              'open-separate-resource-${asset['id']}',
+                            ),
+                            onPressed: saving || !canOpen(asset)
+                                ? null
+                                : () => play(asset),
+                            icon: Icon(
+                              kind == 'AUDIO'
+                                  ? Icons.play_circle_outline
+                                  : Icons.open_in_new,
+                            ),
+                            label: Text(recordText(asset['title'], 'Resource')),
+                          ),
+                        ),
+                      if (separateAssets[kind] case final asset?)
+                        LessonMediaViewer(
+                          key: ValueKey('separate-media-${asset['id']}'),
+                          assetId: recordText(asset['id']),
+                          title: recordText(asset['title']),
+                          load: widget.load,
+                          apiBaseUrl: widget.apiBaseUrl,
+                          surfaceBuilder: widget.surfaceBuilder,
+                          onClose: () =>
+                              setState(() => separateAssets.remove(kind)),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      );
+    },
+  );
 
   Widget resources(List<Map<String, dynamic>> assets) => SurfacePanel(
     padding: const EdgeInsets.all(18),
@@ -250,13 +352,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                     child: DecoratedBox(
                       key: ValueKey('resource-${asset['id']}'),
                       decoration: BoxDecoration(
-                        color: selectedAsset?['id'] == asset['id']
+                        color: resourceOpen(asset)
                             ? gold.withValues(alpha: .09)
                             : paper,
                         border: Border.all(
-                          color: selectedAsset?['id'] == asset['id']
-                              ? gold
-                              : line,
+                          color: resourceOpen(asset) ? gold : line,
                         ),
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -286,7 +386,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     size: 36,
                                   ),
                                   const Spacer(),
-                                  if (selectedAsset?['id'] == asset['id'])
+                                  if (resourceOpen(asset))
                                     const Icon(
                                       Icons.check_circle,
                                       color: forest,
@@ -307,7 +407,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              selectedAsset?['id'] == asset['id']
+                              resourceOpen(asset)
                                   ? 'Selected resource'
                                   : recordText(asset['assetType']),
                               style: const TextStyle(
@@ -322,7 +422,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                   ? () => play(asset)
                                   : null,
                               icon: Icon(
-                                selectedAsset?['id'] == asset['id']
+                                resourceOpen(asset)
                                     ? Icons.check_circle_outline
                                     : Icons.arrow_forward,
                                 size: AfaqDesign.iconSmall,
@@ -335,7 +435,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     ? 'Access required'
                                     : asset['sourceReady'] != true
                                     ? 'Not connected'
-                                    : selectedAsset?['id'] == asset['id']
+                                    : resourceOpen(asset)
                                     ? 'Viewing now'
                                     : [
                                         'VIDEO',
@@ -856,7 +956,14 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                   (item) => recordText(item['id']) == lessonId,
                 );
                 final assets = recordList(lesson['assets']);
-                final available = assets.where(canOpen).toList();
+                final available = assets
+                    .where(
+                      (asset) =>
+                          canOpen(asset) &&
+                          (!widget.embedded ||
+                              ['VIDEO', 'EMBED'].contains(asset['assetType'])),
+                    )
+                    .toList();
                 final playback = available
                     .where(
                       (asset) =>
@@ -1144,6 +1251,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         },
                       ),
                     if (!focusView) ...[
+                      if (widget.embedded) ...[
+                        const SizedBox(height: 24),
+                        separateMedia(assets),
+                      ],
                       const SizedBox(height: 24),
                       Focus(
                         key: resourcesAnchor,
