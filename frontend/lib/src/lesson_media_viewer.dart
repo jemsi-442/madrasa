@@ -210,7 +210,10 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
     final compact =
         width < 652 || MediaQuery.textScalerOf(context).scale(13) > 20;
     // Controls sit below the picture, not inside its 16:9 allocation.
-    final toolbar = compact ? 250.0 : 128.0;
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 21;
+    final toolbar = compact
+        ? (largeText || width < 292 ? 250.0 : 190.0)
+        : 128.0;
     final naturalHeight = width * 9 / 16 + toolbar;
     final availableHeight = MediaQuery.sizeOf(context).height * .72;
     return naturalHeight.clamp(

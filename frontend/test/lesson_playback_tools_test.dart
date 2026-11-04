@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_playback_tools.dart';
 
 void main() {
-  testWidgets('browser fullscreen has a distinct control and action', (t) async {
+  testWidgets('browser fullscreen has a distinct control and action', (
+    t,
+  ) async {
     var requests = 0;
     await t.pumpWidget(
       MaterialApp(
@@ -49,6 +51,15 @@ void main() {
         greaterThanOrEqualTo(48),
       );
       if (width == 320) {
+        expect(
+          t.getSize(find.byType(LessonPlaybackTools)).height,
+          lessThanOrEqualTo(190),
+        );
+        final timeline = t.getRect(
+          find.byKey(const ValueKey('playback-timeline')),
+        );
+        final clock = t.getRect(find.text('0:32 / 4:00'));
+        expect(clock.center.dy, closeTo(timeline.center.dy, 1));
         expect(
           t.getTopLeft(settings).dy,
           greaterThan(t.getBottomLeft(transport).dy),

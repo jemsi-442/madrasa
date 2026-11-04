@@ -146,6 +146,9 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
               final compact =
                   box.maxWidth < 620 ||
                   MediaQuery.textScalerOf(context).scale(13) > 20;
+              final separateClock =
+                  box.maxWidth < 260 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 21;
               final transport = Wrap(
                 key: const ValueKey('playback-transport'),
                 spacing: 4,
@@ -248,17 +251,14 @@ class _LessonPlaybackToolsState extends State<LessonPlaybackTools> {
                               'Seek to ${playbackTime(Duration(milliseconds: v.round()))}',
                         ),
                       ),
-                      if (!compact) clock,
+                      if (!separateClock) clock,
                     ],
                   ),
-                  if (compact) ...[
+                  if (separateClock)
                     Align(alignment: Alignment.centerRight, child: clock),
-                    const SizedBox(height: 8),
+                  if (compact) ...[
                     transport,
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Divider(height: 1, color: Colors.white12),
-                    ),
+                    const SizedBox(height: 4),
                     settings,
                   ] else
                     Row(children: [transport, const Spacer(), settings]),
