@@ -26,6 +26,7 @@ class LearnerCoursesPage extends StatefulWidget {
     this.refreshToken = 0,
     this.surfaceBuilder,
     this.embeddedCourses = false,
+    this.onCourseOpenChanged,
   });
   final PageLoader load;
   final PageSubmitter submit;
@@ -33,6 +34,7 @@ class LearnerCoursesPage extends StatefulWidget {
   final int refreshToken;
   final LessonMediaBuilder? surfaceBuilder;
   final bool embeddedCourses;
+  final ValueChanged<bool>? onCourseOpenChanged;
   @override
   State<LearnerCoursesPage> createState() => _LearnerCoursesPageState();
 }
@@ -54,6 +56,7 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
         selectedCourse = course;
         resumeSelected = resume;
       });
+      widget.onCourseOpenChanged?.call(true);
       return;
     }
     await Navigator.of(context).push<void>(
@@ -178,10 +181,13 @@ class _LearnerCoursesPageState extends State<LearnerCoursesPage> {
           resumeLessonId: resumeSelected
               ? recordMap(selectedCourse!['resumeLesson'])['id'] as String?
               : null,
-          onBack: () => setState(() {
-            selectedCourse = null;
-            changes++;
-          }),
+          onBack: () {
+            setState(() {
+              selectedCourse = null;
+              changes++;
+            });
+            widget.onCourseOpenChanged?.call(false);
+          },
         )
       : catalogue();
 

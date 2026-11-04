@@ -204,10 +204,12 @@ void main() {
       tester,
     ) async {
       final data = CoursesFixture()..kind = 'VIDEO';
+      final courseChanges = <bool>[];
       await host(
         tester,
         LearnerCoursesPage(
           embeddedCourses: true,
+          onCourseOpenChanged: courseChanges.add,
           load: (path) async {
             final result = await data.load(path);
             if (path.contains('/lessons/')) {
@@ -288,6 +290,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       await tap(tester, 'My courses');
+      expect(courseChanges, [true, false]);
       expect(find.text('View lessons'), findsWidgets);
       expect(find.text('Course video surface'), findsNothing);
       expect(find.byType(Scaffold), findsOneWidget);

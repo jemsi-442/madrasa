@@ -415,6 +415,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
   final contentFocus = FocusNode(debugLabel: 'Workspace content');
   int selectedIndex = 0;
+  bool learnerCourseOpen = false;
   int refreshToken = 0;
   bool collapsed = false;
   bool navigating = false;
@@ -525,6 +526,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           if (visits.length > 30) visits.removeAt(0);
         }
         selectedIndex = visit.index;
+        learnerCourseOpen = false;
         teachingClassId = visit.classId;
         teachingStudent = visit.student;
         teachingPeriod = visit.period;
@@ -733,6 +735,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     if (session.role == 'LEARNER' && selectedIndex == 1) {
       return LearnerCoursesPage(
         embeddedCourses: true,
+        onCourseOpenChanged: (open) {
+          if (mounted && learnerCourseOpen != open) {
+            setState(() => learnerCourseOpen = open);
+          }
+        },
         load: widget.state.load,
         submit: widget.state.submit,
         apiBaseUrl: widget.state.api.baseUrl,
@@ -1045,14 +1052,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       onSignOut: requestSignOut,
                       onChangePassword: changePassword,
                     ),
-                  WorkspaceTrail(
-                    homeTitle: sections.first.title,
-                    pageTitle: section.title,
-                    atHome: selectedIndex == 0,
-                    onHome: goHome,
-                    backTitle: backTitle,
-                    onBack: canGoBack ? goBack : null,
-                  ),
+                  // The course reader owns its back navigation inside this page.
+                  if (!(session.role == 'LEARNER' &&
+                      selectedIndex == 1 &&
+                      learnerCourseOpen))
+                    WorkspaceTrail(
+                      homeTitle: sections.first.title,
+                      pageTitle: section.title,
+                      atHome: selectedIndex == 0,
+                      onHome: goHome,
+                      backTitle: backTitle,
+                      onBack: canGoBack ? goBack : null,
+                    ),
                   Expanded(
                     child: DecoratedBox(
                       decoration: const BoxDecoration(
