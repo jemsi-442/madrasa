@@ -422,54 +422,77 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
 
   Widget completion(Map<String, dynamic> progress) {
     final completed = recordNumber(progress['progressPercent']) >= 100;
-    return SurfacePanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final status = TeacherTag(
+      completed ? 'Completed' : '${progress['progressPercent'] ?? 0}% recorded',
+      color: completed ? forest : muted,
+    );
+    final action = FilledButton.icon(
+      key: const ValueKey('lesson-completion-action'),
+      onPressed: saving || completed ? null : complete,
+      style: widget.embedded
+          ? FilledButton.styleFrom(
+              backgroundColor: gold,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            )
+          : null,
+      icon: saving
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.check),
+      label: Text(
+        saving
+            ? 'Saving...'
+            : completed
+            ? 'Lesson completed'
+            : 'Mark complete',
+      ),
+    );
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.embedded)
+          LayoutBuilder(
+            builder: (context, box) {
+              if (box.maxWidth < 480 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 21) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(alignment: Alignment.centerLeft, child: status),
+                    const SizedBox(height: 12),
+                    action,
+                  ],
+                );
+              }
+              return Row(children: [status, const Spacer(), action]);
+            },
+          )
+        else
           Wrap(
             spacing: 16,
             runSpacing: 12,
             crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              TeacherTag(
-                completed
-                    ? 'Completed'
-                    : '${progress['progressPercent'] ?? 0}% recorded',
-                color: forest,
-              ),
-              FilledButton.icon(
-                onPressed: saving || completed ? null : complete,
-                icon: saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check),
-                label: Text(
-                  saving
-                      ? 'Saving...'
-                      : completed
-                      ? 'Lesson completed'
-                      : 'Mark complete',
-                ),
-              ),
-            ],
+            children: [status, action],
           ),
-          if (!widget.embedded) const SizedBox(height: 12),
-          if (!widget.embedded)
-            const Text(
-              'Mark complete when you finish this lesson. Opening a resource does not save completion.',
-              style: TextStyle(color: muted, fontSize: 12, height: 1.6),
-            ),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: TeacherNotice(error!, warning: true),
-            ),
-        ],
-      ),
+        if (!widget.embedded) const SizedBox(height: 12),
+        if (!widget.embedded)
+          const Text(
+            'Mark complete when you finish this lesson. Opening a resource does not save completion.',
+            style: TextStyle(color: muted, fontSize: 12, height: 1.6),
+          ),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: TeacherNotice(error!, warning: true),
+          ),
+      ],
     );
+    return widget.embedded ? content : SurfacePanel(child: content);
   }
 
   Widget workspaceTabs() => Container(

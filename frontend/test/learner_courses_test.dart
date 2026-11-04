@@ -215,6 +215,22 @@ void main() {
       );
       final tabs = find.byKey(const ValueKey('course-tab-Lessons'));
       expect(tester.getSize(tabs).height, greaterThanOrEqualTo(48));
+      final completionAction = find.byKey(
+        const ValueKey('lesson-completion-action'),
+      );
+      expect(tester.getSize(completionAction).height, greaterThanOrEqualTo(48));
+      if (width < 600) {
+        expect(tester.getSize(completionAction).width, greaterThan(280));
+      } else {
+        expect(
+          tester.getTopLeft(completionAction).dx,
+          greaterThan(
+            tester
+                .getCenter(find.byKey(const ValueKey('lesson-media-stage')))
+                .dx,
+          ),
+        );
+      }
       expect(
         tester.getSize(find.byKey(const ValueKey('lesson-media-stage'))).height,
         lessThanOrEqualTo(1400 * .48),
