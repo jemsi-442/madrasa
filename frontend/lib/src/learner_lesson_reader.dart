@@ -45,6 +45,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   bool saving = false, focusView = false;
   Map<String, dynamic>? savedProgress, selectedAsset;
   String? error;
+  String resourceFilter = 'ALL';
   double readingSize = 16;
   final progressByLesson = <String, Map<String, dynamic>>{};
 
@@ -112,6 +113,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       savedProgress = null;
       error = null;
       focusView = false;
+      resourceFilter = 'ALL';
       // The outline is navigation context, not authorization. Load each lesson
       // again so revoked access and updated progress are checked by the server.
       current = requestLesson(lessonId);
@@ -167,77 +169,155 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         ),
         if (assets.isEmpty)
           const EmptyRecords('No resources attached to this lesson.'),
-        for (final (index, asset) in assets.indexed) ...[
-          if (index > 0) const Divider(height: 28, color: line),
-          DecoratedBox(
-            key: ValueKey('resource-${asset['id']}'),
-            decoration: BoxDecoration(
-              color: selectedAsset?['id'] == asset['id']
-                  ? gold.withValues(alpha: .09)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        lessonResourceIcon(recordText(asset['assetType'])),
-                        color: gold,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          recordText(asset['title'], 'Lesson resource'),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: ink,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    selectedAsset?['id'] == asset['id']
-                        ? 'Selected resource'
-                        : recordText(asset['assetType']),
-                    style: const TextStyle(color: muted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.tonalIcon(
-                    key: ValueKey('open-resource-${asset['id']}'),
-                    onPressed: !saving && canOpen(asset)
-                        ? () => play(asset)
-                        : null,
-                    icon: Icon(
-                      selectedAsset?['id'] == asset['id']
-                          ? Icons.check_circle_outline
-                          : Icons.arrow_forward,
-                      size: AfaqDesign.iconSmall,
+        if (assets.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final entry in const {
+                'ALL': 'All resources',
+                'VIDEO': 'Video',
+                'AUDIO': 'Audio',
+                'TEXT': 'Text',
+                'IMAGE': 'Images',
+                'PDF': 'PDF',
+                'EMBED': 'Embedded video',
+              }.entries)
+                if (entry.key == 'ALL' ||
+                    assets.any((a) => a['assetType'] == entry.key))
+                  ChoiceChip(
+                    key: ValueKey('resource-filter-${entry.key}'),
+                    selected: resourceFilter == entry.key,
+                    avatar: Icon(
+                      entry.key == 'ALL'
+                          ? Icons.grid_view_outlined
+                          : lessonResourceIcon(entry.key),
+                      size: 20,
                     ),
                     label: Text(
-                      !['OPEN', 'PREVIEW'].contains(asset['accessState'])
-                          ? 'Access required'
-                          : asset['sourceReady'] != true
-                          ? 'Not connected'
-                          : selectedAsset?['id'] == asset['id']
-                          ? 'Viewing now'
-                          : ['VIDEO', 'AUDIO'].contains(asset['assetType'])
-                          ? 'Play in app'
-                          : 'View in app',
+                      '${entry.value} (${entry.key == 'ALL' ? assets.length : assets.where((a) => a['assetType'] == entry.key).length})',
+                    ),
+                    onSelected: (_) =>
+                        setState(() => resourceFilter = entry.key),
+                  ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
+        LayoutBuilder(
+          builder: (context, box) {
+            final columns = box.maxWidth >= 1080
+                ? 4
+                : box.maxWidth >= 760
+                ? 3
+                : box.maxWidth >= 500
+                ? 2
+                : 1;
+            final width = (box.maxWidth - (columns - 1) * 16) / columns;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                for (final asset in assets.where(
+                  (a) =>
+                      resourceFilter == 'ALL' ||
+                      a['assetType'] == resourceFilter,
+                ))
+                  SizedBox(
+                    width: width,
+                    child: DecoratedBox(
+                      key: ValueKey('resource-${asset['id']}'),
+                      decoration: BoxDecoration(
+                        color: selectedAsset?['id'] == asset['id']
+                            ? gold.withValues(alpha: .09)
+                            : paper,
+                        border: Border.all(
+                          color: selectedAsset?['id'] == asset['id']
+                              ? gold
+                              : line,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  lessonResourceIcon(
+                                    recordText(asset['assetType']),
+                                  ),
+                                  color: gold,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    recordText(
+                                      asset['title'],
+                                      'Lesson resource',
+                                    ),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: ink,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              selectedAsset?['id'] == asset['id']
+                                  ? 'Selected resource'
+                                  : recordText(asset['assetType']),
+                              style: const TextStyle(
+                                color: muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton.tonalIcon(
+                              key: ValueKey('open-resource-${asset['id']}'),
+                              onPressed: !saving && canOpen(asset)
+                                  ? () => play(asset)
+                                  : null,
+                              icon: Icon(
+                                selectedAsset?['id'] == asset['id']
+                                    ? Icons.check_circle_outline
+                                    : Icons.arrow_forward,
+                                size: AfaqDesign.iconSmall,
+                              ),
+                              label: Text(
+                                ![
+                                      'OPEN',
+                                      'PREVIEW',
+                                    ].contains(asset['accessState'])
+                                    ? 'Access required'
+                                    : asset['sourceReady'] != true
+                                    ? 'Not connected'
+                                    : selectedAsset?['id'] == asset['id']
+                                    ? 'Viewing now'
+                                    : [
+                                        'VIDEO',
+                                        'AUDIO',
+                                      ].contains(asset['assetType'])
+                                    ? 'Play in app'
+                                    : 'View in app',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-        ],
+              ],
+            );
+          },
+        ),
       ],
     ),
   );
@@ -445,6 +525,57 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     );
   }
 
+  Widget courseProgress(Map<String, dynamic> progress) {
+    final completed = widget.outline.where((item) {
+      final id = recordText(item['id']);
+      final state = id == lessonId
+          ? progress
+          : progressByLesson[id] ?? recordMap(item['progress']);
+      return recordNumber(state['progressPercent']) >= 100;
+    }).length;
+    final total = widget.outline.length;
+    final fraction = total == 0 ? 0.0 : completed / total;
+    return SurfacePanel(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Course progress',
+                  style: TextStyle(color: ink, fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                '${(fraction * 100).round()}%',
+                style: const TextStyle(
+                  color: ink,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          LinearProgressIndicator(
+            value: fraction,
+            minHeight: 8,
+            color: gold,
+            backgroundColor: line,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '$completed / $total lessons completed',
+            style: const TextStyle(color: muted),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget courseNavigation(int index) {
     final previous = index > 0 ? widget.outline[index - 1] : null;
     final next = index + 1 < widget.outline.length
@@ -626,9 +757,38 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      recordText(recordMap(lesson['course'])['title']),
-                      style: const TextStyle(color: muted, fontSize: 13),
+                    LayoutBuilder(
+                      builder: (context, box) {
+                        final name = Text(
+                          recordText(recordMap(lesson['course'])['title']),
+                          style: const TextStyle(
+                            color: blue,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                        if (focusView || widget.outline.isEmpty) return name;
+                        if (box.maxWidth < 760) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              name,
+                              const SizedBox(height: 12),
+                              courseProgress(progress),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(child: name),
+                            const SizedBox(width: 24),
+                            SizedBox(
+                              width: 350,
+                              child: courseProgress(progress),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     if (lessonIndex >= 0) ...[
                       const SizedBox(height: 10),
@@ -670,12 +830,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         ),
                       ),
                     const SizedBox(height: 24),
-                    stage,
-                    if (!focusView) const SizedBox(height: 20),
+                    if (focusView) stage,
                     if (!focusView)
                       LayoutBuilder(
                         builder: (context, box) {
-                          if (box.maxWidth >= 980) {
+                          if (box.maxWidth >= 980 &&
+                              widget.outline.isNotEmpty) {
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -684,6 +844,8 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
+                                      stage,
+                                      const SizedBox(height: 20),
                                       reading(lesson),
                                       const SizedBox(height: 20),
                                       completion(progress),
@@ -692,7 +854,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                 ),
                                 const SizedBox(width: 24),
                                 SizedBox(
-                                  width: 300,
+                                  width: 350,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
@@ -701,7 +863,6 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                         contents(progress, compact: false),
                                         const SizedBox(height: 18),
                                       ],
-                                      resources(assets),
                                     ],
                                   ),
                                 ),
@@ -711,19 +872,23 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              stage,
+                              const SizedBox(height: 20),
                               if (widget.outline.isNotEmpty) ...[
                                 contents(progress, compact: true),
                                 const SizedBox(height: 18),
                               ],
                               reading(lesson),
                               const SizedBox(height: 20),
-                              resources(assets),
-                              const SizedBox(height: 20),
                               completion(progress),
                             ],
                           );
                         },
                       ),
+                    if (!focusView) ...[
+                      const SizedBox(height: 24),
+                      resources(assets),
+                    ],
                     if (!focusView && lessonIndex >= 0) ...[
                       const SizedBox(height: 20),
                       courseNavigation(lessonIndex),

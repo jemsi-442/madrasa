@@ -114,6 +114,69 @@ Future<void> tap(WidgetTester t, Finder target) async {
 }
 
 void main() {
+  for (final width in [390.0, 1440.0]) {
+    testWidgets(
+      'lesson workspace places contents beside media and resources below at $width',
+      (t) async {
+        final f = MediaFixture();
+        await host(
+          t,
+          LearnerLessonReader(
+            id: '22',
+            load: f.load,
+            submit: f.submit,
+            apiBaseUrl: 'https://school.test',
+            surfaceBuilder: f.surface,
+            outline: [
+              {
+                ...f.row('20', 'Alphabet', 'OPEN', 100),
+                'moduleTitle': 'First steps',
+              },
+              {
+                ...f.row('22', 'Reading words', 'OPEN', 0),
+                'moduleTitle': 'First steps',
+              },
+            ],
+          ),
+          width: width,
+        );
+        expect(find.text('1 / 2 lessons completed'), findsOneWidget);
+        await tap(t, find.byKey(const ValueKey('open-resource-30')));
+        final stage = t.getRect(
+          find.byKey(const ValueKey('lesson-media-stage')),
+        );
+        final contents = t.getRect(find.text('Course contents'));
+        final resources = t.getRect(find.text('Lesson resources'));
+        if (width > 980) {
+          expect(contents.left, greaterThan(stage.right));
+          expect(contents.top, lessThan(stage.bottom));
+        } else {
+          expect(contents.top, greaterThan(stage.bottom));
+        }
+        expect(resources.top, greaterThan(stage.bottom));
+        if (width > 980) {
+          await tap(t, find.byKey(const ValueKey('media-focus-view')));
+          expect(
+            t.getSize(find.byKey(const ValueKey('lesson-media-stage'))).width,
+            greaterThan(stage.width),
+          );
+          expect(f.events, ['mount PDF']);
+          await tap(t, find.byKey(const ValueKey('media-focus-view')));
+        }
+        await tap(t, find.byKey(const ValueKey('resource-filter-AUDIO')));
+        expect(find.byKey(const ValueKey('resource-30')), findsNothing);
+        expect(find.byKey(const ValueKey('resource-33')), findsOneWidget);
+        expect(find.text('Test PDF surface'), findsOneWidget);
+        expect(f.events, ['mount PDF']);
+        expect(f.writes, isEmpty);
+        await tap(t, find.byKey(const ValueKey('resource-filter-ALL')));
+        expect(find.byKey(const ValueKey('resource-30')), findsOneWidget);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
   testWidgets('phone focus action stays beside the video title', (t) async {
     t.view.physicalSize = const Size(390, 844);
     t.view.devicePixelRatio = 1;

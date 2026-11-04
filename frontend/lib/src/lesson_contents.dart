@@ -80,6 +80,7 @@ class LessonContents extends StatelessWidget {
                       'PREVIEW',
                     ].contains(lesson['accessState']);
                     final done = percent(lesson) >= 100;
+                    final minutes = recordNumber(lesson['estimatedMinutes']);
                     final status = !allowed
                         ? 'Access required'
                         : done
@@ -117,6 +118,16 @@ class LessonContents extends StatelessWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              SizedBox(
+                                width: 22,
+                                child: Text(
+                                  '${lessons.indexOf(lesson) + 1}',
+                                  style: const TextStyle(
+                                    color: muted,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                               Icon(
                                 !allowed
                                     ? Icons.lock_outline
@@ -142,17 +153,31 @@ class LessonContents extends StatelessWidget {
                                     Text(
                                       recordText(lesson['title']),
                                       style: const TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     const SizedBox(height: 5),
-                                    Text(
-                                      status,
-                                      style: const TextStyle(
-                                        color: muted,
-                                        fontSize: 11,
-                                      ),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      children: [
+                                        Text(
+                                          status,
+                                          style: const TextStyle(
+                                            color: muted,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        if (minutes > 0)
+                                          Text(
+                                            '$minutes min estimated',
+                                            style: const TextStyle(
+                                              color: muted,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ],
                                 ),
