@@ -283,12 +283,31 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                             !canOpen(asset)
                                 ? Icons.lock_outline
                                 : resourceOpen(asset)
-                                ? Icons.check_circle_outline
+                                ? Icons.visibility_outlined
                                 : kind == 'AUDIO'
                                 ? Icons.play_circle_outline
                                 : Icons.open_in_new,
                           ),
-                          label: Text(recordText(asset['title'], 'Resource')),
+                          label: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  recordText(asset['title'], 'Resource'),
+                                ),
+                              ),
+                              if (resourceOpen(asset)) ...[
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Open',
+                                  key: ValueKey('resource-open-${asset['id']}'),
+                                  style: TextStyle(
+                                    color: resourceAccent(kind),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     if (separateAssets[kind] case final asset?)

@@ -134,6 +134,7 @@ void main() {
                   '34': 'VIDEO',
                   '35': 'TEXT',
                   '36': 'IMAGE',
+                  '37': 'PDF',
                 }.entries) {
                   if (path.endsWith('/${entry.key}/open')) {
                     return response(
@@ -149,6 +150,7 @@ void main() {
                     '34': 'VIDEO',
                     '35': 'TEXT',
                     '36': 'IMAGE',
+                    '37': 'PDF',
                   }.entries) {
                     result['lesson']['assets'].add({
                       ...f.asset(
@@ -191,9 +193,19 @@ void main() {
         expect(f.events, isNot(contains('dispose $kind')));
       }
       expect(f.events, contains('dispose PDF'));
+      expect(find.byKey(const ValueKey('resource-open-30')), findsNothing);
       await tap(t, find.byKey(const ValueKey('open-separate-resource-30')));
       expect(find.text('Test PDF surface'), findsOneWidget);
       expect(f.paths.where((path) => path.endsWith('/30/open')).length, 2);
+      expect(find.byKey(const ValueKey('resource-open-30')), findsOneWidget);
+      await tap(t, find.byKey(const ValueKey('open-separate-resource-37')));
+      expect(find.byKey(const ValueKey('resource-open-30')), findsNothing);
+      expect(find.byKey(const ValueKey('resource-open-37')), findsOneWidget);
+      expect(find.text('Test PDF surface'), findsOneWidget);
+      for (final kind in ['VIDEO', 'AUDIO', 'TEXT', 'IMAGE']) {
+        expect(find.text('Test $kind surface'), findsOneWidget);
+        expect(f.events, isNot(contains('dispose $kind')));
+      }
       expect(f.writes, isEmpty);
       final locked = t.widget<OutlinedButton>(
         find.byKey(const ValueKey('open-separate-resource-31')),
