@@ -41,6 +41,22 @@ Future<void> previewHost(
 }
 
 void main() {
+  testWidgets('phone preview puts the player near the top without scrolling', (
+    t,
+  ) async {
+    final f = MediaFixture();
+    await previewHost(t, builder: f.surface, width: 390);
+    expect(
+      t.getTopLeft(find.byType(LessonMediaViewer)).dy,
+      lessThan(t.view.physicalSize.height * .4),
+    );
+    expect(find.byType(ChoiceChip), findsNWidgets(5));
+    expect(find.text('Test VIDEO surface'), findsOneWidget);
+    expect(f.writes, isEmpty);
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+  });
+
   for (final width in [320.0, 700.0, 1440.0]) {
     for (final scale in [1.0, 2.0]) {
       testWidgets('media launcher fits width $width at scale $scale', (
@@ -149,6 +165,14 @@ void main() {
         observer: observer,
       );
       expect(find.text('SAMPLE PREVIEW'), findsOneWidget);
+      expect(find.text('Media player preview'), findsOneWidget);
+      expect(find.text('Explore the media viewer'), findsNothing);
+      expect(
+        find.text(
+          'Choose a sample to try the controls. Your learning records stay unchanged.',
+        ),
+        findsNothing,
+      );
       expect(find.byType(Dialog), findsNothing);
       final routes = observer.pushed.length;
       for (final sample in MediaPlayerSample.values) {

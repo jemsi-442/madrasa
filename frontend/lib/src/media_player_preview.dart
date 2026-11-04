@@ -228,21 +228,6 @@ class _MediaPlayerPreviewPageState extends State<MediaPlayerPreviewPage> {
               ),
               const SizedBox(height: 12),
               if (!focusView) ...[
-                const Text(
-                  'Explore the media viewer',
-                  style: TextStyle(
-                    color: ink,
-                    fontSize: 28,
-                    height: 1.2,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Choose a sample to try the controls. Your learning records stay unchanged.',
-                  style: TextStyle(color: muted, fontSize: 16, height: 1.6),
-                ),
-                const SizedBox(height: 20),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -253,10 +238,16 @@ class _MediaPlayerPreviewPageState extends State<MediaPlayerPreviewPage> {
                         selected: sample == value,
                         selectedColor: ink,
                         backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
+                        padding: MediaQuery.sizeOf(context).width < 600
+                            ? const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              )
+                            : const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
                         labelStyle: TextStyle(
                           color: sample == value ? Colors.white : ink,
                           fontSize: 16,
