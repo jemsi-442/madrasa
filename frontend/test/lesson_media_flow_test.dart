@@ -114,6 +114,42 @@ Future<void> tap(WidgetTester t, Finder target) async {
 }
 
 void main() {
+  testWidgets('phone focus action stays beside the video title', (t) async {
+    t.view.physicalSize = const Size(390, 844);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    addTearDown(t.view.resetDevicePixelRatio);
+    var focused = false;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: LessonMediaViewer(
+              assetId: '3',
+              apiBaseUrl: 'https://school.test',
+              load: (_) async => response(),
+              onToggleFocus: () => focused = true,
+              surfaceBuilder: (_, ready, failed) => const Text('Video'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.pump();
+    final action = find.byTooltip('Focus view');
+    expect(action, findsOneWidget);
+    expect(find.text('Focus view'), findsNothing);
+    expect(t.getSize(action).height, greaterThanOrEqualTo(48));
+    expect(
+      t.getTopLeft(action).dy,
+      lessThan(t.getTopLeft(find.text('Reload player')).dy),
+    );
+    await t.tap(action);
+    expect(focused, isTrue);
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+  });
+
   testWidgets('document and audio lessons have no empty video player', (
     t,
   ) async {
@@ -269,7 +305,12 @@ void main() {
         await tap(t, find.byKey(const ValueKey('media-focus-view')));
         expect(find.text('Lesson resources'), findsNothing);
         expect(find.text('Lesson notes'), findsNothing);
-        expect(find.text('Exit focus view'), findsOneWidget);
+        expect(
+          width < 600
+              ? find.byTooltip('Exit focus view')
+              : find.text('Exit focus view'),
+          findsOneWidget,
+        );
         expect(find.byType(Dialog), findsNothing);
         final focused = t.getSize(
           find.byKey(const ValueKey('lesson-media-stage')),
@@ -280,7 +321,12 @@ void main() {
         expect(f.paths.where((p) => p.endsWith('/30/open')).length, 1);
         await tap(t, find.byKey(const ValueKey('next-resource')));
         expect(find.text('Test AUDIO surface'), findsOneWidget);
-        expect(find.text('Exit focus view'), findsOneWidget);
+        expect(
+          width < 600
+              ? find.byTooltip('Exit focus view')
+              : find.text('Exit focus view'),
+          findsOneWidget,
+        );
         await tap(t, find.byKey(const ValueKey('media-focus-view')));
         expect(find.text('Lesson resources'), findsOneWidget);
         expect(f.events, ['mount PDF', 'dispose PDF', 'mount AUDIO']);

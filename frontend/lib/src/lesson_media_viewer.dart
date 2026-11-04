@@ -318,6 +318,25 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                           ),
                         ),
                       ),
+                      if (widget.onToggleFocus != null &&
+                          MediaQuery.sizeOf(context).width < 600)
+                        IconButton(
+                          key: const ValueKey('media-focus-view'),
+                          tooltip: widget.focusView
+                              ? 'Exit focus view'
+                              : 'Focus view',
+                          onPressed: widget.onToggleFocus,
+                          color: playback ? playbackAccent : ink,
+                          constraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
+                          ),
+                          icon: Icon(
+                            widget.focusView
+                                ? Icons.close_fullscreen
+                                : Icons.open_in_full,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -358,7 +377,8 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                           playback ? 'Reload player' : 'Reload resource',
                         ),
                       ),
-                      if (widget.onToggleFocus != null)
+                      if (widget.onToggleFocus != null &&
+                          MediaQuery.sizeOf(context).width >= 600)
                         TextButton.icon(
                           style: TextButton.styleFrom(
                             foregroundColor: playback ? playbackAccent : ink,
