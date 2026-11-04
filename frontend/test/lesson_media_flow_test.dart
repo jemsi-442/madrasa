@@ -115,6 +115,51 @@ Future<void> tap(WidgetTester t, Finder target) async {
 
 void main() {
   for (final width in [390.0, 1440.0]) {
+    testWidgets('long course contents scroll independently at $width', (
+      t,
+    ) async {
+      final f = MediaFixture();
+      await host(
+        t,
+        LearnerLessonReader(
+          id: '22',
+          load: f.load,
+          submit: f.submit,
+          apiBaseUrl: 'https://school.test',
+          surfaceBuilder: f.surface,
+          outline: [
+            for (var i = 0; i < 30; i++)
+              {
+                ...f.row('${22 + i}', 'Practice ${i + 1}', 'OPEN', 0),
+                'moduleTitle': 'Practice module',
+              },
+          ],
+        ),
+        width: width,
+      );
+      if (width < 980) await tap(t, find.text('Course contents'));
+      final panel = find.byKey(const ValueKey('course-contents-scroll'));
+      await t.ensureVisible(panel);
+      await t.pumpAndSettle();
+      final scrollbar = t.widget<Scrollbar>(
+        find.byKey(const ValueKey('course-contents-scrollbar')),
+      );
+      expect(scrollbar.thumbVisibility, isTrue);
+      expect(scrollbar.controller!.position.maxScrollExtent, greaterThan(0));
+      expect(
+        t.getSize(panel).height,
+        lessThanOrEqualTo(width < 980 ? 360 : 600),
+      );
+      await t.drag(panel, const Offset(0, -250));
+      await t.pumpAndSettle();
+      expect(scrollbar.controller!.offset, greaterThan(0));
+      expect(f.writes, isEmpty);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+    });
+  }
+
+  for (final width in [390.0, 1440.0]) {
     testWidgets(
       'lesson workspace places contents beside media and resources below at $width',
       (t) async {

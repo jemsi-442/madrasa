@@ -42,6 +42,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   final notesAnchor = GlobalKey();
   final mediaFocus = FocusNode(debugLabel: 'Lesson resource');
   final notesFocus = FocusNode(debugLabel: 'Lesson notes');
+  final contentsScroll = ScrollController();
   bool saving = false, focusView = false;
   Map<String, dynamic>? savedProgress, selectedAsset;
   String? error;
@@ -62,6 +63,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     lessonFocus.dispose();
     mediaFocus.dispose();
     notesFocus.dispose();
+    contentsScroll.dispose();
     super.dispose();
   }
 
@@ -473,13 +475,22 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   }
 
   Widget contents(Map<String, dynamic> progress, {required bool compact}) {
-    final content = SingleChildScrollView(
-      primary: false,
-      child: LessonContents(
-        lessons: widget.outline,
-        currentId: lessonId,
-        progress: {...progressByLesson, lessonId: progress},
-        onSelect: saving ? null : changeLesson,
+    final content = Scrollbar(
+      key: const ValueKey('course-contents-scrollbar'),
+      controller: contentsScroll,
+      thumbVisibility: true,
+      interactive: true,
+      child: SingleChildScrollView(
+        key: const ValueKey('course-contents-scroll'),
+        controller: contentsScroll,
+        primary: false,
+        padding: const EdgeInsets.only(right: 8),
+        child: LessonContents(
+          lessons: widget.outline,
+          currentId: lessonId,
+          progress: {...progressByLesson, lessonId: progress},
+          onSelect: saving ? null : changeLesson,
+        ),
       ),
     );
     return SurfacePanel(
@@ -494,8 +505,18 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                 'Course contents',
                 style: TextStyle(color: ink, fontWeight: FontWeight.w700),
               ),
-              subtitle: const Text('Choose a topic in this course'),
-              children: [SizedBox(height: 330, child: content)],
+              subtitle: Text('${widget.outline.length} lessons'),
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: (MediaQuery.sizeOf(context).height * .4).clamp(
+                      180,
+                      360,
+                    ),
+                  ),
+                  child: content,
+                ),
+              ],
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
