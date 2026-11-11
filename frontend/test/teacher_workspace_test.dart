@@ -396,6 +396,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('View class').first);
     await tester.tap(find.text('View class').first);
     expect(destination, 2);
     expect(selected, '8');
@@ -406,6 +407,45 @@ void main() {
     expect(destination, 5);
     expect(selected, '8');
   });
+  testWidgets(
+    'classes summary uses timetable data and quick actions navigate',
+    (tester) async {
+      screen(tester, 1672);
+      int? destination;
+      String? scope;
+      await tester.pumpWidget(
+        host(
+          TeacherClassesPage(
+            load: teacherLoad,
+            onOpen: (page, {classId, student}) {
+              destination = page;
+              scope = classId;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Total classes'), findsOneWidget);
+      expect(find.text('Total learners'), findsOneWidget);
+      expect(find.text('Timetabled subjects'), findsOneWidget);
+      expect(find.text('Weekly periods'), findsOneWidget);
+      expect(find.text('Assigned courses'), findsNothing);
+      expect(find.text('16'), findsOneWidget);
+      for (final (label, page) in [
+        ('Record attendance', 4),
+        ('Manage my courses', 5),
+        ('View curriculum', 10),
+        ('Class reports', 9),
+      ]) {
+        await tester.ensureVisible(find.text(label));
+        await tester.tap(find.text(label));
+        expect(destination, page);
+        expect(scope, isNull);
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Quran save retry keeps the exact payload and operation ID', (
     tester,
   ) async {
