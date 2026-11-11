@@ -4,8 +4,85 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/app.dart';
 import 'package:mif_app/src/app_layout.dart';
+import 'package:mif_app/src/page_selection.dart';
 
 void main() {
+  testWidgets('deep link selection waits for hidden routes to be laid out', (
+    tester,
+  ) async {
+    final navigator = GlobalKey<NavigatorState>();
+    final updates = ValueNotifier(false);
+    addTearDown(updates.dispose);
+    Widget page(String name) => PageSelection(
+      child: Scaffold(
+        body: ValueListenableBuilder<bool>(
+          valueListenable: updates,
+          builder: (_, updated, _) => Column(
+            children: [
+              Text('$name ${updated ? 'updated' : 'initial'}'),
+              const TextField(),
+              if (updated) const Text('New selectable content'),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        initialRoute: '/login',
+        routes: {'/': (_) => page('Home'), '/login': (_) => page('Login')},
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.enterText(find.byType(TextField), 'Keep my draft');
+    updates.value = true;
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Keep my draft'), findsOneWidget);
+    navigator.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('Home updated'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.enterText(find.byType(TextField), 'Home draft');
+    navigator.currentState!.pushNamed('/login');
+    await tester.pumpAndSettle();
+    updates.value = false;
+    await tester.pumpAndSettle();
+    updates.value = true;
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    navigator.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('Home draft'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('covering a page preserves its form draft and field state', (
+    tester,
+  ) async {
+    final navigator = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: const PageSelection(child: Scaffold(body: TextField())),
+      ),
+    );
+    await tester.enterText(find.byType(TextField), 'Unsaved curriculum notes');
+    final fieldState = tester.state(find.byType(EditableText));
+    showDialog<void>(
+      context: navigator.currentContext!,
+      builder: (_) => const AlertDialog(title: Text('Details')),
+    );
+    await tester.pumpAndSettle();
+    navigator.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(EditableText)), same(fieldState));
+    expect(find.text('Unsaved curriculum notes'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'page text supports mouse selection and keyboard copy',
     (tester) async {
