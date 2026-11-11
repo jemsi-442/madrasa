@@ -7,6 +7,7 @@ import 'design_tokens.dart';
 import 'workspace_form_dialog.dart';
 import 'curriculum_delivery_history_dialog.dart';
 import 'teacher_curriculum_library.dart';
+import 'curriculum_detail_components.dart';
 
 class SchoolCurriculumPage extends StatefulWidget {
   const SchoolCurriculumPage({
@@ -92,11 +93,16 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('${lesson['title']}'),
-                      Text(
-                        '${assignment['version']['subject']} / Version ${assignment['version']['version']}',
+                      CurriculumDetailPanel(
+                        title: '${lesson['title']}',
+                        accent: AfaqDesign.actionGold,
+                        child: CurriculumDetailField(
+                          label: 'Curriculum',
+                          value:
+                              '${assignment['version']['subject']} / Version ${assignment['version']['version']}',
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       DropdownButtonFormField<String>(
                         initialValue: selected,
                         isExpanded: true,
@@ -289,8 +295,15 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '${assignment['version']['subject']} / ${assignment['version']['level']} / ${assignment['version']['version']}',
+                  CurriculumDetailPanel(
+                    title: '${assignment['version']['subject']}',
+                    accent: AfaqDesign.green,
+                    icon: Icons.school_outlined,
+                    child: CurriculumDetailField(
+                      label: 'Published curriculum',
+                      value:
+                          '${assignment['version']['level']} / Version ${assignment['version']['version']}',
+                    ),
                   ),
                   const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
@@ -525,183 +538,30 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                 widget.isAdmin ||
                 (showDetails && '${item['id']}' == selectedAssignment),
           )) ...[
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: AfaqDesign.panelDecoration(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    '${item['version']['subject']}',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${item['version']['level']} / Version ${item['version']['version']}',
-                  ),
-                  const SizedBox(height: 8),
-                  Text('${item['version']['description']}'),
-                  const Divider(height: 28),
-                  const Text(
-                    'Class adoption',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  if ((item['adoptions'] as List).isEmpty)
-                    const Text(
-                      'Available to the madrasa; not adopted in any class in your scope.',
-                    ),
-                  for (final adoption in item['adoptions'])
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${adoption['class']['name']} (${adoption['class']['academicYear']}) / ${adoption['subject']['name']}',
-                              ),
-                              Text(
-                                'Current curriculum: v${item['version']['version']}${historyDate(adoption['createdAt']).isEmpty ? '' : ' · in use since ${historyDate(adoption['createdAt'])}'}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => showDialog<void>(
-                            context: context,
-                            builder: (_) => CurriculumDeliveryHistoryDialog(
-                              load: widget.load,
-                              adoptionId: '${adoption['id']}',
-                              className: '${adoption['class']['name']}',
-                            ),
-                          ),
-                          icon: const Icon(Icons.history),
-                          label: const Text('Teaching history'),
-                        ),
-                        if (adoption['teachingCoverage'] is Map) ...[
-                          Text(
-                            'Teaching coverage: ${adoption['teachingCoverage']['taughtLessons']} / ${adoption['teachingCoverage']['totalLessons']} lessons',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          Text(
-                            'Current version only. Teacher-reported teaching, not learner achievement.',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                        for (final history in adoption['history'] as List)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12, top: 4),
-                            child: Text(
-                              historySummary(
-                                Map<String, dynamic>.from(history),
-                              ),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                      ],
-                    ),
-                  if (widget.isAdmin)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: FilledButton.icon(
-                          onPressed: saving || !canAdopt(item, data)
-                              ? null
-                              : () => adopt(
-                                  Map<String, dynamic>.from(item),
-                                  data,
-                                ),
-                          icon: const Icon(Icons.school_outlined),
-                          label: const Text('Use in a class'),
-                        ),
-                      ),
-                    ),
-                  if (widget.isAdmin && !canAdopt(item, data))
-                    Text(
-                      adoptionUnavailableMessage(
-                        Map<String, dynamic>.from(item as Map),
-                        data,
-                      ),
-                    ),
-                  ExpansionTile(
-                    key: PageStorageKey('${item['id']}-topics-$openLessons'),
-                    initiallyExpanded: !widget.isAdmin && !openLessons,
-                    title: const Text('Topics & objectives'),
-                    children: [
-                      for (final topic in item['version']['topics'])
-                        ListTile(
-                          title: Text('${topic['title']}'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              for (final objective in topic['objectives'])
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  child: Text(
-                                    '${objective['code']}: ${objective['description']}\nAssessment: ${objective['assessmentMethod']}\nCriteria: ${objective['criteria']}',
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  ExpansionTile(
-                    key: PageStorageKey('${item['id']}-lessons-$openLessons'),
-                    initiallyExpanded: !widget.isAdmin && openLessons,
-                    title: const Text('Shared lesson plans'),
-                    children: [
-                      if ((item['version']['lessons'] as List).isEmpty)
-                        const ListTile(
-                          title: Text(
-                            'No shared lesson plans in this version.',
-                          ),
-                        ),
-                      for (final lesson in item['version']['lessons'])
-                        ListTile(
-                          title: Text(
-                            '${lesson['title']} / ${lesson['durationMinutes']} min',
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('${lesson['activities']}'),
-                              if (!widget.isAdmin &&
-                                  lesson['id'] != null &&
-                                  (item['adoptions'] as List).isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  child: OutlinedButton.icon(
-                                    onPressed: () =>
-                                        recordTeaching(item, lesson),
-                                    icon: const Icon(
-                                      Icons.check_circle_outline,
-                                    ),
-                                    label: const Text('Record lesson taught'),
-                                  ),
-                                ),
-                              for (final link in lesson['objectives'])
-                                Text(
-                                  '${link['objective']['code']}: ${link['objective']['description']}',
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
+            SchoolCurriculumDetail(
+              assignment: item,
+              isAdmin: widget.isAdmin,
+              openLessons: openLessons,
+              historyDate: historyDate,
+              historySummary: historySummary,
+              onRecord: (lesson) => recordTeaching(item, lesson),
+              onHistory: (adoption) => showDialog<void>(
+                context: context,
+                builder: (_) => CurriculumDeliveryHistoryDialog(
+                  load: widget.load,
+                  adoptionId: '${adoption['id']}',
+                  className: '${adoption['class']['name']}',
+                ),
               ),
+              onAdopt: saving || !canAdopt(item, data)
+                  ? null
+                  : () => adopt(Map<String, dynamic>.from(item), data),
+              adoptionMessage: widget.isAdmin && !canAdopt(item, data)
+                  ? adoptionUnavailableMessage(
+                      Map<String, dynamic>.from(item),
+                      data,
+                    )
+                  : null,
             ),
             const SizedBox(height: 16),
           ],

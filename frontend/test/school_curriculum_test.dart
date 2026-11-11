@@ -167,6 +167,7 @@ void main() {
           );
           if (admin) {
             await tester.ensureVisible(find.text('Use in a class'));
+            await tester.pumpAndSettle();
             await tester.tap(find.text('Use in a class'));
             await tester.pumpAndSettle();
             await tester.tap(find.text('Confirm adoption'));
@@ -268,6 +269,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Use in a class'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Use in a class'));
     await tester.pumpAndSettle();
     final subjectField = tester.widget<DropdownButtonFormField<String>>(

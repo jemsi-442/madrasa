@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'api_client.dart';
 import 'dashboard_components.dart';
 import 'workspace_form_dialog.dart';
+import 'curriculum_detail_components.dart';
+import 'design_tokens.dart';
 
 class _HistoryAccessFailure {
   const _HistoryAccessFailure(this.expired);
@@ -74,7 +76,7 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
   Widget build(BuildContext context) => WorkspaceFormDialog(
     title: Text('Teaching history: ${widget.className}'),
     content: SizedBox(
-      width: 620,
+      width: 720,
       child: SingleChildScrollView(
         child: FutureBuilder<dynamic>(
           future: result,
@@ -117,37 +119,63 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
               children: [
                 Align(alignment: Alignment.centerRight, child: refreshButton()),
                 if (coverage != null) ...[
-                  Text(
-                    'Teaching coverage · v${coverage['version']}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    '${coverage['taughtLessons']} / ${coverage['totalLessons']} lessons recorded as taught',
-                  ),
-                  const Text(
-                    'Current adopted version only. Repeated teaching counts once per lesson.',
-                  ),
-                  if ((coverage['totalLessons'] as num) > 0)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: LinearProgressIndicator(
-                        value:
-                            ((coverage['taughtLessons'] as num) /
-                                    (coverage['totalLessons'] as num))
-                                .clamp(0.0, 1.0),
-                      ),
-                    )
-                  else
-                    const Text(
-                      'No lessons in this version; coverage is not applicable.',
+                  CurriculumDetailPanel(
+                    title: 'Teaching coverage · v${coverage['version']}',
+                    accent: AfaqDesign.green,
+                    icon: Icons.bar_chart_outlined,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '${coverage['taughtLessons']} / ${coverage['totalLessons']} lessons recorded as taught',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AfaqDesign.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Current adopted version only. Repeated teaching counts once per lesson.',
+                          style: TextStyle(
+                            color: AfaqDesign.muted,
+                            height: 1.5,
+                          ),
+                        ),
+                        if ((coverage['totalLessons'] as num) > 0)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: LinearProgressIndicator(
+                              minHeight: 8,
+                              borderRadius: BorderRadius.circular(8),
+                              color: AfaqDesign.green,
+                              value:
+                                  ((coverage['taughtLessons'] as num) /
+                                          (coverage['totalLessons'] as num))
+                                      .clamp(0.0, 1.0),
+                            ),
+                          )
+                        else
+                          const Text(
+                            'No lessons in this version; coverage is not applicable.',
+                          ),
+                      ],
                     ),
+                  ),
                   const SizedBox(height: 12),
                   if (pendingLessons != null &&
                       (pendingLessons.isNotEmpty || pendingPage > 1))
                     ExpansionTile(
+                      key: PageStorageKey(
+                        '${widget.adoptionId}-pending-lessons',
+                      ),
                       initiallyExpanded: pendingExpanded,
                       onExpansionChanged: (value) => pendingExpanded = value,
-                      tilePadding: EdgeInsets.zero,
+                      tilePadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      childrenPadding: const EdgeInsets.all(12),
                       title: const Text('Lessons without teaching records'),
                       subtitle: Text(
                         'Showing ${pendingLessons.length} of ${(coverage['totalLessons'] as num) - (coverage['taughtLessons'] as num)}. Current version only.',
@@ -193,24 +221,55 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
                       'All lessons in this version have a teaching record. Learner achievement is assessed separately.',
                     ),
                 ],
-                const WorkspaceFormNotice(
-                  message:
-                      'Teacher-reported teaching, not attendance, assessment or learner achievement. Earlier curriculum versions remain in this history. Times are local.',
+                const SizedBox(height: 24),
+                const Text(
+                  'Recorded teaching',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AfaqDesign.ink,
+                  ),
                 ),
+                const SizedBox(height: 16),
                 if (items.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(16),
                     child: Text('No teaching records on this page.'),
                   ),
                 for (final row in items) ...[
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text('${row['lesson']['title']}'),
-                    subtitle: Text(
-                      '${row['assignment']['version']['subject']} / ${row['assignment']['version']['level']} / v${row['assignment']['version']['version']}\n${row['teacher']['fullName']} · ${date(row['taughtAt'])}',
+                  CurriculumDetailPanel(
+                    title: '${row['lesson']['title']}',
+                    icon: Icons.check_circle_outline,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            CurriculumDetailTag(
+                              '${row['assignment']['version']['subject']}',
+                            ),
+                            CurriculumDetailTag(
+                              '${row['assignment']['version']['level']} / v${row['assignment']['version']['version']}',
+                              accent: AfaqDesign.actionGold,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        CurriculumDetailField(
+                          label: 'Recorded by',
+                          value: '${row['teacher']['fullName']}',
+                        ),
+                        const SizedBox(height: 16),
+                        CurriculumDetailField(
+                          label: 'Taught on (local time)',
+                          value: date(row['taughtAt']),
+                        ),
+                      ],
                     ),
                   ),
-                  const Divider(),
+                  const SizedBox(height: 16),
                 ],
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,
@@ -228,6 +287,11 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
                       child: const Text('Next'),
                     ),
                   ],
+                ),
+                const SizedBox(height: 16),
+                const WorkspaceFormNotice(
+                  message:
+                      'Teacher-reported teaching, not attendance, assessment or learner achievement. Earlier curriculum versions remain in this history. Times are local.',
                 ),
               ],
             );

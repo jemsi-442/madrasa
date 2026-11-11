@@ -300,6 +300,7 @@ void main() {
           await tester.pumpAndSettle();
         }
         await tester.ensureVisible(find.text('Shared lesson plans'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Shared lesson plans'));
         await tester.pumpAndSettle();
         if (admin) {
@@ -308,6 +309,7 @@ void main() {
           return;
         }
         await tester.ensureVisible(find.text('Record lesson taught'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Record lesson taught'));
         await tester.pumpAndSettle();
         expect(find.textContaining('not student attendance'), findsOneWidget);
