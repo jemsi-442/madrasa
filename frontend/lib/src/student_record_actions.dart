@@ -207,9 +207,11 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'We could not open this student record. Refresh the list and try again.',
+              action == 'course-progress'
+                  ? 'Course activity could not be loaded. Open Course activity again to retry.'
+                  : 'We could not open this student record. Refresh the list and try again.',
             ),
           ),
         );

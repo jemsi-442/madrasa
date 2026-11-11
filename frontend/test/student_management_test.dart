@@ -64,6 +64,52 @@ Future<void> choose(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets('course activity reloads on reopen and recovers after failure', (
+    tester,
+  ) async {
+    var reads = 0;
+    await showActions(
+      tester,
+      load: (path) async {
+        expect(path, '/api/admin/students/1/course-progress');
+        reads++;
+        if (reads == 2) throw StateError('Synthetic connection failure');
+        return {
+          'student': {'fullName': 'Synthetic Learner'},
+          'courseProgress': {
+            'linked': true,
+            'trackedLessons': 8,
+            'completedLessons': reads == 1 ? 2 : 5,
+            'recent': [],
+          },
+        };
+      },
+      submit: (_, _) async => throw StateError('Read-only view must not write'),
+      onChanged: () => fail('Reading must not mutate the student directory'),
+    );
+    await choose(tester, 'Course activity');
+    expect(find.text('2'), findsOneWidget);
+    await choose(tester, 'Close');
+    await tester.tap(find.byTooltip('Manage Ali Hassan'));
+    await tester.pumpAndSettle();
+    await choose(tester, 'Course activity');
+    expect(
+      find.textContaining('Open Course activity again to retry'),
+      findsOneWidget,
+    );
+    expect(find.text('Tracked lessons'), findsNothing);
+    expect(
+      find.textContaining('No course activity recorded yet'),
+      findsNothing,
+    );
+    await tester.tap(find.byTooltip('Manage Ali Hassan'));
+    await tester.pumpAndSettle();
+    await choose(tester, 'Course activity');
+    expect(reads, 3);
+    expect(find.text('5'), findsOneWidget);
+    expect(find.text('2'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [390.0, 1100.0]) {
     testWidgets('course activity is scoped and read-only at $width', (
       tester,

@@ -80,6 +80,7 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Latest 2 of 12 recorded lessons'), findsOneWidget);
+        expect(find.text('All time | Current learner account'), findsOneWidget);
         expect(find.text('Marked complete by learner'), findsOneWidget);
         expect(find.text('30% reported'), findsOneWidget);
         expect(find.text('8'), findsOneWidget);
@@ -100,6 +101,7 @@ void main() {
       find.text('No learner login is linked to this student yet.'),
       findsOneWidget,
     );
+    expect(find.text('All time | Current learner account'), findsNothing);
     await host(
       t,
       const StudentCourseProgress(data: {'linked': true, 'trackedLessons': 0}),

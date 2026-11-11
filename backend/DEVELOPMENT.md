@@ -2469,3 +2469,35 @@ Use a local development/test database for integration tests. The aggregate SQL t
 rolls back its synthetic fixtures; student management tests remove only their own
 synthetic organizations. Flutter widget tests cover the admin dialog and madrasa
 detail, including narrow screens. Full browser acceptance is still a separate check.
+
+Admin course-activity browser check (local services must already be running):
+
+```bash
+cd backend
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core node scripts/check-admin-course-activity.mjs --confirm-local-development
+node --test scripts/check-admin-course-activity.test.mjs scripts/check-quran-correction-details.test.mjs
+```
+
+This creates a temporary synthetic organization, admin, learner and three lesson
+entries. It checks that the admin sees only the two published lessons, that reading
+does not change progress, and that reopening reads a subsequent synthetic update
+without reloading the browser. Browser API writes after login are blocked. Cleanup
+removes only this check's fixtures; existing demo accounts and courses are untouched.
+It refuses production configuration and requires explicit local confirmation. The
+default preview is `http://127.0.0.1:8087/`; `WEB_PREVIEW_URL` may select another
+loopback preview. Neither server is restarted. `ACTIVITY_CHECK_SCREENSHOT` optionally
+captures the synthetic activity dialog (or the failure screen); no credentials are
+logged. The check also resizes to 390 pixels and verifies that Close stays accessible.
+
+The individual course summary labels its scope as all-time/current account.
+A connection failure is not shown as zero activity: reopen Course activity to retry.
+Widget tests cover failed reads followed by a successful retry with fresh counts.
+The open admin dialog remains a read-only snapshot, not a live subscription. This
+browser check does not validate teacher/parent navigation or all-role acceptance.
+
+Verified locally with 18 Flutter widget tests, 10 focused backend tests and four
+script guard tests passing, plus Flutter analysis and a release web build. The
+browser check passed against that release build on temporary port 8088 with the
+existing API. The debug preview on 8087 stalled at startup in isolated Chromium;
+debug-preview browser acceptance remains unresolved. The original API and preview
+were not restarted, and the temporary synthetic fixtures were removed.

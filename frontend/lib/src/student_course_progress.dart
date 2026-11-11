@@ -26,6 +26,13 @@ class StudentCourseProgress extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+          if (data['linked'] == true) ...[
+            const Text(
+              'All time | Current learner account',
+              style: TextStyle(color: muted, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+          ],
           const Text(
             'Learner-reported progress, not teacher-assessed achievement. Counts cover recorded lessons in published courses only.',
             style: TextStyle(color: muted, height: 1.5),
