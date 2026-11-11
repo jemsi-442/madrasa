@@ -34,6 +34,7 @@ import 'assessments_page.dart';
 import 'student_reports_page.dart';
 import 'learner_portal_page.dart';
 import 'learner_courses_page.dart';
+import 'learner_progress_page.dart';
 import 'media_player_preview.dart';
 
 class SectionSpec {
@@ -730,6 +731,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         userId: session.userId,
         teacherMode: session.role == 'TEACHER',
         refreshToken: refreshToken,
+      );
+    }
+    if (session.role == 'LEARNER' && section.path == '/api/learner/progress') {
+      return LearnerProgressPage(
+        load: widget.state.load,
+        submit: widget.state.submit,
+        apiBaseUrl: widget.state.api.baseUrl,
+        refreshToken: refreshToken,
+        onBrowse: () => selectSection(1),
       );
     }
     if (session.role == 'LEARNER' && selectedIndex == 1) {
