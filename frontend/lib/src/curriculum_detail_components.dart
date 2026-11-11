@@ -332,48 +332,16 @@ class SchoolCurriculumDetail extends StatelessWidget {
           expanded: !isAdmin && !openLessons,
           children: [
             if (topics.isEmpty) const Text('No topics in this version.'),
-            for (final topic in topics) ...[
-              CurriculumDetailPanel(
-                title: '${topic['title']}',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if ((topic['objectives'] as List).isEmpty)
-                      const Text('No objectives in this topic.'),
-                    for (final objective in topic['objectives']) ...[
-                      CurriculumDetailField(
-                        label: '${objective['code']}',
-                        value: '${objective['description']}',
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AfaqDesign.canvas,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            CurriculumDetailField(
-                              label: 'Assessment method',
-                              value: '${objective['assessmentMethod'] ?? ''}',
-                            ),
-                            const SizedBox(height: 16),
-                            CurriculumDetailField(
-                              label: 'Success criteria',
-                              value: '${objective['criteria'] ?? ''}',
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (objective != (topic['objectives'] as List).last)
-                        const Divider(height: 36),
-                    ],
-                  ],
+            for (var i = 0; i < topics.length; i++) ...[
+              CurriculumTopicDetail(
+                key: PageStorageKey(
+                  '${assignment['id']}-topic-${topics[i]['id'] ?? i}',
                 ),
+                topic: topics[i],
+                number: i + 1,
+                initiallyExpanded: i == 0,
               ),
-              if (topic != topics.last) const SizedBox(height: 16),
+              if (i < topics.length - 1) const SizedBox(height: 16),
             ],
           ],
         ),
@@ -480,4 +448,116 @@ class SchoolCurriculumDetail extends StatelessWidget {
       children: children,
     ),
   );
+}
+
+class CurriculumTopicDetail extends StatelessWidget {
+  const CurriculumTopicDetail({
+    super.key,
+    required this.topic,
+    required this.number,
+    this.initiallyExpanded = false,
+  });
+
+  final Map topic;
+  final int number;
+  final bool initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final objectives = topic['objectives'] as List;
+    return Container(
+      decoration: AfaqDesign.panelDecoration(),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.all(16),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        collapsedBackgroundColor: AfaqDesign.cardTint(AfaqDesign.blue, .06),
+        leading: CircleAvatar(
+          backgroundColor: AfaqDesign.cardTint(AfaqDesign.blue, .12),
+          foregroundColor: AfaqDesign.blue,
+          child: Text('$number'),
+        ),
+        title: Text(
+          '${topic['title']}',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AfaqDesign.ink,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            '${objectives.length} learning ${objectives.length == 1 ? 'objective' : 'objectives'}',
+            style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
+          ),
+        ),
+        children: [
+          if (objectives.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('No objectives in this topic.'),
+            ),
+          for (var i = 0; i < objectives.length; i++) ...[
+            const Divider(height: 24),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: CurriculumDetailTag('${objectives[i]['code']}'),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${objectives[i]['description']}',
+                style: const TextStyle(
+                  fontSize: 17,
+                  height: 1.55,
+                  fontWeight: FontWeight.w600,
+                  color: AfaqDesign.ink,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AfaqDesign.canvas,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final method = CurriculumDetailField(
+                    label: 'Assessment method',
+                    value: '${objectives[i]['assessmentMethod'] ?? ''}',
+                  );
+                  final criteria = CurriculumDetailField(
+                    label: 'Success criteria',
+                    value: '${objectives[i]['criteria'] ?? ''}',
+                  );
+                  if (constraints.maxWidth < 640 ||
+                      MediaQuery.textScalerOf(context).scale(16) > 20) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [method, const SizedBox(height: 20), criteria],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: method),
+                      const SizedBox(width: 28),
+                      Expanded(child: criteria),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
