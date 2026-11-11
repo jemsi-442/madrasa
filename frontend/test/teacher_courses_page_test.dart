@@ -58,12 +58,14 @@ void main() {
           home: Scaffold(
             body: SingleChildScrollView(
               child: TeacherCoursesPage(
-                load: (_) async => [
-                  {
-                    'id': 'synthetic',
-                    'title': 'Synthetic teacher media practice course',
-                  },
-                ],
+                load: (path) async => path.endsWith('/modules')
+                    ? []
+                    : [
+                        {
+                          'id': 'synthetic',
+                          'title': 'Synthetic teacher media practice course',
+                        },
+                      ],
               ),
             ),
           ),
@@ -166,10 +168,14 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: TeacherCoursesPage(
-              load: (_) async => [
-                {'id': 'c', 'title': 'Synthetic course'},
-              ],
+            body: SingleChildScrollView(
+              child: TeacherCoursesPage(
+                load: (path) async => path.endsWith('/modules')
+                    ? []
+                    : [
+                        {'id': 'c', 'title': 'Synthetic course'},
+                      ],
+              ),
             ),
           ),
         ),
@@ -186,13 +192,11 @@ void main() {
         ),
       );
       expect(
-        tester.getSemantics(
-          find.bySemanticsLabel('Synthetic course\nOpen course'),
-        ),
+        tester.getSemantics(find.bySemanticsLabel('Open course')),
         containsSemantics(
           isButton: true,
           hasTapAction: true,
-          label: 'Synthetic course\nOpen course',
+          label: 'Open course',
         ),
       );
     } finally {
@@ -472,6 +476,7 @@ void main() {
         expect(requests, [
           '/api/teaching/courses',
           '/api/courses/11/modules',
+          '/api/courses/11/modules',
           '/api/courses/modules/22/lessons',
           '/api/courses/lessons/33/assets',
           '/api/courses/lessons/34/assets',
@@ -535,6 +540,7 @@ void main() {
 
       await render();
       for (final label in ['Open course', 'View lessons', 'Read lesson']) {
+        await tester.ensureVisible(find.text(label));
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
       }
@@ -589,10 +595,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Open course'));
       await tester.tap(find.text('Open course'));
       await tester.pumpAndSettle();
       expect(find.text('Reading module'), findsOneWidget);
       expect(find.text('0 lessons'), findsNothing);
+      await tester.ensureVisible(find.text('View lessons'));
       await tester.tap(find.text('View lessons'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Read lesson'));
