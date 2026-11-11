@@ -61,20 +61,26 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SchoolCurriculumPage(
-              isAdmin: false,
-              load: (_) async => {
-                'classes': [],
-                'subjects': [],
-                'assignments': [
-                  assignment('1', 'Arabic', '2026', taught: 0),
-                  assignment('2', 'Fiqh', '2027'),
-                ],
-              },
-              submit: (_, _) async {
-                writes++;
-                return {};
-              },
+            body: SelectionArea(
+              child: SingleChildScrollView(
+                key: const PageStorageKey('teacher-curriculum-page'),
+                child: SchoolCurriculumPage(
+                  embedded: true,
+                  isAdmin: false,
+                  load: (_) async => {
+                    'classes': [],
+                    'subjects': [],
+                    'assignments': [
+                      assignment('1', 'Arabic', '2026', taught: 0),
+                      assignment('2', 'Fiqh', '2027'),
+                    ],
+                  },
+                  submit: (_, _) async {
+                    writes++;
+                    return {};
+                  },
+                ),
+              ),
             ),
           ),
         ),

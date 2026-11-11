@@ -631,7 +631,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                       ),
                     ),
                   ExpansionTile(
-                    key: ValueKey('${item['id']}-topics-$openLessons'),
+                    key: PageStorageKey('${item['id']}-topics-$openLessons'),
                     initiallyExpanded: !widget.isAdmin && !openLessons,
                     title: const Text('Topics & objectives'),
                     children: [
@@ -656,7 +656,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                     ],
                   ),
                   ExpansionTile(
-                    key: ValueKey('${item['id']}-lessons-$openLessons'),
+                    key: PageStorageKey('${item['id']}-lessons-$openLessons'),
                     initiallyExpanded: !widget.isAdmin && openLessons,
                     title: const Text('Shared lesson plans'),
                     children: [
