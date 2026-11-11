@@ -234,7 +234,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                         'My Courses',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 30,
+                          fontSize: 34,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -250,6 +250,20 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                     ],
                   ),
                 ),
+                if (MediaQuery.sizeOf(context).width >= 1100) ...[
+                  const SizedBox(width: 24),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/learning-hero.png',
+                      width: 250,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      excludeFromSemantics: true,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

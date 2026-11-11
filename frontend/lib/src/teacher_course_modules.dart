@@ -38,22 +38,34 @@ class TeacherCourseModules extends StatelessWidget {
           ),
           const SizedBox(height: 20),
         ],
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _stat(
-              Icons.layers_outlined,
-              '${modules.length} modules',
-              const Color(0xFFEAF2FC),
-            ),
-            if (hasCounts)
-              _stat(
-                Icons.play_circle_outline,
-                '$lessons lessons',
-                const Color(0xFFE8F6EE),
-              ),
-          ],
+        LayoutBuilder(
+          builder: (context, box) {
+            final columns = box.maxWidth >= 560 && hasCounts ? 2 : 1;
+            final width = (box.maxWidth - (columns - 1) * 12) / columns;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: width,
+                  child: _stat(
+                    Icons.layers_outlined,
+                    '${modules.length} ${modules.length == 1 ? 'module' : 'modules'}',
+                    const Color(0xFFEAF2FC),
+                  ),
+                ),
+                if (hasCounts)
+                  SizedBox(
+                    width: width,
+                    child: _stat(
+                      Icons.play_circle_outline,
+                      '$lessons ${lessons == 1 ? 'lesson' : 'lessons'}',
+                      const Color(0xFFE8F6EE),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 24),
         const Text(
@@ -63,11 +75,14 @@ class TeacherCourseModules extends StatelessWidget {
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, box) {
-            final columns = box.maxWidth >= 1200
+            final availableColumns = box.maxWidth >= 1200
                 ? 4
                 : box.maxWidth >= 700
                 ? 2
                 : 1;
+            final columns = modules.isEmpty
+                ? 1
+                : availableColumns.clamp(1, modules.length);
             final width = (box.maxWidth - (columns - 1) * 16) / columns;
             return Wrap(
               spacing: 16,
