@@ -6,6 +6,7 @@ import 'dashboard_components.dart';
 import 'design_tokens.dart';
 import 'workspace_form_dialog.dart';
 import 'curriculum_delivery_history_dialog.dart';
+import 'teacher_curriculum_library.dart';
 
 class SchoolCurriculumPage extends StatefulWidget {
   const SchoolCurriculumPage({
@@ -30,6 +31,39 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
   bool saving = false;
   final deliveryEvents = <String, String>{};
   final recordedDeliveries = <String>{};
+  String? selectedAssignment;
+  bool openLessons = false;
+  final pageScroll = ScrollController();
+
+  @override
+  void dispose() {
+    pageScroll.dispose();
+    super.dispose();
+  }
+
+  void openAssignment(Map item, bool lessons) {
+    setState(() {
+      selectedAssignment = '${item['id']}';
+      openLessons = lessons;
+    });
+    scrollToTop();
+  }
+
+  void scrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final position = widget.embedded
+          ? Scrollable.maybeOf(context)?.position
+          : pageScroll.hasClients
+          ? pageScroll.position
+          : null;
+      position?.animateTo(
+        0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
 
   Future<void> recordTeaching(Map assignment, Map lesson) async {
     if (widget.isAdmin) return;
@@ -400,29 +434,58 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
       }
       final data = Map<String, dynamic>.from(snapshot.data as Map);
       final assignments = data['assignments'] as List;
+      final showDetails =
+          !widget.isAdmin &&
+          assignments.any((item) => '${item['id']}' == selectedAssignment);
       return ListView(
         // The workspace owns scrolling; a standalone page owns its viewport.
         shrinkWrap: widget.embedded,
-        primary: !widget.embedded,
+        primary: false,
+        controller: widget.embedded ? null : pageScroll,
         physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
         padding: widget.embedded ? EdgeInsets.zero : const EdgeInsets.all(24),
         children: [
-          const Text(
-            'Curriculum',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.isAdmin
-                ? 'Published frameworks available to your madrasa. Choose where they will be used.'
-                : 'Published frameworks adopted by your assigned classes.',
-          ),
-          const SizedBox(height: 16),
-          const WorkspaceFormNotice(
-            message:
-                'Availability, class adoption and learner achievement are separate. Reading a plan does not mark a lesson as taught or an objective as achieved.',
-          ),
-          const SizedBox(height: 20),
+          if (!widget.isAdmin)
+            Offstage(
+              offstage: showDetails,
+              child: TeacherCurriculumLibrary(
+                assignments: assignments.cast<Map>(),
+                onOpen: openAssignment,
+              ),
+            ),
+          if (showDetails)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() => selectedAssignment = null);
+                    scrollToTop();
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('My assigned curriculum'),
+                ),
+              ),
+            ),
+          if (widget.isAdmin) ...[
+            const Text(
+              'Curriculum',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.isAdmin
+                  ? 'Published frameworks available to your madrasa. Choose where they will be used.'
+                  : 'Published frameworks adopted by your assigned classes.',
+            ),
+            const SizedBox(height: 16),
+            const WorkspaceFormNotice(
+              message:
+                  'Availability, class adoption and learner achievement are separate. Reading a plan does not mark a lesson as taught or an objective as achieved.',
+            ),
+            const SizedBox(height: 20),
+          ],
           if (assignments.isEmpty)
             Container(
               padding: const EdgeInsets.all(24),
@@ -457,7 +520,11 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                 ],
               ),
             ),
-          for (final item in assignments) ...[
+          for (final item in assignments.where(
+            (item) =>
+                widget.isAdmin ||
+                (showDetails && '${item['id']}' == selectedAssignment),
+          )) ...[
             Container(
               padding: const EdgeInsets.all(20),
               decoration: AfaqDesign.panelDecoration(),
@@ -564,6 +631,8 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                       ),
                     ),
                   ExpansionTile(
+                    key: ValueKey('${item['id']}-topics-$openLessons'),
+                    initiallyExpanded: !widget.isAdmin && !openLessons,
                     title: const Text('Topics & objectives'),
                     children: [
                       for (final topic in item['version']['topics'])
@@ -587,6 +656,8 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                     ],
                   ),
                   ExpansionTile(
+                    key: ValueKey('${item['id']}-lessons-$openLessons'),
+                    initiallyExpanded: !widget.isAdmin && openLessons,
                     title: const Text('Shared lesson plans'),
                     children: [
                       if ((item['version']['lessons'] as List).isEmpty)

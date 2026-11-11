@@ -146,6 +146,12 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          if (!admin) {
+            await tester.ensureVisible(find.text('Lesson plan'));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Lesson plan'));
+            await tester.pumpAndSettle();
+          }
           expect(find.text('Teaching coverage: 1 / 3 lessons'), findsOneWidget);
           expect(
             find.textContaining(

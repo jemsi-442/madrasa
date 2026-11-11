@@ -64,6 +64,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Lesson plan'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lesson plan'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Shared lesson plans'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Shared lesson plans'));
@@ -155,6 +159,10 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Lesson plan'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lesson plan'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Shared lesson plans'));
       await tester.pumpAndSettle();
@@ -285,6 +293,12 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        if (!admin) {
+          await tester.ensureVisible(find.text('Lesson plan'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Lesson plan'));
+          await tester.pumpAndSettle();
+        }
         await tester.ensureVisible(find.text('Shared lesson plans'));
         await tester.tap(find.text('Shared lesson plans'));
         await tester.pumpAndSettle();
