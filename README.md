@@ -80,16 +80,25 @@ The formal access reference for routes, pages, and backend areas is maintained i
 
 The curriculum foundation follows `Super Admin: Draft -> Publish -> Assign to
 madrasas`, then `Madrasa Admin: map to a school subject -> adopt in classes`.
-Teachers can read frameworks adopted by their assigned classes; this does not
-record lesson delivery or learner achievement. Assignment, class adoption and
+The madrasa admin also assigns each class to its teacher. Teachers open
+**Curriculum** to read that class's topics, objectives and shared lesson plans.
+After teaching, they can explicitly **Record lesson taught** and inspect
+**Teaching history**. Simply opening a plan does not record delivery or learner
+achievement. Assignment, class adoption and
 achievement are separate records with separate permissions. See the
 [backend curriculum guide](backend/DEVELOPMENT.md#shared-curriculum) for API,
 scope and migration details.
 
-Curriculum migrations are present in the repository but have not been applied to
-the populated local database. Review all pending migrations and use the normal
-database upgrade process before expecting the feature to work against that
-database; do not use `db push` or reset school data.
+An empty teacher curriculum is not necessarily a connection failure: a published
+framework must be assigned to the teacher's madrasa and adopted in their class.
+If the admin also sees no frameworks, start at the Superadmin's madrasa
+assignments. **My courses** is the separate online-course library; publishing an
+online course does not adopt a shared curriculum in a class. Attendance, Quran
+observations and assessments remain separate records.
+
+Check migration status for the target development database before upgrading;
+do not use `db push` or reset school data. Tests use synthetic records and must
+not replace existing demo frameworks or class assignments.
 
 Future role direction:
 

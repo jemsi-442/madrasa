@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +13,7 @@ import 'package:mif_app/src/browser_state.dart';
 import 'package:mif_app/src/attendance_register_page.dart';
 import 'package:mif_app/src/assessments_page.dart';
 import 'package:mif_app/src/student_reports_page.dart';
+import 'package:mif_app/src/school_curriculum_page.dart';
 import 'package:mif_app/src/family_messages_page.dart';
 import 'package:mif_app/src/parent_portal_page.dart';
 import 'package:mif_app/src/teacher_students_page.dart';
@@ -44,6 +47,7 @@ Future<AppState> showWorkspace(
   double width = 1440,
   double scale = 1,
   int? restoredSection,
+  Future<http.Response> Function(http.Request)? respond,
 }) async {
   tester.view.physicalSize = Size(width, 900);
   tester.view.devicePixelRatio = 1;
@@ -56,8 +60,9 @@ Future<AppState> showWorkspace(
           MifApiClient(
             browserAuth: false,
             client: MockClient(
-              (_) async =>
-                  http.Response('{"message":"Test offline state"}', 500),
+              respond ??
+                  (_) async =>
+                      http.Response('{"message":"Test offline state"}', 500),
             ),
           ),
           browserState: MemoryBrowserState(),
@@ -92,6 +97,48 @@ int section(WidgetTester tester) =>
     tester.widget<WorkspaceSidebar>(find.byType(WorkspaceSidebar)).selected;
 
 void main() {
+  for (final role in ['ADMIN', 'TEACHER']) {
+    for (final width in [390.0, 1440.0]) {
+      testWidgets('curriculum opens inside $role workspace at $width', (
+        tester,
+      ) async {
+        final index = sectionsForRole(
+          role,
+        ).indexWhere((section) => section.path == '/api/school-curriculum');
+        var reads = 0;
+        await showWorkspace(
+          tester,
+          role,
+          width: width,
+          restoredSection: index,
+          respond: (request) async {
+            if (request.url.path == '/api/school-curriculum') {
+              reads++;
+              return http.Response(
+                jsonEncode({
+                  'success': true,
+                  'data': {'assignments': [], 'classes': [], 'subjects': []},
+                }),
+                200,
+              );
+            }
+            return http.Response('{}', 500);
+          },
+        );
+        expect(find.byType(SchoolCurriculumPage), findsOneWidget);
+        expect(
+          find.textContaining(
+            role == 'ADMIN'
+                ? 'No published curriculum has been assigned'
+                : 'No curriculum has been adopted',
+          ),
+          findsOneWidget,
+        );
+        expect(reads, 1);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
   for (final width in [390.0, 1440.0]) {
     testWidgets(
       'course record actions retain class and return location at $width',

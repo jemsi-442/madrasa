@@ -857,6 +857,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           load: widget.state.load,
           submit: widget.state.submit,
           isAdmin: session.role == 'ADMIN',
+          embedded: true,
           refreshToken: refreshToken,
         );
       case 'Family accounts':

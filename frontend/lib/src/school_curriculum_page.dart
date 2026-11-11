@@ -14,11 +14,13 @@ class SchoolCurriculumPage extends StatefulWidget {
     required this.submit,
     required this.isAdmin,
     this.refreshToken = 0,
+    this.embedded = false,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final bool isAdmin;
   final int refreshToken;
+  final bool embedded;
   @override
   State<SchoolCurriculumPage> createState() => _SchoolCurriculumPageState();
 }
@@ -399,7 +401,11 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
       final data = Map<String, dynamic>.from(snapshot.data as Map);
       final assignments = data['assignments'] as List;
       return ListView(
-        padding: const EdgeInsets.all(24),
+        // The workspace owns scrolling; a standalone page owns its viewport.
+        shrinkWrap: widget.embedded,
+        primary: !widget.embedded,
+        physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
+        padding: widget.embedded ? EdgeInsets.zero : const EdgeInsets.all(24),
         children: [
           const Text(
             'Curriculum',
@@ -418,10 +424,38 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
           ),
           const SizedBox(height: 20),
           if (assignments.isEmpty)
-            Text(
-              widget.isAdmin
-                  ? 'No published curriculum has been assigned to your madrasa yet.'
-                  : 'No curriculum has been adopted for your assigned classes yet. Contact your madrasa administrator.',
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: AfaqDesign.panelDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.menu_book_outlined, size: 32),
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.isAdmin
+                        ? 'Waiting for a published framework'
+                        : (data['classes'] as List).isEmpty
+                        ? 'A class assignment is needed'
+                        : 'Your classes are waiting for curriculum',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.isAdmin
+                        ? 'No published curriculum has been assigned to your madrasa yet.'
+                        : 'No curriculum has been adopted for your assigned classes yet. Contact your madrasa administrator.',
+                  ),
+                  const Divider(height: 32),
+                  Text(
+                    widget.isAdmin
+                        ? 'Next: ask the Superadmin to publish and assign a framework to this madrasa. Then use it in a class and assign that class to a teacher.'
+                        : (data['classes'] as List).isEmpty
+                        ? 'Next: your madrasa admin assigns you a class and adopts its curriculum. Its topics and lesson plans will appear here.'
+                        : 'Next: your madrasa admin selects an assigned framework and uses it in your class. Its topics and lesson plans will appear here.',
+                  ),
+                ],
+              ),
             ),
           for (final item in assignments) ...[
             Container(
