@@ -431,6 +431,14 @@ void main() {
       expect(find.text('Weekly periods'), findsOneWidget);
       expect(find.text('Assigned courses'), findsNothing);
       expect(find.text('16'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Quick actions')).dy,
+        greaterThan(tester.getTopLeft(find.text('My weekly schedule')).dy),
+      );
+      expect(
+        tester.getTopLeft(find.text('Record attendance')).dy,
+        tester.getTopLeft(find.text('Class reports')).dy,
+      );
       for (final (label, page) in [
         ('Record attendance', 4),
         ('Manage my courses', 5),

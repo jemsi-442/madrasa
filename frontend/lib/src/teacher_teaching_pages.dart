@@ -587,26 +587,26 @@ class TeacherClassesPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 24),
-          PanelColumns(
-            firstFlex: 3,
-            second: TeacherClassQuickActions(onOpen: onOpen),
-            first: SurfacePanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const PanelHeading(
-                    'My weekly schedule',
-                    subtitle: 'Recurring timetable | Tanzania time (EAT)',
-                  ),
-                  if (slots.isEmpty)
-                    const EmptyRecords(
-                      'Your weekly schedule will appear when the school office adds teaching times.',
-                    )
-                  else
-                    SingleChildScrollView(
+          SurfacePanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const PanelHeading(
+                  'My weekly schedule',
+                  subtitle: 'Recurring timetable | Tanzania time (EAT)',
+                ),
+                if (slots.isEmpty)
+                  const EmptyRecords(
+                    'Your weekly schedule will appear when the school office adds teaching times.',
+                  )
+                else
+                  LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
-                        width: 1400,
+                        width: constraints.maxWidth < 1100
+                            ? 1100
+                            : constraints.maxWidth,
                         child: Table(
                           columnWidths: const {0: FixedColumnWidth(72)},
                           children: [
@@ -705,10 +705,12 @@ class TeacherClassesPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
+          const SizedBox(height: 18),
+          TeacherClassQuickActions(onOpen: onOpen),
           const SizedBox(height: 18),
           const TeacherNotice(
             'Classes and teaching assignments are managed by your school office. You can view and update learning records for your assigned students.',

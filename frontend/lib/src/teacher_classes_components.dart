@@ -143,48 +143,74 @@ class TeacherClassQuickActions extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        for (final (label, icon, page, color) in [
-          (
-            'Record attendance',
-            Icons.calendar_month_outlined,
-            4,
-            AfaqDesign.blue,
-          ),
-          (
-            'Manage my courses',
-            Icons.menu_book_outlined,
-            5,
-            AfaqDesign.actionGold,
-          ),
-          ('View curriculum', Icons.layers_outlined, 10, AfaqDesign.green),
-          ('Class reports', Icons.bar_chart_outlined, 9, AfaqDesign.actionGold),
-        ])
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Material(
-              color: color.withValues(alpha: .07),
-              borderRadius: BorderRadius.circular(12),
-              child: ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                leading: Icon(icon, color: color),
-                title: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 1100
+                ? 4
+                : constraints.maxWidth >= 600
+                ? 2
+                : 1;
+            final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final (label, icon, page, color) in [
+                  (
+                    'Record attendance',
+                    Icons.calendar_month_outlined,
+                    4,
+                    AfaqDesign.blue,
                   ),
-                ),
-                trailing: const Icon(Icons.chevron_right, size: 20),
-                onTap: () => onOpen(page),
-              ),
-            ),
-          ),
+                  (
+                    'Manage my courses',
+                    Icons.menu_book_outlined,
+                    5,
+                    AfaqDesign.actionGold,
+                  ),
+                  (
+                    'View curriculum',
+                    Icons.layers_outlined,
+                    10,
+                    AfaqDesign.green,
+                  ),
+                  (
+                    'Class reports',
+                    Icons.bar_chart_outlined,
+                    9,
+                    AfaqDesign.actionGold,
+                  ),
+                ])
+                  SizedBox(
+                    width: width,
+                    child: Material(
+                      color: color.withValues(alpha: .07),
+                      borderRadius: BorderRadius.circular(12),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        leading: Icon(icon, color: color),
+                        title: Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 20),
+                        onTap: () => onOpen(page),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ],
     ),
   );
