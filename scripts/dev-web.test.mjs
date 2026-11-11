@@ -1,6 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AutoReload } from './dev-web.mjs';
+import { AutoReload, webOptions } from './dev-web.mjs';
+
+test('release preview keeps the familiar origin and bypasses debug compilation', () => {
+  const options = webOptions({ WEB_MODE: 'release' });
+  assert.equal(options.mode, 'release');
+  assert.equal(options.port, '8087');
+  assert.ok(options.args.includes('--release'));
+  assert.ok(options.args.includes('--no-web-resources-cdn'));
+  assert.ok(options.args.includes('--dart-define=API_BASE_URL=http://127.0.0.1:4000'));
+  assert.ok(!options.args.includes('--debug'));
+});
+
+test('debug remains opt-in capable and invalid preview settings fail early', () => {
+  assert.equal(webOptions({}).mode, 'debug');
+  assert.throws(() => webOptions({ WEB_MODE: 'invalid' }));
+  assert.throws(() => webOptions({ WEB_PORT: '80' }));
+  assert.throws(() => webOptions({ API_BASE_URL: 'http://user:password@localhost' }));
+});
 
 test('queues saves until ready and never requests a full restart', () => {
   const sent = [];

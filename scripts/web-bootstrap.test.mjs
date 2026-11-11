@@ -11,13 +11,14 @@ test('web shell opts out of automatic translation to preserve Quran text', async
   assert.match(html, /<meta\s+name="google"\s+content="notranslate"\s*\/?>/);
   assert.match(html, /<body\b[^>]*\btranslate="no"[^>]*\bclass="notranslate"/);
 });
-async function boot(serviceWorker) {
-  const result = { loads: [], reloads: 0 };
+async function boot(serviceWorker, load) {
+  const result = { loads: [], reloads: 0, failures: 0, stages: [] };
   await runInNewContext(source, {
-    URL, navigator: serviceWorker ? { serviceWorker } : {},
+    URL, setTimeout, clearTimeout, navigator: serviceWorker ? { serviceWorker } : {},
+    window: { AfaqStartup: { fail: () => result.failures++, stage: index => result.stages.push(index) } },
     document: { baseURI: 'http://127.0.0.1:8087/' },
     location: { reload: () => result.reloads++ },
-    _flutter: { loader: { load: async config => result.loads.push(config) } },
+    _flutter: { loader: { load: async config => { result.loads.push(config); await load?.(config); } } },
   });
   return result;
 }
@@ -26,6 +27,47 @@ test('renderer loads locally without service worker support', async () => {
   const result = await boot();
   assert.equal(result.loads[0].config.canvasKitBaseUrl, 'canvaskit/');
   assert.equal(result.reloads, 0);
+});
+
+test('startup still proceeds when worker enumeration never resolves', async () => {
+  const result = await boot({ getRegistrations: () => new Promise(() => {}) });
+  assert.equal(result.loads.length, 1);
+  assert.equal(result.reloads, 0);
+});
+
+test('late worker retirement never reloads an already opened workspace', async () => {
+  let finishRetirement;
+  const scriptURL = 'http://127.0.0.1:8087/flutter_service_worker.js';
+  const result = await boot({
+    controller: { scriptURL },
+    getRegistrations: async () => [{
+      scope: 'http://127.0.0.1:8087/', active: { scriptURL },
+      unregister: () => new Promise(resolve => { finishRetirement = resolve; }),
+    }],
+  });
+  assert.equal(result.loads.length, 1);
+  finishRetirement(true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(result.reloads, 0);
+});
+
+test('engine initialization and app start report actual stages', async () => {
+  let runs = 0;
+  const result = await boot(null, config => config.onEntrypointLoaded({
+    initializeEngine: async () => ({ runApp: async () => { runs++; } }),
+  }));
+  assert.deepEqual(result.stages, [1, 2]);
+  assert.equal(runs, 1);
+  assert.equal(result.failures, 0);
+});
+
+test('loader and engine failures surface a retry state instead of an endless spinner', async () => {
+  const loader = await boot(null, async () => { throw Error('Unavailable'); });
+  assert.equal(loader.failures, 1);
+  const engine = await boot(null, config => config.onEntrypointLoaded({
+    initializeEngine: async () => { throw Error('Unavailable'); },
+  }));
+  assert.equal(engine.failures, 1);
 });
 test('storage restrictions do not prevent app startup', async () => {
   const result = await boot({ getRegistrations: async () => { throw Error('denied'); } });

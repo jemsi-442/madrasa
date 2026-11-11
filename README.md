@@ -359,10 +359,12 @@ Start the shared backend on port `4000` using `npm run dev`. All dashboard roles
 From the repository root:
 
 ```bash
-API_BASE_URL=http://127.0.0.1:4000 node scripts/dev-web.mjs
+WEB_MODE=release API_BASE_URL=http://127.0.0.1:4000 node scripts/dev-web.mjs
 ```
 
 Open `http://127.0.0.1:8087/#/login` for every account above. Check backend availability with `curl http://127.0.0.1:4000/api/health`. If your web process was previously compiled against port 4087, stop it and start it again with port 4000.
+
+This optimized preview avoids the debug handshake. Restart the frontend command after source changes; use `WEB_MODE=debug` when you need incremental hot reload.
 
 #### Android
 
@@ -559,7 +561,21 @@ flutter pub get
 flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:4000
 ```
 
-For automatic Dart updates while developing, run from the repository root:
+For a fast browser preview without the debug connection, run from the repository root:
+
+```bash
+WEB_MODE=release node scripts/dev-web.mjs
+```
+
+Use the same `http://127.0.0.1:8087/#/login` address so browser-saved logins remain
+associated with the same origin. This is an optimized **local preview**, not a
+production deployment; it still uses the existing local API/database. The first
+compile takes time, but opening the compiled app does not wait for the Flutter
+debugger. Keep the terminal running. Source changes require restarting this
+preview; it never reloads somebody's open form automatically. Do not run two
+preview commands on the same port.
+
+For automatic Dart updates while developing, use the debug mode instead:
 
 ```bash
 node scripts/dev-web.mjs
@@ -580,6 +596,24 @@ When switching from an older release preview, use a hard refresh once to fetch
 the new bootstrap; it retires this app's old Flutter service worker. Subsequent
 Dart edits do not require a browser refresh. Automatic updates apply only while
 this development command is running, not to production deployments.
+
+The web startup screen uses Afaq branding, actual engine-start stages and a manual
+retry if startup fails or takes more than 45 seconds. It disappears on the first
+Flutter frame; all startup timers stop then. Slow service-worker storage is bounded
+so it cannot hold the splash indefinitely. Retry reloads only on a user click and
+does not clear credentials or stored work. This startup screen is separate from
+API/session restoration errors inside the application.
+
+Startup regression checks (no login credentials or demo fixtures needed):
+
+```bash
+node --test scripts/web-loading.test.mjs scripts/web-bootstrap.test.mjs scripts/dev-web.test.mjs
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core node scripts/check-web-startup.mjs
+```
+
+The browser check needs the preview running and Chromium installed. It verifies
+desktop/mobile startup and recovery after a blocked bootstrap script, using fresh
+browser contexts. Reported timings are local samples, not production benchmarks.
 
 Installed Android/iOS builds open a dedicated mobile welcome and account flow, with app-bar/back navigation and a role-specific bottom navigation after login. The website keeps its public homepage, including when opened in a phone browser. See the frontend guide for USB development and native session limitations.
 

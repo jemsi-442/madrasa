@@ -42,45 +42,57 @@ export class AutoReload {
   close() { clearTimeout(this.timer); }
 }
 
-function main() {
-  const cwd = fileURLToPath(new URL('../frontend/', import.meta.url));
-  const port = process.env.WEB_PORT ?? '8087';
-  const api = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
+export function webOptions(environment = process.env) {
+  const mode = environment.WEB_MODE ?? 'debug';
+  if (!['debug', 'release'].includes(mode)) throw new Error('WEB_MODE must be debug or release');
+  const port = environment.WEB_PORT ?? '8087';
+  const api = environment.API_BASE_URL ?? 'http://127.0.0.1:4000';
   if (!/^\d+$/.test(port) || +port < 1024 || +port > 65535) throw new Error('Invalid WEB_PORT');
   const parsed = new URL(api);
   if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
     throw new Error('API_BASE_URL must be an HTTP(S) URL without credentials');
   }
-  const flutter = spawn(process.env.FLUTTER_BIN ?? 'flutter', [
-    'run', '-d', 'web-server', '--machine', '--web-hostname=127.0.0.1',
+  return { mode, port, args: [
+    'run', '-d', 'web-server', '--machine', `--${mode}`, '--web-hostname=127.0.0.1',
     `--web-port=${port}`, '--no-web-resources-cdn',
     `--dart-define=API_BASE_URL=${api}`,
-  ], { cwd, stdio: ['pipe', 'pipe', 'inherit'] });
+  ] };
+}
+
+function main() {
+  const cwd = fileURLToPath(new URL('../frontend/', import.meta.url));
+  const { mode, port, args } = webOptions();
+  const flutter = spawn(process.env.FLUTTER_BIN ?? 'flutter', args, { cwd, stdio: ['pipe', 'pipe', 'inherit'] });
   const reload = new AutoReload(message => flutter.stdin.write(`${JSON.stringify([message])}\n`));
-  const watcher = watch(new URL('../frontend/lib/', import.meta.url), { recursive: true }, (_event, file) => {
+  const watcher = mode === 'debug' ? watch(new URL('../frontend/lib/', import.meta.url), { recursive: true }, (_event, file) => {
     if (file?.endsWith('.dart')) reload.changed();
-  });
+  }) : null;
   const lines = createInterface({ input: flutter.stdout });
   lines.on('line', line => {
     let messages;
     try { messages = JSON.parse(line); } catch { console.log(line); return; }
     if (!Array.isArray(messages)) return;
     for (const message of messages) {
-      reload.message(message);
+      if (mode === 'debug') reload.message(message);
       if (message.event === 'app.log') console.log(message.params.log);
       if (message.event === 'app.progress' && message.params.message) console.log(message.params.message);
       if (message.error) console.error(message.error);
     }
   });
-  const stop = () => { watcher.close(); reload.close(); flutter.kill('SIGTERM'); };
-  watcher.on('error', error => { console.error(error.message); stop(); process.exitCode = 1; });
-  flutter.on('error', error => { console.error(error.message); watcher.close(); reload.close(); process.exitCode = 1; });
-  flutter.on('exit', code => { watcher.close(); reload.close(); lines.close(); process.exitCode = code ?? 0; });
+  const stop = () => { watcher?.close(); reload.close(); flutter.kill('SIGTERM'); };
+  watcher?.on('error', error => { console.error(error.message); stop(); process.exitCode = 1; });
+  flutter.on('error', error => { console.error(error.message); watcher?.close(); reload.close(); process.exitCode = 1; });
+  flutter.on('exit', code => { watcher?.close(); reload.close(); lines.close(); process.exitCode = code ?? 0; });
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   console.log(`Afaq development preview: http://127.0.0.1:${port}/#/login`);
-  console.log('Initial compilation takes time. Later Dart saves use incremental hot reload.');
-  console.log('Asset, dependency and web-shell changes require restarting this command.');
+  if (mode === 'debug') {
+    console.log('Initial compilation takes time. Later Dart saves use incremental hot reload.');
+    console.log('Asset, dependency and web-shell changes require restarting this command.');
+  } else {
+    console.log('Optimized local preview: no debugger connection or automatic page reload.');
+    console.log('Initial compilation takes time. Restart this command after code changes. Backend and data are unchanged.');
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
