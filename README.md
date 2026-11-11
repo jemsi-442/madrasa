@@ -96,6 +96,21 @@ assignments. **My courses** is the separate online-course library; publishing an
 online course does not adopt a shared curriculum in a class. Attendance, Quran
 observations and assessments remain separate records.
 
+To prepare one persistent teacher curriculum example in the shared **local
+development** database, run from `backend`:
+
+```bash
+npx tsx scripts/prepare-teacher-curriculum-demo.mjs --confirm-local-development
+```
+
+This reuses the demo staff and `Demo teaching group 1`, publishes a clearly
+labelled Quran planning example, assigns it to `demo-madrasa`, and adopts it in
+that class through the existing role services. It creates no Quran passages,
+teaching events or learner results. Repeat runs preserve existing content;
+changed class ownership, conflicting adoptions or an unpublished existing
+version require manual review rather than being overwritten. This is an
+explicit setup command, not an automatic startup seed.
+
 Check migration status for the target development database before upgrading;
 do not use `db push` or reset school data. Tests use synthetic records and must
 not replace existing demo frameworks or class assignments.
