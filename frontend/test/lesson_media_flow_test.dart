@@ -129,6 +129,10 @@ void main() {
               id: '22',
               embedded: true,
               openVideoOnLoad: true,
+              outline: [
+                f.row('22', 'Reading words', 'OPEN', 0),
+                f.row('23', 'Next practice', 'OPEN', 0),
+              ],
               apiBaseUrl: 'https://school.test',
               submit: f.submit,
               surfaceBuilder: f.surface,
@@ -191,6 +195,10 @@ void main() {
         );
         expect(find.text('Test ${entry.value} surface'), findsOneWidget);
         expect(find.text('Test VIDEO surface'), findsOneWidget);
+        expect(
+          FocusManager.instance.primaryFocus?.debugLabel,
+          '${entry.value} resource panel',
+        );
       }
       expect(f.events.where((event) => event == 'mount VIDEO').length, 1);
       expect(f.events, isNot(contains('dispose VIDEO')));
@@ -219,6 +227,13 @@ void main() {
         find.byKey(const ValueKey('open-separate-resource-31')),
       );
       expect(locked.onPressed, isNull);
+      await tap(t, find.byKey(const ValueKey('next-lesson')));
+      expect(f.paths, contains('/api/learner/lessons/23'));
+      for (final kind in ['PDF', 'AUDIO', 'TEXT', 'IMAGE']) {
+        expect(find.text('Test $kind surface'), findsNothing);
+        expect(f.events, contains('dispose $kind'));
+      }
+      expect(f.writes, isEmpty);
       expect(t.takeException(), isNull);
       await t.pumpWidget(const SizedBox());
     });

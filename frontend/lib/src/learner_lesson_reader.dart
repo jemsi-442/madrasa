@@ -60,6 +60,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   Map<String, dynamic>? savedProgress, selectedAsset;
   final separateAssets = <String, Map<String, dynamic>>{};
   final resourceAnchors = <String, GlobalKey>{};
+  final resourceFocusNodes = <String, FocusNode>{};
   String? error;
   String resourceFilter = 'ALL';
   String? autoOpenedLesson;
@@ -81,6 +82,9 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
     notesFocus.dispose();
     resourcesFocus.dispose();
     aboutFocus.dispose();
+    for (final focus in resourceFocusNodes.values) {
+      focus.dispose();
+    }
     contentsScroll.dispose();
     super.dispose();
   }
@@ -172,7 +176,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       });
       reveal(
         resourceAnchors.putIfAbsent(kind, () => GlobalKey()),
-        resourcesFocus,
+        resourceFocusNodes.putIfAbsent(
+          kind,
+          () => FocusNode(debugLabel: '$kind resource panel'),
+        ),
       );
       return;
     }
@@ -220,127 +227,137 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
               width: wide && !(kinds.length.isOdd && kind == kinds.last)
                   ? (box.maxWidth - 20) / 2
                   : box.maxWidth,
-              child: SurfacePanel(
-                key: resourceAnchors.putIfAbsent(kind, () => GlobalKey()),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: resourceAccent(kind).withValues(alpha: .10),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            lessonResourceIcon(kind),
-                            color: resourceAccent(kind),
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            switch (kind) {
-                              'AUDIO' => 'Audio lesson',
-                              'TEXT' => 'Text resources',
-                              'IMAGE' => 'Images',
-                              _ => 'PDF resources',
-                            },
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: ink,
+              child: Focus(
+                focusNode: resourceFocusNodes.putIfAbsent(
+                  kind,
+                  () => FocusNode(debugLabel: '$kind resource panel'),
+                ),
+                child: SurfacePanel(
+                  key: resourceAnchors.putIfAbsent(kind, () => GlobalKey()),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: resourceAccent(
+                                kind,
+                              ).withValues(alpha: .10),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              lessonResourceIcon(kind),
+                              color: resourceAccent(kind),
+                              size: 28,
                             ),
                           ),
-                        ),
-                        if (separateAssets.containsKey(kind))
-                          IconButton(
-                            key: ValueKey('close-separate-$kind'),
-                            tooltip: switch (kind) {
-                              'AUDIO' => 'Close audio',
-                              'TEXT' => 'Close text',
-                              'IMAGE' => 'Close image',
-                              _ => 'Close PDF',
-                            },
-                            onPressed: () =>
-                                setState(() => separateAssets.remove(kind)),
-                            icon: const Icon(Icons.close),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      resourceCount(kind),
-                      key: ValueKey('resource-count-$kind'),
-                      style: const TextStyle(color: muted, fontSize: 14),
-                    ),
-                    const SizedBox(height: 16),
-                    for (final asset in assets.where(
-                      (asset) => asset['assetType'] == kind,
-                    ))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: OutlinedButton.icon(
-                          key: ValueKey(
-                            'open-separate-resource-${asset['id']}',
-                          ),
-                          onPressed: saving || !canOpen(asset)
-                              ? null
-                              : () => play(asset),
-                          style: OutlinedButton.styleFrom(
-                            alignment: Alignment.centerLeft,
-                            minimumSize: const Size(0, 48),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            backgroundColor: resourceOpen(asset)
-                                ? resourceAccent(kind).withValues(alpha: .08)
-                                : null,
-                          ),
-                          icon: Icon(
-                            !canOpen(asset)
-                                ? Icons.lock_outline
-                                : resourceOpen(asset)
-                                ? Icons.visibility_outlined
-                                : kind == 'AUDIO'
-                                ? Icons.play_circle_outline
-                                : Icons.open_in_new,
-                          ),
-                          label: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  recordText(asset['title'], 'Resource'),
-                                ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              switch (kind) {
+                                'AUDIO' => 'Audio lesson',
+                                'TEXT' => 'Text resources',
+                                'IMAGE' => 'Images',
+                                _ => 'PDF resources',
+                              },
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: ink,
                               ),
-                              if (resourceOpen(asset)) ...[
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Open',
-                                  key: ValueKey('resource-open-${asset['id']}'),
-                                  style: TextStyle(
-                                    color: resourceAccent(kind),
-                                    fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (separateAssets.containsKey(kind))
+                            IconButton(
+                              key: ValueKey('close-separate-$kind'),
+                              tooltip: switch (kind) {
+                                'AUDIO' => 'Close audio',
+                                'TEXT' => 'Close text',
+                                'IMAGE' => 'Close image',
+                                _ => 'Close PDF',
+                              },
+                              onPressed: () =>
+                                  setState(() => separateAssets.remove(kind)),
+                              icon: const Icon(Icons.close),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        resourceCount(kind),
+                        key: ValueKey('resource-count-$kind'),
+                        style: const TextStyle(color: muted, fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      for (final asset in assets.where(
+                        (asset) => asset['assetType'] == kind,
+                      ))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: OutlinedButton.icon(
+                            key: ValueKey(
+                              'open-separate-resource-${asset['id']}',
+                            ),
+                            onPressed: saving || !canOpen(asset)
+                                ? null
+                                : () => play(asset),
+                            style: OutlinedButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                              minimumSize: const Size(0, 48),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              backgroundColor: resourceOpen(asset)
+                                  ? resourceAccent(kind).withValues(alpha: .08)
+                                  : null,
+                            ),
+                            icon: Icon(
+                              !canOpen(asset)
+                                  ? Icons.lock_outline
+                                  : resourceOpen(asset)
+                                  ? Icons.visibility_outlined
+                                  : kind == 'AUDIO'
+                                  ? Icons.play_circle_outline
+                                  : Icons.open_in_new,
+                            ),
+                            label: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    recordText(asset['title'], 'Resource'),
                                   ),
                                 ),
+                                if (resourceOpen(asset)) ...[
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Open',
+                                    key: ValueKey(
+                                      'resource-open-${asset['id']}',
+                                    ),
+                                    style: TextStyle(
+                                      color: resourceAccent(kind),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    if (separateAssets[kind] case final asset?)
-                      LessonMediaViewer(
-                        key: ValueKey('separate-media-${asset['id']}'),
-                        assetId: recordText(asset['id']),
-                        title: recordText(asset['title']),
-                        load: widget.load,
-                        apiBaseUrl: widget.apiBaseUrl,
-                        surfaceBuilder: widget.surfaceBuilder,
-                      ),
-                  ],
+                      if (separateAssets[kind] case final asset?)
+                        LessonMediaViewer(
+                          key: ValueKey('separate-media-${asset['id']}'),
+                          assetId: recordText(asset['id']),
+                          title: recordText(asset['title']),
+                          load: widget.load,
+                          apiBaseUrl: widget.apiBaseUrl,
+                          surfaceBuilder: widget.surfaceBuilder,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
