@@ -204,6 +204,13 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       final kinds = ['AUDIO', 'TEXT', 'IMAGE', 'PDF']
           .where((kind) => assets.any((asset) => asset['assetType'] == kind))
           .toList();
+      String resourceCount(String kind) {
+        final count = assets
+            .where((asset) => asset['assetType'] == kind)
+            .length;
+        return '$count ${count == 1 ? 'resource' : 'resources'}';
+      }
+
       return Wrap(
         spacing: 20,
         runSpacing: 20,
@@ -220,9 +227,17 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          lessonResourceIcon(kind),
-                          color: resourceAccent(kind),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: resourceAccent(kind).withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            lessonResourceIcon(kind),
+                            color: resourceAccent(kind),
+                            size: 28,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -254,6 +269,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                             icon: const Icon(Icons.close),
                           ),
                       ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      resourceCount(kind),
+                      key: ValueKey('resource-count-$kind'),
+                      style: const TextStyle(color: muted, fontSize: 14),
                     ),
                     const SizedBox(height: 16),
                     for (final asset in assets.where(

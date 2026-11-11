@@ -114,8 +114,11 @@ Future<void> tap(WidgetTester t, Finder target) async {
 }
 
 void main() {
-  for (final width in [390.0, 1440.0]) {
-    testWidgets('embedded media open in separate panels at $width', (t) async {
+  for (final layout in [(390.0, 1.0), (1440.0, 1.0), (390.0, 2.0)]) {
+    final (width, scale) = layout;
+    testWidgets('embedded media open in separate panels at $width/$scale', (
+      t,
+    ) async {
       final f = MediaFixture();
       await host(
         t,
@@ -169,6 +172,11 @@ void main() {
           ),
         ),
         width: width,
+        scale: scale,
+      );
+      expect(
+        t.widget<Text>(find.byKey(const ValueKey('resource-count-PDF'))).data,
+        '4 resources',
       );
       expect(find.text('Test VIDEO surface'), findsOneWidget);
       for (final entry in {
