@@ -3,6 +3,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_courses_page.dart';
 
 void main() {
+  for (final width in [320.0, 1440.0]) {
+    testWidgets('course catalogue fits $width', (tester) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TeacherCoursesPage(
+                load: (_) async => [
+                  {
+                    'id': 'synthetic',
+                    'title': 'Synthetic teacher media practice course',
+                  },
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('My Courses'), findsOneWidget);
+      expect(
+        find.text('Synthetic teacher media practice course'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets(
     'record actions preserve lesson location and returning rechecks access',
     (tester) async {

@@ -4,6 +4,7 @@ import 'foundation_ui.dart';
 import 'teacher_lesson_resources.dart';
 import 'teacher_ui.dart';
 import 'workspace_form_dialog.dart';
+import 'design_tokens.dart';
 
 enum TeacherLearningDestination { quran, assessments }
 
@@ -206,6 +207,52 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(key: lessonAnchor),
+        if (course == null) ...[
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              gradient: const LinearGradient(
+                colors: [AfaqDesign.ink, Color(0xFF184E67)],
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.menu_book_outlined,
+                  color: Color(0xFFE5B64C),
+                  size: 42,
+                ),
+                const SizedBox(width: 18),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My Courses',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Your courses, modules and learning resources.',
+                        style: TextStyle(
+                          color: Color(0xFFDCE8EF),
+                          fontSize: 16,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
         Semantics(
           container: true,
           header: true,
@@ -307,46 +354,72 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
           )
         else
           for (final row in rows)
-            Semantics(
-              container: true,
-              child: ListTile(
-                key: ValueKey('teacher-course-item-${row['id']}'),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 4,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: const Color(0xFFDDE5ED)),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                leading: Icon(
-                  module != null
-                      ? Icons.article_outlined
-                      : Icons.menu_book_outlined,
-                  color: blue,
-                ),
-                title: Text(
-                  recordText(row['title']),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  module != null
-                      ? 'Read lesson'
-                      : course != null
-                      ? 'View lessons'
-                      : 'Open course',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  if (module != null) {
-                    openLesson('${row['id']}');
-                  } else {
-                    setState(() {
-                      if (course != null) {
-                        module = row;
+                child: Semantics(
+                  container: true,
+                  child: ListTile(
+                    key: ValueKey('teacher-course-item-${row['id']}'),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 22,
+                      horizontal: 20,
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3D7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        module != null
+                            ? Icons.article_outlined
+                            : Icons.menu_book_outlined,
+                        color: AfaqDesign.actionGold,
+                        size: 28,
+                      ),
+                    ),
+                    title: Text(
+                      recordText(row['title']),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        height: 1.35,
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        module != null
+                            ? 'Read lesson'
+                            : course != null
+                            ? 'View lessons'
+                            : 'Open course',
+                        style: const TextStyle(fontSize: 14, color: blue),
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      if (module != null) {
+                        openLesson('${row['id']}');
                       } else {
-                        course = row;
+                        setState(() {
+                          if (course != null) {
+                            module = row;
+                          } else {
+                            course = row;
+                          }
+                          future = fetch();
+                        });
                       }
-                      future = fetch();
-                    });
-                  }
-                },
+                    },
+                  ),
+                ),
               ),
             ),
       ],
