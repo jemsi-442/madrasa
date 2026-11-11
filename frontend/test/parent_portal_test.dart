@@ -81,6 +81,19 @@ Future<dynamic> familyLoad(String path) async {
           'room': 'Room 1',
         },
       ],
+      'courseProgress': {
+        'linked': true,
+        'trackedLessons': 3,
+        'completedLessons': 1,
+        'recent': [
+          {
+            'course': {'title': 'Synthetic learning course'},
+            'lesson': {'title': 'Synthetic completed lesson'},
+            'progressPercent': 100,
+            'updatedAt': '2026-01-01T00:00:00Z',
+          },
+        ],
+      },
     };
   }
   if (path.contains('/attendance?')) {
@@ -335,6 +348,9 @@ void main() {
         contains('/api/parent-portal/workspace/children/1/profile'),
       );
       expect(find.text('Teacher Ayesha'), findsOneWidget);
+      expect(find.text('Course activity'), findsOneWidget);
+      expect(find.text('Synthetic completed lesson'), findsOneWidget);
+      expect(find.text('Marked complete by learner'), findsOneWidget);
       expect(find.text('Monday'), findsOneWidget);
       await tester.tap(find.text('Request child link'));
       await tester.pumpAndSettle();

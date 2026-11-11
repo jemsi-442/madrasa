@@ -11,6 +11,7 @@ import { schoolDate } from "../attendance/register.service";
 import { listParentAnnouncements } from "./parent-portal.service";
 import { attendanceSummary, memorised, readQuran } from "../learner/learner-records";
 import catalog from "../teacher-workspace/quran-catalog.json";
+import { studentCourseSummary } from "../learner/student-course-summary";
 
 const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).refine(v => Number(v.slice(0, 4)) >= 2000 && Number(v.slice(0, 4)) <= 2100);
 const monthQuery = z.object({ month: monthSchema.optional() }).strict();
@@ -78,7 +79,8 @@ async function profile(actor: AuthenticatedUser, id: string) {
     orderBy: [{ weekday: "asc" }, { startsAt: "asc" }],
     select: { weekday: true, startsAt: true, endsAt: true, subject: true, room: true },
   }) : [];
-  return { student, guardian: { fullName: parent.fullName, phone: parent.phone, email: parent.email, relationship: parent.relationship }, enrollments, timetable };
+  const courseProgress = await studentCourseSummary(prisma, orgId, student.id);
+  return { student, guardian: { fullName: parent.fullName, phone: parent.phone, email: parent.email, relationship: parent.relationship }, enrollments, timetable, courseProgress };
 }
 
 async function attendance(actor: AuthenticatedUser, id: string, month?: string) {

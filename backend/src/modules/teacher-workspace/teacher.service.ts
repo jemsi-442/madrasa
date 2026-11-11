@@ -9,6 +9,7 @@ import { assignedClass, assignedStudent, classScope, studentScope } from "./teac
 import type { PassageRosterQuery } from "./teacher.schemas";
 import type { DirectoryQuery, SessionInput, SessionQuery, SupportInput } from "./teacher.schemas";
 import catalog from "./quran-catalog.json";
+import { studentCourseSummary } from "../learner/student-course-summary";
 
 const writeConflict = (error: unknown): never => {
   if (attendanceConflict(error)) throw new HttpError(409, "The record changed while saving. Reload and check the saved records.");
@@ -157,7 +158,8 @@ export const teacherStudentProfile = async (actor: AuthenticatedUser, studentId:
     where: { orgId, studentId: student.id }, orderBy: [{ learnedOn: "desc" }, { id: "desc" }],
     take: 20, select: sessionFields,
   });
-  return jsonRecord({ student, supportNotes, sessions });
+  const courseProgress = await studentCourseSummary(prisma, orgId, student.id);
+  return jsonRecord({ student, supportNotes, sessions, courseProgress });
 };
 
 export const studentQuran = async (actor: AuthenticatedUser, query: SessionQuery) => {

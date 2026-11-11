@@ -6,6 +6,7 @@ import 'teacher_ui.dart';
 import 'parent_academics.dart';
 import 'parent_reports.dart';
 import 'family_identity_card.dart';
+import 'student_course_progress.dart';
 
 typedef FamilyNavigate = void Function(int page, {String? childId});
 
@@ -485,6 +486,7 @@ class _ParentPortalPageState extends State<ParentPortalPage> {
           ]),
         ),
       ),
+      StudentCourseProgress(data: recordMap(result['courseProgress'])),
       panel(
         'Current timetable',
         recordList(result['timetable']).isEmpty

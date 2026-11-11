@@ -4,6 +4,7 @@ import 'admin_forms.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'teacher_ui.dart';
+import 'student_course_progress.dart';
 
 class TeacherStudentsPage extends StatefulWidget {
   const TeacherStudentsPage({
@@ -398,6 +399,8 @@ class _TeacherStudentProfileState extends State<TeacherStudentProfile> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 26),
+                StudentCourseProgress(data: recordMap(data['courseProgress'])),
                 const SizedBox(height: 26),
                 const PanelHeading(
                   'Learning support',
