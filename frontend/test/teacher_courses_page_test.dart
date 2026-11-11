@@ -58,8 +58,18 @@ void main() {
           home: Scaffold(
             body: SingleChildScrollView(
               child: TeacherCoursesPage(
-                load: (path) async => path.endsWith('/modules')
-                    ? []
+                load: (path) async => path.endsWith('/lessons')
+                    ? [
+                        {'id': 'lesson', 'title': 'Synthetic lesson'},
+                      ]
+                    : path.endsWith('/modules')
+                    ? [
+                        {
+                          'id': 'module',
+                          'title': 'Synthetic module',
+                          'stats': {'lessons': 1},
+                        },
+                      ]
                     : [
                         {
                           'id': 'synthetic',
@@ -77,6 +87,12 @@ void main() {
         find.text('Synthetic teacher media practice course'),
         findsOneWidget,
       );
+      expect(find.text('Course Modules'), findsOneWidget);
+      expect(find.text('Synthetic module'), findsOneWidget);
+      await tester.ensureVisible(find.text('Synthetic module'));
+      await tester.tap(find.text('Synthetic module'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic lesson'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
