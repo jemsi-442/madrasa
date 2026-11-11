@@ -6,6 +6,91 @@ import 'package:mif_app/src/dashboard_components.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets('missing scoped record clears old data and can be retried', (
+    tester,
+  ) async {
+    var reads = 0;
+    var available = true;
+    Future<dynamic> fetch() => liveRead(() async {
+      reads++;
+      if (!available) throw const ApiException('Not found', 404);
+      return 'Synthetic course activity $reads';
+    });
+    var future = fetch();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => PageResult(
+              future: future,
+              onRetry: () => setState(() {
+                future = fetch();
+              }),
+              builder: (value) => Text('$value'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic course activity 1'), findsOneWidget);
+    available = false;
+    await tester.pump(const Duration(seconds: 31));
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic course activity 1'), findsNothing);
+    expect(find.text('Try again'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 61));
+    expect(reads, 2);
+    available = true;
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic course activity 3'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 31));
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic course activity 4'), findsOneWidget);
+  });
+
+  testWidgets('temporary failure retains data and recovers automatically', (
+    tester,
+  ) async {
+    var reads = 0;
+    final future = liveRead(() async {
+      reads++;
+      if (reads == 2) throw const ApiException('Unavailable', 503);
+      return 'Synthetic course activity $reads';
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PageResult(
+            future: future,
+            onRetry: () {},
+            builder: (value) => Text('$value'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 31));
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic course activity 1'), findsOneWidget);
+    expect(
+      find.byTooltip(
+        'Showing previous data. Updates will retry automatically.',
+      ),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 31));
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic course activity 3'), findsOneWidget);
+    expect(
+      find.byTooltip(
+        'Showing previous data. Updates will retry automatically.',
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('permission loss clears read-only data and stops polling', (
     tester,
   ) async {

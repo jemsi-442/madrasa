@@ -2501,3 +2501,29 @@ browser check passed against that release build on temporary port 8088 with the
 existing API. The debug preview on 8087 stalled at startup in isolated Chromium;
 debug-preview browser acceptance remains unresolved. The original API and preview
 were not restarted, and the temporary synthetic fixtures were removed.
+
+### Tracking views after access changes
+
+Shared read-only auto-updates now clear a previous result when its scoped API
+returns 404, as they already do for 401, 403 and 409. A removed guardian link or
+teacher assignment can legitimately produce 404; it must not leave the old
+student profile or course activity visible after that response. Polling then
+pauses until the user retries; a successful retry resumes automatic updates.
+Temporary service failures retain the previous snapshot with the existing stale
+data tooltip and retry automatically. These are polling checks, not immediate
+push revocation. Existing editor/dialog guards still defer background updates
+while a form is open; server permissions remain authoritative for every request.
+
+Verification from `frontend`:
+
+```bash
+flutter test --no-pub test/live_data_test.dart test/scoped_course_activity_refresh_test.dart test/parent_portal_test.dart test/teacher_workspace_test.dart test/automatic_data_updates_test.dart
+flutter analyze --no-pub lib/src/live_data.dart test/live_data_test.dart test/scoped_course_activity_refresh_test.dart
+```
+
+The new widget regressions use synthetic teacher and parent profiles and mocked
+scoped API responses. They cover hiding unavailable course activity without
+inventing zero counts, stopping repeat reads, retry recovery, temporary outages,
+and preserving unsaved forms. They do not replace real-browser role acceptance
+or backend authorization tests. No demo data or running service is changed.
+The focused suite above passed all 50 tests; analysis reported no issues.

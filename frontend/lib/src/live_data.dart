@@ -127,7 +127,9 @@ class _LiveDataState extends State<LiveDataBuilder> {
       }
       setState(() {
         stale = true;
-        if (e is ApiException && [401, 403, 409].contains(e.statusCode)) {
+        // Scoped APIs also return 404 when a guardian link or assignment ends.
+        // Unlike a temporary outage, this must not retain the previous record.
+        if (e is ApiException && [401, 403, 404, 409].contains(e.statusCode)) {
           denied = true;
           latest = AsyncSnapshot.withError(ConnectionState.done, e, stack);
         }
