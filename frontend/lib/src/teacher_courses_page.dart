@@ -5,6 +5,7 @@ import 'teacher_lesson_resources.dart';
 import 'teacher_ui.dart';
 import 'workspace_form_dialog.dart';
 import 'design_tokens.dart';
+import 'teacher_course_modules.dart';
 
 enum TeacherLearningDestination { quran, assessments }
 
@@ -351,6 +352,15 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                 : course != null
                 ? 'This course has no modules yet.'
                 : 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.',
+          )
+        else if (course != null && module == null)
+          TeacherCourseModules(
+            course: course!,
+            modules: rows,
+            onOpen: (row) => setState(() {
+              module = row;
+              future = fetch();
+            }),
           )
         else
           for (final row in rows)

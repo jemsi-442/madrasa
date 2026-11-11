@@ -1,8 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_courses_page.dart';
+import 'package:mif_app/src/teacher_course_modules.dart';
 
 void main() {
+  for (final width in [320.0, 1440.0]) {
+    testWidgets(
+      'module summary uses returned counts and opens module at $width',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        Map<String, dynamic>? selected;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: TeacherCourseModules(
+                  course: const {'summary': 'Synthetic course summary'},
+                  modules: const [
+                    {
+                      'id': 'm1',
+                      'title': 'Video practice',
+                      'stats': {'lessons': 3},
+                    },
+                    {
+                      'id': 'm2',
+                      'title': 'Audio practice',
+                      'stats': {'lessons': 2},
+                    },
+                  ],
+                  onOpen: (module) => selected = module,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('2 modules'), findsOneWidget);
+        expect(find.text('5 lessons'), findsOneWidget);
+        await tester.ensureVisible(find.text('Audio practice'));
+        await tester.tap(find.text('Audio practice'));
+        expect(selected?['id'], 'm2');
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   for (final width in [320.0, 1440.0]) {
     testWidgets('course catalogue fits $width', (tester) async {
       tester.view.physicalSize = Size(width, 900);
@@ -548,6 +592,7 @@ void main() {
       await tester.tap(find.text('Open course'));
       await tester.pumpAndSettle();
       expect(find.text('Reading module'), findsOneWidget);
+      expect(find.text('0 lessons'), findsNothing);
       await tester.tap(find.text('View lessons'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Read lesson'));
