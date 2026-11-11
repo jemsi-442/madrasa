@@ -3,6 +3,68 @@ import 'design_tokens.dart';
 import 'foundation_ui.dart';
 import 'teacher_ui.dart';
 
+class TeacherScheduleEntry extends StatelessWidget {
+  const TeacherScheduleEntry({
+    super.key,
+    required this.className,
+    required this.subject,
+    required this.time,
+    required this.room,
+    required this.onOpen,
+  });
+
+  final String className, subject, time, room;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              className,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AfaqDesign.ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(subject, style: const TextStyle(fontSize: 13, height: 1.4)),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Divider(height: 1),
+            ),
+            Text(
+              time,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            if (room.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.place_outlined, size: 16),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(room, style: const TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class TeacherClassesBanner extends StatelessWidget {
   const TeacherClassesBanner({super.key});
 

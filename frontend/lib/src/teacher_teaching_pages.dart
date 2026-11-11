@@ -606,7 +606,7 @@ class TeacherClassesPage extends StatelessWidget {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
-                        width: 1080,
+                        width: 1400,
                         child: Table(
                           columnWidths: const {0: FixedColumnWidth(72)},
                           children: [
@@ -626,7 +626,8 @@ class TeacherClassesPage extends StatelessWidget {
                                       day,
                                       style: const TextStyle(
                                         color: muted,
-                                        fontSize: 12,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
@@ -678,20 +679,21 @@ class TeacherClassesPage extends StatelessWidget {
                                                   s['weekday'] == day &&
                                                   s['startsAt'] == time,
                                             ))
-                                              InkWell(
-                                                onTap: () => onOpen(
+                                              TeacherScheduleEntry(
+                                                onOpen: () => onOpen(
                                                   2,
                                                   classId:
                                                       '${recordMap(s['class'])['id']}',
                                                 ),
-                                                child: Text(
-                                                  '${recordMap(s['class'])['name']}\n${s['subject']}\n${s['startsAt']} - ${s['endsAt']}\n${recordText(s['room'], '')}',
-                                                  style: const TextStyle(
-                                                    color: blue,
-                                                    fontSize: 11,
-                                                    height: 1.7,
-                                                  ),
+                                                className: recordText(
+                                                  recordMap(s['class'])['name'],
                                                 ),
+                                                subject: recordText(
+                                                  s['subject'],
+                                                ),
+                                                time:
+                                                    '${s['startsAt']} - ${s['endsAt']}',
+                                                room: recordText(s['room'], ''),
                                               ),
                                           ],
                                         ),
