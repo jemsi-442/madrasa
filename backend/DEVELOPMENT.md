@@ -2527,3 +2527,29 @@ inventing zero counts, stopping repeat reads, retry recovery, temporary outages,
 and preserving unsaved forms. They do not replace real-browser role acceptance
 or backend authorization tests. No demo data or running service is changed.
 The focused suite above passed all 50 tests; analysis reported no issues.
+
+### Scoped course activity API regression checks
+
+Teacher student profiles now return `Cache-Control: no-store`, matching parent
+profiles so sensitive tracking responses are not stored by compliant HTTP caches.
+The new API integration suite uses temporary synthetic organizations and exercises
+the actual authentication, scope checks and database queries for both roles:
+
+- Only published, listed lessons in the current programme/account are counted.
+- Unlinking or changing a learner account does not merge or delete its history.
+- Teachers cannot read unassigned classes, other campuses or other organizations.
+- Parents cannot read children without their guardian link.
+- Removing a teacher assignment or guardian link denies the next profile request.
+- Reading activity and hiding unpublished content leave stored progress unchanged.
+
+Run from `backend` against a development/test database, never production:
+
+```bash
+npx vitest run tests/scoped-course-activity.integration.test.ts tests/student-course-summary.test.ts tests/admin-student-course-activity.test.ts tests/madrasa-course-activity.integration.test.ts tests/family-workspace.integration.test.ts tests/teacher-workspace.integration.test.ts
+```
+
+All 42 tests across these six files passed locally, including 11 new API checks.
+Fixtures are removed by organization scope; existing demo courses, assignments and
+accounts are untouched. These checks verify backend behaviour, not teacher/parent
+browser acceptance. Course completion remains learner activity, not an assessment
+or verified Quran achievement. The API and frontend preview were left running.

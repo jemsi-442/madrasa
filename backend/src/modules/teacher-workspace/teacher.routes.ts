@@ -36,6 +36,7 @@ teacherWorkspaceRouter.get("/students", asyncHandler(async (req, res) => {
   res.json({ success: true, data: await teacherStudents(req.authUser!, directoryQuery.parse(req.query)) });
 }));
 teacherWorkspaceRouter.get("/students/:id", asyncHandler(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   res.json({ success: true, data: await teacherStudentProfile(req.authUser!, recordId.parse(req.params.id)) });
 }));
 teacherWorkspaceRouter.get("/quran/catalog", (_req, res) => {
