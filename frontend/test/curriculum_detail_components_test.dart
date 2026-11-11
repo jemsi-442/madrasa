@@ -4,6 +4,86 @@ import 'package:mif_app/src/curriculum_detail_components.dart';
 
 void main() {
   for (final width in [390.0, 1100.0]) {
+    testWidgets('lesson search keeps original lesson actions at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final lessons = [
+        {
+          'id': 'synthetic-first',
+          'title': 'Reading practice',
+          'activities': 'Read in pairs',
+          'objectives': <Map>[],
+        },
+        {
+          'id': 'synthetic-second',
+          'title': 'Writing practice',
+          'activities': 'Trace letters',
+          'objectives': [
+            {
+              'objective': {
+                'code': 'WRITE-02',
+                'description': 'Form letters independently',
+              },
+            },
+          ],
+        },
+      ];
+      int? selected;
+      Widget screen(List data) => MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: CurriculumLessonPlansBrowser(
+                key: const ValueKey('synthetic-assignment'),
+                lessons: data,
+                buildLesson: (index) => TextButton(
+                  onPressed: () => selected = index,
+                  child: Text('Lesson ${index + 1}: ${data[index]['title']}'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(screen(lessons));
+      expect(find.text('Showing 2 of 2 lesson plans'), findsOneWidget);
+      for (final term in [
+        ' writing ',
+        'TRACE',
+        'write-02',
+        'letters independently',
+      ]) {
+        await tester.enterText(find.byType(TextField), term);
+        await tester.pumpAndSettle();
+        expect(find.text('Lesson 1: Reading practice'), findsNothing);
+        expect(find.text('Lesson 2: Writing practice'), findsOneWidget);
+        expect(find.text('Showing 1 of 2 lesson plans'), findsOneWidget);
+      }
+      await tester.tap(find.text('Lesson 2: Writing practice'));
+      expect(selected, 1);
+      await tester.pumpWidget(screen(List.of(lessons)));
+      await tester.pumpAndSettle();
+      expect(find.text('Lesson 1: Reading practice'), findsNothing);
+      expect(find.text('Lesson 2: Writing practice'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'unmatched phrase');
+      await tester.pumpAndSettle();
+      expect(find.text('No matching lesson plans'), findsOneWidget);
+      expect(find.text('Showing 0 of 2 lesson plans'), findsOneWidget);
+      await tester.tap(find.byTooltip('Clear lesson search'));
+      await tester.pumpAndSettle();
+      expect(find.text('Lesson 1: Reading practice'), findsOneWidget);
+      expect(find.text('Lesson 2: Writing practice'), findsOneWidget);
+      expect(selected, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final width in [390.0, 1100.0]) {
     testWidgets('topics open independently and retain selection at $width', (
       tester,
     ) async {
@@ -202,6 +282,20 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Record lesson taught'));
       expect(records, 1);
+      await tester.ensureVisible(find.byType(TextField));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'READ-01');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Shared lesson plans'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Shared lesson plans'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Shared lesson plans'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'READ-01',
+      );
       await tester.ensureVisible(find.text('Topics & objectives'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Topics & objectives'));

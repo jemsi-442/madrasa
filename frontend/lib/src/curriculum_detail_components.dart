@@ -258,69 +258,71 @@ class SchoolCurriculumDetail extends StatelessWidget {
           children: [
             if (lessons.isEmpty)
               const Text('No shared lesson plans in this version.'),
-            for (var i = 0; i < lessons.length; i++) ...[
-              CurriculumDetailPanel(
-                title: '${lessons[i]['title']}',
-                accent: AfaqDesign.actionGold,
-                icon: Icons.menu_book_outlined,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        CurriculumDetailTag(
-                          'Lesson ${i + 1}',
-                          accent: AfaqDesign.actionGold,
+            if (lessons.isNotEmpty)
+              CurriculumLessonPlansBrowser(
+                key: ValueKey('${assignment['id']}-${version['id']}'),
+                lessons: lessons,
+                buildLesson: (i) => CurriculumDetailPanel(
+                  title: '${lessons[i]['title']}',
+                  accent: AfaqDesign.actionGold,
+                  icon: Icons.menu_book_outlined,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          CurriculumDetailTag(
+                            'Lesson ${i + 1}',
+                            accent: AfaqDesign.actionGold,
+                          ),
+                          CurriculumDetailTag(
+                            '${lessons[i]['durationMinutes']} min',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      CurriculumDetailField(
+                        label: 'Teaching activities',
+                        value: '${lessons[i]['activities'] ?? ''}',
+                      ),
+                      const Divider(height: 32),
+                      const Text(
+                        'Linked learning objectives',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 12),
+                      if ((lessons[i]['objectives'] as List).isEmpty)
+                        const Text(
+                          'No learning objectives linked.',
+                          style: TextStyle(color: AfaqDesign.muted),
                         ),
-                        CurriculumDetailTag(
-                          '${lessons[i]['durationMinutes']} min',
+                      for (final link in lessons[i]['objectives'])
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: CurriculumDetailField(
+                            label: '${link['objective']['code']}',
+                            value: '${link['objective']['description']}',
+                          ),
+                        ),
+                      if (!isAdmin &&
+                          lessons[i]['id'] != null &&
+                          adoptions.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilledButton.icon(
+                            onPressed: () => onRecord(lessons[i]),
+                            icon: const Icon(Icons.check_circle_outline),
+                            label: const Text('Record lesson taught'),
+                          ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 20),
-                    CurriculumDetailField(
-                      label: 'Teaching activities',
-                      value: '${lessons[i]['activities'] ?? ''}',
-                    ),
-                    const Divider(height: 32),
-                    const Text(
-                      'Linked learning objectives',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 12),
-                    if ((lessons[i]['objectives'] as List).isEmpty)
-                      const Text(
-                        'No learning objectives linked.',
-                        style: TextStyle(color: AfaqDesign.muted),
-                      ),
-                    for (final link in lessons[i]['objectives'])
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: CurriculumDetailField(
-                          label: '${link['objective']['code']}',
-                          value: '${link['objective']['description']}',
-                        ),
-                      ),
-                    if (!isAdmin &&
-                        lessons[i]['id'] != null &&
-                        adoptions.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilledButton.icon(
-                          onPressed: () => onRecord(lessons[i]),
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Record lesson taught'),
-                        ),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-              if (i < lessons.length - 1) const SizedBox(height: 16),
-            ],
           ],
         ),
         const SizedBox(height: 20),
@@ -431,6 +433,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
     decoration: AfaqDesign.panelDecoration(),
     child: ExpansionTile(
       key: PageStorageKey('${assignment['id']}-$id-$openLessons'),
+      maintainState: true,
       initiallyExpanded: expanded,
       tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -448,6 +451,111 @@ class SchoolCurriculumDetail extends StatelessWidget {
       children: children,
     ),
   );
+}
+
+class CurriculumLessonPlansBrowser extends StatefulWidget {
+  const CurriculumLessonPlansBrowser({
+    super.key,
+    required this.lessons,
+    required this.buildLesson,
+  });
+
+  final List lessons;
+  final Widget Function(int index) buildLesson;
+
+  @override
+  State<CurriculumLessonPlansBrowser> createState() =>
+      _CurriculumLessonPlansBrowserState();
+}
+
+class _CurriculumLessonPlansBrowserState
+    extends State<CurriculumLessonPlansBrowser> {
+  final search = TextEditingController();
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = search.text.trim().toLowerCase();
+    final terms = query.split(RegExp(r'\s+'));
+    final matches = <int>[];
+    for (var i = 0; i < widget.lessons.length; i++) {
+      final lesson = widget.lessons[i] as Map;
+      final text = [
+        lesson['title'] ?? '',
+        lesson['activities'] ?? '',
+        for (final link in lesson['objectives'] as List) ...[
+          link['objective']['code'] ?? '',
+          link['objective']['description'] ?? '',
+        ],
+      ].join(' ').toLowerCase();
+      if (query.isEmpty || terms.every(text.contains)) matches.add(i);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          key: const PageStorageKey('curriculum-lesson-search'),
+          controller: search,
+          maxLength: 100,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            labelText: 'Find a lesson plan',
+            hintText: 'Lesson, activity or objective code',
+            counterText: '',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: search.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear lesson search',
+                    onPressed: () => setState(search.clear),
+                    icon: const Icon(Icons.close),
+                  ),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Showing ${matches.length} of ${widget.lessons.length} lesson plans',
+          style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
+        ),
+        const SizedBox(height: 16),
+        if (matches.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: AfaqDesign.panelDecoration(),
+            child: const Column(
+              children: [
+                Icon(Icons.search_off, color: AfaqDesign.muted, size: 32),
+                SizedBox(height: 12),
+                Text(
+                  'No matching lesson plans',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Try another word or clear the search.',
+                  style: TextStyle(color: AfaqDesign.muted, height: 1.5),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        for (final index in matches) ...[
+          KeyedSubtree(
+            key: ValueKey(widget.lessons[index]['id'] ?? index),
+            child: widget.buildLesson(index),
+          ),
+          if (index != matches.last) const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
 }
 
 class CurriculumTopicDetail extends StatelessWidget {
