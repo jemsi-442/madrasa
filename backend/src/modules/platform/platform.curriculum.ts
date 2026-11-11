@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { HttpError } from '../../shared/errors/http-error';
 import { assertPlatformPermission } from './platform.permissions';
 import type { PlatformContext } from './platform.service';
+import { madrasaCourseActivity } from '../learner/madrasa-course-activity';
 
 import { topicInput, publicationContent, curriculumLessonInput } from './curriculum-content';
 
@@ -234,6 +235,7 @@ export class PlatformCurriculumService {
         ? tx.student.groupBy({ by: ['orgId'], where: filter, _count: { _all: true } })
         : Promise.resolve([]);
       const eligible = await count(where);
+      const courseActivity = await madrasaCourseActivity(tx, visible.map(row => row.id));
       const recorded = await count({ ...where, quranSessions: { some: session } });
       const support = await count({ ...where, quranSessions: { some: {
         ...session, observation: { in: ['WITH_SUPPORT', 'NEEDS_PRACTICE'] },
@@ -246,7 +248,13 @@ export class PlatformCurriculumService {
           const reviewed = recorded.find(row => row.orgId === org.id)?._count._all ?? 0;
           return { id: String(org.id), name: org.name, status: org.status,
             eligible: total, recorded: reviewed, unrecorded: total - reviewed,
-            needingSupport: support.find(row => row.orgId === org.id)?._count._all ?? 0 };
+            needingSupport: support.find(row => row.orgId === org.id)?._count._all ?? 0,
+            courseActivity: {
+              period: 'ALL_TIME',
+              learners: courseActivity.find(row => row.orgId === org.id)?.learners ?? 0,
+              trackedLessons: courseActivity.find(row => row.orgId === org.id)?.trackedLessons ?? 0,
+              completedLessons: courseActivity.find(row => row.orgId === org.id)?.completedLessons ?? 0,
+            } };
         }),
       };
     }, { isolationLevel: 'RepeatableRead' });

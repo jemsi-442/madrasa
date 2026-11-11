@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/admin_forms.dart';
 import 'package:mif_app/src/api_client.dart';
+import 'package:mif_app/src/dashboard_components.dart';
 import 'package:mif_app/src/student_record_actions.dart';
 import 'package:mif_app/src/student_registry_page.dart';
 
@@ -30,6 +31,7 @@ Future<void> showActions(
   WidgetTester tester, {
   Map<String, dynamic>? record,
   PageSubmitter? submit,
+  PageLoader? load,
   VoidCallback? onChanged,
   double width = 900,
 }) async {
@@ -44,7 +46,7 @@ Future<void> showActions(
         body: Center(
           child: StudentRecordActions(
             student: value,
-            load: (_) async => value,
+            load: load ?? (_) async => value,
             submit: submit ?? (_, _) async => {},
             onChanged: onChanged ?? () {},
           ),
@@ -62,6 +64,49 @@ Future<void> choose(WidgetTester tester, String label) async {
 }
 
 void main() {
+  for (final width in [390.0, 1100.0]) {
+    testWidgets('course activity is scoped and read-only at $width', (
+      tester,
+    ) async {
+      final paths = <String>[];
+      var writes = 0;
+      var changes = 0;
+      await showActions(
+        tester,
+        width: width,
+        load: (path) async {
+          paths.add(path);
+          return {
+            'student': {'fullName': 'Synthetic Learner'},
+            'courseProgress': {
+              'linked': true,
+              'trackedLessons': 5,
+              'completedLessons': 2,
+              'recent': [],
+            },
+          };
+        },
+        submit: (_, _) async {
+          writes++;
+          return {};
+        },
+        onChanged: () => changes++,
+      );
+      await choose(tester, 'Course activity');
+      expect(paths, ['/api/admin/students/1/course-progress']);
+      expect(find.text('Synthetic Learner'), findsOneWidget);
+      expect(
+        find.textContaining('not teacher-assessed achievement'),
+        findsOneWidget,
+      );
+      expect(find.text('Tracked lessons'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(writes, 0);
+      expect(changes, 0);
+    });
+  }
   testWidgets(
     'edit preloads fresh details and sends explicit nulls for cleared fields',
     (tester) async {

@@ -245,7 +245,7 @@ class _MadrasaTable extends StatelessWidget {
                   children: [
                     StatusPill('${row['status']}'),
                     Text(
-                      'Reporting period: $period',
+                      'Quran reporting period: $period',
                       style: const TextStyle(
                         color: AfaqDesign.muted,
                         fontSize: 13,
@@ -314,6 +314,46 @@ class _MadrasaTable extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 16),
+                const Text(
+                  'Course activity / All time',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Learner-reported progress in published courses, not teacher-assessed achievement. Independent of the Quran reporting period.',
+                  style: TextStyle(color: AfaqDesign.muted, height: 1.5),
+                ),
+                const SizedBox(height: 12),
+                if (row['courseActivity'] is! Map)
+                  const Text('Course activity is unavailable.')
+                else
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _DetailMetric(
+                        width: cardWidth,
+                        value: count(row['courseActivity'], 'learners'),
+                        label: 'Learners with activity',
+                        description:
+                            'Active learners with a current account link',
+                        icon: Icons.people_outline,
+                        color: AfaqDesign.blue,
+                      ),
+                      _DetailMetric(
+                        width: cardWidth,
+                        value: count(row['courseActivity'], 'completedLessons'),
+                        label: 'Marked complete',
+                        description:
+                            '${count(row['courseActivity'], 'trackedLessons')} recorded learner-lesson entries',
+                        icon: Icons.check_circle_outline,
+                        color: AfaqDesign.actionGold,
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(18),

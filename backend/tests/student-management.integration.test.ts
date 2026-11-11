@@ -77,6 +77,20 @@ describe("admin student management", () => {
     expect((await read()).status).toBe(403);
     await prisma.user.update({ where: { id: admin }, data: { status: "ACTIVE" } });
   });
+  it("serves course activity only to the active scoped admin without caching", async () => {
+    const path = (id: bigint) => `/api/admin/students/${id}/course-progress`;
+    expect((await api.get(path(student))).status).toBe(401);
+    const result = await api.get(path(student)).set("Authorization", `Bearer ${token()}`);
+    expect(result.status).toBe(200);
+    expect(result.headers['cache-control']).toBe('no-store');
+    expect(result.body.data.courseProgress).toEqual({ linked: false, trackedLessons: 0, completedLessons: 0, recent: [] });
+    for (const id of [outside, foreign]) {
+      expect((await api.get(path(id)).set("Authorization", `Bearer ${token()}`)).status).toBe(404);
+    }
+    for (const role of ['TEACHER', 'PARENT', 'LEARNER', 'ACCOUNTANT']) {
+      expect((await api.get(path(student)).set("Authorization", `Bearer ${token(role)}`)).status).toBe(403);
+    }
+  });
   it("validates dates, protected fields and duplicate admission numbers without partial writes", async () => {
     const revision = (await read()).body.data.revision;
     for (const extra of [{ dob: "2025-02-30" }, { dob: "2099-01-01" }, { joinedOn: "2014-01-01" },

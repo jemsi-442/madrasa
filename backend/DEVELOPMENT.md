@@ -2440,3 +2440,32 @@ It does not submit forms, export files, send messages, execute restores or test
 external providers. Visual inspection found that long Overview metric values
 such as "Not measured" truncate at this viewport; layout refinement remains.
 No demo data was reset and neither running server was restarted.
+
+### Scoped course activity in student tracking
+
+- Admin: student menu > Course activity reads
+  `GET /api/admin/students/:id/course-progress`. Active admin, organization and
+  branch checks apply before reading progress; the response is not cacheable.
+- Superadmin: Learning Oversight > madrasa View includes all-time course activity
+  separately from the selected Quran reporting month. Only aggregate counts are
+  returned, without learner identities or media links.
+- Counts include published, non-unlisted courses and lessons for the learner's
+  current programme and account link. Platform totals cover active students.
+  Tracked lessons count learner-lesson entries, not distinct lessons institution-wide.
+  Completion is learner-reported, not teacher assessment or Quran attainment.
+- These are current snapshots, not historical month-end course reports. A course
+  becoming unpublished or an account link changing can change the visible totals;
+  stored progress is not deleted. The individual view shows the latest five entries.
+
+Focused verification:
+
+```bash
+cd backend
+npx vitest run tests/admin-student-course-activity.test.ts tests/madrasa-course-activity.test.ts tests/madrasa-learning-coverage.test.ts tests/student-course-summary.test.ts
+npx vitest run tests/madrasa-course-activity.integration.test.ts tests/student-management.integration.test.ts
+```
+
+Use a local development/test database for integration tests. The aggregate SQL test
+rolls back its synthetic fixtures; student management tests remove only their own
+synthetic organizations. Flutter widget tests cover the admin dialog and madrasa
+detail, including narrow screens. Full browser acceptance is still a separate check.

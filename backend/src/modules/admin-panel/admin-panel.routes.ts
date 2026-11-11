@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { classManagementRecord, manageClass, classEditSchema, classRemoveSchema } from "./class-management";
 import { requireActiveSchoolAccount } from "../../shared/middleware/active-school-account";
-import { manageStudent, studentManagementRecord, studentEditSchema, studentLifecycleSchema } from "./student-management";
+import { manageStudent, studentManagementRecord, studentCourseActivity, studentEditSchema, studentLifecycleSchema } from "./student-management";
 import { authenticate } from "../../shared/middleware/authenticate";
 import { requireRole } from "../../shared/middleware/require-role";
 import { requireTenantContext } from "../../shared/middleware/tenant-context";
@@ -20,6 +20,10 @@ adminPanelRouter.get("/classes/:id/record", handle((req) => classManagementRecor
 adminPanelRouter.post("/classes/:id/edit", handle((req) => manageClass(req.authUser!, recordId.parse(req.params.id), "edit", classEditSchema.parse(req.body))));
 adminPanelRouter.post("/classes/:id/remove", handle((req) => manageClass(req.authUser!, recordId.parse(req.params.id), "remove", classRemoveSchema.parse(req.body))));
 adminPanelRouter.get("/students/:id/record", handle((req) => studentManagementRecord(req.authUser!, recordId.parse(req.params.id))));
+adminPanelRouter.get("/students/:id/course-progress", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+}, handle((req) => studentCourseActivity(req.authUser!, recordId.parse(req.params.id))));
 adminPanelRouter.post("/students/:id/edit", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "edit", studentEditSchema.parse(req.body))));
 adminPanelRouter.post("/students/:id/archive", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "archive", studentLifecycleSchema.parse(req.body))));
 adminPanelRouter.post("/students/:id/restore", handle((req) => manageStudent(req.authUser!, recordId.parse(req.params.id), "restore", studentLifecycleSchema.parse(req.body))));

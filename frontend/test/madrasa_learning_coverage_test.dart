@@ -289,6 +289,12 @@ void main() {
                       'recorded': 2,
                       'unrecorded': 4,
                       'needingSupport': 1,
+                      'courseActivity': {
+                        'period': 'ALL_TIME',
+                        'learners': 2,
+                        'trackedLessons': 5,
+                        'completedLessons': 3,
+                      },
                     },
                   ],
                 };
@@ -308,7 +314,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Without records'), findsOneWidget);
     expect(find.text('Support observed'), findsOneWidget);
-    expect(find.text('Reporting period: 2026-10'), findsOneWidget);
+    expect(find.text('Quran reporting period: 2026-10'), findsOneWidget);
+    expect(find.text('Course activity / All time'), findsOneWidget);
+    expect(find.text('5 recorded learner-lesson entries'), findsOneWidget);
+    expect(
+      find.textContaining('not teacher-assessed achievement'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Voided records are excluded'), findsNothing);
     await tester.ensureVisible(find.text('How these counts are calculated'));
     await tester.tap(find.text('How these counts are calculated'));

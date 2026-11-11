@@ -5,6 +5,7 @@ import { prisma } from "../../shared/db/prisma";
 import { HttpError } from "../../shared/errors/http-error";
 import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import { jsonRecord } from "../../shared/utils/json-record";
+import { studentCourseSummary } from "../learner/student-course-summary";
 
 const day = z.string().date();
 const change = {
@@ -43,6 +44,16 @@ const scope = (actor: AuthenticatedUser, id: string): Prisma.StudentWhereInput =
   if (actor.role !== "ADMIN") throw new HttpError(403, "Administration access required");
   return { id: BigInt(id), orgId: BigInt(actor.orgId),
     ...(actor.branchId ? { branchId: BigInt(actor.branchId) } : {}) };
+};
+
+export const studentCourseActivity = async (actor: AuthenticatedUser, id: string) => {
+  const where = scope(actor, id);
+  return prisma.$transaction(async tx => {
+    const student = await tx.student.findFirst({ where, select: { id: true, fullName: true } });
+    if (!student) throw new HttpError(404, "Student not found");
+    const courseProgress = await studentCourseSummary(tx, BigInt(actor.orgId), student.id);
+    return { student, courseProgress };
+  }, { isolationLevel: "RepeatableRead" });
 };
 
 export const studentManagementRecord = async (actor: AuthenticatedUser, id: string) => {

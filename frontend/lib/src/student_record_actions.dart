@@ -6,6 +6,8 @@ import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'guardian_residence_actions.dart';
 import 'student_residence_actions.dart';
+import 'student_course_progress.dart';
+import 'workspace_form_dialog.dart';
 
 class StudentRecordActions extends StatefulWidget {
   const StudentRecordActions({
@@ -69,6 +71,34 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
         return;
       }
       final path = '/api/admin/students/${widget.student['id']}';
+      if (action == 'course-progress') {
+        final data = recordMap(await widget.load('$path/course-progress'));
+        if (!mounted) return;
+        setState(() => loading = false);
+        await showDialog<void>(
+          context: context,
+          builder: (context) => WorkspaceFormDialog(
+            eyebrow: 'STUDENT / LEARNING',
+            icon: Icons.auto_stories_outlined,
+            title: Text(recordText(recordMap(data['student'])['fullName'])),
+            content: SizedBox(
+              width: 620,
+              child: SingleChildScrollView(
+                child: StudentCourseProgress(
+                  data: recordMap(data['courseProgress']),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       final record = recordMap(await widget.load('$path/record'));
       if (!mounted) return;
       setState(() => loading = false);
@@ -207,6 +237,10 @@ class _StudentRecordActionsState extends State<StudentRecordActions> {
         : const Icon(Icons.more_vert, size: AfaqDesign.iconSmall),
     onSelected: open,
     itemBuilder: (_) => [
+      const PopupMenuItem(
+        value: 'course-progress',
+        child: Text('Course activity'),
+      ),
       const PopupMenuItem(value: 'edit', child: Text('Edit student')),
       const PopupMenuItem(value: 'residence', child: Text('Student residence')),
       const PopupMenuItem(
