@@ -17,6 +17,7 @@ import 'platform_console.dart';
 import 'school_invitation_page.dart';
 import 'page_selection.dart';
 import 'family_registration_page.dart';
+import 'account_connection_page.dart';
 
 class MifApp extends StatefulWidget {
   const MifApp({super.key, this.state, this.layout});
@@ -49,36 +50,11 @@ class _MifAppState extends State<MifApp> {
       animation: appState,
       builder: (context, _) {
         if (appState.restoring || appState.restorationError != null) {
-          return Scaffold(
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (appState.restoring) ...[
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 20),
-                      const Text('Reconnecting to your account...'),
-                    ] else ...[
-                      Text(
-                        appState.restorationError!,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                      FilledButton(
-                        onPressed: appState.restoreSession,
-                        child: const Text('Try again'),
-                      ),
-                      TextButton(
-                        onPressed: appState.signOut,
-                        child: const Text('Sign out'),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+          return AccountConnectionPage(
+            restoring: appState.restoring,
+            error: appState.restorationError,
+            onRetry: appState.restoreSession,
+            onSignOut: appState.signOut,
           );
         }
         final informationPage = path == '/terms' || path == '/privacy';

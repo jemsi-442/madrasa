@@ -29,7 +29,7 @@ try {
   }
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   const page = await context.newPage();
-  const pattern = '**/flutter_bootstrap.js';
+  const pattern = '**/flutter_bootstrap.js*';
   await page.route(pattern, route => route.abort());
   let navigations = 0;
   page.on('request', request => {

@@ -604,16 +604,27 @@ so it cannot hold the splash indefinitely. Retry reloads only on a user click an
 does not clear credentials or stored work. This startup screen is separate from
 API/session restoration errors inside the application.
 
+While the saved session is being checked, a responsive Afaq connection panel
+explains the wait. After eight seconds it shows a slow-connection message, without
+issuing another request. An unsuccessful check offers explicit retry/sign-out
+actions; expired sessions still return to the public flow. This panel is never
+shown over an already restored workspace and respects reduced-motion settings.
+Verify it with `flutter test test/account_connection_page_test.dart test/session_restore_test.dart test/company_browser_restore_test.dart`
+from `frontend/`.
+
 Startup regression checks (no login credentials or demo fixtures needed):
 
 ```bash
 node --test scripts/web-loading.test.mjs scripts/web-bootstrap.test.mjs scripts/dev-web.test.mjs
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core node scripts/check-web-startup.mjs
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core node scripts/check-account-connection.mjs
 ```
 
 The browser check needs the preview running and Chromium installed. It verifies
 desktop/mobile startup and recovery after a blocked bootstrap script, using fresh
 browser contexts. Reported timings are local samples, not production benchmarks.
+The account-connection check intercepts refresh responses with synthetic delayed,
+unavailable and expired sessions; it does not sign in or change demo records.
 
 Installed Android/iOS builds open a dedicated mobile welcome and account flow, with app-bar/back navigation and a role-specific bottom navigation after login. The website keeps its public homepage, including when opened in a phone browser. See the frontend guide for USB development and native session limitations.
 
