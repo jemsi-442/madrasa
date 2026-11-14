@@ -83,6 +83,30 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          SizedBox(key: playerAnchor),
+          if (index >= 0) ...[
+            LessonMediaViewer(
+              key: ValueKey('teacher-resource-$selected'),
+              assetId: selected!,
+              load: widget.load,
+              apiBaseUrl: widget.apiBaseUrl,
+              teacherResource: true,
+              title: recordText(rows[index]['title'], 'Lesson resource'),
+              position: index + 1,
+              total: rows.length,
+              onPrevious: index > 0
+                  ? () => openResource('${rows[index - 1]['id']}')
+                  : null,
+              onNext: index + 1 < rows.length
+                  ? () => openResource('${rows[index + 1]['id']}')
+                  : null,
+              onClose: () {
+                setState(() => selected = null);
+                reveal(resourcesAnchor);
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
           SizedBox(key: resourcesAnchor),
           const PanelHeading(
             'Lesson resources',
@@ -141,29 +165,6 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
               );
             },
           ),
-          const SizedBox(height: 16),
-          SizedBox(key: playerAnchor),
-          if (index >= 0)
-            LessonMediaViewer(
-              key: ValueKey('teacher-resource-$selected'),
-              assetId: selected!,
-              load: widget.load,
-              apiBaseUrl: widget.apiBaseUrl,
-              teacherResource: true,
-              title: recordText(rows[index]['title'], 'Lesson resource'),
-              position: index + 1,
-              total: rows.length,
-              onPrevious: index > 0
-                  ? () => openResource('${rows[index - 1]['id']}')
-                  : null,
-              onNext: index + 1 < rows.length
-                  ? () => openResource('${rows[index + 1]['id']}')
-                  : null,
-              onClose: () {
-                setState(() => selected = null);
-                reveal(resourcesAnchor);
-              },
-            ),
         ],
       );
     },

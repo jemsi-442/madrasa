@@ -98,6 +98,10 @@ void main() {
       await tester.tap(find.text('First resource'));
       await tester.pumpAndSettle();
       expect(find.text('Resource 1 of 2 available'), findsOneWidget);
+      expect(
+        tester.getBottomLeft(find.byType(LessonMediaViewer)).dy,
+        lessThan(tester.getTopLeft(find.text('Lesson resources')).dy),
+      );
       expect(find.textContaining('Watch video - Selected'), findsOneWidget);
       await tester.ensureVisible(find.text('Audio (1)'));
       await tester.tap(find.text('Audio (1)'));
