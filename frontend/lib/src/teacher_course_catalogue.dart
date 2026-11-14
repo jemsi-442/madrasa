@@ -23,15 +23,22 @@ class TeacherCourseCatalogue extends StatefulWidget {
 
 class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
   String search = '';
+  final searchController = TextEditingController();
   int tab = 0;
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = widget.courses
         .where(
           (c) =>
-              '${c['title']} ${c['summary']} ${recordMap(c['subject'])['name']}'
+              '${c['title'] ?? ''} ${c['summary'] ?? ''} ${recordMap(c['subject'])['name'] ?? ''}'
                   .toLowerCase()
-                  .contains(search.toLowerCase()),
+                  .contains(search.trim().toLowerCase()),
         )
         .toList();
     return Column(
@@ -132,10 +139,21 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
         LayoutBuilder(
           builder: (context, box) {
             final searchField = TextField(
+              controller: searchController,
               onChanged: (v) => setState(() => search = v),
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
                 hintText: 'Search my courses...',
+                suffixIcon: search.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          searchController.clear();
+                          setState(() => search = '');
+                        },
+                      ),
               ),
             );
             final tabs = SingleChildScrollView(
@@ -176,11 +194,28 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
         const Divider(height: 1, color: Color(0xFFE3E8EF)),
         const SizedBox(height: 20),
         if (tab == 1 || tab == 2)
-          const Padding(
-            padding: EdgeInsets.all(28),
-            child: Text(
-              'Personal course completion is not tracked for teacher assignments. Open Assigned Courses to access your teaching materials.',
-              style: TextStyle(fontSize: 16, height: 1.6),
+          Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  size: 32,
+                  color: AfaqDesign.blue,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Personal course completion is not tracked for teacher assignments.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, height: 1.6),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => tab = 0),
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('View assigned courses'),
+                ),
+              ],
             ),
           )
         else if (filtered.isEmpty)

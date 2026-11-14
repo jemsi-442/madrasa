@@ -211,11 +211,13 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                         ),
                       ),
                       SizedBox(height: 10),
-                      LinearProgressIndicator(
-                        value: 0,
-                        minHeight: 9,
-                        backgroundColor: Color(0xFFEDF0F5),
-                        color: Color(0xFF009C43),
+                      Text(
+                        'Not tracked',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF66788F),
+                        ),
                       ),
                       SizedBox(height: 8),
                       Text(

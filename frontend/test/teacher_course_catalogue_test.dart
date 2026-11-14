@@ -29,7 +29,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'language');
+    await tester.enterText(find.byType(TextField), '  LANGUAGE  ');
     await tester.pumpAndSettle();
     expect(find.text('Synthetic language course'), findsOneWidget);
     expect(find.text('Synthetic media course'), findsNothing);
@@ -40,10 +40,17 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('60%'), findsNothing);
-    await tester.tap(find.text('Assigned Courses (2)'));
+    await tester.tap(find.text('View assigned courses'));
     await tester.pumpAndSettle();
     expect(find.text('Synthetic language course'), findsOneWidget);
     expect(find.text('Synthetic media course'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('Not tracked'), findsOneWidget);
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic media course'), findsOneWidget);
+    expect(find.text('Synthetic language course'), findsOneWidget);
+    expect(find.byTooltip('Clear search'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
