@@ -54,9 +54,12 @@ class TeacherCourseModules extends StatelessWidget {
         ],
         LayoutBuilder(
           builder: (context, box) {
-            final columns = box.maxWidth >= 850
+            final availableWidth =
+                box.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(17) / 17);
+            final columns = availableWidth >= 850
                 ? 4
-                : box.maxWidth >= 440
+                : availableWidth >= 440
                 ? 2
                 : 1;
             final labels = [
@@ -161,9 +164,12 @@ class TeacherCourseModules extends StatelessWidget {
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, box) {
-            final columns = box.maxWidth >= 1100
+            final availableWidth =
+                box.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(16) / 16);
+            final columns = availableWidth >= 1100
                 ? 4
-                : box.maxWidth >= 600
+                : availableWidth >= 600
                 ? 2
                 : 1;
             return Wrap(
@@ -244,21 +250,33 @@ class TeacherCourseModules extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         if (stats['lessons'] is num)
-                          Text(
-                            '${stats['lessons']} lessons',
-                            style: const TextStyle(fontSize: 12),
+                          _badge(
+                            Icons.play_circle_outline,
+                            '${stats['lessons']} ${stats['lessons'] == 1 ? 'lesson' : 'lessons'}',
+                            tone,
+                          ),
+                        if (stats['resources'] is num)
+                          _badge(
+                            Icons.description_outlined,
+                            '${stats['resources']} ${stats['resources'] == 1 ? 'resource' : 'resources'}',
+                            tone,
                           ),
                         if (stats['estimatedMinutes'] is num)
-                          Text(
-                            duration(stats['estimatedMinutes']),
-                            style: const TextStyle(fontSize: 12),
+                          _badge(
+                            Icons.schedule,
+                            '${duration(stats['estimatedMinutes'])} estimated',
+                            tone,
                           ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 12),
                     const Text(
                       'View lessons',
-                      style: TextStyle(fontSize: 12, color: AfaqDesign.blue),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AfaqDesign.blue,
+                      ),
                     ),
                   ],
                 ),
@@ -269,4 +287,25 @@ class TeacherCourseModules extends StatelessWidget {
       ),
     );
   }
+
+  Widget _badge(IconData icon, String label, Color tone) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    decoration: BoxDecoration(
+      color: tone.withValues(alpha: .07),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: tone),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AfaqDesign.ink),
+          ),
+        ),
+      ],
+    ),
+  );
 }

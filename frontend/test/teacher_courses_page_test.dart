@@ -15,6 +15,12 @@ void main() {
         Map<String, dynamic>? selected;
         await tester.pumpWidget(
           MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.5)),
+              child: child!,
+            ),
             home: Scaffold(
               body: SingleChildScrollView(
                 child: TeacherCourseModules(
@@ -50,6 +56,10 @@ void main() {
         expect(find.text('5 lessons'), findsOneWidget);
         expect(find.text('7 resources'), findsOneWidget);
         expect(find.text('1h 5m'), findsOneWidget);
+        expect(find.text('4 resources'), findsOneWidget);
+        expect(find.text('3 resources'), findsOneWidget);
+        expect(find.text('40 min estimated'), findsOneWidget);
+        expect(find.text('25 min estimated'), findsOneWidget);
         await tester.ensureVisible(find.text('Audio practice'));
         await tester.tap(find.text('Audio practice'));
         expect(selected?['id'], 'm2');
