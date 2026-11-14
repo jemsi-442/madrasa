@@ -30,6 +30,14 @@ void main() {
     expect(find.text('View image'), findsOneWidget);
     expect(find.text('Read text'), findsOneWidget);
     expect(find.byIcon(Icons.play_circle_outline), findsNothing);
+    await tester.tap(find.text('PDF (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Practice PDF'), findsOneWidget);
+    expect(find.text('Practice image'), findsNothing);
+    expect(find.text('Practice text'), findsNothing);
+    await tester.tap(find.text('All (3)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Practice image'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   for (final width in [320.0, 1440.0]) {
@@ -78,6 +86,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Resource 1 of 2 available'), findsOneWidget);
       expect(find.textContaining('Watch video - Selected'), findsOneWidget);
+      await tester.ensureVisible(find.text('Audio (1)'));
+      await tester.tap(find.text('Audio (1)'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('teacher-resource-9')), findsOneWidget);
+      expect(opened, ['/api/courses/assets/9/open']);
       expect(
         tester
             .widget<LessonMediaViewer>(find.byType(LessonMediaViewer))

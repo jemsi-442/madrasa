@@ -19,6 +19,9 @@ class TeacherLessonResources extends StatefulWidget {
 class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
   late Future<dynamic> future = fetch();
   String? selected;
+  String? filter;
+  String resourceKind(Map<String, dynamic> row) =>
+      row['assetType'] == 'EMBED' ? 'VIDEO' : recordText(row['assetType']);
   final playerAnchor = GlobalKey();
   final resourcesAnchor = GlobalKey();
 
@@ -52,6 +55,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.lessonId != widget.lessonId) {
       selected = null;
+      filter = null;
       future = fetch();
     }
   }
@@ -64,6 +68,12 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
     }),
     builder: (data) {
       final rows = recordList(data);
+      final counts = <String, int>{};
+      for (final row in rows) {
+        final kind = resourceKind(row);
+        counts[kind] = (counts[kind] ?? 0) + 1;
+      }
+      final activeFilter = counts.containsKey(filter) ? filter : null;
       final index = rows.indexWhere((row) => '${row['id']}' == selected);
       if (rows.isEmpty) {
         return const EmptyRecords(
@@ -79,7 +89,37 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
             subtitle:
                 'Preview the resources for this lesson without recording learner progress.',
           ),
-          for (final row in rows) resourceCard(row),
+          if (counts.length > 1) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: Text('All (${rows.length})'),
+                  selected: activeFilter == null,
+                  onSelected: (_) => setState(() => filter = null),
+                ),
+                for (final entry in const {
+                  'VIDEO': 'Video',
+                  'AUDIO': 'Audio',
+                  'IMAGE': 'Images',
+                  'PDF': 'PDF',
+                  'TEXT': 'Text',
+                }.entries)
+                  if (counts.containsKey(entry.key))
+                    ChoiceChip(
+                      avatar: Icon(lessonResourceIcon(entry.key), size: 20),
+                      label: Text('${entry.value} (${counts[entry.key]})'),
+                      selected: activeFilter == entry.key,
+                      onSelected: (_) => setState(() => filter = entry.key),
+                    ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+          for (final row in rows)
+            if (activeFilter == null || resourceKind(row) == activeFilter)
+              resourceCard(row),
           const SizedBox(height: 16),
           SizedBox(key: playerAnchor),
           if (index >= 0)
