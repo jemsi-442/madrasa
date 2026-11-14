@@ -117,9 +117,30 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
             ),
             const SizedBox(height: 16),
           ],
-          for (final row in rows)
-            if (activeFilter == null || resourceKind(row) == activeFilter)
-              resourceCard(row),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
+              final columns = (constraints.maxWidth / (360 * textScale))
+                  .floor()
+                  .clamp(1, 3);
+              final width =
+                  (constraints.maxWidth - 16 * (columns - 1)) / columns;
+              return Wrap(
+                spacing: 16,
+                runSpacing: 6,
+                children: [
+                  for (final row in rows)
+                    if (activeFilter == null ||
+                        resourceKind(row) == activeFilter)
+                      SizedBox(
+                        key: ValueKey('resource-card-${row['id']}'),
+                        width: width,
+                        child: resourceCard(row),
+                      ),
+                ],
+              );
+            },
+          ),
           const SizedBox(height: 16),
           SizedBox(key: playerAnchor),
           if (index >= 0)

@@ -82,6 +82,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Watch video'), findsOneWidget);
       expect(find.text('Play audio'), findsOneWidget);
+      final firstCard = tester.getRect(
+        find.byKey(const ValueKey('resource-card-9')),
+      );
+      final secondCard = tester.getRect(
+        find.byKey(const ValueKey('resource-card-10')),
+      );
+      if (width >= 720) {
+        expect(secondCard.top, firstCard.top);
+        expect(secondCard.left, greaterThan(firstCard.right));
+      } else {
+        expect(secondCard.top, greaterThan(firstCard.bottom));
+        expect(secondCard.left, firstCard.left);
+      }
       await tester.tap(find.text('First resource'));
       await tester.pumpAndSettle();
       expect(find.text('Resource 1 of 2 available'), findsOneWidget);
