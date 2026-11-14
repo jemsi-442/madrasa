@@ -51,6 +51,20 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
       children: [
         LayoutBuilder(
           builder: (context, box) {
+            final action = FilledButton.icon(
+              key: ValueKey('teacher-course-item-${widget.course['id']}'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AfaqDesign.actionGold,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+              ),
+              onPressed: widget.onOpen,
+              icon: const Icon(Icons.menu_book_outlined),
+              label: const Text('Open course'),
+            );
             final cover = ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: AspectRatio(
@@ -98,21 +112,10 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                     recordText(widget.course['summary']),
                     style: const TextStyle(fontSize: 17, height: 1.6),
                   ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  key: ValueKey('teacher-course-item-${widget.course['id']}'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AfaqDesign.actionGold,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 20,
-                    ),
-                  ),
-                  onPressed: widget.onOpen,
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text('Open course'),
-                ),
+                if (box.maxWidth < 1050) ...[
+                  const SizedBox(height: 20),
+                  action,
+                ],
               ],
             );
             if (box.maxWidth < 800) {
@@ -122,11 +125,15 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
               );
             }
             return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(flex: 4, child: cover),
-                const SizedBox(width: 28),
-                Expanded(flex: 7, child: details),
+                const SizedBox(width: 24),
+                Expanded(flex: 6, child: details),
+                if (box.maxWidth >= 1050) ...[
+                  const SizedBox(width: 24),
+                  SizedBox(width: 190, child: action),
+                ],
               ],
             );
           },

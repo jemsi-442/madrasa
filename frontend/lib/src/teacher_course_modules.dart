@@ -136,7 +136,7 @@ class TeacherCourseModules extends StatelessWidget {
         key: ValueKey('teacher-course-item-${module['id']}'),
         onTap: () => onOpen(module),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -164,13 +164,18 @@ class TeacherCourseModules extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const Icon(
+                    Icons.play_circle_outline,
+                    color: AfaqDesign.ink,
+                    size: 24,
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
                 recordText(module['title']),
                 style: const TextStyle(
-                  fontSize: 19,
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                   height: 1.4,
                 ),
@@ -179,10 +184,12 @@ class TeacherCourseModules extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   summary,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 14, height: 1.5),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 16,
                 runSpacing: 8,

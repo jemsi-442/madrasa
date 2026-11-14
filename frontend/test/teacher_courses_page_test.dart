@@ -47,7 +47,7 @@ void main() {
       },
     );
   }
-  for (final width in [320.0, 1440.0]) {
+  for (final width in [320.0, 800.0, 1050.0, 1440.0]) {
     testWidgets('course catalogue fits $width', (tester) async {
       tester.view.physicalSize = Size(width, 900);
       tester.view.devicePixelRatio = 1;
