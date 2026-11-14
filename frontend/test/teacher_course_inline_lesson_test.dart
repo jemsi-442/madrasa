@@ -73,6 +73,10 @@ void main() {
       expect(navigation, 0);
       expect(find.byType(LessonMediaViewer), findsOneWidget);
       expect(
+        find.byKey(const ValueKey('inline-lesson-selectors-row')),
+        width >= 640 ? findsOneWidget : findsNothing,
+      );
+      expect(
         tester
             .widget<LessonMediaViewer>(find.byType(LessonMediaViewer))
             .assetId,

@@ -74,39 +74,34 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
               : matches.isEmpty
               ? lessons.first
               : matches.first;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DropdownButtonFormField<int>(
-                key: ValueKey('inline-module-$moduleIndex'),
-                initialValue: moduleIndex,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Module'),
-                items: [
-                  for (var i = 0; i < widget.modules.length; i++)
-                    DropdownMenuItem(
-                      value: i,
-                      child: Text(
-                        recordText(widget.modules[i]['title']),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value == null || value == moduleIndex) return;
-                  setState(() {
-                    moduleIndex = value;
-                    lessonId = null;
-                    future = loadModule(value);
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              if (lesson == null)
-                const EmptyRecords('No lessons are available in this module.')
-              else ...[
-                DropdownButtonFormField<String>(
+          final moduleSelector = DropdownButtonFormField<int>(
+            key: ValueKey('inline-module-$moduleIndex'),
+            initialValue: moduleIndex,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Module'),
+            items: [
+              for (var i = 0; i < widget.modules.length; i++)
+                DropdownMenuItem(
+                  value: i,
+                  child: Text(
+                    recordText(widget.modules[i]['title']),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (value) {
+              if (value == null || value == moduleIndex) return;
+              setState(() {
+                moduleIndex = value;
+                lessonId = null;
+                future = loadModule(value);
+              });
+            },
+          );
+          final lessonSelector = lesson == null
+              ? null
+              : DropdownButtonFormField<String>(
                   key: ValueKey('inline-lesson-${lesson['id']}'),
                   initialValue: '${lesson['id']}',
                   isExpanded: true,
@@ -123,16 +118,38 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                       ),
                   ],
                   onChanged: (value) => setState(() => lessonId = value),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  recordText(lesson['title']),
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (lessonSelector == null) return moduleSelector;
+                  if (constraints.maxWidth >= 640 &&
+                      MediaQuery.textScalerOf(context).scale(16) <= 24) {
+                    return Row(
+                      key: const ValueKey('inline-lesson-selectors-row'),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: moduleSelector),
+                        const SizedBox(width: 16),
+                        Expanded(flex: 2, child: lessonSelector),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      moduleSelector,
+                      const SizedBox(height: 16),
+                      lessonSelector,
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              if (lesson == null)
+                const EmptyRecords('No lessons are available in this module.')
+              else ...[
                 TeacherLessonResources(
                   key: ValueKey('inline-resources-${lesson['id']}'),
                   lessonId: '${lesson['id']}',
