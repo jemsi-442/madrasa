@@ -70,7 +70,13 @@ void main() {
               child: TeacherCoursesPage(
                 load: (path) async => path.endsWith('/lessons')
                     ? [
-                        {'id': 'lesson', 'title': 'Synthetic lesson'},
+                        {
+                          'id': 'lesson',
+                          'title': 'Synthetic lesson',
+                          'summary':
+                              'Practice reading and discussing lesson materials.',
+                          'estimatedMinutes': 15,
+                        },
                         {
                           'id': 'lesson-2',
                           'title': 'Second synthetic lesson',
@@ -110,6 +116,13 @@ void main() {
       expect(find.text('Synthetic lesson'), findsOneWidget);
       expect(find.text('01'), findsOneWidget);
       expect(find.text('02'), findsOneWidget);
+      expect(find.text('15 min estimated'), findsOneWidget);
+      expect(
+        find.textContaining('Practice reading and discussing'),
+        findsOneWidget,
+      );
+      expect(find.text('0 min estimated'), findsNothing);
+      expect(tester.takeException(), isNull);
       await tester.ensureVisible(find.text('Second synthetic lesson'));
       await tester.tap(find.text('Second synthetic lesson'));
       await tester.pumpAndSettle();

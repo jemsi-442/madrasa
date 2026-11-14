@@ -370,10 +370,51 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                       ),
                     ),
                     subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: const Text(
-                        'Read lesson',
-                        style: TextStyle(fontSize: 14, color: blue),
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (recordText(
+                            row['summary'],
+                            '',
+                          ).trim().isNotEmpty) ...[
+                            Text(
+                              recordText(row['summary']),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                height: 1.5,
+                                color: muted,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          Wrap(
+                            spacing: 16,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (row['estimatedMinutes'] is num &&
+                                  (row['estimatedMinutes'] as num) > 0)
+                                Text(
+                                  '${TeacherCourseModules.duration(row['estimatedMinutes'] as num)} estimated',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: muted,
+                                  ),
+                                ),
+                              const Text(
+                                'Read lesson',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                     trailing: const Icon(Icons.chevron_right),
