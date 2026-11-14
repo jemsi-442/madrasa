@@ -1,5 +1,7 @@
 # Homepage Assets and Copy
 
+- `teacher-media.png`: AI-generated decorative teaching-media cover (camera, laptop, books and lantern), created for the teacher course catalogue. It is not a photograph of Afaq staff or a course video thumbnail; it contains no generated Quran text.
+
 - `digital-learning.jpg`: web-size rendering of the supplied `../Pic2.svg`.
 - `shared-learning.jpg`: web-size rendering of the supplied `../Pic4.svg`.
 - `team.webp`: full 2400px lossless rendering of the supplied `../pic7.svg`, preserving its original composition, names and captions at the owner's request. Pixel comparison against the PNG render found no differences. Confirm the captions are current before public release. `pic8.svg` is the same team graphic with an alternate background.

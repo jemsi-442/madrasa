@@ -8,59 +8,116 @@ class TeacherCourseModules extends StatelessWidget {
     required this.course,
     required this.modules,
     required this.onOpen,
+    this.onViewAll,
   });
   final Map<String, dynamic> course;
   final List<Map<String, dynamic>> modules;
   final ValueChanged<Map<String, dynamic>> onOpen;
+  final VoidCallback? onViewAll;
+
+  num? total(String field) {
+    final values = modules.map((m) => recordMap(m['stats'])[field]);
+    return values.every((v) => v is num)
+        ? values.cast<num>().fold<num>(0, (a, b) => a + b)
+        : null;
+  }
+
+  static String duration(num? minutes) => minutes == null
+      ? 'Not specified'
+      : minutes >= 60
+      ? '${minutes ~/ 60}h ${minutes.toInt() % 60}m'
+      : '${minutes.toInt()} min';
+  static const tones = [
+    Color(0xFF0763CE),
+    Color(0xFF009D50),
+    Color(0xFFB37A05),
+    Color(0xFF7140BE),
+  ];
+  static const backgrounds = [
+    Color(0xFFE8F3FF),
+    Color(0xFFEAF9F2),
+    Color(0xFFFFF7E6),
+    Color(0xFFF4EFFF),
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final lessons = total('lessons');
+    final resources = total('resources');
     final summary = recordText(course['summary'], '');
-    final counts = modules
-        .map((m) => recordMap(m['stats'])['lessons'])
-        .toList();
-    final hasCounts = counts.every((count) => count is num);
-    final lessons = counts.whereType<num>().fold<num>(
-      0,
-      (sum, count) => sum + count,
-    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (summary.isNotEmpty) ...[
-          Text(
-            summary,
-            style: const TextStyle(
-              fontSize: 17,
-              height: 1.6,
-              color: AfaqDesign.ink,
-            ),
-          ),
+          Text(summary, style: const TextStyle(fontSize: 17, height: 1.5)),
           const SizedBox(height: 20),
         ],
         LayoutBuilder(
           builder: (context, box) {
-            final columns = box.maxWidth >= 560 && hasCounts ? 2 : 1;
-            final width = (box.maxWidth - (columns - 1) * 12) / columns;
+            final columns = box.maxWidth >= 850
+                ? 4
+                : box.maxWidth >= 440
+                ? 2
+                : 1;
+            final labels = [
+              '${modules.length} ${modules.length == 1 ? 'module' : 'modules'}',
+              lessons == null
+                  ? 'Lessons unavailable'
+                  : '$lessons ${lessons == 1 ? 'lesson' : 'lessons'}',
+              resources == null
+                  ? 'Resources unavailable'
+                  : '$resources resources',
+              duration(total('estimatedMinutes')),
+            ];
+            final icons = [
+              Icons.layers_outlined,
+              Icons.play_circle_outline,
+              Icons.description_outlined,
+              Icons.schedule,
+            ];
             return Wrap(
-              spacing: 12,
+              spacing: 16,
               runSpacing: 12,
               children: [
-                SizedBox(
-                  width: width,
-                  child: _stat(
-                    Icons.layers_outlined,
-                    '${modules.length} ${modules.length == 1 ? 'module' : 'modules'}',
-                    const Color(0xFFEAF2FC),
-                  ),
-                ),
-                if (hasCounts)
+                for (var i = 0; i < 4; i++)
                   SizedBox(
-                    width: width,
-                    child: _stat(
-                      Icons.play_circle_outline,
-                      '$lessons ${lessons == 1 ? 'lesson' : 'lessons'}',
-                      const Color(0xFFE8F6EE),
+                    width: (box.maxWidth - (columns - 1) * 16) / columns,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: backgrounds[i],
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 25,
+                            backgroundColor: tones[i].withValues(alpha: .10),
+                            child: Icon(icons[i], color: tones[i], size: 29),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  labels[i],
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: AfaqDesign.ink,
+                                  ),
+                                ),
+                                if (i == 3)
+                                  const Text(
+                                    'Estimated duration',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -68,28 +125,56 @@ class TeacherCourseModules extends StatelessWidget {
           },
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Course Modules',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+        const Divider(height: 1, color: Color(0xFFE4E9F1)),
+        const SizedBox(height: 20),
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 8,
+          children: [
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.menu_book_outlined,
+                  size: 30,
+                  color: AfaqDesign.actionGold,
+                ),
+                SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    'Course Modules',
+                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            if (onViewAll != null)
+              TextButton.icon(
+                onPressed: onViewAll,
+                icon: const Icon(Icons.arrow_forward, size: 20),
+                label: const Text('View all modules'),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, box) {
-            final availableColumns = box.maxWidth >= 1200
+            final columns = box.maxWidth >= 1100
                 ? 4
-                : box.maxWidth >= 700
+                : box.maxWidth >= 600
                 ? 2
                 : 1;
-            final columns = modules.isEmpty
-                ? 1
-                : availableColumns.clamp(1, modules.length);
-            final width = (box.maxWidth - (columns - 1) * 16) / columns;
             return Wrap(
               spacing: 16,
               runSpacing: 16,
               children: [
-                for (var index = 0; index < modules.length; index++)
-                  SizedBox(width: width, child: _module(modules[index], index)),
+                for (var i = 0; i < modules.length; i++)
+                  SizedBox(
+                    width: (box.maxWidth - (columns - 1) * 16) / columns,
+                    child: _module(modules[i], i),
+                  ),
               ],
             );
           },
@@ -98,38 +183,14 @@ class TeacherCourseModules extends StatelessWidget {
     );
   }
 
-  Widget _stat(IconData icon, String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: AfaqDesign.ink),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
-  );
-
   Widget _module(Map<String, dynamic> module, int index) {
-    final summary = recordText(module['summary'], '');
-    final count = recordMap(module['stats'])['lessons'];
-    final colors = [
-      const Color(0xFFEAF2FC),
-      const Color(0xFFE8F6EE),
-      const Color(0xFFFFF3D7),
-    ];
+    final stats = recordMap(module['stats']);
+    final tone = tones[index % tones.length];
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFDDE5ED)),
+        side: const BorderSide(color: Color(0xFFE0E6EF)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -137,72 +198,70 @@ class TeacherCourseModules extends StatelessWidget {
         onTap: () => onOpen(module),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colors[index % colors.length],
-                      borderRadius: BorderRadius.circular(12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: backgrounds[index % backgrounds.length],
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(Icons.layers_outlined, color: tone, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Module ${index + 1}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_circle_right_outlined,
+                          size: 22,
+                          color: AfaqDesign.ink,
+                        ),
+                      ],
                     ),
-                    child: const Icon(
-                      Icons.layers_outlined,
-                      size: 28,
-                      color: AfaqDesign.ink,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Module ${index + 1}',
+                    const SizedBox(height: 7),
+                    Text(
+                      recordText(module['title']),
                       style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        height: 1.35,
                       ),
                     ),
-                  ),
-                  const Icon(
-                    Icons.play_circle_outline,
-                    color: AfaqDesign.ink,
-                    size: 24,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                recordText(module['title']),
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  height: 1.4,
-                ),
-              ),
-              if (summary.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  summary,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, height: 1.5),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  if (count is num) Text('$count lessons'),
-                  const Text(
-                    'View lessons',
-                    style: TextStyle(
-                      color: AfaqDesign.blue,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        if (stats['lessons'] is num)
+                          Text(
+                            '${stats['lessons']} lessons',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        if (stats['estimatedMinutes'] is num)
+                          Text(
+                            duration(stats['estimatedMinutes']),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    const Text(
+                      'View lessons',
+                      style: TextStyle(fontSize: 12, color: AfaqDesign.blue),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

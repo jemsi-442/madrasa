@@ -23,12 +23,20 @@ void main() {
                     {
                       'id': 'm1',
                       'title': 'Video practice',
-                      'stats': {'lessons': 3},
+                      'stats': {
+                        'lessons': 3,
+                        'resources': 4,
+                        'estimatedMinutes': 40,
+                      },
                     },
                     {
                       'id': 'm2',
                       'title': 'Audio practice',
-                      'stats': {'lessons': 2},
+                      'stats': {
+                        'lessons': 2,
+                        'resources': 3,
+                        'estimatedMinutes': 25,
+                      },
                     },
                   ],
                   onOpen: (module) => selected = module,
@@ -40,6 +48,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('2 modules'), findsOneWidget);
         expect(find.text('5 lessons'), findsOneWidget);
+        expect(find.text('7 resources'), findsOneWidget);
+        expect(find.text('1h 5m'), findsOneWidget);
         await tester.ensureVisible(find.text('Audio practice'));
         await tester.tap(find.text('Audio practice'));
         expect(selected?['id'], 'm2');
@@ -209,14 +219,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        tester.getSemantics(
-          find.bySemanticsLabel(RegExp('^My assigned courses')),
-        ),
-        containsSemantics(
-          isHeader: true,
-          label:
-              'My assigned courses\nOpen a course to continue with its modules and lessons.',
-        ),
+        tester.getSemantics(find.bySemanticsLabel('My Courses')),
+        containsSemantics(isHeader: true, label: 'My Courses'),
       );
       expect(
         tester.getSemantics(find.bySemanticsLabel('Open course')),
@@ -393,6 +397,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       for (final label in ['Open course', 'View lessons', 'Long lesson 1']) {
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
       }

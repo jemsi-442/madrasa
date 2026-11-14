@@ -6,7 +6,7 @@ import 'teacher_ui.dart';
 import 'workspace_form_dialog.dart';
 import 'design_tokens.dart';
 import 'teacher_course_modules.dart';
-import 'teacher_course_card.dart';
+import 'teacher_course_catalogue.dart';
 
 enum TeacherLearningDestination { quran, assessments }
 
@@ -197,6 +197,22 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
   });
 
   Widget content(List<Map<String, dynamic>> rows) {
+    if (course == null) {
+      return TeacherCourseCatalogue(
+        courses: rows,
+        load: widget.load,
+        refreshToken: widget.refreshToken,
+        onOpen: (selected) => setState(() {
+          course = selected;
+          future = fetch();
+        }),
+        onModule: (selected, selectedModule) => setState(() {
+          course = selected;
+          module = selectedModule;
+          future = fetch();
+        }),
+      );
+    }
     final index = lessonId == null
         ? -1
         : rows.indexWhere((row) => '${row['id']}' == lessonId);
@@ -209,66 +225,6 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(key: lessonAnchor),
-        if (course == null) ...[
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              gradient: const LinearGradient(
-                colors: [AfaqDesign.ink, Color(0xFF184E67)],
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.menu_book_outlined,
-                  color: Color(0xFFE5B64C),
-                  size: 42,
-                ),
-                const SizedBox(width: 18),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'My Courses',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Your courses, modules and learning resources.',
-                        style: TextStyle(
-                          color: Color(0xFFDCE8EF),
-                          fontSize: 16,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (MediaQuery.sizeOf(context).width >= 1100) ...[
-                  const SizedBox(width: 24),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/learning-hero.png',
-                      width: 250,
-                      height: 120,
-                      fit: BoxFit.cover,
-                      excludeFromSemantics: true,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
         Semantics(
           container: true,
           header: true,
@@ -368,23 +324,6 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                 ? 'This course has no modules yet.'
                 : 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.',
           )
-        else if (course == null)
-          for (final row in rows)
-            TeacherCourseCard(
-              key: ValueKey('teacher-course-card-${row['id']}'),
-              course: row,
-              load: widget.load,
-              refreshToken: widget.refreshToken,
-              onOpen: () => setState(() {
-                course = row;
-                future = fetch();
-              }),
-              onModule: (selected) => setState(() {
-                course = row;
-                module = selected;
-                future = fetch();
-              }),
-            )
         else if (course != null && module == null)
           TeacherCourseModules(
             course: course!,

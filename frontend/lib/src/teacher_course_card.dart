@@ -51,11 +51,12 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
       children: [
         LayoutBuilder(
           builder: (context, box) {
-            final action = FilledButton.icon(
+            final openAction = FilledButton.icon(
               key: ValueKey('teacher-course-item-${widget.course['id']}'),
               style: FilledButton.styleFrom(
-                backgroundColor: AfaqDesign.actionGold,
-                foregroundColor: Colors.white,
+                backgroundColor: Colors.white,
+                foregroundColor: AfaqDesign.ink,
+                side: const BorderSide(color: Color(0xFFAAB6C7)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 20,
@@ -65,39 +66,99 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
               icon: const Icon(Icons.menu_book_outlined),
               label: const Text('Open course'),
             );
+            final action = FutureBuilder<dynamic>(
+              future: modules,
+              builder: (context, snapshot) {
+                final rows = snapshot.hasData
+                    ? recordList(snapshot.data)
+                    : <Map<String, dynamic>>[];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (rows.isNotEmpty) ...[
+                      FilledButton.icon(
+                        onPressed: () => widget.onModule(rows.first),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AfaqDesign.actionGold,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 20,
+                          ),
+                        ),
+                        icon: const Icon(Icons.arrow_circle_right_outlined),
+                        label: const Text('Start course'),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    openAction,
+                  ],
+                );
+              },
+            );
             final cover = ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Image.asset(
-                  'assets/home/digital-learning.jpg',
-                  fit: BoxFit.cover,
-                  semanticLabel: 'Digital learning',
-                  errorBuilder: (_, _, _) => const ColoredBox(
-                    color: AfaqDesign.ink,
-                    child: Center(
-                      child: Icon(
-                        Icons.menu_book,
-                        size: 64,
-                        color: Color(0xFFE5B64C),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      'assets/home/teacher-media.png',
+                      fit: BoxFit.cover,
+                      excludeFromSemantics: true,
+                      errorBuilder: (_, _, _) => const ColoredBox(
+                        color: AfaqDesign.ink,
+                        child: Center(
+                          child: Icon(
+                            Icons.menu_book,
+                            size: 64,
+                            color: Color(0xFFE5B64C),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AfaqDesign.actionGold,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'Course',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: IconButton.filled(
+                        tooltip: 'Open course',
+                        onPressed: widget.onOpen,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white, width: 2),
+                          padding: const EdgeInsets.all(16),
+                        ),
+                        icon: const Icon(Icons.arrow_forward, size: 32),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
             final details = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'ASSIGNED COURSE',
-                  style: TextStyle(
-                    color: AfaqDesign.actionGold,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Text(
                   recordText(widget.course['title']),
                   style: const TextStyle(
@@ -106,12 +167,67 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                     height: 1.25,
                   ),
                 ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    const Text(
+                      'Assigned course',
+                      style: TextStyle(color: AfaqDesign.blue),
+                    ),
+                    if (recordText(widget.course['level'], '').isNotEmpty)
+                      Text(recordText(widget.course['level'])),
+                    if (recordText(
+                      recordMap(widget.course['subject'])['name'],
+                      '',
+                    ).isNotEmpty)
+                      Text(
+                        recordText(recordMap(widget.course['subject'])['name']),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 if (recordText(widget.course['summary'], '').isNotEmpty)
                   Text(
                     recordText(widget.course['summary']),
                     style: const TextStyle(fontSize: 17, height: 1.6),
                   ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFE1E6EF)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Course progress',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      LinearProgressIndicator(
+                        value: 0,
+                        minHeight: 9,
+                        backgroundColor: Color(0xFFEDF0F5),
+                        color: Color(0xFF009C43),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Personal completion is not recorded for teaching assignments.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF66788F),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 if (box.maxWidth < 1050) ...[
                   const SizedBox(height: 20),
                   action,
@@ -132,7 +248,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 Expanded(flex: 6, child: details),
                 if (box.maxWidth >= 1050) ...[
                   const SizedBox(width: 24),
-                  SizedBox(width: 190, child: action),
+                  SizedBox(width: 205, child: action),
                 ],
               ],
             );
@@ -153,6 +269,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
               course: const {},
               modules: rows,
               onOpen: widget.onModule,
+              onViewAll: widget.onOpen,
             );
           },
         ),

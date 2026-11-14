@@ -159,6 +159,7 @@ const toCourseModuleResponse = (moduleRecord: {
   updatedAt: Date;
   course?: { id: bigint; title: string; slug: string } | null;
   _count?: { lessons: number };
+  lessons?: { estimatedMinutes: number | null; _count: { assets: number } }[];
 }) => ({
   id: moduleRecord.id.toString(),
   orgId: moduleRecord.orgId.toString(),
@@ -178,6 +179,10 @@ const toCourseModuleResponse = (moduleRecord: {
   stats: moduleRecord._count
     ? {
         lessons: moduleRecord._count.lessons,
+        resources: moduleRecord.lessons?.reduce((sum, lesson) => sum + lesson._count.assets, 0) ?? null,
+        estimatedMinutes: moduleRecord.lessons?.length && moduleRecord.lessons.every((lesson) => lesson.estimatedMinutes !== null)
+          ? moduleRecord.lessons.reduce((sum, lesson) => sum + (lesson.estimatedMinutes ?? 0), 0)
+          : null,
       }
     : null,
 });
@@ -1616,6 +1621,10 @@ export const listCourseModules = async (authUser: AuthenticatedUser, courseId: s
         select: {
           lessons: true,
         },
+      },
+      lessons: {
+        where: { orgId: BigInt(authUser.orgId), courseId: parsedCourseId },
+        select: { estimatedMinutes: true, _count: { select: { assets: true } } },
       },
     },
   });
