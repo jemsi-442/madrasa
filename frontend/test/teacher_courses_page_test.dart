@@ -61,6 +61,11 @@ void main() {
                 load: (path) async => path.endsWith('/lessons')
                     ? [
                         {'id': 'lesson', 'title': 'Synthetic lesson'},
+                        {
+                          'id': 'lesson-2',
+                          'title': 'Second synthetic lesson',
+                          'contentText': 'Second lesson reading content.',
+                        },
                       ]
                     : path.endsWith('/modules')
                     ? [
@@ -93,6 +98,12 @@ void main() {
       await tester.tap(find.text('Synthetic module'));
       await tester.pumpAndSettle();
       expect(find.text('Synthetic lesson'), findsOneWidget);
+      expect(find.text('01'), findsOneWidget);
+      expect(find.text('02'), findsOneWidget);
+      await tester.ensureVisible(find.text('Second synthetic lesson'));
+      await tester.tap(find.text('Second synthetic lesson'));
+      await tester.pumpAndSettle();
+      expect(find.text('Second lesson reading content.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

@@ -395,9 +395,9 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
             }),
           )
         else
-          for (final row in rows)
+          for (final (lessonIndex, row) in rows.indexed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: 12),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -409,57 +409,43 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                   child: ListTile(
                     key: ValueKey('teacher-course-item-${row['id']}'),
                     contentPadding: const EdgeInsets.symmetric(
-                      vertical: 22,
-                      horizontal: 20,
+                      vertical: 12,
+                      horizontal: 16,
                     ),
                     leading: Container(
-                      padding: const EdgeInsets.all(12),
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFF3D7),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
-                        module != null
-                            ? Icons.article_outlined
-                            : Icons.menu_book_outlined,
-                        color: AfaqDesign.actionGold,
-                        size: 28,
+                      child: Text(
+                        '${lessonIndex + 1}'.padLeft(2, '0'),
+                        style: const TextStyle(
+                          color: AfaqDesign.actionGold,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     title: Text(
                       recordText(row['title']),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 20,
+                        fontSize: 18,
                         height: 1.35,
                       ),
                     ),
                     subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(
-                        module != null
-                            ? 'Read lesson'
-                            : course != null
-                            ? 'View lessons'
-                            : 'Open course',
-                        style: const TextStyle(fontSize: 14, color: blue),
+                      padding: const EdgeInsets.only(top: 6),
+                      child: const Text(
+                        'Read lesson',
+                        style: TextStyle(fontSize: 14, color: blue),
                       ),
                     ),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      if (module != null) {
-                        openLesson('${row['id']}');
-                      } else {
-                        setState(() {
-                          if (course != null) {
-                            module = row;
-                          } else {
-                            course = row;
-                          }
-                          future = fetch();
-                        });
-                      }
-                    },
+                    onTap: () => openLesson('${row['id']}'),
                   ),
                 ),
               ),
