@@ -73,6 +73,13 @@ void main() {
       expect(navigation, 0);
       expect(find.byType(LessonMediaViewer), findsOneWidget);
       expect(
+        tester
+            .widget<LessonMediaViewer>(find.byType(LessonMediaViewer))
+            .compactVideo,
+        isTrue,
+      );
+      expect(find.byTooltip('Close video'), findsOneWidget);
+      expect(
         find.byKey(const ValueKey('inline-lesson-selectors-row')),
         width >= 640 ? findsOneWidget : findsNothing,
       );

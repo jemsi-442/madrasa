@@ -84,6 +84,10 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       }
       final activeFilter = counts.containsKey(filter) ? filter : null;
       final index = rows.indexWhere((row) => '${row['id']}' == selected);
+      final inlineVideo =
+          widget.openFirst &&
+          index >= 0 &&
+          resourceKind(rows[index]) == 'VIDEO';
       if (rows.isEmpty) {
         return const EmptyRecords(
           'No media resources have been added to this lesson.',
@@ -94,25 +98,52 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
         children: [
           SizedBox(key: playerAnchor),
           if (index >= 0) ...[
-            LessonMediaViewer(
-              key: ValueKey('teacher-resource-$selected'),
-              assetId: selected!,
-              load: widget.load,
-              apiBaseUrl: widget.apiBaseUrl,
-              teacherResource: true,
-              title: recordText(rows[index]['title'], 'Lesson resource'),
-              position: index + 1,
-              total: rows.length,
-              onPrevious: index > 0
-                  ? () => openResource('${rows[index - 1]['id']}')
-                  : null,
-              onNext: index + 1 < rows.length
-                  ? () => openResource('${rows[index + 1]['id']}')
-                  : null,
-              onClose: () {
-                setState(() => selected = null);
-                reveal(resourcesAnchor);
-              },
+            if (inlineVideo)
+              Row(
+                children: [
+                  const Icon(Icons.play_circle_outline),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      recordText(rows[index]['title'], 'Video lesson'),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close video',
+                    onPressed: () => setState(() => selected = null),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: inlineVideo ? 960 : double.infinity,
+                ),
+                child: LessonMediaViewer(
+                  key: ValueKey('teacher-resource-$selected'),
+                  compactVideo: inlineVideo,
+                  assetId: selected!,
+                  load: widget.load,
+                  apiBaseUrl: widget.apiBaseUrl,
+                  teacherResource: true,
+                  title: recordText(rows[index]['title'], 'Lesson resource'),
+                  position: index + 1,
+                  total: rows.length,
+                  onPrevious: index > 0
+                      ? () => openResource('${rows[index - 1]['id']}')
+                      : null,
+                  onNext: index + 1 < rows.length
+                      ? () => openResource('${rows[index + 1]['id']}')
+                      : null,
+                  onClose: () {
+                    setState(() => selected = null);
+                    reveal(resourcesAnchor);
+                  },
+                ),
+              ),
             ),
             const SizedBox(height: 24),
           ],
