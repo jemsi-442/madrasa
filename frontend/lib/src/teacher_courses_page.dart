@@ -6,6 +6,7 @@ import 'teacher_ui.dart';
 import 'workspace_form_dialog.dart';
 import 'design_tokens.dart';
 import 'teacher_course_modules.dart';
+import 'teacher_lesson_reading.dart';
 import 'teacher_course_catalogue.dart';
 
 enum TeacherLearningDestination { quran, assessments }
@@ -259,18 +260,10 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 16),
-          if (recordText(lesson['summary'], '').isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(recordText(lesson['summary'])),
-            ),
-          if (recordText(lesson['contentText'], '').isNotEmpty)
-            SelectableText(
-              recordText(lesson['contentText']),
-              style: const TextStyle(height: 1.6),
-            )
-          else
-            const EmptyRecords('No written lesson content has been added yet.'),
+          TeacherLessonReading(
+            summary: recordText(lesson['summary'], ''),
+            text: recordText(lesson['contentText'], ''),
+          ),
           const SizedBox(height: 24),
           TeacherLessonResources(
             key: ValueKey('teacher-lesson-resources-$lessonId'),
