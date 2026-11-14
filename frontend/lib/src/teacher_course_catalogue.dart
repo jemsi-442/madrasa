@@ -11,9 +11,11 @@ class TeacherCourseCatalogue extends StatefulWidget {
     required this.refreshToken,
     required this.onOpen,
     required this.onModule,
+    this.apiBaseUrl = '',
   });
   final List<Map<String, dynamic>> courses;
   final PageLoader load;
+  final String apiBaseUrl;
   final int refreshToken;
   final ValueChanged<Map<String, dynamic>> onOpen;
   final void Function(Map<String, dynamic>, Map<String, dynamic>) onModule;
@@ -230,6 +232,7 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
               key: ValueKey('teacher-course-card-${c['id']}'),
               course: c,
               load: widget.load,
+              apiBaseUrl: widget.apiBaseUrl,
               refreshToken: widget.refreshToken,
               onOpen: () => widget.onOpen(c),
               onModule: (m) => widget.onModule(c, m),

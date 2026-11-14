@@ -8,9 +8,11 @@ class TeacherLessonResources extends StatefulWidget {
     required this.lessonId,
     required this.load,
     required this.apiBaseUrl,
+    this.openFirst = false,
   });
   final String lessonId, apiBaseUrl;
   final PageLoader load;
+  final bool openFirst;
 
   @override
   State<TeacherLessonResources> createState() => _TeacherLessonResourcesState();
@@ -42,12 +44,19 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
     });
   }
 
-  Future<dynamic> fetch() {
-    final request = widget.load(
+  Future<dynamic> fetch() async {
+    final lesson = widget.lessonId;
+    final data = await widget.load(
       '/api/courses/lessons/${Uri.encodeComponent(widget.lessonId)}/assets',
     );
-    request.ignore();
-    return request;
+    if (mounted && lesson == widget.lessonId && widget.openFirst) {
+      final rows = recordList(data);
+      final videos = rows.where((row) => resourceKind(row) == 'VIDEO');
+      if (rows.isNotEmpty) {
+        selected = '${(videos.isNotEmpty ? videos.first : rows.first)['id']}';
+      }
+    }
+    return data;
   }
 
   @override

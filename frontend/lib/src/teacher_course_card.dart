@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard_components.dart';
 import 'design_tokens.dart';
 import 'teacher_course_modules.dart';
+import 'teacher_course_inline_lesson.dart';
 
 class TeacherCourseCard extends StatefulWidget {
   const TeacherCourseCard({
@@ -11,9 +12,11 @@ class TeacherCourseCard extends StatefulWidget {
     required this.onOpen,
     required this.onModule,
     required this.refreshToken,
+    this.apiBaseUrl = '',
   });
   final Map<String, dynamic> course;
   final PageLoader load;
+  final String apiBaseUrl;
   final VoidCallback onOpen;
   final ValueChanged<Map<String, dynamic>> onModule;
   final int refreshToken;
@@ -24,6 +27,21 @@ class TeacherCourseCard extends StatefulWidget {
 
 class _TeacherCourseCardState extends State<TeacherCourseCard> {
   late Future<dynamic> modules = fetch();
+  bool playing = false;
+  final playbackAnchor = GlobalKey();
+
+  void play() {
+    setState(() => playing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || playbackAnchor.currentContext == null) return;
+      Scrollable.ensureVisible(
+        playbackAnchor.currentContext!,
+        alignment: .05,
+        duration: const Duration(milliseconds: 250),
+      );
+    });
+  }
+
   Future<dynamic> fetch() => widget.load(
     '/api/courses/${Uri.encodeComponent('${widget.course['id']}')}/modules',
   );
@@ -77,7 +95,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                   children: [
                     if (rows.isNotEmpty) ...[
                       FilledButton.icon(
-                        onPressed: () => widget.onModule(rows.first),
+                        onPressed: play,
                         style: FilledButton.styleFrom(
                           backgroundColor: AfaqDesign.actionGold,
                           foregroundColor: Colors.white,
@@ -86,8 +104,10 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                             vertical: 20,
                           ),
                         ),
-                        icon: const Icon(Icons.arrow_circle_right_outlined),
-                        label: const Text('Start course'),
+                        icon: const Icon(Icons.play_circle_outline),
+                        label: Text(
+                          playing ? 'Return to lesson' : 'Play lesson',
+                        ),
                       ),
                       const SizedBox(height: 12),
                     ],
@@ -141,15 +161,15 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                     ),
                     Center(
                       child: IconButton.filled(
-                        tooltip: 'Open course',
-                        onPressed: widget.onOpen,
+                        tooltip: 'Play lesson',
+                        onPressed: play,
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black54,
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white, width: 2),
                           padding: const EdgeInsets.all(16),
                         ),
-                        icon: const Icon(Icons.arrow_forward, size: 32),
+                        icon: const Icon(Icons.play_arrow, size: 32),
                       ),
                     ),
                   ],
@@ -257,6 +277,25 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
           },
         ),
         const SizedBox(height: 24),
+        SizedBox(key: playbackAnchor),
+        if (playing) ...[
+          PageResult(
+            future: modules,
+            onRetry: () => setState(() => modules = fetch()),
+            builder: (data) {
+              final rows = recordList(data);
+              if (rows.isEmpty)
+                return const EmptyRecords('No modules have been added yet.');
+              return TeacherCourseInlineLesson(
+                modules: rows,
+                load: widget.load,
+                apiBaseUrl: widget.apiBaseUrl,
+                onClose: () => setState(() => playing = false),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+        ],
         const Divider(height: 1),
         const SizedBox(height: 24),
         PageResult(

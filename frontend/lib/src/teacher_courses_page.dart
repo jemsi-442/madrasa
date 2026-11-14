@@ -202,6 +202,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
       return TeacherCourseCatalogue(
         courses: rows,
         load: widget.load,
+        apiBaseUrl: widget.apiBaseUrl,
         refreshToken: widget.refreshToken,
         onOpen: (selected) => setState(() {
           course = selected;
