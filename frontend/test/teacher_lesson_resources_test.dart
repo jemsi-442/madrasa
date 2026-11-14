@@ -5,6 +5,33 @@ import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_lesson_resources.dart';
 
 void main() {
+  testWidgets('documents and images use open actions instead of play', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TeacherLessonResources(
+              lessonId: 'synthetic',
+              apiBaseUrl: 'https://school.test',
+              load: (_) async => [
+                {'id': 'p', 'title': 'Practice PDF', 'assetType': 'PDF'},
+                {'id': 'i', 'title': 'Practice image', 'assetType': 'IMAGE'},
+                {'id': 't', 'title': 'Practice text', 'assetType': 'TEXT'},
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Open PDF'), findsOneWidget);
+    expect(find.text('View image'), findsOneWidget);
+    expect(find.text('Read text'), findsOneWidget);
+    expect(find.byIcon(Icons.play_circle_outline), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [320.0, 1440.0]) {
     testWidgets('resource sequence stays in the lesson at width $width', (
       tester,
@@ -45,9 +72,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.text('Watch video'), findsOneWidget);
+      expect(find.text('Play audio'), findsOneWidget);
       await tester.tap(find.text('First resource'));
       await tester.pumpAndSettle();
       expect(find.text('Resource 1 of 2 available'), findsOneWidget);
+      expect(find.textContaining('Watch video - Selected'), findsOneWidget);
       expect(
         tester
             .widget<LessonMediaViewer>(find.byType(LessonMediaViewer))

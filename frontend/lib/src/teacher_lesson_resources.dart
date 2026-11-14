@@ -79,14 +79,8 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
             subtitle:
                 'Preview the resources for this lesson without recording learner progress.',
           ),
-          for (final row in rows)
-            ListTile(
-              leading: Icon(lessonResourceIcon(recordText(row['assetType']))),
-              title: Text(recordText(row['title'])),
-              trailing: const Icon(Icons.play_circle_outline),
-              selected: selected == '${row['id']}',
-              onTap: () => openResource('${row['id']}'),
-            ),
+          for (final row in rows) resourceCard(row),
+          const SizedBox(height: 16),
           SizedBox(key: playerAnchor),
           if (index >= 0)
             LessonMediaViewer(
@@ -113,4 +107,59 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       );
     },
   );
+
+  Widget resourceCard(Map<String, dynamic> row) {
+    final kind = recordText(row['assetType']);
+    final (action, color) = switch (kind) {
+      'VIDEO' || 'EMBED' => ('Watch video', const Color(0xFF1763B5)),
+      'AUDIO' => ('Play audio', const Color(0xFF7545AF)),
+      'IMAGE' => ('View image', const Color(0xFF187A62)),
+      'PDF' => ('Open PDF', const Color(0xFFB13A47)),
+      'TEXT' => ('Read text', const Color(0xFF956A12)),
+      _ => ('Open resource', const Color(0xFF40576A)),
+    };
+    final active = selected == '${row['id']}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: color.withValues(alpha: active ? .10 : .035),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: active ? color : color.withValues(alpha: .18),
+            width: active ? 2 : 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: .10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(lessonResourceIcon(kind), color: color, size: 28),
+          ),
+          title: Text(
+            recordText(row['title']),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              active ? '$action - Selected' : action,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            ),
+          ),
+          trailing: Icon(Icons.arrow_forward, color: color),
+          selected: active,
+          onTap: () => openResource('${row['id']}'),
+        ),
+      ),
+    );
+  }
 }
