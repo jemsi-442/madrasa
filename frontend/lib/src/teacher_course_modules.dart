@@ -196,10 +196,10 @@ class TeacherCourseModules extends StatelessWidget {
     final stats = recordMap(module['stats']);
     final tone = tones[index % tones.length];
     return Material(
-      color: Colors.white,
+      color: Color.alphaBlend(tone.withValues(alpha: .035), Colors.white),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE0E6EF)),
+        side: BorderSide(color: tone.withValues(alpha: .18)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -207,81 +207,76 @@ class TeacherCourseModules extends StatelessWidget {
         onTap: () => onOpen(module),
         child: Padding(
           padding: const EdgeInsets.all(22),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: backgrounds[index % backgrounds.length],
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Icon(Icons.layers_outlined, color: tone, size: 36),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: backgrounds[index % backgrounds.length],
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Icon(Icons.layers_outlined, color: tone, size: 36),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Module ${index + 1}',
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_circle_right_outlined,
+                    size: 28,
+                    color: AfaqDesign.ink,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Module ${index + 1}',
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.arrow_circle_right_outlined,
-                          size: 28,
-                          color: AfaqDesign.ink,
-                        ),
-                      ],
+              const SizedBox(height: 20),
+              Text(
+                recordText(module['title']),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (stats['lessons'] is num)
+                    _badge(
+                      Icons.play_circle_outline,
+                      '${stats['lessons']} ${stats['lessons'] == 1 ? 'lesson' : 'lessons'}',
+                      tone,
                     ),
-                    const SizedBox(height: 7),
-                    Text(
-                      recordText(module['title']),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        height: 1.35,
-                      ),
+                  if (stats['resources'] is num)
+                    _badge(
+                      Icons.description_outlined,
+                      '${stats['resources']} ${stats['resources'] == 1 ? 'resource' : 'resources'}',
+                      tone,
                     ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        if (stats['lessons'] is num)
-                          _badge(
-                            Icons.play_circle_outline,
-                            '${stats['lessons']} ${stats['lessons'] == 1 ? 'lesson' : 'lessons'}',
-                            tone,
-                          ),
-                        if (stats['resources'] is num)
-                          _badge(
-                            Icons.description_outlined,
-                            '${stats['resources']} ${stats['resources'] == 1 ? 'resource' : 'resources'}',
-                            tone,
-                          ),
-                        if (stats['estimatedMinutes'] is num)
-                          _badge(
-                            Icons.schedule,
-                            '${duration(stats['estimatedMinutes'])} estimated',
-                            tone,
-                          ),
-                      ],
+                  if (stats['estimatedMinutes'] is num)
+                    _badge(
+                      Icons.schedule,
+                      '${duration(stats['estimatedMinutes'])} estimated',
+                      tone,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'View lessons',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AfaqDesign.blue,
-                      ),
-                    ),
-                  ],
+                ],
+              ),
+              const SizedBox(height: 20),
+              Divider(height: 1, color: tone.withValues(alpha: .14)),
+              const SizedBox(height: 16),
+              const Text(
+                'View lessons',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AfaqDesign.blue,
                 ),
               ),
             ],

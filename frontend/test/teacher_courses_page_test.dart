@@ -65,6 +65,10 @@ void main() {
         expect(find.text('3 resources'), findsOneWidget);
         expect(find.text('40 min estimated'), findsOneWidget);
         expect(find.text('25 min estimated'), findsOneWidget);
+        final card = find.byKey(const ValueKey('teacher-course-item-m1'));
+        final title = find.text('Video practice');
+        expect(tester.getTopLeft(title).dx - tester.getTopLeft(card).dx, 22);
+        expect(tester.getSize(title).width, greaterThan(150));
         await tester.ensureVisible(find.text('Audio practice'));
         await tester.tap(find.text('Audio practice'));
         expect(selected?['id'], 'm2');
