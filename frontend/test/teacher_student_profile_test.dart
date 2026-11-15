@@ -56,6 +56,58 @@ Future<void> openProfile(
 
 void main() {
   testWidgets(
+    'follow-up validates input and preserves text after save failure',
+    (tester) async {
+      var attempts = 0;
+      final notes = <Map<String, dynamic>>[];
+      final clientIds = <String>[];
+      await openProfile(
+        tester,
+        load: (_) async => {'student': student, 'supportNotes': notes},
+        submit: (_, values) async {
+          clientIds.add(values['clientId'] as String);
+          if (attempts++ == 0) throw Exception('Synthetic network failure');
+          notes.add({'id': 'synthetic-note', 'note': values['note']});
+        },
+      );
+      await tester.tap(find.text('Add follow-up'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Synthetic Learner | Synthetic class'),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).maxLines,
+        3,
+      );
+      await tester.enterText(find.byType(TextFormField), 'abc');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter at least 5 characters'), findsOneWidget);
+      expect(attempts, 0);
+      const draft = 'Synthetic support: schedule a practice session.';
+      await tester.enterText(find.byType(TextFormField), draft);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextFormField), findsOneWidget);
+      expect(
+        tester
+            .widget<TextFormField>(find.byType(TextFormField))
+            .controller!
+            .text,
+        draft,
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text(draft), findsOneWidget);
+      expect(find.text('Open (1)'), findsOneWidget);
+      expect(attempts, 2);
+      expect(clientIds.toSet(), hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'failed profile can retry without presenting missing data as empty',
     (tester) async {
       var attempts = 0;

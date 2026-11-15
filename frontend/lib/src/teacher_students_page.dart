@@ -338,8 +338,17 @@ class _TeacherStudentProfileState extends State<TeacherStudentProfile> {
       context,
       title: 'Add learning follow-up',
       note:
-          'Describe the support this student needs. This note is for school staff.',
-      fields: const [AdminField('note', 'Support needed')],
+          '${recordText(student['fullName'], 'Student')} | '
+          '${recordText(recordMap(student['currentClass'])['name'], 'Assigned class')}\n'
+          'Describe the support needed and the next action. Visible to school staff.',
+      fields: const [
+        AdminField(
+          'note',
+          'Support and next action',
+          kind: 'notes',
+          minLength: 5,
+        ),
+      ],
       onSave: (values) async {
         await widget.submit('/api/teacher-workspace/support', {
           ...values,
