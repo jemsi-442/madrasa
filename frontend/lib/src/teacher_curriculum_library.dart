@@ -36,10 +36,7 @@ class _TeacherCurriculumLibraryState extends State<TeacherCurriculumLibrary> {
   @override
   Widget build(BuildContext context) {
     if (widget.assignments.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(bottom: 24),
-        child: _CurriculumBanner(),
-      );
+      return const SizedBox.shrink();
     }
     final years = <String>{
       for (final item in widget.assignments)
@@ -90,8 +87,6 @@ class _TeacherCurriculumLibraryState extends State<TeacherCurriculumLibrary> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _CurriculumBanner(),
-        const SizedBox(height: 24),
         LayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.maxWidth >= 1000
@@ -300,97 +295,6 @@ class _TeacherCurriculumLibraryState extends State<TeacherCurriculumLibrary> {
       ],
     );
   }
-}
-
-class _CurriculumBanner extends StatelessWidget {
-  const _CurriculumBanner();
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(22),
-    child: LayoutBuilder(
-      builder: (context, constraints) => Container(
-        constraints: const BoxConstraints(minHeight: 190),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(colors: [AfaqDesign.ink, Color(0xFF184E67)]),
-        ),
-        child: Stack(
-          children: [
-            if (constraints.maxWidth > 700)
-              Positioned.fill(
-                left: constraints.maxWidth * .61,
-                child: Image.asset(
-                  'assets/learning-hero.png',
-                  fit: BoxFit.cover,
-                  excludeFromSemantics: true,
-                ),
-              ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AfaqDesign.ink,
-                      AfaqDesign.ink.withValues(alpha: .92),
-                      AfaqDesign.ink.withValues(alpha: .08),
-                    ],
-                    stops: const [0, .57, 1],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(constraints.maxWidth < 600 ? 24 : 36),
-              child: SizedBox(
-                width: constraints.maxWidth > 700
-                    ? constraints.maxWidth * .61
-                    : double.infinity,
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.menu_book, color: Color(0xFFE8BC58)),
-                        SizedBox(width: 12),
-                        Text(
-                          'CURRICULUM',
-                          style: TextStyle(
-                            color: Color(0xFFE8BC58),
-                            letterSpacing: 2,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'My Curriculum',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 38,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Your subjects, lesson plans and teaching progress in one place.',
-                      style: TextStyle(
-                        color: Color(0xFFDCE8EF),
-                        fontSize: 17,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 class _CurriculumCard extends StatelessWidget {

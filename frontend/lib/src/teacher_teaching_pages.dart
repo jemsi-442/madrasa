@@ -386,8 +386,6 @@ class TeacherClassesPage extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const TeacherClassesBanner(),
-          const SizedBox(height: 24),
           MetricRow(
             children: [
               TeacherMetric(

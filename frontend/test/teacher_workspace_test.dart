@@ -426,6 +426,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Total classes'), findsOneWidget);
+      expect(
+        find.text('Your teaching groups, courses and weekly timetable.'),
+        findsNothing,
+      );
       expect(find.text('Total learners'), findsOneWidget);
       expect(find.text('Timetabled subjects'), findsOneWidget);
       expect(find.text('Weekly periods'), findsOneWidget);

@@ -86,7 +86,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('My Curriculum'), findsOneWidget);
+      expect(find.text('My Curriculum'), findsNothing);
+      expect(
+        find.text(
+          'Your subjects, lesson plans and teaching progress in one place.',
+        ),
+        findsNothing,
+      );
       expect(find.text('Learning objectives'), findsOneWidget);
       expect(find.text('Resources'), findsNothing);
       expect(find.text('Taught 0 of 1 lessons'), findsOneWidget);

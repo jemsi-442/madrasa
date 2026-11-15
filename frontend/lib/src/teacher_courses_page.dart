@@ -257,23 +257,8 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
             'This lesson is no longer available in this module. Return to Module lessons to choose another.',
           )
         else if (lesson != null) ...[
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF08283F), Color(0xFF214E61)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x1808283F),
-                  blurRadius: 20,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -300,7 +285,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                           Text(
                             'Lesson ${index + 1} of ${rows.length}',
                             style: const TextStyle(
-                              color: Color(0xFFE8BC59),
+                              color: Color(0xFF8D681C),
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -314,7 +299,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                                 fontSize: 30,
                                 height: 1.25,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: ink,
                               ),
                             ),
                           ),
@@ -341,7 +326,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                               fontSize: 11,
                               letterSpacing: 1,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFACC6D5),
+                              color: muted,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -349,7 +334,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                             item.$2,
                             style: const TextStyle(
                               fontSize: 15,
-                              color: Colors.white,
+                              color: ink,
                               height: 1.4,
                             ),
                           ),
