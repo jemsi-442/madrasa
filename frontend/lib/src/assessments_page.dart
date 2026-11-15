@@ -168,111 +168,233 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
       }
       final canCreate =
           classes.isNotEmpty && recordList(options['subjects']).isNotEmpty;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (classId.isNotEmpty && widget.onOpenRecord != null)
-            LearningRecordLinks(
-              classId: classId,
-              className: recordText(
-                classes.firstWhere((c) => '${c['id']}' == classId)['name'],
-              ),
-              current: LearningRecordPage.assessments,
-              admin: widget.admin,
-              onOpen: opening ? null : widget.onOpenRecord,
-            ),
-          TeacherNotice(
-            widget.admin
-                ? 'Review teacher-recorded marks before publishing. Parents see only their own child\'s published results. Retraction removes parent access while preserving the publication history.'
-                : 'Record scores and parent-facing feedback. Blank means not assessed, never zero. Save your draft, then submit the complete roster for administrator review.',
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
+      return TeacherData(
+        load: widget.load,
+        path:
+            '/api/assessments?page=$page${classId.isEmpty ? '' : '&classId=$classId'}${status.isEmpty ? '' : '&status=$status'}',
+        refreshToken: refresh + widget.refreshToken,
+        builder: (raw) {
+          final data = recordMap(raw);
+          final rows = recordList(data['items']);
+          final total = recordMap(data['meta'])['totalItems'] as int? ?? 0;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!widget.admin)
-                FilledButton.icon(
-                  onPressed: opening || !canCreate
-                      ? null
-                      : () => create(options),
-                  icon: const Icon(Icons.add),
-                  label: const Text('New assessment'),
+              Text(
+                widget.admin ? 'Assessment Review' : 'Assessments',
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
                 ),
-              SizedBox(
-                width: 220,
-                child: DropdownButtonFormField<String>(
-                  key: ValueKey('assessment-class-$classId'),
-                  initialValue: classId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Class'),
-                  items: [
-                    DropdownMenuItem(
-                      value: '',
-                      child: Text(
-                        widget.admin ? 'All classes' : 'All my classes',
-                      ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.admin
+                    ? 'Review recorded scores and publish results for families.'
+                    : 'Create assessments, record scores and submit them for review.',
+                style: const TextStyle(color: muted, fontSize: 15, height: 1.5),
+              ),
+              const SizedBox(height: 22),
+              LayoutBuilder(
+                builder: (context, bounds) {
+                  final columns = bounds.maxWidth >= 1000
+                      ? 4
+                      : bounds.maxWidth >= 540
+                      ? 2
+                      : 1;
+                  final width =
+                      (bounds.maxWidth - (columns - 1) * 14) / columns;
+                  return Wrap(
+                    spacing: 14,
+                    runSpacing: 14,
+                    children: [
+                      for (final metric in [
+                        TeacherMetric(
+                          'Total assessments',
+                          '$total',
+                          'Matching current filters',
+                          Icons.fact_check_outlined,
+                          blue,
+                        ),
+                        TeacherMetric(
+                          'Published',
+                          '${rows.where((r) => r['status'] == 'PUBLISHED').length}',
+                          'On this page',
+                          Icons.check_circle_outline,
+                          forest,
+                        ),
+                        TeacherMetric(
+                          'Drafts',
+                          '${rows.where((r) => r['status'] == 'DRAFT').length}',
+                          'On this page',
+                          Icons.edit_note,
+                          gold,
+                        ),
+                        TeacherMetric(
+                          'Awaiting review',
+                          '${rows.where((r) => r['status'] == 'SUBMITTED').length}',
+                          'On this page',
+                          Icons.schedule,
+                          const Color(0xFF7954B3),
+                        ),
+                      ])
+                        SizedBox(width: width, child: metric),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              if (widget.onOpenRecord != null) ...[
+                Container(
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: line)),
+                  ),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      for (final entry in [
+                        (
+                          LearningRecordPage.assessments,
+                          'Assessments',
+                          Icons.fact_check_outlined,
+                        ),
+                        (
+                          LearningRecordPage.attendance,
+                          'Attendance',
+                          Icons.event_available_outlined,
+                        ),
+                        if (!widget.admin)
+                          (
+                            LearningRecordPage.quran,
+                            "Qur'an records",
+                            Icons.menu_book_outlined,
+                          ),
+                        (
+                          LearningRecordPage.reports,
+                          'Reports',
+                          Icons.description_outlined,
+                        ),
+                      ])
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color:
+                                    entry.$1 == LearningRecordPage.assessments
+                                    ? gold
+                                    : Colors.transparent,
+                                width: 3,
+                              ),
+                            ),
+                          ),
+                          child: TextButton.icon(
+                            key: ValueKey('learning-link-${entry.$1.name}'),
+                            onPressed:
+                                opening ||
+                                    entry.$1 == LearningRecordPage.assessments
+                                ? null
+                                : () => widget.onOpenRecord!(entry.$1, classId),
+                            style: TextButton.styleFrom(
+                              disabledForegroundColor: gold,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 18,
+                              ),
+                            ),
+                            icon: Icon(entry.$3),
+                            label: Text(entry.$2),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              TeacherNotice(
+                widget.admin
+                    ? 'Review teacher-recorded marks before publishing. Parents see only their own child\'s published results. Retraction removes parent access while preserving the publication history.'
+                    : 'Record scores and parent-facing feedback. Blank means not assessed, never zero. Save your draft, then submit the complete roster for administrator review.',
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  if (!widget.admin)
+                    FilledButton.icon(
+                      onPressed: opening || !canCreate
+                          ? null
+                          : () => create(options),
+                      icon: const Icon(Icons.add),
+                      label: const Text('New assessment'),
                     ),
-                    for (final c in recordList(options['classes']))
-                      DropdownMenuItem(
-                        value: '${c['id']}',
-                        child: Text(recordText(c['name'])),
-                      ),
-                  ],
-                  onChanged: opening ? null : (v) => changeClass(v ?? ''),
-                ),
-              ),
-              SizedBox(
-                width: 220,
-                child: DropdownButtonFormField<String>(
-                  initialValue: status,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: '',
-                      child: Text('All statuses'),
+                  SizedBox(
+                    width: 220,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey('assessment-class-$classId'),
+                      initialValue: classId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Class'),
+                      items: [
+                        DropdownMenuItem(
+                          value: '',
+                          child: Text(
+                            widget.admin ? 'All classes' : 'All my classes',
+                          ),
+                        ),
+                        for (final c in recordList(options['classes']))
+                          DropdownMenuItem(
+                            value: '${c['id']}',
+                            child: Text(recordText(c['name'])),
+                          ),
+                      ],
+                      onChanged: opening ? null : (v) => changeClass(v ?? ''),
                     ),
-                    for (final entry in assessmentStates.entries)
-                      DropdownMenuItem(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ),
-                  ],
-                  onChanged: opening
-                      ? null
-                      : (v) => setState(() {
-                          status = v ?? '';
-                          page = 1;
-                        }),
+                  ),
+                  SizedBox(
+                    width: 220,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey('assessment-status-$status'),
+                      initialValue: status,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Status'),
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text('All statuses'),
+                        ),
+                        for (final entry in assessmentStates.entries)
+                          DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                      ],
+                      onChanged: opening
+                          ? null
+                          : (v) => setState(() {
+                              status = v ?? '';
+                              page = 1;
+                            }),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: opening ? null : () => setState(() => refresh++),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refresh'),
+                  ),
+                ],
+              ),
+              if (!widget.admin && !canCreate)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: TeacherNotice(
+                    'A class assignment and an approved school subject are needed before you can create an assessment. Ask the school office to complete this setup.',
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: opening ? null : () => setState(() => refresh++),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Refresh'),
-              ),
-            ],
-          ),
-          if (!widget.admin && !canCreate)
-            const Padding(
-              padding: EdgeInsets.only(top: 16),
-              child: TeacherNotice(
-                'A class assignment and an approved school subject are needed before you can create an assessment. Ask the school office to complete this setup.',
-              ),
-            ),
-          const SizedBox(height: 18),
-          TeacherData(
-            key: ValueKey('$classId-$status-$page'),
-            load: widget.load,
-            path:
-                '/api/assessments?page=$page${classId.isEmpty ? '' : '&classId=$classId'}${status.isEmpty ? '' : '&status=$status'}',
-            refreshToken: refresh + widget.refreshToken,
-            builder: (raw) {
-              final data = recordMap(raw),
-                  rows = recordList(recordMap(raw)['items']);
-              final total = recordMap(data['meta'])['totalItems'] as int? ?? 0;
-              return SurfacePanel(
+              const SizedBox(height: 18),
+              SurfacePanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -284,7 +406,66 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
                           'Open an assessment to view its full roster and review status.',
                     ),
                     if (rows.isEmpty)
-                      const EmptyRecords('No assessments match these filters.')
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 30,
+                          horizontal: 12,
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEAF3FF),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.assignment_outlined,
+                                size: 48,
+                                color: blue,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'No assessments match these filters.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                                color: ink,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              widget.admin
+                                  ? 'Adjust the class or status filter to find results for review.'
+                                  : 'Create a new assessment or adjust the class and status filters.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: muted, height: 1.5),
+                            ),
+                            const SizedBox(height: 20),
+                            if (!widget.admin && canCreate)
+                              FilledButton.icon(
+                                onPressed: opening
+                                    ? null
+                                    : () => create(options),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Create assessment'),
+                              ),
+                            if (classId.isNotEmpty || status.isNotEmpty)
+                              TextButton.icon(
+                                onPressed: opening
+                                    ? null
+                                    : () {
+                                        setState(() => status = '');
+                                        changeClass('');
+                                      },
+                                icon: const Icon(Icons.filter_alt_off_outlined),
+                                label: const Text('Clear filters'),
+                              ),
+                          ],
+                        ),
+                      )
                     else
                       RecordTable(
                         minWidth: 820,
@@ -356,10 +537,10 @@ class _AssessmentsPageState extends State<AssessmentsPage> {
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       );
     },
   );

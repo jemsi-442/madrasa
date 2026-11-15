@@ -11,6 +11,7 @@ class Fixture {
   final loads = <String>[];
   final writes = <(String, Map<String, dynamic>)>[];
   bool fail = false;
+  bool empty = false;
   Completer<dynamic>? waiting;
   Map<String, dynamic> row = {
     'id': '1',
@@ -59,12 +60,13 @@ class Fixture {
     if (path.contains('?')) {
       return {
         'items': [
-          {
-            ...row,
-            '_count': {'results': 2},
-          },
+          if (!empty)
+            {
+              ...row,
+              '_count': {'results': 2},
+            },
         ],
-        'meta': {'totalItems': 21},
+        'meta': {'totalItems': empty ? 0 : 21},
       };
     }
     return row;
@@ -185,6 +187,69 @@ Widget parentHost(
 );
 
 void main() {
+  for (final width in [320.0, 768.0, 1440.0]) {
+    testWidgets('assessment overview and actionable empty state fit $width', (
+      tester,
+    ) async {
+      screen(tester, width);
+      final f = Fixture()..empty = true;
+      await tester.pumpWidget(host(f));
+      await tester.pumpAndSettle();
+      expect(find.text('Total assessments'), findsOneWidget);
+      expect(find.text('On this page'), findsNWidgets(3));
+      expect(find.text('Overdue'), findsNothing);
+      expect(find.text('Average score'), findsNothing);
+      expect(find.text('No assessments match these filters.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await click(tester, 'Create assessment');
+      expect(find.text('Assessment title'), findsOneWidget);
+      expect(f.writes, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
+  testWidgets('empty admin review has no assessment creation action', (
+    tester,
+  ) async {
+    screen(tester, 1440);
+    final f = Fixture()..empty = true;
+    await tester.pumpWidget(host(f, admin: true));
+    await tester.pumpAndSettle();
+    expect(find.text('Create assessment'), findsNothing);
+    expect(find.text('New assessment'), findsNothing);
+    expect(find.text('Assessment review queue'), findsOneWidget);
+  });
+  testWidgets(
+    'record tabs preserve class scope and empty filters can be cleared',
+    (tester) async {
+      screen(tester, 1440);
+      final f = Fixture()..empty = true;
+      final visits = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: adminTheme(ThemeData()),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AssessmentsPage(
+                load: f.load,
+                submit: f.submit,
+                admin: false,
+                initialClassId: '2',
+                onOpenRecord: (page, id) => visits.add('${page.name}:$id'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await click(tester, 'Attendance');
+      expect(visits, ['attendance:2']);
+      expect(f.loads, contains('/api/assessments?page=1&classId=2'));
+      await click(tester, 'Clear filters');
+      expect(f.loads.last, '/api/assessments?page=1');
+      expect(find.text('Clear filters'), findsNothing);
+      expect(f.writes, isEmpty);
+    },
+  );
   test(
     'role navigation exposes assessment workflow only to appropriate roles',
     () {
@@ -413,6 +478,7 @@ void main() {
     final f = Fixture();
     await tester.pumpWidget(host(f));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Next page'));
     await tester.tap(find.byTooltip('Next page'));
     await tester.pumpAndSettle();
     expect(f.loads, contains('/api/assessments?page=2'));

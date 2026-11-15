@@ -239,7 +239,18 @@ void main() {
       await t.pumpWidget(host(recordPage(f, reports)));
       await t.pumpAndSettle();
       expect(f.listReads(path).last.queryParameters['classId'], '8');
-      expect(find.text('Working with Level 1A'), findsOneWidget);
+      if (reports) {
+        expect(find.text('Working with Level 1A'), findsOneWidget);
+      } else {
+        expect(
+          t
+              .state<FormFieldState<String>>(
+                find.byKey(const ValueKey('assessment-class-8')),
+              )
+              .value,
+          '8',
+        );
+      }
       final target = reports
           ? LearningRecordPage.assessments
           : LearningRecordPage.reports;
@@ -277,7 +288,18 @@ void main() {
         await t.pumpWidget(host(recordPage(f, reports, classId: '9')));
         await t.pumpAndSettle();
         expect(f.listReads(path).last.queryParameters['classId'], '9');
-        expect(find.text('Working with Level 1B'), findsOneWidget);
+        if (reports) {
+          expect(find.text('Working with Level 1B'), findsOneWidget);
+        } else {
+          expect(
+            t
+                .state<FormFieldState<String>>(
+                  find.byKey(const ValueKey('assessment-class-9')),
+                )
+                .value,
+            '9',
+          );
+        }
         expect(t.takeException(), isNull);
       },
     );
@@ -432,6 +454,7 @@ void main() {
       final f = RecordsFixture();
       await workspace(t, f, 'TEACHER');
       await nav(t, 1);
+      await tap(t, find.byKey(const PageStorageKey('class-records-8')));
       await tap(t, find.byKey(const ValueKey('class-8-record-8')));
       expect(f.listReads('assessments').last.queryParameters['classId'], '8');
       await tap(t, find.byKey(const ValueKey('assessment-class-8')));
