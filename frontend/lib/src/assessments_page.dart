@@ -773,9 +773,32 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
                     ),
                   ],
                 ),
-                Text(
-                  '${recordMap(row['class'])['name']} | ${recordMap(row['subject'])['name']} | ${shortDate(row['assessedOn'])}',
-                  style: const TextStyle(color: muted),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    for (final (icon, label) in [
+                      (
+                        Icons.groups_outlined,
+                        recordText(recordMap(row['class'])['name']),
+                      ),
+                      (
+                        Icons.menu_book_outlined,
+                        recordText(recordMap(row['subject'])['name']),
+                      ),
+                      (
+                        Icons.calendar_today_outlined,
+                        shortDate(row['assessedOn']),
+                      ),
+                    ])
+                      Chip(
+                        avatar: Icon(icon, size: 18, color: blue),
+                        label: Text(label),
+                        backgroundColor: const Color(0xFFF0F5FC),
+                        side: BorderSide.none,
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -856,13 +879,12 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
                           children: [
                             for (final r in results)
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(color: line),
-                                  ),
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFD),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: line),
                                 ),
                                 child: bounds.maxWidth < 650
                                     ? Column(

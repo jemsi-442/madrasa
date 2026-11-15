@@ -270,6 +270,10 @@ void main() {
       final f = Fixture();
       await opened(tester, f);
       expect(find.text('Save draft'), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(Dialog), matching: find.byType(Chip)),
+        findsNWidgets(3),
+      );
       expect(tester.takeException(), isNull);
       await tester.tap(find.byTooltip('Close assessment'));
       await tester.pumpAndSettle();
