@@ -317,9 +317,18 @@ class TeacherStudentProfile extends StatefulWidget {
 }
 
 class _TeacherStudentProfileState extends State<TeacherStudentProfile> {
+  int section = 0;
+  String noteFilter = 'Open';
   late Future<dynamic> future = fetch();
-  Future<dynamic> fetch() =>
-      widget.load('/api/teacher-workspace/students/${widget.studentId}');
+  Future<dynamic> fetch() {
+    final request = widget.load(
+      '/api/teacher-workspace/students/${widget.studentId}',
+    );
+    // A save-triggered reload may fail before the next frame subscribes.
+    request.ignore();
+    return request;
+  }
+
   void reload() => setState(() {
     future = fetch();
   });
@@ -340,7 +349,11 @@ class _TeacherStudentProfileState extends State<TeacherStudentProfile> {
         });
       },
     );
-    if (saved && mounted) reload();
+    if (saved && mounted) {
+      section = 0;
+      noteFilter = 'Open';
+      reload();
+    }
   }
 
   Future<void> resolve(Map<String, dynamic> note) async {
@@ -361,123 +374,422 @@ class _TeacherStudentProfileState extends State<TeacherStudentProfile> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Student learning profile'),
-    content: SizedBox(
-      width: 880,
-      height: MediaQuery.sizeOf(context).height * .68,
-      child: SingleChildScrollView(
-        primary: true,
-        child: PageResult(
-          future: future,
-          onRetry: reload,
-          builder: (value) {
-            final data = recordMap(value), student = recordMap(data['student']);
-            final notes = recordList(data['supportNotes']);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget build(BuildContext context) => Dialog(
+    insetPadding: const EdgeInsets.all(16),
+    clipBehavior: Clip.antiAlias,
+    backgroundColor: const Color(0xFFF8FAFC),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    child: SizedBox(
+      width: 1060,
+      height: MediaQuery.sizeOf(context).height * .9,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 12, 16),
+            child: Row(
               children: [
-                StudentIdentity(
-                  student,
-                  subtitle:
-                      '${recordMap(student['currentClass'])['name']} | ${student['admissionNo']}',
-                ),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: () => Navigator.pop(context, student),
-                      icon: const Icon(Icons.menu_book_outlined),
-                      label: const Text("Record Qur'an"),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => addNote(student),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add follow-up'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 26),
-                StudentCourseProgress(data: recordMap(data['courseProgress'])),
-                const SizedBox(height: 26),
-                const PanelHeading(
-                  'Learning support',
-                  subtitle:
-                      'Most recent 50 notes. Open follow-ups appear first.',
-                ),
-                if (notes.isEmpty)
-                  const EmptyRecords('No support notes recorded.'),
-                for (final n in notes)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SurfacePanel(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${n['note']}',
-                            style: const TextStyle(color: ink, height: 1.5),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${recordMap(n['createdBy'])['fullName']} | ${shortDate(n['createdAt'])}',
-                            style: const TextStyle(color: muted, fontSize: 11),
-                          ),
-                          const SizedBox(height: 8),
-                          if (n['resolvedAt'] == null)
-                            TextButton(
-                              onPressed: () => resolve(n),
-                              child: const Text('Mark completed'),
-                            )
-                          else
-                            TeacherTag(
-                              'Completed ${shortDate(n['resolvedAt'])}',
-                            ),
-                        ],
-                      ),
+                const Icon(Icons.school_outlined, color: gold, size: 30),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Student learning profile',
+                    style: TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w700,
+                      color: ink,
                     ),
                   ),
-                const SizedBox(height: 24),
-                const PanelHeading(
-                  "Recent Qur'an sessions",
-                  subtitle: 'Latest 20 sessions across all surahs.',
                 ),
-                for (final s in recordList(data['sessions']))
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      passageLabel(s),
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    subtitle: Text(
-                      '${learningActivities[s['activity']]} | ${shortDate(s['learnedOn'])}\n${recordText(s['note'], '')}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: TeacherTag(
-                      s['voidedAt'] == null
-                          ? learningObservations[s['observation']] ?? 'Recorded'
-                          : 'Voided',
-                      color: s['voidedAt'] == null ? forest : muted,
-                    ),
-                  ),
-                if (recordList(data['sessions']).isEmpty)
-                  const EmptyRecords('No learning sessions recorded yet.'),
+                IconButton(
+                  tooltip: 'Close profile',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
               ],
-            );
-          },
-        ),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: PageResult(
+                future: future,
+                onRetry: reload,
+                builder: (value) {
+                  final data = recordMap(value),
+                      student = recordMap(data['student']);
+                  final notes = recordList(data['supportNotes']);
+                  final sessions = recordList(data['sessions']);
+                  final openNotes = notes
+                      .where((n) => n['resolvedAt'] == null)
+                      .length;
+                  final visibleNotes = notes
+                      .where(
+                        (n) =>
+                            noteFilter == 'All' ||
+                            (noteFilter == 'Open'
+                                ? n['resolvedAt'] == null
+                                : n['resolvedAt'] != null),
+                      )
+                      .toList();
+                  final progress = recordMap(data['courseProgress']);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SurfacePanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              recordText(student['fullName'], 'Student'),
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: ink,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 8,
+                              children: [
+                                TeacherTag(
+                                  recordText(
+                                    recordMap(student['currentClass'])['name'],
+                                    'Class not recorded',
+                                  ),
+                                  color: blue,
+                                ),
+                                TeacherTag(
+                                  recordText(
+                                    student['admissionNo'],
+                                    'Student number not recorded',
+                                  ),
+                                  color: muted,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 10,
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: () =>
+                                      Navigator.pop(context, student),
+                                  icon: const Icon(Icons.menu_book_outlined),
+                                  label: const Text("Record Qur'an"),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => addNote(student),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Add follow-up'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Review learning records and organise the next support action.',
+                              style: TextStyle(color: muted, height: 1.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      LayoutBuilder(
+                        builder: (context, box) {
+                          final columns =
+                              box.maxWidth /
+                                      (MediaQuery.textScalerOf(
+                                            context,
+                                          ).scale(16) /
+                                          16) >=
+                                  720
+                              ? 3
+                              : 1;
+                          return Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              for (final item in [
+                                (
+                                  0,
+                                  Icons.assignment_outlined,
+                                  'Learning support',
+                                  '$openNotes open',
+                                  gold,
+                                ),
+                                (
+                                  1,
+                                  Icons.menu_book_outlined,
+                                  "Qur'an sessions",
+                                  '${sessions.length} recent records',
+                                  forest,
+                                ),
+                                (
+                                  2,
+                                  Icons.play_circle_outline,
+                                  'Course activity',
+                                  progress.isEmpty
+                                      ? 'Unavailable'
+                                      : progress['linked'] == true
+                                      ? 'Learner-reported'
+                                      : 'No linked login',
+                                  blue,
+                                ),
+                              ])
+                                SizedBox(
+                                  width:
+                                      (box.maxWidth - (columns - 1) * 12) /
+                                      columns,
+                                  child: Semantics(
+                                    selected: section == item.$1,
+                                    button: true,
+                                    child: Material(
+                                      color: item.$5.withValues(
+                                        alpha: section == item.$1 ? .12 : .04,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        side: BorderSide(
+                                          color: item.$5.withValues(
+                                            alpha: section == item.$1
+                                                ? .7
+                                                : .18,
+                                          ),
+                                        ),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: InkWell(
+                                        onTap: () =>
+                                            setState(() => section = item.$1),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(18),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                item.$2,
+                                                color: item.$5,
+                                                size: 30,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      item.$3,
+                                                      style: const TextStyle(
+                                                        fontSize: 17,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: ink,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      item.$4,
+                                                      style: const TextStyle(
+                                                        color: muted,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              if (section == item.$1)
+                                                Icon(
+                                                  Icons.check_circle,
+                                                  size: 20,
+                                                  color: item.$5,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      if (section == 2) StudentCourseProgress(data: progress),
+                      if (section == 0) ...[
+                        const PanelHeading(
+                          'Learning support',
+                          subtitle:
+                              'Latest 50 notes. Completed follow-ups remain in the history.',
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final filter in ['Open', 'Completed', 'All'])
+                              ChoiceChip(
+                                label: Text(
+                                  '$filter (${filter == 'Open'
+                                      ? openNotes
+                                      : filter == 'Completed'
+                                      ? notes.length - openNotes
+                                      : notes.length})',
+                                ),
+                                selected: noteFilter == filter,
+                                onSelected: (_) =>
+                                    setState(() => noteFilter = filter),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (visibleNotes.isEmpty)
+                          _profileEmpty(
+                            Icons.task_alt,
+                            'No ${noteFilter == 'All' ? '' : '${noteFilter.toLowerCase()} '}follow-ups',
+                            noteFilter == 'Open'
+                                ? 'Use Add follow-up when this student needs learning support.'
+                                : 'Follow-up notes will appear here when recorded.',
+                          ),
+                        for (final n in visibleNotes)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: SurfacePanel(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TeacherTag(
+                                    n['resolvedAt'] == null
+                                        ? 'Open follow-up'
+                                        : 'Completed',
+                                    color: n['resolvedAt'] == null
+                                        ? gold
+                                        : forest,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    '${n['note']}',
+                                    style: const TextStyle(
+                                      color: ink,
+                                      height: 1.6,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${recordText(recordMap(n['createdBy'])['fullName'], 'School staff')} | ${shortDate(n['createdAt'])}',
+                                    style: const TextStyle(
+                                      color: muted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (n['resolvedAt'] == null)
+                                    TextButton(
+                                      onPressed: () => resolve(n),
+                                      child: const Text('Mark completed'),
+                                    )
+                                  else
+                                    TeacherTag(
+                                      'Completed ${shortDate(n['resolvedAt'])}',
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                      if (section == 1) ...[
+                        const PanelHeading(
+                          "Recent Qur'an sessions",
+                          subtitle: 'Latest 20 sessions across all surahs.',
+                        ),
+                        for (final s in sessions)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: SurfacePanel(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 8,
+                                    children: [
+                                      Text(
+                                        passageLabel(s),
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
+                                          color: ink,
+                                        ),
+                                      ),
+                                      TeacherTag(
+                                        s['voidedAt'] == null
+                                            ? learningObservations[s['observation']] ??
+                                                  'Recorded'
+                                            : 'Voided',
+                                        color: s['voidedAt'] == null
+                                            ? forest
+                                            : muted,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    '${learningActivities[s['activity']] ?? 'Learning session'} | ${shortDate(s['learnedOn'])}',
+                                    style: const TextStyle(color: muted),
+                                  ),
+                                  if (recordText(s['note'], '').isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      recordText(s['note'], ''),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (sessions.isEmpty)
+                          _profileEmpty(
+                            Icons.menu_book_outlined,
+                            'No learning sessions recorded yet.',
+                            "Use Record Qur'an to add a teacher observation for this student.",
+                          ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Close'),
-      ),
-    ],
   );
+
+  Widget _profileEmpty(IconData icon, String title, String detail) =>
+      SurfacePanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 32, color: muted),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(detail, style: const TextStyle(color: muted, height: 1.5)),
+          ],
+        ),
+      );
 }
 
 Future<Map<String, dynamic>?> pickTeacherStudent(
