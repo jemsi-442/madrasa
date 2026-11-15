@@ -354,6 +354,25 @@ void main() {
       expect(find.text('Selected class: Synthetic class'), findsOneWidget);
       expect(find.text("Qur'an practice"), findsNothing);
       await tester.ensureVisible(find.text('Record lesson results'));
+      expect(
+        tester
+            .getSize(
+              find.ancestor(
+                of: find.text('Record lesson results'),
+                matching: find.byWidgetPredicate(
+                  (widget) => widget is FilledButton,
+                ),
+              ),
+            )
+            .height,
+        greaterThanOrEqualTo(48),
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('teacher-next-lesson')))
+            .height,
+        greaterThanOrEqualTo(48),
+      );
       await tester.tap(find.text('Record lesson results'));
       await tester.pumpAndSettle();
       expect(find.text("Qur'an practice"), findsOneWidget);

@@ -385,43 +385,79 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
             apiBaseUrl: widget.apiBaseUrl,
           ),
           const SizedBox(height: 24),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              OutlinedButton.icon(
-                onPressed: index > 0
-                    ? () => openLesson('${rows[index - 1]['id']}')
-                    : null,
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Previous lesson'),
-              ),
-              FilledButton.icon(
-                key: const ValueKey('teacher-next-lesson'),
-                onPressed: index + 1 < rows.length
-                    ? () => openLesson('${rows[index + 1]['id']}')
-                    : null,
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('Next lesson'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Reading a lesson does not record teaching or learner achievement.',
-            style: TextStyle(color: muted),
-          ),
-          if (widget.onRecordLearning != null) ...[
-            const SizedBox(height: 20),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton.icon(
-                onPressed: chooseRecord,
-                icon: const Icon(Icons.fact_check_outlined),
-                label: const Text('Record lesson results'),
-              ),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F6F9),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFDDE7ED)),
             ),
-          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                        backgroundColor: Colors.white,
+                      ),
+                      onPressed: index > 0
+                          ? () => openLesson('${rows[index - 1]['id']}')
+                          : null,
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Previous lesson'),
+                    ),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                      ),
+                      key: const ValueKey('teacher-next-lesson'),
+                      onPressed: index + 1 < rows.length
+                          ? () => openLesson('${rows[index + 1]['id']}')
+                          : null,
+                      icon: const Icon(Icons.arrow_forward),
+                      label: const Text('Next lesson'),
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Divider(height: 1, color: Color(0xFFDDE7ED)),
+                ),
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 20, color: muted),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Reading a lesson does not record teaching or learner achievement.',
+                        style: TextStyle(color: muted, height: 1.5),
+                      ),
+                    ),
+                  ],
+                ),
+                if (widget.onRecordLearning != null) ...[
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                      ),
+                      onPressed: chooseRecord,
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: const Text('Record lesson results'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ] else if (rows.isEmpty)
           EmptyRecords(
             module != null
@@ -549,6 +585,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               TextButton.icon(
                 onPressed: backToCourses,
