@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
+import 'design_tokens.dart';
 
 (IconData, Color) subjectStyle(String name) {
   final text = name.toLowerCase();
@@ -215,13 +216,9 @@ class ContinueCourseCard extends StatelessWidget {
     return Container(
       key: const ValueKey('continue-course-card'),
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        border: Border.all(color: forest.withValues(alpha: .15)),
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [forest.withValues(alpha: .1), Colors.white],
-        ),
-      ),
+      decoration: AfaqDesign.panelDecoration(
+        accent: forest,
+      ).copyWith(gradient: AfaqDesign.cardGradient(forest)),
       child: LayoutBuilder(
         builder: (context, box) {
           final info = Column(

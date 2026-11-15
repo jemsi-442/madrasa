@@ -64,11 +64,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 24),
     padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 16 : 28),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFDDE5ED)),
-    ),
+    decoration: AfaqDesign.panelDecoration(),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

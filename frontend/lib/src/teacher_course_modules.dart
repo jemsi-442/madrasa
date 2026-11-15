@@ -200,9 +200,12 @@ class TeacherCourseModules extends StatelessWidget {
     final tone = tones[index % tones.length];
     return Material(
       color: Color.alphaBlend(tone.withValues(alpha: .035), Colors.white),
+      elevation: 2,
+      shadowColor: tone.withValues(alpha: .16),
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: tone.withValues(alpha: .18)),
+        borderRadius: BorderRadius.circular(AfaqDesign.panelRadius),
+        side: BorderSide(color: AfaqDesign.cardTint(tone, .13)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

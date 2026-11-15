@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/learner_courses_page.dart';
 import 'package:mif_app/src/learner_lesson_reader.dart';
 import 'package:mif_app/src/learning_library_ui.dart';
+import 'package:mif_app/src/design_tokens.dart';
 import 'lesson_journey_test.dart' show JourneyFixture;
 import 'lesson_media_flow_test.dart' show host, tap;
 
@@ -43,6 +44,36 @@ class DesignFixture extends JourneyFixture {
 Finder key(String value) => find.byKey(ValueKey(value));
 
 void main() {
+  testWidgets('resume card keeps its action with the shared soft surface', (
+    tester,
+  ) async {
+    var resumed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ContinueCourseCard(
+            course: const {
+              'title': 'Synthetic course',
+              'progress': {'completedLessons': 1, 'progressPercent': 25},
+              'resumeLesson': {'id': 'lesson-1', 'title': 'Synthetic lesson'},
+            },
+            onResume: () => resumed = true,
+          ),
+        ),
+      ),
+    );
+    final card = tester.widget<Container>(key('continue-course-card'));
+    final decoration = card.decoration! as BoxDecoration;
+    expect(
+      decoration.borderRadius,
+      BorderRadius.circular(AfaqDesign.panelRadius),
+    );
+    expect(decoration.boxShadow, hasLength(2));
+    expect(decoration.gradient, isNotNull);
+      await tester.tap(key('resume-course'));
+    expect(resumed, isTrue);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [320.0, 1440.0]) {
     testWidgets(
       'course search keeps typing focus when resume changes at $width',
