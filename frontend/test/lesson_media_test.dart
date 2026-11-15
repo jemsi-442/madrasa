@@ -68,6 +68,40 @@ Future<void> tap(WidgetTester tester, String title) async {
 }
 
 void main() {
+  testWidgets('media selection stays independent when resources change', (
+    tester,
+  ) async {
+    final kind = ValueNotifier('VIDEO');
+    addTearDown(kind.dispose);
+    await host(
+      tester,
+      SelectionArea(
+        child: ValueListenableBuilder<String>(
+          valueListenable: kind,
+          builder: (context, value, _) => LessonMediaViewer(
+            key: ValueKey(value),
+            assetId: '3',
+            load: (_) async => response(kind: value),
+            apiBaseUrl: 'https://school.test',
+            surfaceBuilder: (delivery, ready, failed) => Builder(
+              builder: (context) {
+                expect(SelectionContainer.maybeOf(context), isNull);
+                return SingleChildScrollView(
+                  child: SelectableText('Synthetic ${delivery.kind} resource'),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    for (final value in ['PDF', 'TEXT', 'IMAGE', 'VIDEO']) {
+      kind.value = value;
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic $value resource'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
   testWidgets('PDF uses a tall reading area rather than a video-sized box', (
     tester,
   ) async {

@@ -266,45 +266,49 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
     final document = ['PDF', 'IMAGE', 'TEXT'].contains(source.kind);
     void onLoaded() => onReady(request);
     void onFailed() => onError(request);
-    return LayoutBuilder(
-      builder: (context, box) => SizedBox(
-        key: const ValueKey('lesson-media-stage'),
-        height: source.kind == 'AUDIO'
-            ? 440
-            : source.kind == 'PDF'
-            ? (MediaQuery.sizeOf(context).height * .82).clamp(420.0, 1100.0)
-            : document
-            ? (MediaQuery.sizeOf(context).height *
-                      (widget.focusView ? .75 : .6))
-                  .clamp(300.0, widget.focusView ? 900.0 : 680.0)
-            : source.kind == 'VIDEO'
-            ? videoHeight(context, box.maxWidth)
-            : (box.maxWidth * 9 / 16).clamp(
-                240.0,
-                widget.focusView ? 900.0 : 620.0,
+    // Media readers own their selection and scroll state. Do not register their
+    // replaced surfaces with the surrounding page's text-selection delegate.
+    return SelectionContainer.disabled(
+      child: LayoutBuilder(
+        builder: (context, box) => SizedBox(
+          key: const ValueKey('lesson-media-stage'),
+          height: source.kind == 'AUDIO'
+              ? 440
+              : source.kind == 'PDF'
+              ? (MediaQuery.sizeOf(context).height * .82).clamp(420.0, 1100.0)
+              : document
+              ? (MediaQuery.sizeOf(context).height *
+                        (widget.focusView ? .75 : .6))
+                    .clamp(300.0, widget.focusView ? 900.0 : 680.0)
+              : source.kind == 'VIDEO'
+              ? videoHeight(context, box.maxWidth)
+              : (box.maxWidth * 9 / 16).clamp(
+                  240.0,
+                  widget.focusView ? 900.0 : 620.0,
+                ),
+          child: ColoredBox(
+            color: document ? const Color(0xFFF3F4F3) : const Color(0xFF0D0E10),
+            child: Padding(
+              padding: EdgeInsets.all(document ? 12 : 0),
+              child: KeyedSubtree(
+                key: ValueKey(generation),
+                child: widget.surfaceBuilder != null
+                    ? widget.surfaceBuilder!(source, onLoaded, onFailed)
+                    : document
+                    ? LessonDocumentSurface(
+                        delivery: source,
+                        onReady: onLoaded,
+                        onError: onFailed,
+                      )
+                    : platform.LessonMediaSurface(
+                        overlayControls: widget.compactVideo,
+                        delivery: source,
+                        onReady: onLoaded,
+                        onError: onFailed,
+                        onToggleFocus: widget.onToggleFocus,
+                        focusView: widget.focusView,
+                      ),
               ),
-        child: ColoredBox(
-          color: document ? const Color(0xFFF3F4F3) : const Color(0xFF0D0E10),
-          child: Padding(
-            padding: EdgeInsets.all(document ? 12 : 0),
-            child: KeyedSubtree(
-              key: ValueKey(generation),
-              child: widget.surfaceBuilder != null
-                  ? widget.surfaceBuilder!(source, onLoaded, onFailed)
-                  : document
-                  ? LessonDocumentSurface(
-                      delivery: source,
-                      onReady: onLoaded,
-                      onError: onFailed,
-                    )
-                  : platform.LessonMediaSurface(
-                      overlayControls: widget.compactVideo,
-                      delivery: source,
-                      onReady: onLoaded,
-                      onError: onFailed,
-                      onToggleFocus: widget.onToggleFocus,
-                      focusView: widget.focusView,
-                    ),
             ),
           ),
         ),

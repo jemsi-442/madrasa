@@ -33,6 +33,16 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   bool textFailed = false;
   String? text;
 
+  void fitPdfWidth() {
+    if (!mounted || !pdf.isReady || pages == 0) return;
+    final matrix = pdf.calcMatrixFitWidthForPage(
+      pageNumber: page.clamp(1, pages),
+    );
+    if (matrix != null) {
+      unawaited(pdf.goTo(matrix, duration: Duration.zero));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -219,6 +229,11 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
               onPressed: pages > 0 ? () => pdf.zoomUp() : null,
               icon: const Icon(Icons.zoom_in),
             ),
+            TextButton.icon(
+              onPressed: pages > 0 ? fitPdfWidth : null,
+              icon: const Icon(Icons.fit_screen),
+              label: const Text('Fit width'),
+            ),
           ],
         ),
         Expanded(
@@ -232,6 +247,14 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
             controller: pdf,
             initialPageNumber: widget.initialPage,
             params: PdfViewerParams(
+              // Start at the text, not the blank lower margin of the last page.
+              pageAnchorEnd: PdfPageAnchor.top,
+              onViewSizeChanged: (size, previousSize, controller) {
+                if (previousSize == null || size == previousSize) return;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  fitPdfWidth();
+                });
+              },
               onViewerReady: (document, controller) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) setState(() => pages = document.pages.length);

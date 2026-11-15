@@ -7,6 +7,57 @@ import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/page_selection.dart';
 
 void main() {
+  testWidgets('covered routes unregister text without losing form state', (
+    tester,
+  ) async {
+    final navigator = GlobalKey<NavigatorState>();
+    final updates = ValueNotifier(0);
+    addTearDown(updates.dispose);
+    BuildContext? contentContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: PageSelection(
+          child: Scaffold(
+            body: Builder(
+              builder: (context) {
+                contentContext = context;
+                return Column(
+                  children: [
+                    const TextField(),
+                    ValueListenableBuilder<int>(
+                      valueListenable: updates,
+                      builder: (_, value, _) => Text('Synthetic page $value'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(SelectionContainer.maybeOf(contentContext!), isNotNull);
+    await tester.enterText(find.byType(TextField), 'Keep this draft');
+    final field = tester.state(find.byType(EditableText));
+    showDialog<void>(
+      context: contentContext!,
+      builder: (_) => const Dialog.fullscreen(child: Text('PDF viewer')),
+    );
+    await tester.pumpAndSettle();
+    expect(SelectionContainer.maybeOf(contentContext!), isNull);
+    updates.value++;
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    navigator.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(SelectionContainer.maybeOf(contentContext!), isNotNull);
+    expect(tester.state(find.byType(EditableText)), same(field));
+    expect(find.text('Keep this draft'), findsOneWidget);
+    expect(find.text('Synthetic page 1'), findsOneWidget);
+  });
+
   testWidgets('deep link selection waits for hidden routes to be laid out', (
     tester,
   ) async {
