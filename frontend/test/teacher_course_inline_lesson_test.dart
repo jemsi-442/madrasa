@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_course_card.dart';
 import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_course_inline_lesson.dart';
+import 'package:mif_app/src/page_selection.dart';
 
 void main() {
   for (final width in [320.0, 390.0, 1440.0]) {
@@ -16,37 +17,48 @@ void main() {
       final requests = <String>[];
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: TeacherCourseInlineLesson(
-                modules: const [
-                  {'id': 'm', 'title': 'Synthetic module'},
-                ],
-                apiBaseUrl: 'https://school.test',
-                onClose: () {},
-                load: (path) async {
-                  requests.add(path);
-                  if (path.endsWith('/lessons'))
-                    return [
-                      {
-                        'id': 'a',
-                        'title': 'First lesson',
-                        'contentText': 'First notes',
-                      },
-                      {
-                        'id': 'b',
-                        'title': 'Second lesson',
-                        'contentText': 'Second notes',
-                      },
-                    ];
-                  return [];
-                },
+          home: PageSelection(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: TeacherCourseInlineLesson(
+                  modules: const [
+                    {'id': 'm', 'title': 'Synthetic module'},
+                  ],
+                  apiBaseUrl: 'https://school.test',
+                  onClose: () {},
+                  load: (path) async {
+                    requests.add(path);
+                    if (path.endsWith('/lessons')) {
+                      return [
+                        {
+                          'id': 'a',
+                          'title': 'First lesson',
+                          'contentText': 'First notes',
+                        },
+                        {
+                          'id': 'b',
+                          'title': 'Second lesson',
+                          'contentText': 'Second notes',
+                        },
+                      ];
+                    }
+                    return [];
+                  },
+                ),
               ),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
+      expect(
+        SelectionContainer.maybeOf(tester.element(find.text('Course lesson'))),
+        isNull,
+      );
+      expect(
+        find.widgetWithText(SelectableText, 'First notes'),
+        findsOneWidget,
+      );
       expect(
         find.byKey(const ValueKey('inline-lesson-navigation-stacked')),
         width < 640 ? findsOneWidget : findsNothing,
@@ -83,6 +95,12 @@ void main() {
       expect(find.text('First notes'), findsOneWidget);
       expect(requests.where((p) => p.endsWith('/lessons')).length, 1);
       expect(requests, contains('/api/courses/lessons/b/assets'));
+      tester.view.physicalSize = Size(width < 640 ? 1440 : 390, 1200);
+      await tester.pumpAndSettle();
+      expect(
+        find.widgetWithText(SelectableText, 'First notes'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }
@@ -98,51 +116,53 @@ void main() {
       var navigation = 0;
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: TeacherCourseCard(
-                course: const {'id': 'c', 'title': 'Synthetic course'},
-                refreshToken: 0,
-                apiBaseUrl: 'https://school.test',
-                onOpen: () => navigation++,
-                onModule: (_) => navigation++,
-                load: (path) async {
-                  requests.add(path);
-                  switch (path) {
-                    case '/api/courses/c/modules':
-                      return [
-                        {'id': 'empty', 'title': 'Empty module'},
-                        {'id': 'm', 'title': 'Practice module'},
-                      ];
-                    case '/api/courses/modules/empty/lessons':
-                      return [];
-                    case '/api/courses/modules/m/lessons':
-                      return [
-                        {
-                          'id': 'l',
-                          'title': 'Practice lesson',
-                          'contentText': 'Synthetic lesson notes',
-                        },
-                      ];
-                    case '/api/courses/lessons/l/assets':
-                      return [
-                        {
-                          'id': 'p',
-                          'title': 'Practice PDF',
-                          'assetType': 'PDF',
-                        },
-                        {
-                          'id': 'v',
-                          'title': 'Practice video',
-                          'assetType': 'VIDEO',
-                        },
-                      ];
-                    case '/api/courses/assets/v/open':
-                      throw StateError('Synthetic unavailable video');
-                    default:
-                      throw StateError('Unexpected request $path');
-                  }
-                },
+          home: PageSelection(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: TeacherCourseCard(
+                  course: const {'id': 'c', 'title': 'Synthetic course'},
+                  refreshToken: 0,
+                  apiBaseUrl: 'https://school.test',
+                  onOpen: () => navigation++,
+                  onModule: (_) => navigation++,
+                  load: (path) async {
+                    requests.add(path);
+                    switch (path) {
+                      case '/api/courses/c/modules':
+                        return [
+                          {'id': 'empty', 'title': 'Empty module'},
+                          {'id': 'm', 'title': 'Practice module'},
+                        ];
+                      case '/api/courses/modules/empty/lessons':
+                        return [];
+                      case '/api/courses/modules/m/lessons':
+                        return [
+                          {
+                            'id': 'l',
+                            'title': 'Practice lesson',
+                            'contentText': 'Synthetic lesson notes',
+                          },
+                        ];
+                      case '/api/courses/lessons/l/assets':
+                        return [
+                          {
+                            'id': 'p',
+                            'title': 'Practice PDF',
+                            'assetType': 'PDF',
+                          },
+                          {
+                            'id': 'v',
+                            'title': 'Practice video',
+                            'assetType': 'VIDEO',
+                          },
+                        ];
+                      case '/api/courses/assets/v/open':
+                        throw StateError('Synthetic unavailable video');
+                      default:
+                        throw StateError('Unexpected request $path');
+                    }
+                  },
+                ),
               ),
             ),
           ),
