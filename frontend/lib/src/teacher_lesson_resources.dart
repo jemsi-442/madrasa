@@ -248,33 +248,78 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
           ),
         ),
         clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: .14),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(lessonResourceIcon(kind), color: color, size: 28),
-          ),
-          title: Text(
-            recordText(row['title']),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              active ? '$action - Selected' : action,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600),
-            ),
-          ),
-          trailing: Icon(Icons.arrow_forward, color: color),
+        child: Semantics(
+          button: true,
           selected: active,
-          onTap: () => openResource('${row['id']}'),
+          child: InkWell(
+            onTap: () => openResource('${row['id']}'),
+            hoverColor: color.withValues(alpha: .08),
+            focusColor: color.withValues(alpha: .14),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: .14),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          lessonResourceIcon(kind),
+                          color: color,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          recordText(row['title']),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            height: 1.4,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(
+                      height: 1,
+                      color: color.withValues(alpha: .16),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          active ? '$action - Selected' : action,
+                          style: TextStyle(
+                            color: color,
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        active
+                            ? Icons.check_circle_outline
+                            : Icons.arrow_forward,
+                        color: color,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

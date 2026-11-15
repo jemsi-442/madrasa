@@ -6,6 +6,43 @@ import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_lesson_resources.dart';
 
 void main() {
+  testWidgets('long resource names fit a narrow screen with enlarged text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const title =
+        'Synthetic classroom practice checklist and supporting lesson notes';
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: SingleChildScrollView(
+              child: TeacherLessonResources(
+                lessonId: 'synthetic',
+                apiBaseUrl: 'https://school.test',
+                load: (_) async => [
+                  {'id': 't', 'title': title, 'assetType': 'TEXT'},
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final name = find.text(title);
+    final action = find.text('Read text');
+    expect(tester.getBottomRight(name).dx, lessThanOrEqualTo(320));
+    expect(
+      tester.getTopLeft(action).dy,
+      greaterThan(tester.getBottomRight(name).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('two document cards share the full desktop row', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;
