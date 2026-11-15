@@ -35,6 +35,59 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
   int inboxPage = 1, inboxRefresh = 0;
   bool sending = false, opening = false;
   String? scheduledRead;
+  String? templateName;
+
+  static const templates = [
+    (
+      'Class reminder',
+      'Please remember our next class. Bring the learning materials and review the previous lesson.',
+    ),
+    (
+      'Homework update',
+      'Please support your child with the assigned practice. Let me know if any part needs clarification.',
+    ),
+    (
+      'Progress update',
+      'I would like to discuss your child\'s learning progress and agree on the next steps together.',
+    ),
+    (
+      'Parent meeting',
+      'Could we arrange a conversation about your child\'s learning? Please share a convenient time.',
+    ),
+  ];
+
+  Future<void> useTemplate(int index) async {
+    if (sending || opening || pending != null) return;
+    if (composer.text.trim().isNotEmpty) {
+      final replace = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Replace this draft?'),
+          content: const Text(
+            'The template will replace your unsent text. Nothing will be sent until you choose Send.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep draft'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Use template'),
+            ),
+          ],
+        ),
+      );
+      if (replace != true || !mounted) return;
+    }
+    setState(() {
+      templateName = templates[index].$1;
+      composer.text = templates[index].$2;
+      composer.selection = TextSelection.collapsed(
+        offset: composer.text.length,
+      );
+    });
+  }
 
   @override
   void dispose() {
@@ -79,6 +132,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
     if (leave == true && mounted) {
       setState(() {
         composer.clear();
+        templateName = null;
         pending = null;
         error = null;
       });
@@ -115,7 +169,8 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
       builder: (_) =>
           _ContactPicker(load: widget.load, teacherMode: widget.teacherMode),
     );
-    if (pair == null || !mounted || !await confirmLeave() || !mounted) return;
+    if (pair == null || !mounted) return;
+    if (selectedId != null && (!await confirmLeave() || !mounted)) return;
     setState(() {
       opening = true;
       error = null;
@@ -165,6 +220,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
       setState(() {
         pending = null;
         composer.clear();
+        templateName = null;
         inboxRefresh++;
         reloadHistory();
       });
@@ -230,47 +286,165 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
   );
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => widget.teacherMode
+      ? teacherWorkspace()
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                FilledButton.icon(
+                  onPressed: sending || opening ? null : newConversation,
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: AfaqDesign.iconSmall,
+                  ),
+                  label: Text(opening ? 'Opening...' : 'New message'),
+                ),
+                refreshButton(),
+                if (selectedId != null)
+                  OutlinedButton(
+                    onPressed: sending || opening
+                        ? null
+                        : () async {
+                            if (await confirmLeave() && mounted) {
+                              setState(() {
+                                selectedId = null;
+                                history = null;
+                              });
+                            }
+                          },
+                    child: const Text('Close conversation'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            if (error != null) ...[
+              TeacherNotice(error!, warning: true),
+              const SizedBox(height: 16),
+            ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final narrow = constraints.maxWidth < 800;
+                final chat = selectedId == null
+                    ? const SurfacePanel(
+                        child: EmptyRecords(
+                          'Select a conversation or start a new message.',
+                        ),
+                      )
+                    : PageResult(
+                        key: ValueKey('$selectedId-$before'),
+                        future: history!,
+                        onRetry: () => setState(() => reloadHistory()),
+                        builder: (value) {
+                          final result = recordMap(value);
+                          acknowledgeVisible(result);
+                          final conversation = chatPanel(result, narrow);
+                          if (constraints.maxWidth < 1150) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                conversation,
+                                const SizedBox(height: 16),
+                                contextPanel(result),
+                              ],
+                            );
+                          }
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: conversation),
+                              const SizedBox(width: 16),
+                              SizedBox(width: 245, child: contextPanel(result)),
+                            ],
+                          );
+                        },
+                      );
+                if (narrow) return selectedId == null ? inbox() : chat;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(width: 270, child: inbox()),
+                    const SizedBox(width: 16),
+                    Expanded(child: chat),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 18),
+            const TeacherNotice(
+              'Private in-app communication only. SMS, WhatsApp and attachments are not sent here. Refresh to check for new messages; drafts are not stored offline.',
+            ),
+          ],
+        );
+
+  Widget teacherWorkspace() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Wrap(
-        spacing: 12,
-        runSpacing: 12,
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 20,
+        runSpacing: 16,
         children: [
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Messages',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Stay connected with your students\' families.',
+                style: TextStyle(color: muted, fontSize: 16),
+              ),
+            ],
+          ),
           FilledButton.icon(
             onPressed: sending || opening ? null : newConversation,
-            icon: const Icon(Icons.edit_outlined, size: AfaqDesign.iconSmall),
+            icon: const Icon(Icons.edit_outlined),
             label: Text(opening ? 'Opening...' : 'New message'),
           ),
-          refreshButton(),
-          if (selectedId != null)
-            OutlinedButton(
-              onPressed: sending || opening
-                  ? null
-                  : () async {
-                      if (await confirmLeave() && mounted) {
-                        setState(() {
-                          selectedId = null;
-                          history = null;
-                        });
-                      }
-                    },
-              child: const Text('Close conversation'),
-            ),
         ],
       ),
-      const SizedBox(height: 18),
+      const SizedBox(height: 24),
       if (error != null) ...[
         TeacherNotice(error!, warning: true),
         const SizedBox(height: 16),
       ],
       LayoutBuilder(
         builder: (context, constraints) {
-          final narrow = constraints.maxWidth < 800;
-          final chat = selectedId == null
-              ? const SurfacePanel(
-                  child: EmptyRecords(
-                    'Select a conversation or start a new message.',
+          final compose = selectedId == null
+              ? SurfacePanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const PanelHeading('Compose message'),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: TeacherTag('In-app message', color: blue),
+                      ),
+                      const SizedBox(height: 20),
+                      OutlinedButton.icon(
+                        onPressed: opening ? null : newConversation,
+                        icon: const Icon(Icons.people_outline),
+                        label: const Text('Select parent and student'),
+                      ),
+                      const SizedBox(height: 16),
+                      messageComposer(),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Choose a verified parent before sending. Your draft stays here while you select.',
+                        style: TextStyle(color: muted, height: 1.5),
+                      ),
+                    ],
                   ),
                 )
               : PageResult(
@@ -280,41 +454,104 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
                   builder: (value) {
                     final result = recordMap(value);
                     acknowledgeVisible(result);
-                    final conversation = chatPanel(result, narrow);
-                    if (constraints.maxWidth < 1150) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          conversation,
-                          const SizedBox(height: 16),
-                          contextPanel(result),
-                        ],
-                      );
-                    }
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: conversation),
-                        const SizedBox(width: 16),
-                        SizedBox(width: 245, child: contextPanel(result)),
-                      ],
-                    );
+                    return chatPanel(result, false);
                   },
                 );
-          if (narrow) return selectedId == null ? inbox() : chat;
+          final side = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SurfacePanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const PanelHeading(
+                      'Message templates',
+                      subtitle: 'Choose a starting point, then personalise it.',
+                    ),
+                    for (var i = 0; i < templates.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Material(
+                          color: templateName == templates[i].$1
+                              ? const Color(0xFFFFF3D8)
+                              : const Color(0xFFF2F6FB),
+                          borderRadius: BorderRadius.circular(12),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.description_outlined,
+                              color: gold,
+                            ),
+                            title: Text(
+                              templates[i].$1,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: sending || opening || pending != null
+                                ? null
+                                : () => useTemplate(i),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              const SurfacePanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.verified_user_outlined, color: forest, size: 32),
+                    SizedBox(height: 12),
+                    Text(
+                      'Verified families',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: ink,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Only verified parents of students in your assigned classes. Each parent has a separate private conversation.',
+                      style: TextStyle(color: muted, height: 1.6),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Sent means saved in Afaq. Read means the recipient opened the messages.',
+                      style: TextStyle(color: muted, height: 1.6),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+          if (constraints.maxWidth / MediaQuery.textScalerOf(context).scale(1) <
+              1000) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [compose, const SizedBox(height: 20), side],
+            );
+          }
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(width: 270, child: inbox()),
-              const SizedBox(width: 16),
-              Expanded(child: chat),
+              Expanded(flex: 2, child: compose),
+              const SizedBox(width: 20),
+              Expanded(child: side),
             ],
           );
         },
       ),
-      const SizedBox(height: 18),
-      const TeacherNotice(
-        'Private in-app communication only. SMS, WhatsApp and attachments are not sent here. Refresh to check for new messages; drafts are not stored offline.',
+      const SizedBox(height: 24),
+      inbox(),
+      const SizedBox(height: 12),
+      Align(alignment: Alignment.centerLeft, child: refreshButton()),
+      const SizedBox(height: 12),
+      const Text(
+        'In-app messages only. Drafts remain on this page; they are not saved offline.',
+        style: TextStyle(color: muted, height: 1.5),
       ),
     ],
   );
@@ -324,7 +561,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PanelHeading('Inbox'),
+        PanelHeading(widget.teacherMode ? 'Recent communications' : 'Inbox'),
         TextField(
           controller: searchController,
           decoration: const InputDecoration(
@@ -427,17 +664,17 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
                   ).toInt(),
                   onPage: (page) => setState(() => inboxPage = page),
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  widget.teacherMode
-                      ? 'Only verified parents of students in your assigned classes.'
-                      : 'Only your linked children and their current class teachers.',
-                  style: const TextStyle(
-                    color: muted,
-                    fontSize: 12,
-                    height: 1.6,
+                if (!widget.teacherMode) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    'Only your linked children and their current class teachers.',
+                    style: const TextStyle(
+                      color: muted,
+                      fontSize: 12,
+                      height: 1.6,
+                    ),
                   ),
-                ),
+                ],
               ],
             );
           },
@@ -474,6 +711,17 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
             subtitle:
                 '${widget.teacherMode ? 'Parent of' : 'Teacher for'} ${recordMap(result['student'])['fullName']}',
           ),
+          if (widget.teacherMode) ...[
+            const SizedBox(height: 20),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: TeacherTag('In-app message', color: blue),
+            ),
+            const SizedBox(height: 16),
+            messageComposer(),
+            const SizedBox(height: 24),
+            const PanelHeading('Conversation history'),
+          ],
           const SizedBox(height: 16),
           const Divider(color: line),
           Wrap(
@@ -528,42 +776,49 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
               ),
             ),
           const Divider(color: line),
-          TextField(
-            key: const ValueKey('message-composer'),
-            controller: composer,
-            readOnly: sending || pending != null,
-            minLines: 1,
-            maxLines: 4,
-            maxLength: 2000,
-            decoration: InputDecoration(
-              hintText: pending == null
-                  ? 'Write a message...'
-                  : 'Retry to confirm this message',
-              labelText: 'Message',
-              alignLabelWithHint: true,
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: sending ? null : send,
-              icon: Icon(
-                sending ? Icons.hourglass_top : Icons.send_outlined,
-                size: AfaqDesign.iconSmall,
-              ),
-              label: Text(
-                sending
-                    ? 'Sending...'
-                    : pending == null
-                    ? 'Send'
-                    : 'Retry send',
-              ),
-            ),
-          ),
+          if (!widget.teacherMode) messageComposer(),
         ],
       ),
     );
   }
+
+  Widget messageComposer() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TextField(
+        key: const ValueKey('message-composer'),
+        controller: composer,
+        readOnly: sending || pending != null,
+        minLines: widget.teacherMode ? 4 : 1,
+        maxLines: widget.teacherMode ? 7 : 4,
+        maxLength: 2000,
+        decoration: InputDecoration(
+          hintText: pending == null
+              ? 'Write a message...'
+              : 'Retry to confirm this message',
+          labelText: 'Message',
+          alignLabelWithHint: true,
+        ),
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: FilledButton.icon(
+          onPressed: sending || selectedId == null ? null : send,
+          icon: Icon(
+            sending ? Icons.hourglass_top : Icons.send_outlined,
+            size: AfaqDesign.iconSmall,
+          ),
+          label: Text(
+            sending
+                ? 'Sending...'
+                : pending == null
+                ? 'Send'
+                : 'Retry send',
+          ),
+        ),
+      ),
+    ],
+  );
 
   Widget messageBubble(
     Map<String, dynamic> message,

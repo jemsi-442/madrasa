@@ -153,6 +153,7 @@ void screen(WidgetTester tester, double width) {
 }
 
 Future<void> openFirst(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('Teacher Ahmad').first);
   await tester.tap(find.text('Teacher Ahmad').first);
   await tester.pumpAndSettle();
 }
@@ -164,6 +165,46 @@ Future<void> click(WidgetTester tester, String text) async {
 }
 
 void main() {
+  for (final width in [390.0, 1440.0]) {
+    testWidgets(
+      'teacher composer and templates fit at $width and preserve draft when choosing a parent',
+      (tester) async {
+        screen(tester, width);
+        final fixture = MessageFixture();
+        await tester.pumpWidget(host(fixture, teacher: true));
+        await tester.pumpAndSettle();
+        expect(find.text('Compose message'), findsOneWidget);
+        expect(find.text('Recent communications'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await click(tester, 'Class reminder');
+        final composer = find.byKey(const ValueKey('message-composer'));
+        final text = tester.widget<TextField>(composer).controller!.text;
+        expect(text, contains('next class'));
+        expect(fixture.writes, isEmpty);
+        await click(tester, 'Select parent and student');
+        await tester.tap(
+          find.descendant(
+            of: find.byType(Dialog),
+            matching: find.text('Teacher Ahmad'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.widget<TextField>(composer).controller!.text, text);
+        expect(find.text('Conversation history'), findsOneWidget);
+        await click(tester, 'Homework update');
+        expect(find.text('Replace this draft?'), findsOneWidget);
+        await click(tester, 'Keep draft');
+        expect(tester.widget<TextField>(composer).controller!.text, text);
+        await click(tester, 'Send');
+        final sends = fixture.writes
+            .where((w) => w.$1.endsWith('/messages'))
+            .toList();
+        expect(sends, hasLength(1));
+        expect(sends.single.$2['body'], text);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   test(
     'private messaging belongs to parents and teachers, not other roles',
     () {
