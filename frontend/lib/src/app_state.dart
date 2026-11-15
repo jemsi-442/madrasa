@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'lesson_upload.dart';
 
 import 'api_client.dart';
 import 'live_data.dart';
@@ -180,6 +181,32 @@ class AppState extends ChangeNotifier {
   Future<dynamic> update(String path, Map<String, dynamic> body) =>
       dataWrite(() => _request(path, method: 'PATCH', body: body));
 
+  Future<dynamic> uploadLesson(
+    String lessonId,
+    String title,
+    String format,
+    String visibility,
+    Uint8List bytes,
+  ) {
+    if (bytes.isEmpty || bytes.length > lessonUploadLimit) {
+      throw const ApiException('Choose a file between 1 byte and 50 MB.', 422);
+    }
+    final query = Uri(
+      queryParameters: {
+        'title': title,
+        'format': format,
+        'visibility': visibility,
+      },
+    ).query;
+    return dataWrite(
+      () => _request(
+        '/api/courses/lessons/${Uri.encodeComponent(lessonId)}/upload?$query',
+        method: 'POST',
+        binaryBody: bytes,
+      ),
+    );
+  }
+
   Future<String> exportCsv(String path) async =>
       await _request(path, expectCsv: true) as String;
 
@@ -188,6 +215,7 @@ class AppState extends ChangeNotifier {
     String method = 'GET',
     Map<String, dynamic>? body,
     bool expectCsv = false,
+    Uint8List? binaryBody,
   }) async {
     if (_browserSignedOut) {
       _authVersion++;
@@ -206,6 +234,7 @@ class AppState extends ChangeNotifier {
         body: body,
         accessToken: current.accessToken,
         expectCsv: expectCsv,
+        binaryBody: binaryBody,
       );
     } on ApiException catch (exception) {
       if (exception.statusCode != 401) rethrow;
@@ -253,6 +282,7 @@ class AppState extends ChangeNotifier {
       body: body,
       accessToken: session!.accessToken,
       expectCsv: expectCsv,
+      binaryBody: binaryBody,
     );
   }
 

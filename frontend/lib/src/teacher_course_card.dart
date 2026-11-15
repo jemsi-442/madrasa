@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'design_tokens.dart';
 import 'teacher_course_modules.dart';
@@ -14,10 +15,12 @@ class TeacherCourseCard extends StatefulWidget {
     required this.refreshToken,
     this.apiBaseUrl = '',
     this.submit,
+    this.upload,
   });
   final Map<String, dynamic> course;
   final PageLoader load;
   final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
+  final LessonUploader? upload;
   final String apiBaseUrl;
   final VoidCallback onOpen;
   final ValueChanged<Map<String, dynamic>> onModule;
@@ -290,6 +293,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 return const EmptyRecords('No modules have been added yet.');
               }
               return TeacherCourseInlineLesson(
+                upload: widget.upload,
                 submit: widget.submit,
                 modules: rows,
                 load: widget.load,

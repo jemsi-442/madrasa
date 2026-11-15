@@ -2589,8 +2589,15 @@ or verified Quran achievement. The API and frontend preview were left running.
   original filenames. Interrupted, oversized, invalid and failed saves remove the new file.
   The existing authenticated media-delivery flow serves accepted resources to authorised users.
 - `LOCKED` is the default. Opening media does not record achievement.
-- This increment is API-only: the browser/mobile file chooser, upload progress and
-  retry UI are not connected yet. Existing text authoring remains available in My Courses.
+- Teacher My Courses now offers `Upload file` inside the selected lesson, next to
+  `Add text resource`. Select PDF, PNG/JPG, MP4, MP3 or WAV, set a title and choose
+  whether eligible learners may access it (locked by default).
+- The dialog retains the selection and title on failure and shows an indeterminate
+  uploading state, not a fabricated percentage. It does not automatically retry
+  network failures: check the resource list before retrying an uncertain response.
+  Upload requests use the existing authenticated client and expire after three minutes.
+- The file chooser uses Flutter's cross-platform file selector. Native Android/iOS
+  picker acceptance still requires device testing; no native build is claimed here.
 - Signature validation is not malware scanning or full media decoding. Production
   still needs scanning/quarantine, storage quotas, lifecycle/backup policy and
   resumable large-file uploads. Do not treat this endpoint as production-hardened storage.

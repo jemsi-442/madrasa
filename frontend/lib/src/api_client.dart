@@ -116,6 +116,7 @@ class MifApiClient {
     String? accessToken,
     Map<String, dynamic>? body,
     bool expectCsv = false,
+    Uint8List? binaryBody,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
     final headers = <String, String>{
@@ -123,6 +124,7 @@ class MifApiClient {
       if (browserAuth && path.startsWith('/api/auth/browser/'))
         'X-MIF-Browser': '1',
       if (body != null) 'Content-Type': 'application/json',
+      if (binaryBody != null) 'Content-Type': 'application/octet-stream',
       if (accessToken != null) 'Authorization': 'Bearer $accessToken',
     };
 
@@ -130,7 +132,9 @@ class MifApiClient {
     try {
       switch (method) {
         case 'POST':
-          response = browserAuth && path.startsWith('/api/auth/browser/')
+          response = binaryBody != null
+              ? await _uploadBytes(uri, headers, binaryBody)
+              : browserAuth && path.startsWith('/api/auth/browser/')
               ? await _browserPost(uri, headers, body)
               : await _client.post(
                   uri,
@@ -190,6 +194,24 @@ class MifApiClient {
       );
     }
     return envelope['data'];
+  }
+
+  Future<http.Response> _uploadBytes(
+    Uri uri,
+    Map<String, String> headers,
+    Uint8List bytes,
+  ) async {
+    final abort = Completer<void>();
+    final timer = Timer(const Duration(minutes: 3), () => abort.complete());
+    try {
+      final request =
+          http.AbortableRequest('POST', uri, abortTrigger: abort.future)
+            ..headers.addAll(headers)
+            ..bodyBytes = bytes;
+      return await http.Response.fromStream(await _client.send(request));
+    } finally {
+      timer.cancel();
+    }
   }
 
   Future<AuthSession> login(String login, String password) =>

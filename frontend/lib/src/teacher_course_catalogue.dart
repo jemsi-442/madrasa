@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'design_tokens.dart';
 import 'teacher_course_card.dart';
@@ -13,10 +14,12 @@ class TeacherCourseCatalogue extends StatefulWidget {
     required this.onModule,
     this.apiBaseUrl = '',
     this.submit,
+    this.upload,
   });
   final List<Map<String, dynamic>> courses;
   final PageLoader load;
   final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
+  final LessonUploader? upload;
   final String apiBaseUrl;
   final int refreshToken;
   final ValueChanged<Map<String, dynamic>> onOpen;
@@ -231,6 +234,7 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
         else
           for (final c in filtered)
             TeacherCourseCard(
+              upload: widget.upload,
               submit: widget.submit,
               key: ValueKey('teacher-course-card-${c['id']}'),
               course: c,

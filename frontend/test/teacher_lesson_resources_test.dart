@@ -132,7 +132,12 @@ void main() {
               apiBaseUrl: 'https://school.test',
               load: (_) async => [
                 {'id': 'p', 'title': 'Practice PDF', 'assetType': 'PDF'},
-                {'id': 'i', 'title': 'Practice image', 'assetType': 'IMAGE'},
+                {
+                  'id': 'i',
+                  'title': 'Practice image',
+                  'assetType': 'ATTACHMENT',
+                  'mimeType': 'image/png',
+                },
                 {'id': 't', 'title': 'Practice text', 'assetType': 'TEXT'},
               ],
             ),

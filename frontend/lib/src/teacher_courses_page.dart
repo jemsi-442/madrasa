@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'teacher_lesson_resources.dart';
@@ -32,9 +33,11 @@ class TeacherCoursesPage extends StatefulWidget {
     this.onRecordLearning,
     this.classId,
     this.submit,
+    this.upload,
   });
   final PageLoader load;
   final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
+  final LessonUploader? upload;
   final String apiBaseUrl;
   final int refreshToken;
   final String? classId;
@@ -202,6 +205,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
   Widget content(List<Map<String, dynamic>> rows) {
     if (course == null) {
       return TeacherCourseCatalogue(
+        upload: widget.upload,
         submit: widget.submit,
         courses: rows,
         load: widget.load,
@@ -382,6 +386,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
           ),
           const SizedBox(height: 24),
           TeacherLessonResources(
+            upload: widget.upload,
             submit: widget.submit,
             key: ValueKey('teacher-lesson-resources-$lessonId'),
             lessonId: lessonId!,

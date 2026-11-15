@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'lesson_media_viewer.dart';
 import 'lesson_text_editor.dart';
+import 'lesson_upload_editor.dart';
 
 class TeacherLessonResources extends StatefulWidget {
   const TeacherLessonResources({
@@ -11,11 +13,13 @@ class TeacherLessonResources extends StatefulWidget {
     required this.apiBaseUrl,
     this.openFirst = false,
     this.submit,
+    this.upload,
   });
   final String lessonId, apiBaseUrl;
   final PageLoader load;
   final bool openFirst;
   final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
+  final LessonUploader? upload;
 
   @override
   State<TeacherLessonResources> createState() => _TeacherLessonResourcesState();
@@ -26,8 +30,15 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
   String? selected;
   String? filter;
   bool revealInitialResource = false;
-  String resourceKind(Map<String, dynamic> row) =>
-      row['assetType'] == 'EMBED' ? 'VIDEO' : recordText(row['assetType']);
+  String resourceKind(Map<String, dynamic> row) {
+    if (row['assetType'] == 'EMBED') return 'VIDEO';
+    if (row['assetType'] == 'ATTACHMENT' &&
+        const ['image/png', 'image/jpeg'].contains(row['mimeType'])) {
+      return 'IMAGE';
+    }
+    return recordText(row['assetType']);
+  }
+
   final playerAnchor = GlobalKey();
   final resourcesAnchor = GlobalKey();
 
@@ -51,13 +62,42 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
     alignment: Alignment.centerRight,
     child: Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: FilledButton.icon(
-        onPressed: addText,
-        icon: const Icon(Icons.add),
-        label: const Text('Add text resource'),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          if (widget.upload != null)
+            FilledButton.icon(
+              onPressed: addFile,
+              icon: const Icon(Icons.cloud_upload_outlined),
+              label: const Text('Upload file'),
+            ),
+          if (widget.submit != null)
+            OutlinedButton.icon(
+              onPressed: addText,
+              icon: const Icon(Icons.add),
+              label: const Text('Add text resource'),
+            ),
+        ],
       ),
     ),
   );
+
+  Future<void> addFile() async {
+    final lesson = widget.lessonId;
+    final result = await showDialog<dynamic>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          LessonUploadEditor(lessonId: lesson, upload: widget.upload!),
+    );
+    if (!mounted || result == null || lesson != widget.lessonId) return;
+    setState(() {
+      selected = result['id']?.toString();
+      filter = null;
+      future = fetch();
+    });
+  }
 
   void openResource(String id) {
     setState(() => selected = id);
@@ -84,7 +124,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
     if (mounted && lesson == widget.lessonId && widget.openFirst) {
       final rows = recordList(data);
       final videos = rows.where((row) => resourceKind(row) == 'VIDEO');
-      if (rows.isNotEmpty) {
+      if (rows.isNotEmpty && !rows.any((row) => '${row['id']}' == selected)) {
         selected = '${(videos.isNotEmpty ? videos.first : rows.first)['id']}';
         revealInitialResource = true;
       }
@@ -131,7 +171,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.submit != null) addButton(),
+            if (widget.submit != null || widget.upload != null) addButton(),
             const EmptyRecords(
               'No media resources have been added to this lesson.',
             ),
@@ -141,7 +181,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.submit != null) addButton(),
+          if (widget.submit != null || widget.upload != null) addButton(),
           SizedBox(key: playerAnchor),
           if (index >= 0) ...[
             if (inlineVideo)
@@ -264,7 +304,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
   );
 
   Widget resourceCard(Map<String, dynamic> row) {
-    final kind = recordText(row['assetType']);
+    final kind = resourceKind(row);
     final (action, color) = switch (kind) {
       'VIDEO' || 'EMBED' => ('Watch video', const Color(0xFF1763B5)),
       'AUDIO' => ('Play audio', const Color(0xFF7545AF)),
