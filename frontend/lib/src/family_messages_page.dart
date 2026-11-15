@@ -991,8 +991,21 @@ class _ContactPicker extends StatefulWidget {
 }
 
 class _ContactPickerState extends State<_ContactPicker> {
+  final searchController = TextEditingController();
   String search = '';
   int page = 1;
+
+  void searchContacts() => setState(() {
+    search = searchController.text.trim();
+    page = 1;
+  });
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => Dialog(
     child: ConstrainedBox(
@@ -1009,15 +1022,33 @@ class _ContactPickerState extends State<_ContactPicker> {
                   : 'Choose your child and their assigned teacher.',
             ),
             TextField(
+              controller: searchController,
               decoration: const InputDecoration(
                 labelText: 'Search contacts',
+                hintText: 'Name or student number',
                 prefixIcon: Icon(Icons.search),
               ),
               textInputAction: TextInputAction.search,
-              onSubmitted: (value) => setState(() {
-                search = value.trim();
-                page = 1;
-              }),
+              onSubmitted: (_) => searchContacts(),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              children: [
+                TextButton.icon(
+                  onPressed: searchContacts,
+                  icon: const Icon(Icons.search),
+                  label: const Text('Find contact'),
+                ),
+                if (search.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      searchController.clear();
+                      searchContacts();
+                    },
+                    child: const Text('Show all contacts'),
+                  ),
+              ],
             ),
             const SizedBox(height: 14),
             Flexible(
@@ -1037,18 +1068,60 @@ class _ContactPickerState extends State<_ContactPicker> {
                             'No authorised contacts found. Contact the office about assignments or guardian links.',
                           ),
                         for (final pair in items)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              recordText(
-                                recordMap(pair['contact'])['fullName'],
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Material(
+                              color: const Color(0xFFF4F7FB),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: const BorderSide(color: line),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                title: Text(
+                                  recordText(
+                                    recordMap(pair['contact'])['fullName'],
+                                  ),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: ink,
+                                  ),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${widget.teacherMode ? 'Parent of' : 'Teacher for'} ${recordText(recordMap(pair['student'])['fullName'])}',
+                                        style: const TextStyle(
+                                          color: ink,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Student number: ${recordText(recordMap(pair['student'])['admissionNo'])}',
+                                        style: const TextStyle(
+                                          color: muted,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                trailing: const Icon(
+                                  Icons.arrow_forward,
+                                  color: gold,
+                                ),
+                                onTap: () => Navigator.pop(context, pair),
                               ),
                             ),
-                            subtitle: Text(
-                              '${recordMap(pair['student'])['fullName']} | ${recordMap(pair['student'])['admissionNo']}',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.pop(context, pair),
                           ),
                         _MessagePagination(
                           page: page,

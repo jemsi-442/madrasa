@@ -215,6 +215,21 @@ void main() {
         expect(text, contains('next class'));
         expect(fixture.writes, isEmpty);
         await click(tester, 'Select parent and student');
+        expect(find.text('Parent of Amina Hassan'), findsOneWidget);
+        expect(find.text('Student number: MIF001'), findsOneWidget);
+        final contactSearch = find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.decoration?.labelText == 'Search contacts',
+        );
+        await tester.enterText(contactSearch, 'Ahmad');
+        await click(tester, 'Find contact');
+        expect(fixture.loads, contains('$base/contacts?page=1&search=Ahmad'));
+        await click(tester, 'Show all contacts');
+        expect(
+          tester.widget<TextField>(contactSearch).controller!.text,
+          isEmpty,
+        );
         await tester.tap(
           find.descendant(
             of: find.byType(Dialog),
