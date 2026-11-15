@@ -25,6 +25,8 @@ class PdfReadingFrame extends StatelessWidget {
     this.onClose,
     this.closeLabel = 'Close PDF viewer',
     this.closeIcon = Icons.close,
+    this.documentLabel = 'PDF DOCUMENT',
+    this.documentIcon = Icons.picture_as_pdf_outlined,
   });
 
   final String title;
@@ -32,6 +34,8 @@ class PdfReadingFrame extends StatelessWidget {
   final VoidCallback? onClose;
   final String closeLabel;
   final IconData closeIcon;
+  final String documentLabel;
+  final IconData documentIcon;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -68,7 +72,7 @@ class PdfReadingFrame extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
-                        Icons.picture_as_pdf_outlined,
+                        documentIcon,
                         color: Colors.white,
                         size: compact ? 22 : 26,
                       ),
@@ -79,9 +83,9 @@ class PdfReadingFrame extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (!compact)
-                            const Text(
-                              'PDF DOCUMENT',
-                              style: TextStyle(
+                            Text(
+                              documentLabel,
+                              style: const TextStyle(
                                 color: Color(0xFFE9C978),
                                 fontSize: 11,
                                 letterSpacing: 1.5,

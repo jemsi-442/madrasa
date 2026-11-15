@@ -169,6 +169,10 @@ void main() {
   testWidgets('bundled text becomes selectable and signals readiness once', (
     tester,
   ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 600);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
     var errors = 0;
     var ready = 0;
     await tester.pumpWidget(
@@ -198,5 +202,30 @@ void main() {
     expect(find.text('Loading text...'), findsNothing);
     expect(errors, 0);
     expect(ready, 1);
+    expect(find.byTooltip('Minimize text'), findsOneWidget);
+    expect(find.text('TEXT DOCUMENT'), findsOneWidget);
+    expect(find.text('PDF DOCUMENT'), findsNothing);
+    final scroll = tester
+        .widget<SingleChildScrollView>(
+          find.ancestor(
+            of: find.byType(SelectableText),
+            matching: find.byType(SingleChildScrollView),
+          ),
+        )
+        .controller!;
+    expect(scroll.position.maxScrollExtent, greaterThan(0));
+    scroll.jumpTo(scroll.position.maxScrollExtent / 2);
+    final offset = scroll.offset;
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Minimize text'), findsNothing);
+    expect(find.text('Full-screen text'), findsOneWidget);
+    expect(scroll.offset, closeTo(offset, 1));
+    await tester.tap(find.text('Full-screen text'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Minimize text'), findsOneWidget);
+    expect(scroll.offset, closeTo(offset, 1));
+    expect(ready, 1);
+    expect(errors, 0);
   });
 }

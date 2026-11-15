@@ -43,6 +43,19 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   LocalHistoryEntry? fullscreenHistory;
   ModalRoute<dynamic>? fullscreenRoute;
   final fullscreenFocus = FocusScopeNode(debugLabel: 'Lesson PDF fullscreen');
+  double textOffset = 0;
+  late final ScrollController textScroll =
+      ScrollController(
+        onAttach: (position) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && textScroll.positions.contains(position)) {
+              position.jumpTo(textOffset.clamp(0, position.maxScrollExtent));
+            }
+          });
+        },
+      )..addListener(() {
+        if (textScroll.hasClients) textOffset = textScroll.offset;
+      });
 
   void openFullScreen() {
     if (!mounted || expanded || widget.fullScreen) return;
@@ -61,8 +74,9 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
     );
     fullscreenRoute = ModalRoute.of(context);
     fullscreenRoute?.addLocalHistoryEntry(fullscreenHistory!);
-    final child = InheritedTheme.captureAll(context, buildFullScreen());
-    fullscreenOverlay = OverlayEntry(builder: (_) => child);
+    fullscreenOverlay = OverlayEntry(
+      builder: (_) => InheritedTheme.captureAll(context, buildFullScreen()),
+    );
     Overlay.of(context, rootOverlay: true).insert(fullscreenOverlay!);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && expanded) fullscreenFocus.requestFocus();
@@ -95,7 +109,8 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
     super.initState();
     page = widget.initialPage;
     if (widget.delivery.kind == 'TEXT') unawaited(loadText());
-    if (widget.delivery.kind == 'PDF' && !widget.fullScreen) {
+    if ((widget.delivery.kind == 'PDF' || widget.delivery.kind == 'TEXT') &&
+        !widget.fullScreen) {
       openingFullScreen = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => openFullScreen());
     }
@@ -122,6 +137,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
         final value = await rootBundle.loadString(asset);
         if (!mounted) return;
         setState(() => text = value);
+        fullscreenOverlay?.markNeedsBuild();
         notify(true);
         return;
       }
@@ -142,10 +158,12 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
       final value = utf8.decode(bytes, allowMalformed: true);
       if (!mounted) return;
       setState(() => text = value);
+      fullscreenOverlay?.markNeedsBuild();
       notify(true);
     } catch (_) {
       if (mounted) {
         setState(() => textFailed = true);
+        fullscreenOverlay?.markNeedsBuild();
         notify(false);
       }
     } finally {
@@ -167,6 +185,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
     }
     client.close();
     fullscreenFocus.dispose();
+    textScroll.dispose();
     zoom.dispose();
     if (widget.delivery.kind == 'IMAGE' && widget.delivery.assetPath == null) {
       unawaited(NetworkImage(widget.delivery.uri.toString()).evict());
@@ -191,15 +210,17 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
               child: FocusScope(
                 node: fullscreenFocus,
                 autofocus: true,
-                child: LessonDocumentSurface(
-                  delivery: widget.delivery,
-                  fullScreen: true,
-                  initialPage: page,
-                  onMinimize: minimize,
-                  onPageChanged: (value) => page = value,
-                  onReady: () => notify(true),
-                  onError: () => notify(false),
-                ),
+                child: widget.delivery.kind == 'TEXT'
+                    ? buildTextReader(fullScreen: true)
+                    : LessonDocumentSurface(
+                        delivery: widget.delivery,
+                        fullScreen: true,
+                        initialPage: page,
+                        onMinimize: minimize,
+                        onPageChanged: (value) => page = value,
+                        onReady: () => notify(true),
+                        onError: () => notify(false),
+                      ),
               ),
             ),
           ),
@@ -211,54 +232,110 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   Widget buildDocument(BuildContext context) {
     final asset = widget.delivery.assetPath;
     if (widget.delivery.kind == 'TEXT') {
-      return textFailed
-          ? const Center(
-              child: Text(
-                'This text resource could not be loaded. Use Reload player to try again.',
-              ),
-            )
-          : text == null
-          ? const Center(child: Text('Loading text...'))
-          : SingleChildScrollView(primary: false, child: SelectableText(text!));
+      if (expanded || openingFullScreen) return const SizedBox.expand();
+      return buildTextReader();
     }
     if (widget.delivery.kind == 'IMAGE') {
-      return Column(
-        children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => zoom.value = Matrix4.identity(),
-              icon: const Icon(Icons.fit_screen),
-              label: const Text('Reset zoom'),
-            ),
+      return buildImage(asset);
+    }
+    return buildPdf(asset);
+  }
+
+  Widget buildTextReader({bool fullScreen = false}) => PdfReadingFrame(
+    title: widget.delivery.title,
+    documentLabel: 'TEXT DOCUMENT',
+    documentIcon: Icons.article_outlined,
+    onClose: fullScreen ? minimize : null,
+    closeLabel: 'Minimize text',
+    closeIcon: Icons.fullscreen_exit,
+    toolbar: Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const Icon(Icons.menu_book_outlined, size: 20),
+        const Text('Reading view'),
+        if (!fullScreen) ...[
+          OutlinedButton.icon(
+            onPressed: openFullScreen,
+            icon: const Icon(Icons.fullscreen),
+            label: const Text('Full-screen text'),
           ),
-          Expanded(
-            child: InteractiveViewer(
-              transformationController: zoom,
-              minScale: 1,
-              maxScale: 5,
-              child: Center(
-                child: Image(
-                  image: asset != null
-                      ? AssetImage(asset)
-                      : NetworkImage(widget.delivery.uri.toString()),
-                  semanticLabel: widget.delivery.title,
-                  fit: BoxFit.contain,
-                  frameBuilder: (context, child, frame, synchronous) {
-                    if (frame != null) notify(true);
-                    return child;
-                  },
-                  errorBuilder: (context, error, stack) {
-                    notify(false);
-                    return const Text('This image could not be displayed.');
-                  },
+        ],
+      ],
+    ),
+    child: textFailed
+        ? const Center(
+            child: Text(
+              'This text resource could not be loaded. Use Reload player to try again.',
+            ),
+          )
+        : text == null
+        ? const Center(child: Text('Loading text...'))
+        : SingleChildScrollView(
+            controller: textScroll,
+            padding: const EdgeInsets.all(20),
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 860),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SelectableText(
+                  text!,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    height: 1.7,
+                    color: Color(0xFF193E53),
+                  ),
                 ),
               ),
             ),
           ),
-        ],
-      );
-    }
+  );
+
+  Widget buildImage(String? asset) {
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => zoom.value = Matrix4.identity(),
+            icon: const Icon(Icons.fit_screen),
+            label: const Text('Reset zoom'),
+          ),
+        ),
+        Expanded(
+          child: InteractiveViewer(
+            transformationController: zoom,
+            minScale: 1,
+            maxScale: 5,
+            child: Center(
+              child: Image(
+                image: asset != null
+                    ? AssetImage(asset)
+                    : NetworkImage(widget.delivery.uri.toString()),
+                semanticLabel: widget.delivery.title,
+                fit: BoxFit.contain,
+                frameBuilder: (context, child, frame, synchronous) {
+                  if (frame != null) notify(true);
+                  return child;
+                },
+                errorBuilder: (context, error, stack) {
+                  notify(false);
+                  return const Text('This image could not be displayed.');
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildPdf(String? asset) {
     if (expanded || openingFullScreen) return const SizedBox.expand();
     return PdfReadingFrame(
       title: widget.delivery.title,
