@@ -68,6 +68,24 @@ Future<void> tap(WidgetTester tester, String title) async {
 }
 
 void main() {
+  testWidgets('PDF uses a tall reading area rather than a video-sized box', (
+    tester,
+  ) async {
+    await host(
+      tester,
+      LessonMediaViewer(
+        assetId: '3',
+        load: (_) async => response(kind: 'PDF'),
+        apiBaseUrl: 'https://school.test',
+        surfaceBuilder: fakePlayer,
+      ),
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('lesson-media-stage'))).height,
+      closeTo(738, 1),
+    );
+    expect(tester.takeException(), isNull);
+  });
   test('accepts only matching signed API delivery paths', () {
     expect(parse(response()).kind, 'VIDEO');
     expect(

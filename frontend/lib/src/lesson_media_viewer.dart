@@ -271,6 +271,8 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
         key: const ValueKey('lesson-media-stage'),
         height: source.kind == 'AUDIO'
             ? 440
+            : source.kind == 'PDF'
+            ? (MediaQuery.sizeOf(context).height * .82).clamp(420.0, 1100.0)
             : document
             ? (MediaQuery.sizeOf(context).height *
                       (widget.focusView ? .75 : .6))

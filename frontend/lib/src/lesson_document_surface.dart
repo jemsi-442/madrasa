@@ -12,9 +12,13 @@ class LessonDocumentSurface extends StatefulWidget {
     required this.delivery,
     required this.onReady,
     required this.onError,
+    this.fullScreen = false,
+    this.initialPage = 1,
   });
   final LessonMediaDelivery delivery;
   final VoidCallback onReady, onError;
+  final bool fullScreen;
+  final int initialPage;
 
   @override
   State<LessonDocumentSurface> createState() => _LessonDocumentSurfaceState();
@@ -32,6 +36,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   @override
   void initState() {
     super.initState();
+    page = widget.initialPage;
     if (widget.delivery.kind == 'TEXT') unawaited(loadText());
   }
 
@@ -154,6 +159,41 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            if (!widget.fullScreen)
+              TextButton.icon(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  useSafeArea: true,
+                  builder: (context) => Dialog.fullscreen(
+                    child: SafeArea(
+                      child: Column(
+                        children: [
+                          AppBar(
+                            automaticallyImplyLeading: false,
+                            title: Text(widget.delivery.title),
+                            leading: IconButton(
+                              tooltip: 'Close PDF viewer',
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ),
+                          Expanded(
+                            child: LessonDocumentSurface(
+                              delivery: widget.delivery,
+                              fullScreen: true,
+                              initialPage: page,
+                              onReady: () {},
+                              onError: () {},
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.fullscreen),
+                label: const Text('Full-screen PDF'),
+              ),
             IconButton(
               tooltip: 'Previous PDF page',
               onPressed: pages > 0 && page > 1
@@ -190,6 +230,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
                     useProgressiveLoading: false,
                   ),
             controller: pdf,
+            initialPageNumber: widget.initialPage,
             params: PdfViewerParams(
               onViewerReady: (document, controller) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
