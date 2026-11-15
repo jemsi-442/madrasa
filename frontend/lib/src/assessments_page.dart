@@ -578,6 +578,15 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
   bool dirty = false, busy = false, closing = false;
   String? error, notice;
   bool get editable => !widget.admin && row['status'] == 'DRAFT';
+  String? scoreError(String text) {
+    if (text.trim().isEmpty) return null;
+    final value = int.tryParse(text.trim());
+    if (value == null || value < 0 || value > (row['maxScore'] as num)) {
+      return 'Use 0 to ${row['maxScore']} (whole numbers).';
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     for (final c in [...scores.values, ...notes.values]) {
@@ -629,8 +638,7 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
       final id = '${r['studentId']}',
           text = scores['${r['studentId']}']!.text.trim();
       final score = text.isEmpty ? null : int.tryParse(text);
-      if (text.isNotEmpty &&
-          (score == null || score < 0 || score > (row['maxScore'] as num))) {
+      if (scoreError(text) != null) {
         setState(
           () => error =
               'Enter whole-number scores between 0 and ${row['maxScore']}, or leave blank.',
@@ -738,7 +746,11 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
   @override
   Widget build(BuildContext context) {
     final recorded = scores.values
-        .where((c) => c.text.trim().isNotEmpty)
+        .where((c) => c.text.trim().isNotEmpty && scoreError(c.text) == null)
+        .length;
+    final unassessed = scores.values.where((c) => c.text.trim().isEmpty).length;
+    final invalid = scores.values
+        .where((c) => scoreError(c.text) != null)
         .length;
     return PopScope(
       canPop: !busy && !dirty,
@@ -813,6 +825,10 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
                       '$recorded / ${results.length} recorded',
                       color: blue,
                     ),
+                    if (unassessed > 0)
+                      TeacherTag('$unassessed not assessed', color: muted),
+                    if (invalid > 0)
+                      TeacherTag('$invalid need correction', color: Colors.red),
                     TeacherTag('Maximum ${row['maxScore']}', color: muted),
                     if (dirty) const TeacherTag('Unsaved changes', color: gold),
                   ],
@@ -853,6 +869,10 @@ class _AssessmentEditorState extends State<AssessmentEditor> {
                           decoration: InputDecoration(
                             labelText: 'Score',
                             suffixText: '/ ${row['maxScore']}',
+                            errorText: scoreError(
+                              scores['${r['studentId']}']!.text,
+                            ),
+                            errorMaxLines: 3,
                           ),
                           onChanged: (_) => setState(() {
                             dirty = true;

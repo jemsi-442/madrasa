@@ -322,11 +322,17 @@ void main() {
     screen(tester, 1440);
     final f = Fixture()..fail = true;
     await opened(tester, f);
+    expect(find.text('1 not assessed'), findsOneWidget);
     await input(tester, 'score-4', '11');
+    expect(find.text('Use 0 to 10 (whole numbers).'), findsOneWidget);
+    expect(find.text('1 need correction'), findsOneWidget);
+    expect(find.text('1 / 2 recorded'), findsOneWidget);
     await click(tester, 'Save draft');
     expect(f.writes, isEmpty);
     expect(find.textContaining('whole-number scores'), findsOneWidget);
     await input(tester, 'score-4', '8');
+    expect(find.text('Use 0 to 10 (whole numbers).'), findsNothing);
+    expect(find.text('2 / 2 recorded'), findsOneWidget);
     await click(tester, 'Save draft');
     expect(find.textContaining('Save not confirmed'), findsOneWidget);
     expect(
