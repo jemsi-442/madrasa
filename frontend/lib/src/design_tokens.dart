@@ -84,8 +84,10 @@ abstract final class AfaqDesign {
   static BoxDecoration panelDecoration({
     Color color = surface,
     Color accent = blue,
+    bool tinted = false,
   }) => BoxDecoration(
     color: color,
+    gradient: tinted ? cardGradient(accent) : null,
     borderRadius: BorderRadius.circular(panelRadius),
     border: Border.all(color: cardTint(accent, .13)),
     boxShadow: cardShadows(accent),

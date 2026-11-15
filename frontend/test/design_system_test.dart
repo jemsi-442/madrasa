@@ -13,8 +13,47 @@ import 'package:mif_app/src/dashboard_components.dart';
 import 'package:mif_app/src/teacher_ui.dart';
 import 'package:mif_app/src/shared_feedback.dart';
 import 'package:mif_app/src/public_shell.dart';
+import 'package:mif_app/src/oversight_visuals.dart';
 
 void main() {
+  testWidgets('oversight metrics use four semantic soft glow surfaces', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OversightMetrics(
+            data: {
+              'recorded': 3,
+              'eligible': 5,
+              'madrasas': 2,
+              'unrecorded': 2,
+              'needingSupport': 1,
+            },
+          ),
+        ),
+      ),
+    );
+    for (final accent in [
+      AfaqDesign.blue,
+      AfaqDesign.green,
+      AfaqDesign.actionGold,
+      AfaqDesign.purple,
+    ]) {
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Container &&
+              widget.decoration ==
+                  AfaqDesign.panelDecoration(accent: accent, tinted: true),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(find.text('3 / 5'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('shared cards use soft borders and accent-tinted static shadows', () {
     final panel = AfaqDesign.panelDecoration(accent: AfaqDesign.green);
     expect(panel.borderRadius, BorderRadius.circular(AfaqDesign.panelRadius));

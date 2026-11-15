@@ -53,7 +53,10 @@ class OversightMetrics extends StatelessWidget {
               width: width,
               child: Container(
                 padding: const EdgeInsets.all(22),
-                decoration: AfaqDesign.panelDecoration(),
+                decoration: AfaqDesign.panelDecoration(
+                  accent: m.$5,
+                  tinted: true,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

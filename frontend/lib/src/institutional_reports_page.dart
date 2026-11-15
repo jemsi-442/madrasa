@@ -204,11 +204,7 @@ class _ReportsState extends State<InstitutionalReportsPage> {
 
   Widget panel(Widget child) => Container(
     padding: const EdgeInsets.all(24),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: const Color(0xffe1e7eb)),
-      borderRadius: BorderRadius.circular(14),
-    ),
+    decoration: AfaqDesign.panelDecoration(),
     child: child,
   );
   Widget title(String text) => Text(

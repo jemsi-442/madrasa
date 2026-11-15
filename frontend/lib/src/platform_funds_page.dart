@@ -124,11 +124,10 @@ class _FundsState extends State<PlatformFundsPage> {
     }
   }
 
-  Widget panel(Widget child) => Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xffe1e7eb)),
+  Widget panel(Widget child, {Color? accent}) => Container(
+    decoration: AfaqDesign.panelDecoration(
+      accent: accent ?? AfaqDesign.blue,
+      tinted: accent != null,
     ),
     padding: const EdgeInsets.all(24),
     child: child,
@@ -540,6 +539,7 @@ class _FundsState extends State<PlatformFundsPage> {
                             width:
                                 (space.maxWidth - (columns - 1) * 16) / columns,
                             child: panel(
+                              accent: card.$5,
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

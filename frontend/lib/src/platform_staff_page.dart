@@ -77,9 +77,12 @@ class _PlatformStaffPageState extends State<PlatformStaffPage> {
     }
   }
 
-  Widget panel(Widget child) => Container(
+  Widget panel(Widget child, {Color? accent}) => Container(
     padding: const EdgeInsets.all(20),
-    decoration: AfaqDesign.panelDecoration(),
+    decoration: AfaqDesign.panelDecoration(
+      accent: accent ?? AfaqDesign.blue,
+      tinted: accent != null,
+    ),
     child: child,
   );
   Widget badge(String label, {bool good = true}) => Container(
@@ -104,6 +107,7 @@ class _PlatformStaffPageState extends State<PlatformStaffPage> {
     IconData icon,
     Color color,
   ) => panel(
+    accent: color,
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

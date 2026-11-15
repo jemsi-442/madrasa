@@ -321,8 +321,13 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
     );
   }
 
-  Widget panel(Widget child) =>
-      Container(decoration: AfaqDesign.panelDecoration(), child: child);
+  Widget panel(Widget child, {Color? accent}) => Container(
+    decoration: AfaqDesign.panelDecoration(
+      accent: accent ?? AfaqDesign.blue,
+      tinted: accent != null,
+    ),
+    child: child,
+  );
   Widget metric(
     String title,
     String key,
@@ -330,6 +335,7 @@ class _DirectoryState extends State<PlatformMadrasasPage> {
     IconData icon,
     Color color,
   ) => panel(
+    accent: color,
     Padding(
       padding: const EdgeInsets.all(22),
       child: Column(
