@@ -12,6 +12,19 @@ String schoolUpdateStatus(Map<String, dynamic> row, DateTime now) {
   return publish == null ? 'Unknown' : 'Published';
 }
 
+String schoolUpdateDate(dynamic value) {
+  final date = DateTime.tryParse('$value')?.toLocal();
+  if (date == null) return 'Date unavailable';
+  return '${shortDate(value)}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+}
+
+Color _statusColor(String status) => switch (status) {
+  'Published' => forest,
+  'Scheduled' => gold,
+  'Expired' => const Color(0xFFB64A56),
+  _ => muted,
+};
+
 class SchoolUpdatesPage extends StatefulWidget {
   const SchoolUpdatesPage({
     super.key,
@@ -40,10 +53,17 @@ class _SchoolUpdatesPageState extends State<SchoolUpdatesPage> {
       row['audience'] == 'TEACHERS' ? 'Teacher audience only' : 'School-wide';
 
   void open(Map<String, dynamic> row) {
+    final state = schoolUpdateStatus(row, DateTime.now());
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(recordText(row['title'])),
+        title: Row(
+          children: [
+            const Icon(Icons.campaign_outlined, color: gold, size: 30),
+            const SizedBox(width: 12),
+            Expanded(child: Text(recordText(row['title']))),
+          ],
+        ),
         content: SizedBox(
           width: 640,
           child: SingleChildScrollView(
@@ -51,21 +71,41 @@ class _SchoolUpdatesPageState extends State<SchoolUpdatesPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                TeacherTag(audienceLabel(row), color: blue),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    TeacherTag(audienceLabel(row), color: blue),
+                    TeacherTag(state, color: _statusColor(state)),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 Text(
-                  '${schoolUpdateStatus(row, DateTime.now()) == 'Scheduled' ? 'Scheduled for' : 'Published'}: ${shortDate(row['publishAt'])}',
+                  '${state == 'Scheduled' ? 'Scheduled for' : 'Published'}: ${schoolUpdateDate(row['publishAt'])}',
                   style: const TextStyle(color: muted),
                 ),
                 if (row['expiresAt'] != null)
                   Text(
-                    'Expires: ${shortDate(row['expiresAt'])}',
+                    'Expires: ${schoolUpdateDate(row['expiresAt'])}',
                     style: const TextStyle(color: muted),
                   ),
                 const Divider(height: 32),
-                SelectableText(
-                  recordText(row['message']),
-                  style: const TextStyle(fontSize: 16, height: 1.6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF6F8FB),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE1E7EF)),
+                  ),
+                  child: SelectableText(
+                    recordText(row['message']),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: ink,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -176,6 +216,9 @@ class _SchoolUpdatesPageState extends State<SchoolUpdatesPage> {
                   SizedBox(
                     width: bounds.maxWidth < 250 ? bounds.maxWidth : 250,
                     child: DropdownButtonFormField<String>(
+                      key: ValueKey(
+                        '${isAudience ? 'audience' : 'status'}:${isAudience ? audience : status}',
+                      ),
                       isExpanded: true,
                       initialValue: isAudience ? audience : status,
                       decoration: InputDecoration(
@@ -222,6 +265,18 @@ class _SchoolUpdatesPageState extends State<SchoolUpdatesPage> {
                   icon: const Icon(Icons.refresh),
                   label: const Text('Refresh'),
                 ),
+                if (query.isNotEmpty ||
+                    audience.isNotEmpty ||
+                    status.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => setState(() {
+                      search.clear();
+                      query = audience = status = '';
+                      page = 0;
+                    }),
+                    icon: const Icon(Icons.filter_alt_off_outlined),
+                    label: const Text('Clear filters'),
+                  ),
               ],
             ),
           ),
@@ -301,14 +356,12 @@ class _SchoolUpdatesPageState extends State<SchoolUpdatesPage> {
                                       children: [
                                         TeacherTag(
                                           schoolUpdateStatus(row, now),
-                                          color:
-                                              schoolUpdateStatus(row, now) ==
-                                                  'Published'
-                                              ? forest
-                                              : gold,
+                                          color: _statusColor(
+                                            schoolUpdateStatus(row, now),
+                                          ),
                                         ),
                                         Text(
-                                          shortDate(row['publishAt']),
+                                          schoolUpdateDate(row['publishAt']),
                                           style: const TextStyle(color: muted),
                                         ),
                                       ],

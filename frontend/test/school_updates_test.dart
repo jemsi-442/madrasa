@@ -16,6 +16,7 @@ void main() {
       'Expired',
     );
     expect(schoolUpdateStatus({}, now), 'Unknown');
+    expect(schoolUpdateDate('invalid'), 'Date unavailable');
   });
 
   for (final width in [320.0, 768.0, 1440.0]) {
@@ -74,6 +75,34 @@ void main() {
       await tester.tap(find.text('Synthetic notice 11'));
       await tester.pumpAndSettle();
       expect(find.text('Synthetic notice content 11'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      final status = find.byType(DropdownButtonFormField<String>).last;
+      await tester.ensureVisible(status);
+      await tester.tap(status);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Expired').last);
+      await tester.pumpAndSettle();
+      expect(find.text('No updates match these filters.'), findsOneWidget);
+      await tester.ensureVisible(find.text('Clear filters'));
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic notice 0'), findsOneWidget);
+      expect(find.text('All statuses'), findsOneWidget);
+      expect(find.text('Clear filters'), findsNothing);
+      final audience = find.byType(DropdownButtonFormField<String>).first;
+      await tester.ensureVisible(audience);
+      await tester.tap(audience);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('School-wide').last);
+      await tester.pumpAndSettle();
+      expect(find.text('No updates match these filters.'), findsOneWidget);
+      await tester.ensureVisible(find.text('Clear filters'));
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      expect(find.text('All available audiences'), findsOneWidget);
+      expect(find.text('Synthetic notice 0'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
