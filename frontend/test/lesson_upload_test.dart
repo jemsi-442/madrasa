@@ -10,6 +10,123 @@ import 'package:mif_app/src/lesson_upload.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  testWidgets('successful upload closes without asking to discard', (
+    tester,
+  ) async {
+    dynamic result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showDialog<dynamic>(
+                  context: context,
+                  builder: (_) => LessonUploadEditor(
+                    lessonId: 'synthetic',
+                    pickFile: () async => XFile.fromData(
+                      Uint8List.fromList([37, 80, 68, 70]),
+                      path: 'Guide.pdf',
+                    ),
+                    upload: (_, _, _, _, _) async => {'id': 'saved-resource'},
+                  ),
+                );
+              },
+              child: const Text('Open upload'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open upload'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose file'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Upload resource'));
+    await tester.tap(find.text('Upload resource'));
+    await tester.pumpAndSettle();
+    expect(result, {'id': 'saved-resource'});
+    expect(find.byType(LessonUploadEditor), findsNothing);
+    expect(find.text('Leave this upload?'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'changing files updates generated titles but keeps custom titles',
+    (tester) async {
+      var index = 0;
+      final names = ['First.pdf', 'Second.pdf', 'Third.pdf'];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LessonUploadEditor(
+            lessonId: 'synthetic',
+            pickFile: () async => XFile.fromData(
+              Uint8List.fromList([37, 80, 68, 70]),
+              path: names[index++],
+            ),
+            upload: (_, _, _, _, _) async => fail('Must not upload'),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Choose file'));
+      await tester.pumpAndSettle();
+      expect(find.text('First'), findsOneWidget);
+      await tester.tap(find.text('Change file'));
+      await tester.pumpAndSettle();
+      expect(find.text('Second'), findsOneWidget);
+      await tester.enterText(find.byType(TextFormField), 'My teaching guide');
+      await tester.tap(find.text('Change file'));
+      await tester.pumpAndSettle();
+      expect(find.text('My teaching guide'), findsOneWidget);
+      expect(find.text('Third.pdf'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'cancel and back protect resource details until discard confirmed',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => showDialog<dynamic>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => LessonUploadEditor(
+                    lessonId: 'synthetic',
+                    upload: (_, _, _, _, _) async => fail('Must not upload'),
+                  ),
+                ),
+                child: const Text('Open upload'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open upload'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'Unsaved resource');
+      await tester.ensureVisible(find.text('Cancel'));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Leave this upload?'), findsOneWidget);
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+      expect(find.text('Unsaved resource'), findsOneWidget);
+      await tester
+          .state<NavigatorState>(find.byType(Navigator).first)
+          .maybePop();
+      await tester.pumpAndSettle();
+      expect(find.text('Leave this upload?'), findsOneWidget);
+      await tester.tap(find.text('Leave upload'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LessonUploadEditor), findsNothing);
+      expect(find.text('Open upload'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test('supported file extensions are normalized', () {
     expect(lessonFileFormat('Photo.JPEG'), 'jpg');
     expect(lessonFileFormat('guide.PDF'), 'pdf');

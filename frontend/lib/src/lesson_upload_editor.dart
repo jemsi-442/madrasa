@@ -25,6 +25,45 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
   String? format, error;
   int size = 0;
   bool busy = false, choosing = false, available = false;
+  bool confirmingClose = false, closing = false;
+  String? suggestedTitle;
+
+  void finish([dynamic result]) {
+    setState(() => closing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.pop(context, result);
+    });
+  }
+
+  Future<void> requestClose() async {
+    if (busy || choosing || confirmingClose || closing) return;
+    if (file == null && title.text.trim().isEmpty && !available) {
+      finish();
+      return;
+    }
+    confirmingClose = true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave this upload?'),
+        content: const Text(
+          'Your selected file and resource details will not be saved. Stay here to continue uploading.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Leave upload'),
+          ),
+        ],
+      ),
+    );
+    confirmingClose = false;
+    if (mounted && discard == true) finish();
+  }
 
   @override
   void dispose() {
@@ -74,10 +113,13 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
         file = chosen;
         format = kind;
         size = length;
-        if (title.text.trim().isEmpty) {
-          final name = chosen.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
-          title.text = name.length > 150 ? name.substring(0, 150) : name;
+        final name = chosen.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+        final suggestion = name.length > 150 ? name.substring(0, 150) : name;
+        // Replace generated titles, but preserve a teacher's custom title.
+        if (title.text.trim().isEmpty || title.text == suggestedTitle) {
+          title.text = suggestion;
         }
+        suggestedTitle = suggestion;
       });
     } catch (_) {
       if (mounted) {
@@ -110,7 +152,7 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
         available ? 'FREE' : 'LOCKED',
         bytes,
       );
-      if (mounted) Navigator.pop(context, result);
+      if (mounted) finish(result);
     } catch (exception) {
       if (mounted) {
         setState(() {
@@ -130,7 +172,10 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !busy && !choosing,
+    canPop: closing,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) requestClose();
+    },
     child: Dialog(
       insetPadding: const EdgeInsets.all(16),
       child: ConstrainedBox(
@@ -261,9 +306,7 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
                       label: const Text('Upload resource'),
                     ),
                     TextButton(
-                      onPressed: busy || choosing
-                          ? null
-                          : () => Navigator.pop(context),
+                      onPressed: busy || choosing ? null : requestClose,
                       child: const Text('Cancel'),
                     ),
                   ],
