@@ -5,6 +5,47 @@ import 'package:mif_app/src/teacher_course_modules.dart';
 import 'package:mif_app/src/teacher_course_card.dart';
 
 void main() {
+  for (final count in [1, 2, 3, 4]) {
+    testWidgets('module cards fill the row with $count modules', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1440, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TeacherCourseModules(
+                course: const {},
+                modules: List.generate(
+                  count,
+                  (i) => {
+                    'id': 'layout-$i',
+                    'title': 'Synthetic module ${i + 1}',
+                  },
+                ),
+                onOpen: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final columns = count.clamp(1, 3);
+      final first = tester.getRect(
+        find.byKey(const ValueKey('teacher-course-item-layout-0')),
+      );
+      final last = tester.getRect(
+        find.byKey(ValueKey('teacher-course-item-layout-${columns - 1}')),
+      );
+      expect(first.width, closeTo((1440 - (columns - 1) * 16) / columns, .1));
+      expect(last.right, closeTo(1440, .1));
+      expect(last.top, first.top);
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final scale in [1.0, 2.0]) {
     testWidgets('course cover reflows for text scale $scale', (tester) async {
       tester.view.physicalSize = const Size(1440, 900);

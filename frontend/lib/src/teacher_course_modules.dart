@@ -168,13 +168,16 @@ class TeacherCourseModules extends StatelessWidget {
             final availableWidth =
                 box.maxWidth /
                 (MediaQuery.textScalerOf(context).scale(16) / 16);
-            final columns = availableWidth >= 1500
+            final maxColumns = availableWidth >= 1500
                 ? 4
                 : availableWidth >= 1100
                 ? 3
                 : availableWidth >= 600
                 ? 2
                 : 1;
+            final columns = modules.isEmpty
+                ? 1
+                : modules.length.clamp(1, maxColumns);
             return Wrap(
               spacing: 16,
               runSpacing: 16,
