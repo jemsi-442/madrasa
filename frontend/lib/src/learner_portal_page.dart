@@ -538,12 +538,11 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               constraints: const BoxConstraints(minHeight: 140),
-                              decoration: BoxDecoration(
-                                color: dayKey(day) == result['today']
-                                    ? gold.withValues(alpha: .08)
-                                    : const Color(0xFFF8FAFC),
-                                border: Border.all(color: line),
-                                borderRadius: BorderRadius.circular(12),
+                              decoration: AfaqDesign.panelDecoration(
+                                accent: dayKey(day) == result['today']
+                                    ? AfaqDesign.actionGold
+                                    : AfaqDesign.blue,
+                                tinted: true,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,

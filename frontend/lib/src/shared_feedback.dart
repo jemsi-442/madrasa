@@ -65,63 +65,75 @@ class AfaqActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: AfaqDesign.surface,
+    elevation: onTap == null ? 0 : 2,
+    shadowColor: accent.withValues(alpha: .16),
+    surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AfaqDesign.panelRadius),
-      side: const BorderSide(color: AfaqDesign.border),
+      side: BorderSide(color: AfaqDesign.cardTint(accent, .13)),
     ),
     clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (MediaQuery.textScalerOf(context).scale(16) <= 24) ...[
-              Container(
-                padding: const EdgeInsets.all(11),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: .1),
-                  borderRadius: BorderRadius.circular(AfaqDesign.controlRadius),
+    child: Ink(
+      decoration: BoxDecoration(
+        gradient: AfaqDesign.cardGradient(
+          onTap == null ? AfaqDesign.muted : accent,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (MediaQuery.textScalerOf(context).scale(16) <= 24) ...[
+                Container(
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: .1),
+                    borderRadius: BorderRadius.circular(
+                      AfaqDesign.controlRadius,
+                    ),
+                  ),
+                  child: Icon(icon, color: accent, size: AfaqDesign.iconSize),
                 ),
-                child: Icon(icon, color: accent, size: AfaqDesign.iconSize),
-              ),
-              const SizedBox(width: 14),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AfaqDesign.ink,
-                      fontWeight: FontWeight.w700,
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AfaqDesign.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: AfaqDesign.muted,
-                      fontSize: AfaqDesign.secondarySize,
-                      height: 1.5,
+                    const SizedBox(height: 5),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AfaqDesign.muted,
+                        fontSize: AfaqDesign.secondarySize,
+                        height: 1.5,
+                      ),
                     ),
-                  ),
-                  if (trailing != null) ...[
-                    const SizedBox(height: 10),
-                    trailing!,
+                    if (trailing != null) ...[
+                      const SizedBox(height: 10),
+                      trailing!,
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.arrow_forward_rounded,
-              size: AfaqDesign.iconSmall,
-              color: AfaqDesign.muted,
-            ),
-          ],
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                size: AfaqDesign.iconSmall,
+                color: AfaqDesign.muted,
+              ),
+            ],
+          ),
         ),
       ),
     ),

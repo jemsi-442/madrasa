@@ -224,6 +224,18 @@ void main() {
       );
       await tester.tap(find.text('Review company access'));
       expect(calls, enabled ? 1 : 0);
+      final tile = find.byType(AfaqActionTile);
+      final material = tester.widget<Material>(
+        find.descendant(of: tile, matching: find.byType(Material)).first,
+      );
+      expect(material.elevation, enabled ? 2 : 0);
+      final ink = tester.widget<Ink>(
+        find.descendant(of: tile, matching: find.byType(Ink)).first,
+      );
+      expect(
+        (ink.decoration! as BoxDecoration).gradient,
+        AfaqDesign.cardGradient(enabled ? AfaqDesign.gold : AfaqDesign.muted),
+      );
       expect(tester.takeException(), isNull);
     }
   });
