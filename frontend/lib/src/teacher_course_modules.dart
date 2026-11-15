@@ -57,9 +57,9 @@ class TeacherCourseModules extends StatelessWidget {
             final availableWidth =
                 box.maxWidth /
                 (MediaQuery.textScalerOf(context).scale(17) / 17);
-            final columns = availableWidth >= 850
+            final columns = availableWidth >= 1100
                 ? 4
-                : availableWidth >= 440
+                : availableWidth >= 600
                 ? 2
                 : 1;
             final labels = [
@@ -86,7 +86,8 @@ class TeacherCourseModules extends StatelessWidget {
                   SizedBox(
                     width: (box.maxWidth - (columns - 1) * 16) / columns,
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      constraints: const BoxConstraints(minHeight: 112),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: backgrounds[i],
                         borderRadius: BorderRadius.circular(14),
@@ -94,9 +95,9 @@ class TeacherCourseModules extends StatelessWidget {
                       child: Row(
                         children: [
                           CircleAvatar(
-                            radius: 25,
+                            radius: 32,
                             backgroundColor: tones[i].withValues(alpha: .10),
-                            child: Icon(icons[i], color: tones[i], size: 29),
+                            child: Icon(icons[i], color: tones[i], size: 36),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -106,7 +107,7 @@ class TeacherCourseModules extends StatelessWidget {
                                 Text(
                                   labels[i],
                                   style: const TextStyle(
-                                    fontSize: 17,
+                                    fontSize: 21,
                                     fontWeight: FontWeight.w800,
                                     color: AfaqDesign.ink,
                                   ),
@@ -114,7 +115,7 @@ class TeacherCourseModules extends StatelessWidget {
                                 if (i == 3)
                                   const Text(
                                     'Estimated duration',
-                                    style: TextStyle(fontSize: 12),
+                                    style: TextStyle(fontSize: 14),
                                   ),
                               ],
                             ),
@@ -167,8 +168,10 @@ class TeacherCourseModules extends StatelessWidget {
             final availableWidth =
                 box.maxWidth /
                 (MediaQuery.textScalerOf(context).scale(16) / 16);
-            final columns = availableWidth >= 1100
+            final columns = availableWidth >= 1500
                 ? 4
+                : availableWidth >= 1100
+                ? 3
                 : availableWidth >= 600
                 ? 2
                 : 1;
@@ -203,7 +206,7 @@ class TeacherCourseModules extends StatelessWidget {
         key: ValueKey('teacher-course-item-${module['id']}'),
         onTap: () => onOpen(module),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(22),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -213,7 +216,7 @@ class TeacherCourseModules extends StatelessWidget {
                   color: backgrounds[index % backgrounds.length],
                   borderRadius: BorderRadius.circular(15),
                 ),
-                child: Icon(Icons.layers_outlined, color: tone, size: 28),
+                child: Icon(Icons.layers_outlined, color: tone, size: 36),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -225,12 +228,12 @@ class TeacherCourseModules extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'Module ${index + 1}',
-                            style: const TextStyle(fontSize: 13),
+                            style: const TextStyle(fontSize: 15),
                           ),
                         ),
                         const Icon(
                           Icons.arrow_circle_right_outlined,
-                          size: 22,
+                          size: 28,
                           color: AfaqDesign.ink,
                         ),
                       ],
@@ -239,7 +242,7 @@ class TeacherCourseModules extends StatelessWidget {
                     Text(
                       recordText(module['title']),
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         height: 1.35,
                       ),
@@ -273,7 +276,7 @@ class TeacherCourseModules extends StatelessWidget {
                     const Text(
                       'View lessons',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: AfaqDesign.blue,
                       ),

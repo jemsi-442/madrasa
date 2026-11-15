@@ -53,6 +53,11 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('2 modules'), findsOneWidget);
+        expect(tester.widget<Text>(find.text('2 modules')).style?.fontSize, 21);
+        expect(
+          tester.widget<Text>(find.text('Video practice')).style?.fontSize,
+          20,
+        );
         expect(find.text('5 lessons'), findsOneWidget);
         expect(find.text('7 resources'), findsOneWidget);
         expect(find.text('1h 5m'), findsOneWidget);
@@ -113,7 +118,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('My Courses'), findsOneWidget);
+      expect(find.text('My Courses'), findsNothing);
       expect(
         find.text('Synthetic teacher media practice course'),
         findsOneWidget,
@@ -220,43 +225,42 @@ void main() {
     },
   );
 
-  testWidgets('course card is a separate accessible action from its heading', (
-    tester,
-  ) async {
-    final semantics = tester.ensureSemantics();
-    try {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: TeacherCoursesPage(
-                load: (path) async => path.endsWith('/modules')
-                    ? []
-                    : [
-                        {'id': 'c', 'title': 'Synthetic course'},
-                      ],
+  testWidgets(
+    'course card exposes an accessible open action without a duplicate banner',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: TeacherCoursesPage(
+                  load: (path) async => path.endsWith('/modules')
+                      ? []
+                      : [
+                          {'id': 'c', 'title': 'Synthetic course'},
+                        ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        tester.getSemantics(find.bySemanticsLabel('My Courses')),
-        containsSemantics(isHeader: true, label: 'My Courses'),
-      );
-      expect(
-        tester.getSemantics(find.bySemanticsLabel('Open course')),
-        containsSemantics(
-          isButton: true,
-          hasTapAction: true,
-          label: 'Open course',
-        ),
-      );
-    } finally {
-      semantics.dispose();
-    }
-  });
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('My Courses'), findsNothing);
+        expect(find.text('Synthetic course'), findsOneWidget);
+        expect(
+          tester.getSemantics(find.bySemanticsLabel('Open course')),
+          containsSemantics(
+            isButton: true,
+            hasTapAction: true,
+            label: 'Open course',
+          ),
+        );
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
 
   for (final width in [390.0, 1440.0]) {
     testWidgets('restored lesson reveals its heading at $width', (

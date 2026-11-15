@@ -63,7 +63,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 24),
-    padding: const EdgeInsets.all(20),
+    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 16 : 28),
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(20),
@@ -79,6 +79,10 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: AfaqDesign.ink,
+                textStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
                 side: const BorderSide(color: Color(0xFFAAB6C7)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
@@ -86,7 +90,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 ),
               ),
               onPressed: widget.onOpen,
-              icon: const Icon(Icons.menu_book_outlined),
+              icon: const Icon(Icons.menu_book_outlined, size: 28),
               label: const Text('Open course'),
             );
             final action = FutureBuilder<dynamic>(
@@ -104,12 +108,16 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AfaqDesign.actionGold,
                           foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 18,
                             vertical: 20,
                           ),
                         ),
-                        icon: const Icon(Icons.play_circle_outline),
+                        icon: const Icon(Icons.play_circle_outline, size: 28),
                         label: Text(
                           playing ? 'Return to lesson' : 'Play lesson',
                         ),
@@ -172,9 +180,9 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                           backgroundColor: Colors.black54,
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white, width: 2),
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(22),
                         ),
-                        icon: const Icon(Icons.play_arrow, size: 32),
+                        icon: const Icon(Icons.play_arrow, size: 44),
                       ),
                     ),
                   ],
@@ -186,8 +194,8 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
               children: [
                 Text(
                   recordText(widget.course['title']),
-                  style: const TextStyle(
-                    fontSize: 27,
+                  style: TextStyle(
+                    fontSize: box.maxWidth < 600 ? 28 : 34,
                     fontWeight: FontWeight.w700,
                     height: 1.25,
                   ),
@@ -216,11 +224,12 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 if (recordText(widget.course['summary'], '').isNotEmpty)
                   Text(
                     recordText(widget.course['summary']),
-                    style: const TextStyle(fontSize: 17, height: 1.6),
+                    style: const TextStyle(fontSize: 19, height: 1.6),
                   ),
                 const SizedBox(height: 18),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     border: Border.all(color: const Color(0xFFE1E6EF)),
                     borderRadius: BorderRadius.circular(12),
@@ -231,7 +240,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                       Text(
                         'Course progress',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -239,7 +248,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                       Text(
                         'Not tracked',
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 20,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF66788F),
                         ),
@@ -248,20 +257,20 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                       Text(
                         'Personal completion is not recorded for teaching assignments.',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           color: Color(0xFF66788F),
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (box.maxWidth < 1050) ...[
+                if (box.maxWidth < 1250) ...[
                   const SizedBox(height: 20),
                   action,
                 ],
               ],
             );
-            if (box.maxWidth < 800) {
+            if (box.maxWidth < 950) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [cover, const SizedBox(height: 20), details],
@@ -270,12 +279,12 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
             return Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(flex: 4, child: cover),
-                const SizedBox(width: 24),
+                Expanded(flex: 5, child: cover),
+                const SizedBox(width: 28),
                 Expanded(flex: 6, child: details),
-                if (box.maxWidth >= 1050) ...[
+                if (box.maxWidth >= 1250) ...[
                   const SizedBox(width: 24),
-                  SizedBox(width: 205, child: action),
+                  SizedBox(width: 245, child: action),
                 ],
               ],
             );
