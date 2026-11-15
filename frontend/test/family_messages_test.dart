@@ -166,6 +166,38 @@ Future<void> click(WidgetTester tester, String text) async {
 }
 
 void main() {
+  testWidgets('teacher inbox search can be cleared without losing a draft', (
+    tester,
+  ) async {
+    screen(tester, 1440);
+    final fixture = MessageFixture();
+    await tester.pumpWidget(host(fixture, teacher: true));
+    await tester.pumpAndSettle();
+    expect(find.text('2 conversations on this page'), findsOneWidget);
+    expect(find.text('1 with unread messages'), findsOneWidget);
+    expect(find.text('1 unread'), findsOneWidget);
+    final composer = find.byKey(const ValueKey('message-composer'));
+    await tester.enterText(composer, 'Please bring your workbook.');
+    final search = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.hintText == 'Search name or child...',
+    );
+    await tester.ensureVisible(search);
+    await tester.enterText(search, 'Ahmad');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    expect(fixture.loads, contains('$base/conversations?page=1&search=Ahmad'));
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(search).controller!.text, isEmpty);
+    expect(
+      tester.widget<TextField>(composer).controller!.text,
+      'Please bring your workbook.',
+    );
+    expect(fixture.writes, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [390.0, 1440.0]) {
     testWidgets(
       'teacher composer and templates fit at $width and preserve draft when choosing a parent',

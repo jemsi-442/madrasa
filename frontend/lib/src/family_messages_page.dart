@@ -564,9 +564,23 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
         PanelHeading(widget.teacherMode ? 'Recent communications' : 'Inbox'),
         TextField(
           controller: searchController,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Search name or child...',
-            prefixIcon: Icon(Icons.search),
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: searchController,
+              builder: (context, value, _) => value.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() {
+                        searchController.clear();
+                        search = '';
+                        inboxPage = 1;
+                      }),
+                    ),
+            ),
           ),
           textInputAction: TextInputAction.search,
           onSubmitted: (value) => setState(() {
@@ -586,6 +600,24 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (items.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      TeacherTag(
+                        '${items.length} conversations on this page',
+                        color: blue,
+                      ),
+                      if (items.any((item) => recordNumber(item['unread']) > 0))
+                        TeacherTag(
+                          '${items.where((item) => recordNumber(item['unread']) > 0).length} with unread messages',
+                          color: gold,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (items.isEmpty)
                   const EmptyRecords(
                     'No conversations found. Start a message with an authorised contact.',
@@ -593,65 +625,84 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
                 for (final item in items)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Material(
-                      color: selectedId == '${item['id']}'
-                          ? const Color(0xFFF8F0DE)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      child: InkWell(
+                    child: Semantics(
+                      selected: selectedId == '${item['id']}',
+                      child: Material(
+                        color: selectedId == '${item['id']}'
+                            ? const Color(0xFFF8F0DE)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
-                        onTap: sending || opening
-                            ? null
-                            : () => selectThread('${item['id']}'),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      recordText(
-                                        recordMap(item['contact'])['fullName'],
-                                      ),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: ink,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: sending || opening
+                              ? null
+                              : () => selectThread('${item['id']}'),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        recordText(
+                                          recordMap(
+                                            item['contact'],
+                                          )['fullName'],
+                                        ),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: ink,
+                                        ),
                                       ),
                                     ),
+                                    if (recordNumber(item['unread']) > 0)
+                                      TeacherTag(
+                                        '${item['unread']} unread',
+                                        color: gold,
+                                      ),
+                                    if (selectedId == '${item['id']}')
+                                      const Padding(
+                                        padding: EdgeInsets.only(left: 8),
+                                        child: Icon(
+                                          Icons.check_circle_outline,
+                                          color: gold,
+                                          size: 22,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  recordText(
+                                    recordMap(item['student'])['fullName'],
                                   ),
-                                  if (recordNumber(item['unread']) > 0)
-                                    TeacherTag(
-                                      '${item['unread']}',
-                                      color: gold,
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                recordText(
-                                  recordMap(item['student'])['fullName'],
+                                  style: TextStyle(
+                                    color: recordNumber(item['unread']) > 0
+                                        ? ink
+                                        : muted,
+                                    fontWeight: recordNumber(item['unread']) > 0
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                                style: const TextStyle(
-                                  color: muted,
-                                  fontSize: 12,
+                                const SizedBox(height: 10),
+                                Text(
+                                  recordText(
+                                    recordMap(item['latestMessage'])['body'],
+                                    'No messages yet',
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: muted,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                recordText(
-                                  recordMap(item['latestMessage'])['body'],
-                                  'No messages yet',
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: muted,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
