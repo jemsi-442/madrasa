@@ -2,8 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_courses_page.dart';
 import 'package:mif_app/src/teacher_course_modules.dart';
+import 'package:mif_app/src/teacher_course_card.dart';
 
 void main() {
+  for (final scale in [1.0, 2.0]) {
+    testWidgets('course cover reflows for text scale $scale', (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var opened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TeacherCourseCard(
+                course: const {
+                  'id': 'layout',
+                  'title': 'Synthetic accessible course',
+                },
+                load: (_) async => [],
+                onOpen: () => opened = true,
+                onModule: (_) {},
+                refreshToken: 0,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final cover = tester.getRect(
+        find.byKey(const ValueKey('teacher-course-cover-layout')),
+      );
+      final title = tester.getRect(find.text('Synthetic accessible course'));
+      if (scale == 1) {
+        expect(title.left, greaterThan(cover.right));
+      } else {
+        expect(title.top, greaterThan(cover.bottom));
+      }
+      await tester.ensureVisible(find.text('Open course'));
+      await tester.tap(find.text('Open course'));
+      expect(opened, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final width in [320.0, 1440.0]) {
     testWidgets(
       'module summary uses returned counts and opens module at $width',

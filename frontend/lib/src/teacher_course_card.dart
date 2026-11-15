@@ -74,6 +74,8 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
       children: [
         LayoutBuilder(
           builder: (context, box) {
+            final textScale = MediaQuery.textScalerOf(context).scale(18) / 18;
+            final layoutWidth = box.maxWidth / textScale.clamp(1.0, 4.0);
             final openAction = FilledButton.icon(
               key: ValueKey('teacher-course-item-${widget.course['id']}'),
               style: FilledButton.styleFrom(
@@ -130,6 +132,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
               },
             );
             final cover = ClipRRect(
+              key: ValueKey('teacher-course-cover-${widget.course['id']}'),
               borderRadius: BorderRadius.circular(14),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
@@ -195,7 +198,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 Text(
                   recordText(widget.course['title']),
                   style: TextStyle(
-                    fontSize: box.maxWidth < 600 ? 28 : 34,
+                    fontSize: layoutWidth < 600 ? 28 : 34,
                     fontWeight: FontWeight.w700,
                     height: 1.25,
                   ),
@@ -264,13 +267,10 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                     ],
                   ),
                 ),
-                if (box.maxWidth < 1250) ...[
-                  const SizedBox(height: 20),
-                  action,
-                ],
+                if (layoutWidth < 1250) ...[const SizedBox(height: 20), action],
               ],
             );
-            if (box.maxWidth < 950) {
+            if (layoutWidth < 950) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [cover, const SizedBox(height: 20), details],
@@ -282,9 +282,12 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 Expanded(flex: 5, child: cover),
                 const SizedBox(width: 28),
                 Expanded(flex: 6, child: details),
-                if (box.maxWidth >= 1250) ...[
+                if (layoutWidth >= 1250) ...[
                   const SizedBox(width: 24),
-                  SizedBox(width: 245, child: action),
+                  SizedBox(
+                    width: 245 * textScale.clamp(1.0, 4.0),
+                    child: action,
+                  ),
                 ],
               ],
             );
