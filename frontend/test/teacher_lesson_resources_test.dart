@@ -6,6 +6,67 @@ import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_lesson_resources.dart';
 
 void main() {
+  testWidgets('late assets cannot replace the newly selected lesson', (
+    tester,
+  ) async {
+    final first = Completer<dynamic>();
+    final second = Completer<dynamic>();
+    Widget page(String lesson) => MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: TeacherLessonResources(
+            lessonId: lesson,
+            apiBaseUrl: 'https://school.test',
+            load: (path) =>
+                path.contains('/first/') ? first.future : second.future,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(page('first'));
+    await tester.pumpWidget(page('second'));
+    second.complete([
+      {'id': 'new', 'title': 'Current lesson PDF', 'assetType': 'PDF'},
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('Current lesson PDF'), findsOneWidget);
+    first.complete([
+      {'id': 'old', 'title': 'Previous lesson text', 'assetType': 'TEXT'},
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('Current lesson PDF'), findsOneWidget);
+    expect(find.text('Previous lesson text'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('closing resources during loading safely ignores late assets', (
+    tester,
+  ) async {
+    final assets = Completer<dynamic>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TeacherLessonResources(
+            lessonId: 'synthetic',
+            apiBaseUrl: 'https://school.test',
+            openFirst: true,
+            load: (_) => assets.future,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: Text('Course catalogue'))),
+    );
+    assets.complete([
+      {'id': 'old', 'title': 'Delayed PDF', 'assetType': 'PDF'},
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('Course catalogue'), findsOneWidget);
+    expect(find.byType(LessonMediaViewer), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('long resource names fit a narrow screen with enlarged text', (
     tester,
   ) async {
