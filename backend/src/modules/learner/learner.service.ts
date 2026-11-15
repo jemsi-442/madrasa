@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { learnerMediaSource } from "./learner-media-source";
 import { demoMedia } from "../learning/demo-media";
+import { localLessonMedia } from "../learning/local-lesson-media";
 import { Prisma } from "@prisma/client";
 
 import { env } from "../../config/env";
@@ -519,6 +520,7 @@ const loadLearnerAssetAccess = async (authUser: AuthenticatedUser, assetId: stri
     select: {
       id: true,
       assetType: true,
+      orgId: true,
       storageProvider: true,
       title: true,
       storageKey: true,
@@ -887,6 +889,7 @@ export const getLearnerLessonDetail = async (authUser: AuthenticatedUser, lesson
         select: {
           id: true,
           assetType: true,
+          orgId: true,
           storageProvider: true,
           title: true,
           storageKey: true,
@@ -1030,7 +1033,7 @@ export const getLearnerLessonDetail = async (authUser: AuthenticatedUser, lesson
         visibility: asset.visibility,
         downloadAllowed: asset.downloadAllowed,
         streamingProfile: asset.streamingProfile,
-        sourceReady: Boolean(demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset)),
+        sourceReady: Boolean(localLessonMedia(asset) ?? demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset)),
         accessState: getAssetAccessState(
           lesson.course.visibility,
           lesson.visibility,
@@ -1101,7 +1104,7 @@ export const openLearnerAsset = async (authUser: AuthenticatedUser, assetId: str
     throw new HttpError(403, "This lesson item is not open for this learner yet");
   }
 
-  const source = demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset);
+  const source = localLessonMedia(asset) ?? demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset);
   const token = buildLearnerAssetDeliveryToken(authUser, asset.id);
   const deliveryPath = `/api/learner/assets/${asset.id.toString()}/deliver?token=${encodeURIComponent(token)}`;
   const expiresAt = new Date(Date.now() + LEARNER_ASSET_OPEN_TTL_SECONDS * 1000).toISOString();
@@ -1175,7 +1178,7 @@ export const resolveLearnerAssetDelivery = async (assetId: string, token: string
     throw new HttpError(403, "This lesson item is not open for this learner yet");
   }
 
-  const sample = demoMedia(asset, env.NODE_ENV);
+  const sample = localLessonMedia(asset) ?? demoMedia(asset, env.NODE_ENV);
   if (sample) return { filePath: sample.filePath };
   const source = learnerMediaSource(asset);
   if (!source) {

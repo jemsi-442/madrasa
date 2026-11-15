@@ -10,6 +10,7 @@ const envSchema = z.object({
   APP_BASE_URL: z.string().url().default("http://127.0.0.1:4000"),
   WEB_APP_ORIGINS: z.string().default(""),
   PUBLIC_SITE_ORG_CODE: z.string().min(1).default("demo-madrasa"),
+  LESSON_MEDIA_DIR: z.string().optional(),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),

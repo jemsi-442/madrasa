@@ -31,8 +31,10 @@ class TeacherCoursesPage extends StatefulWidget {
     this.initialLocation,
     this.onRecordLearning,
     this.classId,
+    this.submit,
   });
   final PageLoader load;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
   final String apiBaseUrl;
   final int refreshToken;
   final String? classId;
@@ -200,6 +202,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
   Widget content(List<Map<String, dynamic>> rows) {
     if (course == null) {
       return TeacherCourseCatalogue(
+        submit: widget.submit,
         courses: rows,
         load: widget.load,
         apiBaseUrl: widget.apiBaseUrl,
@@ -379,6 +382,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
           ),
           const SizedBox(height: 24),
           TeacherLessonResources(
+            submit: widget.submit,
             key: ValueKey('teacher-lesson-resources-$lessonId'),
             lessonId: lessonId!,
             load: widget.load,

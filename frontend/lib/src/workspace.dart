@@ -653,6 +653,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   Widget pageContent(AuthSession session) {
     if (session.role == 'TEACHER' && selectedIndex == 5) {
       return TeacherCoursesPage(
+        submit: widget.state.submit,
         load: widget.state.load,
         apiBaseUrl: widget.state.api.baseUrl,
         refreshToken: refreshToken,

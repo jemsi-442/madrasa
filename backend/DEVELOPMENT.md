@@ -1,5 +1,27 @@
 # MMS Backend Development Setup
 
+## Teacher Lesson Text Resources
+
+My courses -> open a lesson -> Add text resource supports a title, plain-text
+editor, preview and save. This also works from the inline course lesson player.
+Resources default to locked; the author can enable availability to course learners
+before saving. Existing course, programme and publication access rules still apply.
+Opening a resource never records achievement or lesson completion.
+
+`POST /api/courses/lessons/:lessonId/text-resources` accepts `title`, `text`
+(up to 50,000 characters), and `visibility` (`LOCKED` or `FREE`). Only a madrasa
+administrator or the course's assigned teacher can create one. Text files use
+opaque organization-bound keys and signed delivery with access rechecks.
+`LESSON_MEDIA_DIR` defaults to `~/.afaq/lesson-media`. Keep this directory private,
+persistent and backed up together with the database; all API replicas must share
+it. No public static-file mapping is needed. Failed database saves remove the
+new file. Existing lesson assets and demo samples are not replaced.
+
+This increment implements text authoring, not file upload. Video, audio, image
+and PDF file selection, streaming upload progress, scanning and remote object
+storage are not connected to this editor yet. School-admin authoring UI is also
+not added by this increment; the endpoint supports that existing role.
+
 ## Independent Learner Workspace Demo
 
 From `backend`, run `node scripts/prepare-learner-workspace-demo.mjs --confirm-local-development`.

@@ -6,6 +6,7 @@ import { HttpError } from "../../shared/errors/http-error";
 import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import { learnerMediaSource } from "../learner/learner-media-source";
 import { demoMedia } from "./demo-media";
+import { localLessonMedia } from "./local-lesson-media";
 
 const id = z.string().regex(/^[1-9][0-9]*$/).max(20);
 const tokenSchema = z.object({
@@ -41,7 +42,7 @@ async function loadAccess(user: AuthenticatedUser, assetId: string, version?: nu
 
 export async function openTeacherMedia(user: AuthenticatedUser, assetId: string) {
   const { asset, version } = await loadAccess(user, assetId);
-  const source = demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset);
+  const source = localLessonMedia(asset) ?? demoMedia(asset, env.NODE_ENV) ?? learnerMediaSource(asset);
   const token = jwt.sign({ type: "teacher-media", userId: user.userId, orgId: user.orgId,
     assetId, ver: version }, env.JWT_SECRET, { algorithm: "HS256", audience, expiresIn: 300 });
   return {
@@ -61,7 +62,7 @@ export async function deliverTeacherMedia(assetId: string, token: string) {
     throw new HttpError(401, "This media link expired or is invalid. Reload the player.");
   }
   const { asset } = await loadAccess({ userId: payload.userId, orgId: payload.orgId, role: "TEACHER" }, assetId, payload.ver);
-  const sample = demoMedia(asset, env.NODE_ENV);
+  const sample = localLessonMedia(asset) ?? demoMedia(asset, env.NODE_ENV);
   if (sample) return { filePath: sample.filePath };
   const source = learnerMediaSource(asset);
   if (!source) throw new HttpError(409, "The resource source is not connected yet");

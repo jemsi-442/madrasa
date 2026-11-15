@@ -12,9 +12,11 @@ class TeacherCourseCatalogue extends StatefulWidget {
     required this.onOpen,
     required this.onModule,
     this.apiBaseUrl = '',
+    this.submit,
   });
   final List<Map<String, dynamic>> courses;
   final PageLoader load;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
   final String apiBaseUrl;
   final int refreshToken;
   final ValueChanged<Map<String, dynamic>> onOpen;
@@ -229,6 +231,7 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
         else
           for (final c in filtered)
             TeacherCourseCard(
+              submit: widget.submit,
               key: ValueKey('teacher-course-card-${c['id']}'),
               course: c,
               load: widget.load,

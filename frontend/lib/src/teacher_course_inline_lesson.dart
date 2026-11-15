@@ -11,9 +11,11 @@ class TeacherCourseInlineLesson extends StatefulWidget {
     required this.load,
     required this.apiBaseUrl,
     required this.onClose,
+    this.submit,
   });
   final List<Map<String, dynamic>> modules;
   final PageLoader load;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
   final String apiBaseUrl;
   final VoidCallback onClose;
 
@@ -155,6 +157,7 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                   const EmptyRecords('No lessons are available in this module.')
                 else ...[
                   TeacherLessonResources(
+                    submit: widget.submit,
                     key: ValueKey('inline-resources-${lesson['id']}'),
                     lessonId: '${lesson['id']}',
                     load: widget.load,

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createLessonText } from "./lesson-text";
 import { deliverTeacherMedia, openTeacherMedia } from "./teacher-media";
 
 import { authenticate } from "../../shared/middleware/authenticate";
@@ -42,6 +43,10 @@ coursesRouter.get("/assets/:assetId/deliver", asyncHandler(async (req, res) => {
   else res.sendFile(url.filePath);
 }));
 coursesRouter.use(authenticate, requireTenantContext);
+coursesRouter.post("/lessons/:lessonId/text-resources", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
+  const data = await createLessonText(req.authUser!, String(req.params.lessonId), req.body);
+  res.status(201).json({ success: true, data });
+}));
 coursesRouter.get("/assets/:assetId/open", requireRole("TEACHER"), asyncHandler(async (req, res) => {
   const data = await openTeacherMedia(req.authUser!, String(req.params.assetId));
   res.setHeader("Cache-Control", "no-store");

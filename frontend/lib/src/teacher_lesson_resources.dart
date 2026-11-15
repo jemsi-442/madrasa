@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_components.dart';
 import 'lesson_media_viewer.dart';
+import 'lesson_text_editor.dart';
 
 class TeacherLessonResources extends StatefulWidget {
   const TeacherLessonResources({
@@ -9,10 +10,12 @@ class TeacherLessonResources extends StatefulWidget {
     required this.load,
     required this.apiBaseUrl,
     this.openFirst = false,
+    this.submit,
   });
   final String lessonId, apiBaseUrl;
   final PageLoader load;
   final bool openFirst;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
 
   @override
   State<TeacherLessonResources> createState() => _TeacherLessonResourcesState();
@@ -27,6 +30,34 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       row['assetType'] == 'EMBED' ? 'VIDEO' : recordText(row['assetType']);
   final playerAnchor = GlobalKey();
   final resourcesAnchor = GlobalKey();
+
+  Future<void> addText() async {
+    final lesson = widget.lessonId;
+    final result = await showDialog<dynamic>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          LessonTextEditor(lessonId: lesson, submit: widget.submit!),
+    );
+    if (!mounted || result == null || lesson != widget.lessonId) return;
+    setState(() {
+      selected = result['id']?.toString();
+      filter = null;
+      future = fetch();
+    });
+  }
+
+  Widget addButton() => Align(
+    alignment: Alignment.centerRight,
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: FilledButton.icon(
+        onPressed: addText,
+        icon: const Icon(Icons.add),
+        label: const Text('Add text resource'),
+      ),
+    ),
+  );
 
   void openResource(String id) {
     setState(() => selected = id);
@@ -97,13 +128,20 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
           index >= 0 &&
           resourceKind(rows[index]) == 'VIDEO';
       if (rows.isEmpty) {
-        return const EmptyRecords(
-          'No media resources have been added to this lesson.',
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.submit != null) addButton(),
+            const EmptyRecords(
+              'No media resources have been added to this lesson.',
+            ),
+          ],
         );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.submit != null) addButton(),
           SizedBox(key: playerAnchor),
           if (index >= 0) ...[
             if (inlineVideo)
