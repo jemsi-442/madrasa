@@ -123,10 +123,9 @@ class _TeacherCurriculumLibraryState extends State<TeacherCurriculumLibrary> {
                   Container(
                     width: width,
                     padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      gradient: AfaqDesign.cardGradient(stat.$4),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+                    decoration: AfaqDesign.panelDecoration(
+                      accent: stat.$4,
+                    ).copyWith(gradient: AfaqDesign.cardGradient(stat.$4)),
                     child: Row(
                       children: [
                         Container(

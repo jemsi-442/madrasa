@@ -236,9 +236,9 @@ class DashboardMetric extends StatelessWidget {
               ? 18
               : 22,
         ),
-        decoration: AfaqDesign.panelDecoration().copyWith(
+        decoration: AfaqDesign.panelDecoration(accent: accent).copyWith(
           gradient: AfaqDesign.cardGradient(accent),
-          border: Border.all(color: AfaqDesign.cardTint(accent, .45)),
+          border: Border.all(color: AfaqDesign.cardTint(accent, .23)),
         ),
         child: compact && !dense
             ? Column(

@@ -165,17 +165,9 @@ class ItMetricCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     constraints: const BoxConstraints(minHeight: 150),
     padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
+    decoration: AfaqDesign.panelDecoration(accent: accent).copyWith(
       gradient: AfaqDesign.cardGradient(accent),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AfaqDesign.cardTint(accent, .45)),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x08011F3D),
-          blurRadius: 18,
-          offset: Offset(0, 4),
-        ),
-      ],
+      border: Border.all(color: AfaqDesign.cardTint(accent, .23)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,16 +276,8 @@ class ItWorkspaceSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Theme(
     data: Theme.of(context).copyWith(
-      cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 1,
-        shadowColor: const Color(0x18011F3D),
-        surfaceTintColor: Colors.transparent,
+      cardTheme: AfaqDesign.cardTheme.copyWith(
         margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0xFFD5DEE7)),
-        ),
       ),
       dividerTheme: const DividerThemeData(color: Color(0xFFDCE4EB), space: 24),
     ),

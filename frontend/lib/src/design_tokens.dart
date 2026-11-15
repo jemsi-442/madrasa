@@ -22,7 +22,7 @@ abstract final class AfaqDesign {
   static const secondarySize = 14.0;
   static const labelSize = 15.0;
   static const displayFont = 'NotoSerifDisplay';
-  static const panelRadius = 12.0;
+  static const panelRadius = 18.0;
   static const controlRadius = 8.0;
   static const headerHeight = 76.0;
   static const desktopBreakpoint = 1000.0;
@@ -49,23 +49,45 @@ abstract final class AfaqDesign {
     end: Alignment.bottomRight,
     stops: const [0, .6, 1],
     colors: [
-      cardTint(accent, .30),
       cardTint(accent, .18),
-      cardTint(accent, .08),
+      cardTint(accent, .09),
+      cardTint(accent, .025),
     ],
   );
 
-  static BoxDecoration panelDecoration({Color color = surface}) =>
-      BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(panelRadius),
-        border: Border.all(color: border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0612263F),
-            blurRadius: 18,
-            offset: Offset(0, 5),
-          ),
-        ],
-      );
+  // Static, low-opacity shadows avoid animated glow on data-heavy pages.
+  static List<BoxShadow> cardShadows(Color accent) => [
+    BoxShadow(
+      color: accent.withValues(alpha: .09),
+      blurRadius: 24,
+      spreadRadius: -3,
+      offset: const Offset(0, 5),
+    ),
+    const BoxShadow(
+      color: Color(0x05011F3D),
+      blurRadius: 6,
+      offset: Offset(0, 2),
+    ),
+  ];
+
+  static CardThemeData get cardTheme => CardThemeData(
+    color: surface,
+    elevation: 2,
+    shadowColor: blue.withValues(alpha: .16),
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(panelRadius),
+      side: BorderSide(color: cardTint(blue, .13)),
+    ),
+  );
+
+  static BoxDecoration panelDecoration({
+    Color color = surface,
+    Color accent = blue,
+  }) => BoxDecoration(
+    color: color,
+    borderRadius: BorderRadius.circular(panelRadius),
+    border: Border.all(color: cardTint(accent, .13)),
+    boxShadow: cardShadows(accent),
+  );
 }

@@ -15,6 +15,17 @@ import 'package:mif_app/src/shared_feedback.dart';
 import 'package:mif_app/src/public_shell.dart';
 
 void main() {
+  test('shared cards use soft borders and accent-tinted static shadows', () {
+    final panel = AfaqDesign.panelDecoration(accent: AfaqDesign.green);
+    expect(panel.borderRadius, BorderRadius.circular(AfaqDesign.panelRadius));
+    expect(panel.boxShadow, AfaqDesign.cardShadows(AfaqDesign.green));
+    expect(panel.boxShadow!.first.color.a, closeTo(.09, .005));
+    expect(panel.boxShadow!.first.blurRadius, 24);
+    expect(AfaqDesign.panelDecoration(color: Colors.amber).color, Colors.amber);
+    expect(buildAfaqTheme().cardTheme, AfaqDesign.cardTheme);
+    expect(afaqControlTheme(ThemeData()).cardTheme, AfaqDesign.cardTheme);
+  });
+
   test('shared themes provide larger icons and button icons', () {
     final theme = buildAfaqTheme();
     expect(theme.iconTheme.size, AfaqDesign.iconSize);
@@ -409,7 +420,29 @@ void main() {
     final panels = tester
         .widgetList<DecoratedBox>(find.byType(DecoratedBox))
         .where((widget) => widget.decoration == AfaqDesign.panelDecoration());
-    expect(panels.length, greaterThanOrEqualTo(6));
+    expect(panels.length, 4);
+    final metrics = find.byType(DashboardMetric);
+    expect(metrics, findsWidgets);
+    for (final element in metrics.evaluate()) {
+      final decoration =
+          tester
+                  .widget<Container>(
+                    find
+                        .descendant(
+                          of: find.byWidget(element.widget),
+                          matching: find.byType(Container),
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration;
+      expect(decoration.gradient, isNotNull);
+      expect(decoration.boxShadow, hasLength(2));
+      expect(
+        decoration.borderRadius,
+        BorderRadius.circular(AfaqDesign.panelRadius),
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 }

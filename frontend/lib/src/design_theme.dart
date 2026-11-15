@@ -61,14 +61,7 @@ ThemeData buildAfaqTheme() => afaqControlTheme(
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
     ),
-    cardTheme: CardThemeData(
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AfaqDesign.panelRadius),
-        side: const BorderSide(color: line),
-      ),
-    ),
+    cardTheme: AfaqDesign.cardTheme,
   ),
 );
 
@@ -81,6 +74,7 @@ ThemeData afaqControlTheme(ThemeData base) {
     borderSide: const BorderSide(color: line),
   );
   return base.copyWith(
+    cardTheme: AfaqDesign.cardTheme,
     iconTheme: base.iconTheme.copyWith(size: AfaqDesign.iconSize),
     primaryIconTheme: base.primaryIconTheme.copyWith(size: AfaqDesign.iconSize),
     iconButtonTheme: IconButtonThemeData(
