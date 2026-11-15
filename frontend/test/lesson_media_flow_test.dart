@@ -575,7 +575,10 @@ void main() {
         final focused = t.getSize(
           find.byKey(const ValueKey('lesson-media-stage')),
         );
-        expect(focused.height, greaterThan(normal.height));
+        // PDF already uses the tall reading area before focus mode. Focusing
+        // removes surrounding content without resizing or remounting the reader.
+        expect(normal.height, closeTo(900 * .82, .01));
+        expect(focused.height, normal.height);
         if (width == 1440) expect(focused.width, normal.width);
         expect(f.events, ['mount PDF']);
         expect(f.paths.where((p) => p.endsWith('/30/open')).length, 1);
