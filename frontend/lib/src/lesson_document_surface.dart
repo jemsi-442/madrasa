@@ -42,6 +42,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   OverlayEntry? fullscreenOverlay;
   LocalHistoryEntry? fullscreenHistory;
   ModalRoute<dynamic>? fullscreenRoute;
+  final fullscreenFocus = FocusScopeNode(debugLabel: 'Lesson PDF fullscreen');
 
   void openFullScreen() {
     if (!mounted || expanded || widget.fullScreen) return;
@@ -63,6 +64,9 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
     final child = InheritedTheme.captureAll(context, buildFullScreen());
     fullscreenOverlay = OverlayEntry(builder: (_) => child);
     Overlay.of(context, rootOverlay: true).insert(fullscreenOverlay!);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && expanded) fullscreenFocus.requestFocus();
+    });
   }
 
   void removeFullScreenOverlay() {
@@ -162,6 +166,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
       });
     }
     client.close();
+    fullscreenFocus.dispose();
     zoom.dispose();
     if (widget.delivery.kind == 'IMAGE' && widget.delivery.assetPath == null) {
       unawaited(NetworkImage(widget.delivery.uri.toString()).evict());
@@ -183,7 +188,8 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
               bindings: {
                 const SingleActivator(LogicalKeyboardKey.escape): minimize,
               },
-              child: Focus(
+              child: FocusScope(
+                node: fullscreenFocus,
                 autofocus: true,
                 child: LessonDocumentSurface(
                   delivery: widget.delivery,

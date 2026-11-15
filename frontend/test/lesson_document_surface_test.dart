@@ -1,10 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_document_surface.dart';
 import 'package:mif_app/src/lesson_media_delivery.dart';
 import 'package:mif_app/src/pdf_reading_frame.dart';
 
 void main() {
+  for (final size in [const Size(390, 844), const Size(844, 390)]) {
+    testWidgets('PDF fullscreen and Escape preserve the lesson at $size', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = size;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                const Text('Synthetic lesson'),
+                Expanded(
+                  child: LessonDocumentSurface(
+                    delivery: LessonMediaDelivery(
+                      uri: Uri.parse('asset:guide'),
+                      kind: 'PDF',
+                      title: 'Synthetic PDF',
+                      expiresAt: null,
+                      downloadAllowed: false,
+                      assetPath: 'assets/media-preview/guide.pdf',
+                    ),
+                    onReady: () {},
+                    onError: () {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(tester.getSize(find.byType(PdfReadingFrame)), size);
+      final fullscreen = tester
+          .widgetList<LessonDocumentSurface>(find.byType(LessonDocumentSurface))
+          .singleWhere((surface) => surface.fullScreen);
+      fullscreen.onPageChanged!(2);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byTooltip('Minimize PDF'), findsNothing);
+      expect(find.text('Synthetic lesson'), findsOneWidget);
+      expect(find.text('Full-screen PDF'), findsOneWidget);
+      await tester.tap(find.text('Full-screen PDF'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(
+        tester
+            .widgetList<LessonDocumentSurface>(
+              find.byType(LessonDocumentSurface),
+            )
+            .singleWhere((surface) => surface.fullScreen)
+            .initialPage,
+        2,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('PDF opens fullscreen once and can minimize and expand again', (
     tester,
   ) async {
