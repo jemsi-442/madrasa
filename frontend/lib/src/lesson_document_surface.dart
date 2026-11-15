@@ -44,6 +44,13 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   ModalRoute<dynamic>? fullscreenRoute;
   final fullscreenFocus = FocusScopeNode(debugLabel: 'Lesson PDF fullscreen');
   double textOffset = 0;
+  double textSize = 18;
+
+  void resizeText(double size) {
+    setState(() => textSize = size.clamp(14, 28));
+    fullscreenOverlay?.markNeedsBuild();
+  }
+
   late final ScrollController textScroll =
       ScrollController(
         onAttach: (position) {
@@ -255,6 +262,25 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
       children: [
         const Icon(Icons.menu_book_outlined, size: 20),
         const Text('Reading view'),
+        PdfControlGroup(
+          children: [
+            IconButton(
+              tooltip: 'Smaller text',
+              onPressed: textSize > 14 ? () => resizeText(textSize - 2) : null,
+              icon: const Icon(Icons.text_decrease),
+            ),
+            Text('${textSize.toInt()} px'),
+            IconButton(
+              tooltip: 'Larger text',
+              onPressed: textSize < 28 ? () => resizeText(textSize + 2) : null,
+              icon: const Icon(Icons.text_increase),
+            ),
+            TextButton(
+              onPressed: textSize != 18 ? () => resizeText(18) : null,
+              child: const Text('Reset size'),
+            ),
+          ],
+        ),
         if (!fullScreen) ...[
           OutlinedButton.icon(
             onPressed: openFullScreen,
@@ -285,8 +311,8 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
                 ),
                 child: SelectableText(
                   text!,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: textSize,
                     height: 1.7,
                     color: Color(0xFF193E53),
                   ),

@@ -205,6 +205,15 @@ void main() {
     expect(find.byTooltip('Minimize text'), findsOneWidget);
     expect(find.text('TEXT DOCUMENT'), findsOneWidget);
     expect(find.text('PDF DOCUMENT'), findsNothing);
+    await tester.tap(find.byTooltip('Larger text'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SelectableText>(find.byType(SelectableText))
+          .style!
+          .fontSize,
+      20,
+    );
     final scroll = tester
         .widget<SingleChildScrollView>(
           find.ancestor(
@@ -220,6 +229,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byTooltip('Minimize text'), findsNothing);
     expect(find.text('Full-screen text'), findsOneWidget);
+    expect(find.text('20 px'), findsOneWidget);
     expect(scroll.offset, closeTo(offset, 1));
     await tester.tap(find.text('Full-screen text'));
     await tester.pumpAndSettle();
@@ -227,5 +237,36 @@ void main() {
     expect(scroll.offset, closeTo(offset, 1));
     expect(ready, 1);
     expect(errors, 0);
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.byTooltip('Larger text'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('28 px'), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.text_increase),
+          )
+          .onPressed,
+      isNull,
+    );
+    for (var i = 0; i < 7; i++) {
+      await tester.tap(find.byTooltip('Smaller text'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('14 px'), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.text_decrease),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.text('Reset size'));
+    await tester.pumpAndSettle();
+    expect(find.text('18 px'), findsOneWidget);
+    expect(ready, 1);
+    expect(tester.takeException(), isNull);
   });
 }
