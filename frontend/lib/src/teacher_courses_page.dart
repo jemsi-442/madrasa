@@ -253,9 +253,19 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F6FA),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFDDE5ED)),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF08283F), Color(0xFF214E61)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1808283F),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,12 +276,12 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF102E43),
+                        color: const Color(0xFFE8BC59),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.menu_book_outlined,
-                        color: Color(0xFFE8BC59),
+                        color: Color(0xFF102E43),
                         size: 28,
                       ),
                     ),
@@ -283,7 +293,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                           Text(
                             'Lesson ${index + 1} of ${rows.length}',
                             style: const TextStyle(
-                              color: muted,
+                              color: Color(0xFFE8BC59),
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -294,10 +304,10 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                             child: Text(
                               recordText(lesson['title']),
                               style: const TextStyle(
-                                fontSize: 26,
+                                fontSize: 30,
                                 height: 1.25,
                                 fontWeight: FontWeight.w700,
-                                color: AfaqDesign.ink,
+                                color: Colors.white,
                               ),
                             ),
                           ),
@@ -324,7 +334,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                               fontSize: 11,
                               letterSpacing: 1,
                               fontWeight: FontWeight.w700,
-                              color: muted,
+                              color: Color(0xFFACC6D5),
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -332,7 +342,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                             item.$2,
                             style: const TextStyle(
                               fontSize: 15,
-                              color: AfaqDesign.ink,
+                              color: Colors.white,
                               height: 1.4,
                             ),
                           ),
@@ -342,15 +352,22 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1),
+                  child: Divider(height: 1, color: Color(0x335FC0D0)),
                 ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.groups_outlined, size: 20, color: muted),
-                    const SizedBox(width: 10),
-                    Expanded(child: classContext()),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F6F9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.groups_outlined, size: 20, color: muted),
+                      const SizedBox(width: 10),
+                      Expanded(child: classContext()),
+                    ],
+                  ),
                 ),
               ],
             ),

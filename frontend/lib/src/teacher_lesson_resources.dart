@@ -192,14 +192,21 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
           LayoutBuilder(
             builder: (context, constraints) {
               final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
+              final visibleCount = rows
+                  .where(
+                    (row) =>
+                        activeFilter == null ||
+                        resourceKind(row) == activeFilter,
+                  )
+                  .length;
               final columns = (constraints.maxWidth / (360 * textScale))
                   .floor()
-                  .clamp(1, 3);
+                  .clamp(1, visibleCount.clamp(1, 3));
               final width =
                   (constraints.maxWidth - 16 * (columns - 1)) / columns;
               return Wrap(
                 spacing: 16,
-                runSpacing: 6,
+                runSpacing: 16,
                 children: [
                   for (final row in rows)
                     if (activeFilter == null ||
@@ -232,9 +239,9 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: color.withValues(alpha: active ? .10 : .035),
+        color: color.withValues(alpha: active ? .14 : .065),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           side: BorderSide(
             color: active ? color : color.withValues(alpha: .18),
             width: active ? 2 : 1,
@@ -243,13 +250,13 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
         clipBehavior: Clip.antiAlias,
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 10,
+            horizontal: 20,
+            vertical: 18,
           ),
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: .10),
+              color: color.withValues(alpha: .14),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(lessonResourceIcon(kind), color: color, size: 28),

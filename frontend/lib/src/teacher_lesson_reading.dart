@@ -16,26 +16,37 @@ class TeacherLessonReading extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 18 : 24),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFFCF5),
+      gradient: const LinearGradient(
+        colors: [Color(0xFFFFF8E9), Color(0xFFFFFDF8)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       borderRadius: BorderRadius.circular(18),
       border: Border.all(color: const Color(0xFFECE2CD)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
-            Icon(
-              Icons.article_outlined,
-              color: AfaqDesign.actionGold,
-              size: 28,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6E7BC),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.article_outlined,
+                color: AfaqDesign.actionGold,
+                size: 28,
+              ),
             ),
-            SizedBox(width: 12),
-            Expanded(
+            const SizedBox(width: 14),
+            const Expanded(
               child: Text(
                 'Lesson notes',
                 style: TextStyle(
-                  fontSize: 19,
+                  fontSize: 21,
                   fontWeight: FontWeight.w700,
                   color: AfaqDesign.ink,
                 ),

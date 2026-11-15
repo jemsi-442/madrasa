@@ -6,6 +6,35 @@ import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_lesson_resources.dart';
 
 void main() {
+  testWidgets('two document cards share the full desktop row', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TeacherLessonResources(
+              lessonId: 'synthetic',
+              apiBaseUrl: 'https://school.test',
+              load: (_) async => [
+                {'id': 'p', 'title': 'Practice PDF', 'assetType': 'PDF'},
+                {'id': 't', 'title': 'Practice text', 'assetType': 'TEXT'},
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final pdf = find.byKey(const ValueKey('resource-card-p'));
+    final text = find.byKey(const ValueKey('resource-card-t'));
+    expect(tester.getSize(pdf).width, 712);
+    expect(tester.getTopLeft(pdf).dy, tester.getTopLeft(text).dy);
+    expect(tester.getBottomRight(text).dx, 1440);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'delayed inline media is revealed once without stealing later scroll',
     (tester) async {
