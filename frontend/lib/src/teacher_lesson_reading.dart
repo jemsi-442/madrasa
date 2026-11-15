@@ -14,11 +14,11 @@ class TeacherLessonReading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 18 : 28),
+    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 18 : 24),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: const Color(0xFFFFFCF5),
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: const Color(0xFFDDE5ED)),
+      border: Border.all(color: const Color(0xFFECE2CD)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,12 +34,16 @@ class TeacherLessonReading extends StatelessWidget {
             Expanded(
               child: Text(
                 'Lesson notes',
-                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: AfaqDesign.ink,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         Align(
           alignment: Alignment.centerLeft,
           child: ConstrainedBox(

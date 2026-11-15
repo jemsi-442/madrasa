@@ -227,38 +227,133 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(key: lessonAnchor),
-        Semantics(
-          container: true,
-          header: true,
-          child: PanelHeading(
-            recordText(
-              lesson?['title'] ?? module?['title'] ?? course?['title'],
-              'My assigned courses',
+        if (lesson == null)
+          Semantics(
+            container: true,
+            header: true,
+            child: PanelHeading(
+              recordText(
+                lesson?['title'] ?? module?['title'] ?? course?['title'],
+                'My assigned courses',
+              ),
+              subtitle: lessonId != null
+                  ? 'Lesson content'
+                  : module != null
+                  ? 'Choose a lesson in this module.'
+                  : course != null
+                  ? 'Choose a module to see its lessons.'
+                  : 'Open a course to continue with its modules and lessons.',
             ),
-            subtitle: lessonId != null
-                ? 'Lesson content'
-                : module != null
-                ? 'Choose a lesson in this module.'
-                : course != null
-                ? 'Choose a module to see its lessons.'
-                : 'Open a course to continue with its modules and lessons.',
           ),
-        ),
         if (lessonId != null && lesson == null)
           const EmptyRecords(
             'This lesson is no longer available in this module. Return to Module lessons to choose another.',
           )
         else if (lesson != null) ...[
-          Text(
-            '${recordText(course?['title'])} / ${recordText(module?['title'])}',
-            style: const TextStyle(color: muted),
-          ),
-          const SizedBox(height: 12),
-          classContext(),
-          const SizedBox(height: 12),
-          Text(
-            'Lesson ${index + 1} of ${rows.length}',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F6FA),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFDDE5ED)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF102E43),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.menu_book_outlined,
+                        color: Color(0xFFE8BC59),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Lesson ${index + 1} of ${rows.length}',
+                            style: const TextStyle(
+                              color: muted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              recordText(lesson['title']),
+                              style: const TextStyle(
+                                fontSize: 26,
+                                height: 1.25,
+                                fontWeight: FontWeight.w700,
+                                color: AfaqDesign.ink,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 28,
+                  runSpacing: 12,
+                  children: [
+                    for (final item in [
+                      ('COURSE', recordText(course?['title'])),
+                      ('MODULE', recordText(module?['title'])),
+                    ])
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.$1,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              letterSpacing: 1,
+                              fontWeight: FontWeight.w700,
+                              color: muted,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item.$2,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: AfaqDesign.ink,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(height: 1),
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.groups_outlined, size: 20, color: muted),
+                    const SizedBox(width: 10),
+                    Expanded(child: classContext()),
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           TeacherLessonReading(
@@ -444,10 +539,14 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                 label: const Text('All my courses'),
               ),
               if (module != null)
+                const Icon(Icons.chevron_right, size: 18, color: muted),
+              if (module != null)
                 TextButton(
                   onPressed: backToModules,
                   child: const Text('Course modules'),
                 ),
+              if (lessonId != null)
+                const Icon(Icons.chevron_right, size: 18, color: muted),
               if (lessonId != null)
                 TextButton(
                   onPressed: () => setState(() => lessonId = null),
@@ -455,6 +554,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                 ),
             ],
           ),
+        if (course != null) const SizedBox(height: 16),
         // Re-check the current module on refresh; never retain old lesson text
         // when the request fails or the lesson has been removed.
         PageResult(

@@ -662,6 +662,11 @@ void main() {
       await tester.tap(find.text('Read lesson'));
       await tester.pumpAndSettle();
       expect(find.text('Synthetic lesson content.'), findsOneWidget);
+      expect(find.text('COURSE'), findsOneWidget);
+      expect(find.text('MODULE'), findsOneWidget);
+      expect(find.text('Lesson 1 of 1'), findsOneWidget);
+      expect(find.text('Lesson content'), findsNothing);
+      await tester.ensureVisible(find.text('Module lessons'));
       await tester.tap(find.text('Module lessons'));
       await tester.pumpAndSettle();
       expect(find.text('Read lesson'), findsOneWidget);
