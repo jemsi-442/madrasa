@@ -12,11 +12,14 @@ class LearnerProgressPage extends StatefulWidget {
     required this.apiBaseUrl,
     required this.onBrowse,
     this.refreshToken = 0,
+    this.onQuran,
+    this.onAssessments,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final String apiBaseUrl;
   final VoidCallback onBrowse;
+  final VoidCallback? onQuran, onAssessments;
   final int refreshToken;
 
   @override
@@ -84,6 +87,25 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              if (widget.onQuran != null)
+                OutlinedButton.icon(
+                  onPressed: widget.onQuran,
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text("Qur'an learning"),
+                ),
+              if (widget.onAssessments != null)
+                OutlinedButton.icon(
+                  onPressed: widget.onAssessments,
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: const Text('Teacher assessments'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, box) => Wrap(
               spacing: 16,

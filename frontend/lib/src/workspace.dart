@@ -745,6 +745,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
     if (session.role == 'LEARNER' && section.path == '/api/learner/progress') {
       return LearnerProgressPage(
+        onQuran: () => selectSection(7),
+        onAssessments: () => selectSection(8),
         load: widget.state.load,
         submit: widget.state.submit,
         apiBaseUrl: widget.state.api.baseUrl,

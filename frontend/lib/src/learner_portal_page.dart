@@ -8,6 +8,7 @@ import 'parent_reports.dart';
 import 'parent_portal_page.dart' show FamilyAttendanceCalendar, attendanceColor;
 import 'report_preview.dart';
 import 'teacher_ui.dart';
+import 'quran_reader.dart';
 
 /// Self-only school records. Existing course/progress/billing routes stay intact.
 class LearnerPortalPage extends StatefulWidget {
@@ -768,7 +769,41 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
     }),
   ]);
 
-  Widget quran() => data('$base/quran?page=$sessionPage', (result) {
+  Widget quran() => stack([
+    panel(
+      "Qur'an learning",
+      Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          FilledButton.icon(
+            onPressed: () => showQuranReader(
+              context,
+              widget.load,
+              contentPath: '$base/quran/content',
+            ),
+            icon: const Icon(Icons.menu_book_outlined),
+            label: const Text("Read Qur'an"),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => widget.onOpen(2),
+            icon: const Icon(Icons.insights_outlined),
+            label: const Text('Other lesson progress'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => widget.onOpen(8),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('Teacher assessments'),
+          ),
+        ],
+      ),
+      subtitle:
+          'Read and practise here. Memorisation below reflects teacher-recorded observations, not reading activity.',
+    ),
+    quranProgress(),
+  ]);
+
+  Widget quranProgress() => data('$base/quran?page=$sessionPage', (result) {
     final chapters = recordList(result['chapters']),
         latest = recordMap(result['latestSession']);
     final meta = recordMap(result['meta']);

@@ -173,6 +173,22 @@ void screen(WidgetTester tester, double width) {
 }
 
 void main() {
+  testWidgets(
+    'Quran learning links to lesson progress and teacher assessments',
+    (tester) async {
+      screen(tester, 1440);
+      final destinations = <int>[];
+      await tester.pumpWidget(
+        host(LearnerPortalPage(page: 7, load: load, onOpen: destinations.add)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text("Read Qur'an"), findsOneWidget);
+      await tester.tap(find.text('Other lesson progress'));
+      await tester.tap(find.text('Teacher assessments'));
+      expect(destinations, [2, 8]);
+      expect(tester.takeException(), isNull);
+    },
+  );
   test('keeps existing learner routes and adds self-only school records', () {
     final sections = sectionsForRole('LEARNER');
     expect(sections.take(5).map((s) => s.path), [

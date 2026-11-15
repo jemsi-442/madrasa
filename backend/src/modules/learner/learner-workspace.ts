@@ -13,6 +13,13 @@ import { readPublishedReports, readPublishedReport, type LearningReport } from "
 import { reportPdf } from "../student-reports/report-pdf";
 import { loadLearnerStudent, listLearnerAnnouncements } from "./learner.service";
 import { attendanceSummary, readQuran } from "./learner-records";
+import { env } from "../../config/env";
+import { QuranContentClient } from "../teacher-workspace/quran-content";
+
+const quranContent = new QuranContentClient({
+  enabled: env.QF_ENABLED, environment: env.QF_ENV,
+  clientId: env.QF_CLIENT_ID, clientSecret: env.QF_CLIENT_SECRET,
+});
 
 const emptyQuery = z.object({}).strict();
 const monthQuery = z.object({ month: z.string().regex(/^(20\d{2}|2100)-(0[1-9]|1[0-2])$/).optional() }).strict();
@@ -88,6 +95,15 @@ learnerWorkspaceRouter.get("/attendance", handle(async req => {
 learnerWorkspaceRouter.get("/quran", handle(async req => {
   const query = pageQuery.parse(req.query), student = await self(req.authUser!);
   return readQuran(BigInt(req.authUser!.orgId), student.id, query.page);
+}));
+learnerWorkspaceRouter.get("/quran/content/chapters", handle(async req => {
+  emptyQuery.parse(req.query);
+  await self(req.authUser!);
+  return quranContent.chapters();
+}));
+learnerWorkspaceRouter.get("/quran/content/chapters/:chapter/verses", handle(async req => {
+  await self(req.authUser!);
+  return quranContent.verses(req.params.chapter, req.query);
 }));
 learnerWorkspaceRouter.get("/academic", handle(async req => {
   const query = academicQuery.parse(req.query), student = await self(req.authUser!);

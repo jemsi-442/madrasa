@@ -10,6 +10,7 @@ Future<void> showQuranReader(
   int? initialChapterId,
   int? ayahFrom,
   int? ayahTo,
+  String contentPath = '/api/teacher-workspace/quran/content',
 }) => showDialog<void>(
   context: context,
   builder: (context) => WorkspaceFormDialog(
@@ -23,6 +24,7 @@ Future<void> showQuranReader(
         initialChapterId: initialChapterId,
         ayahFrom: ayahFrom,
         ayahTo: ayahTo,
+        contentPath: contentPath,
       ),
     ),
     actions: [
@@ -42,8 +44,10 @@ class QuranReader extends StatefulWidget {
     this.initialChapterId,
     this.ayahFrom,
     this.ayahTo,
+    this.contentPath = '/api/teacher-workspace/quran/content',
   });
   final PageLoader load;
+  final String contentPath;
   final int? initialChapterId, ayahFrom, ayahTo;
 
   @override
@@ -117,9 +121,7 @@ class _QuranReaderState extends State<QuranReader> {
       verses = [];
     });
     try {
-      final data =
-          await widget.load('/api/teacher-workspace/quran/content/chapters')
-              as Map;
+      final data = await widget.load('${widget.contentPath}/chapters') as Map;
       final rows = (data['chapters'] as List).cast<Map>();
       final isLimited = data['limitedContent'] == true;
       final available = rows
@@ -174,7 +176,7 @@ class _QuranReaderState extends State<QuranReader> {
     try {
       final data =
           await widget.load(
-                '/api/teacher-workspace/quran/content/chapters/$chapterId/verses?page=$targetPage&per_page=10',
+                '${widget.contentPath}/chapters/$chapterId/verses?page=$targetPage&per_page=10',
               )
               as Map;
       final rows = (data['verses'] as List).cast<Map>();

@@ -29,6 +29,7 @@ Future<void> openReader(
   int? initialChapterId,
   int? ayahFrom,
   int? ayahTo,
+  String contentPath = '/api/teacher-workspace/quran/content',
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -41,6 +42,7 @@ Future<void> openReader(
               initialChapterId: initialChapterId,
               ayahFrom: ayahFrom,
               ayahTo: ayahTo,
+              contentPath: contentPath,
             ),
             child: const Text('Read'),
           ),
@@ -67,6 +69,21 @@ Future<void> reveal(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets('learner reader uses learner endpoints for chapters and verses', (
+    tester,
+  ) async {
+    final paths = <String>[];
+    await openReader(tester, (path) async {
+      paths.add(path);
+      return path.endsWith('/chapters') ? chapters : verses;
+    }, contentPath: '/api/learner/workspace/quran/content');
+    expect(paths, [
+      '/api/learner/workspace/quran/content/chapters',
+      '/api/learner/workspace/quran/content/chapters/1/verses?page=1&per_page=10',
+    ]);
+    expect(find.text(ayah), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'tracker passage opens and marks its provider verse without writes',
     (tester) async {
