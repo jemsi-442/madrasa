@@ -7,6 +7,67 @@ import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/page_selection.dart';
 
 void main() {
+  testWidgets('responsive scrollable keeps its draft after PDF resize', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 1000);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final navigator = GlobalKey<NavigatorState>();
+    final contentKey = GlobalKey();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: PageSelection(
+          child: Scaffold(
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                final content = SingleChildScrollView(
+                  key: contentKey,
+                  child: const Column(
+                    children: [
+                      Text('Synthetic course'),
+                      TextField(),
+                      Text('Lesson resources'),
+                    ],
+                  ),
+                );
+                return constraints.maxWidth > 700
+                    ? Row(
+                        children: [
+                          const SizedBox(width: 200),
+                          Expanded(child: content),
+                        ],
+                      )
+                    : Column(children: [Expanded(child: content)]);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Unsaved lesson note');
+    final field = tester.state(find.byType(EditableText));
+    showDialog<void>(
+      context: contentKey.currentContext!,
+      builder: (_) => const Dialog.fullscreen(child: Text('PDF viewer')),
+    );
+    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pumpAndSettle();
+    navigator.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('Synthetic course'), findsOneWidget);
+    expect(find.text('Unsaved lesson note'), findsOneWidget);
+    expect(tester.state(find.byType(EditableText)), same(field));
+    tester.view.physicalSize = const Size(1440, 1000);
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(EditableText)), same(field));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('covered routes unregister text without losing form state', (
     tester,
   ) async {
@@ -50,12 +111,25 @@ void main() {
     updates.value++;
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpAndSettle();
+    expect(SelectionContainer.maybeOf(contentContext!), isNull);
+    expect(tester.takeException(), isNull);
     navigator.currentState!.pop();
     await tester.pumpAndSettle();
     expect(SelectionContainer.maybeOf(contentContext!), isNotNull);
     expect(tester.state(find.byType(EditableText)), same(field));
     expect(find.text('Keep this draft'), findsOneWidget);
     expect(find.text('Synthetic page 1'), findsOneWidget);
+    tester.view.physicalSize = const Size(1440, 1000);
+    await tester.pumpAndSettle();
+    expect(SelectionContainer.maybeOf(contentContext!), isNotNull);
+    expect(tester.state(find.byType(EditableText)), same(field));
+    expect(find.text('Keep this draft'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('deep link selection waits for hidden routes to be laid out', (
@@ -171,6 +245,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('header-login')));
       await tester.pumpAndSettle();
       final heading = find.text('Welcome Back');
+      expect(SelectionContainer.maybeOf(tester.element(heading)), isNotNull);
       final rect = tester.getRect(heading);
       final mouse = await tester.startGesture(
         Offset(rect.left, rect.center.dy),
@@ -178,6 +253,32 @@ void main() {
       );
       await mouse.moveTo(Offset(rect.right, rect.center.dy));
       await mouse.up();
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(copied, contains('Welcome Back'));
+      final navigator = Navigator.of(tester.element(heading));
+      showDialog<void>(
+        context: tester.element(heading),
+        builder: (_) => const Dialog.fullscreen(child: Text('PDF viewer')),
+      );
+      await tester.pumpAndSettle();
+      navigator.pop();
+      await tester.pumpAndSettle();
+      tester.view.physicalSize = const Size(1200, 900);
+      await tester.pumpAndSettle();
+      copied = null;
+      final resizedRect = tester.getRect(heading);
+      final resizedMouse = await tester.startGesture(
+        Offset(resizedRect.left, resizedRect.center.dy),
+        kind: PointerDeviceKind.mouse,
+      );
+      await resizedMouse.moveTo(
+        Offset(resizedRect.right, resizedRect.center.dy),
+      );
+      await resizedMouse.up();
       await tester.pumpAndSettle();
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
