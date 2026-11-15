@@ -4,8 +4,67 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_media_delivery.dart';
 import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_lesson_resources.dart';
+import 'package:mif_app/src/page_selection.dart';
+import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  testWidgets('saved upload appears without reload or automatic player', (
+    tester,
+  ) async {
+    var reads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PageSelection(
+            child: SingleChildScrollView(
+              child: TeacherLessonResources(
+                lessonId: 'synthetic',
+                apiBaseUrl: 'https://school.test',
+                upload: (_, _, _, _, _) async => null,
+                load: (_) async {
+                  reads++;
+                  return [
+                    {
+                      'id': 'old',
+                      'title': 'Existing guide',
+                      'assetType': 'PDF',
+                    },
+                  ];
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Upload file'));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(LessonUploadEditor));
+    Navigator.of(
+      context,
+    ).pop({'id': 'new', 'title': 'Uploaded video', 'assetType': 'VIDEO'});
+    await tester.pumpAndSettle();
+    expect(find.text('Existing guide'), findsOneWidget);
+    expect(find.text('Uploaded video'), findsOneWidget);
+    expect(find.byType(LessonMediaViewer), findsNothing);
+    expect(reads, 1);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Upload file'));
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(find.byType(LessonUploadEditor))).pop({
+      'id': 'new-pdf',
+      'title': 'Uploaded PDF',
+      'assetType': 'PDF',
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Existing guide'), findsOneWidget);
+    expect(find.text('Uploaded video'), findsOneWidget);
+    expect(find.text('Uploaded PDF'), findsOneWidget);
+    expect(find.byType(LessonMediaViewer), findsNothing);
+    expect(reads, 1);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('late assets cannot replace the newly selected lesson', (
     tester,
   ) async {

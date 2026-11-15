@@ -8,6 +8,7 @@ import type { AuthenticatedUser } from "../../shared/middleware/authenticate";
 import { lessonMediaRoot } from "./local-lesson-media";
 
 export const MAX_LESSON_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const MAX_LESSON_VIDEO_UPLOAD_BYTES = 250 * 1024 * 1024;
 const formats = {
   pdf: { kind: "PDF", mime: "application/pdf" },
   png: { kind: "ATTACHMENT", mime: "image/png" },
@@ -45,6 +46,7 @@ export async function uploadLessonResource(
   z.string().regex(/^[1-9][0-9]*$/).max(20).parse(lessonId);
   z.string().regex(/^[1-9][0-9]*$/).max(20).parse(user.orgId);
   const fields = input.parse(metadata);
+  const limit = fields.format === "mp4" ? MAX_LESSON_VIDEO_UPLOAD_BYTES : MAX_LESSON_UPLOAD_BYTES;
   const lesson = await prisma.courseLesson.findFirst({ where: {
     id: BigInt(lessonId), orgId: BigInt(user.orgId),
     course: { orgId: BigInt(user.orgId), ...(user.role === "TEACHER" ? { primaryInstructorUserId: BigInt(user.userId) } : {}) },
@@ -60,7 +62,7 @@ export async function uploadLessonResource(
   try {
     for await (const chunk of source) {
       size += chunk.length;
-      if (size > MAX_LESSON_UPLOAD_BYTES) throw new HttpError(413, "File exceeds the 50 MB upload limit");
+      if (size > limit) throw new HttpError(413, `File exceeds the ${limit / (1024 * 1024)} MB upload limit`);
       if (signature.length < 16) signature = Buffer.concat([signature, Buffer.from(chunk).subarray(0, 16 - signature.length)]);
       await file.writeFile(chunk);
     }
@@ -78,7 +80,7 @@ export async function uploadLessonResource(
       title: fields.title, assetType: format.kind, mimeType: format.mime,
       storageProvider: "LOCAL", storageKey: `afaq-file:${user.orgId}/${name}`,
       fileSizeBytes: BigInt(size), visibility: fields.visibility, downloadAllowed: false,
-    }, select: { id: true, title: true, assetType: true, visibility: true } });
+    }, select: { id: true, title: true, assetType: true, visibility: true, mimeType: true } });
     return { ...asset, id: String(asset.id) };
   } catch (error) {
     await file.close().catch(() => undefined);

@@ -202,7 +202,7 @@ class MifApiClient {
     Uint8List bytes,
   ) async {
     final abort = Completer<void>();
-    final timer = Timer(const Duration(minutes: 3), () => abort.complete());
+    final timer = Timer(const Duration(minutes: 15), () => abort.complete());
     try {
       final request =
           http.AbortableRequest('POST', uri, abortTrigger: abort.future)

@@ -10,6 +10,12 @@ import 'package:mif_app/src/lesson_upload.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  test('video has a larger bounded limit than documents', () {
+    expect(lessonUploadLimitFor('mp4'), 250 * 1024 * 1024);
+    for (final format in ['pdf', 'mp3', 'wav', 'png', 'jpg']) {
+      expect(lessonUploadLimitFor(format), 50 * 1024 * 1024);
+    }
+  });
   testWidgets('successful upload closes without asking to discard', (
     tester,
   ) async {

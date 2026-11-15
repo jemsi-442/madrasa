@@ -105,8 +105,11 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
         setState(() => error = 'Choose a PDF, JPG, PNG, MP4, MP3 or WAV file.');
         return;
       }
-      if (length == 0 || length > lessonUploadLimit) {
-        setState(() => error = 'Choose a non-empty file up to 50 MB.');
+      if (length == 0 || length > lessonUploadLimitFor(kind)) {
+        setState(
+          () => error =
+              'Choose a non-empty file up to ${lessonUploadLimitFor(kind) ~/ (1024 * 1024)} MB.',
+        );
         return;
       }
       setState(() {
@@ -139,9 +142,9 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
     });
     try {
       final bytes = await file!.readAsBytes();
-      if (bytes.isEmpty || bytes.length > lessonUploadLimit) {
-        throw const ApiException(
-          'The file must be non-empty and no larger than 50 MB.',
+      if (bytes.isEmpty || bytes.length > lessonUploadLimitFor(format)) {
+        throw ApiException(
+          'The file must be non-empty and no larger than ${lessonUploadLimitFor(format) ~/ (1024 * 1024)} MB.',
           422,
         );
       }
@@ -160,6 +163,8 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
               ? 'Please sign in again before uploading.'
               : exception is ApiException && exception.statusCode == 403
               ? 'You no longer have permission to add resources to this lesson.'
+              : exception is ApiException && exception.statusCode == 413
+              ? 'File too large. MP4 video: up to 250 MB. Other files: up to 50 MB.'
               : exception is ApiException && exception.statusCode == 422
               ? 'The file was rejected. Check its format, size and title.'
               : 'Upload could not be confirmed. Your selection is kept. Check lesson resources before retrying to avoid a duplicate.';
@@ -205,7 +210,7 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Video, audio, images or PDF. Keep each file under 50 MB.',
+                  'MP4 video up to 250 MB. Audio, images and PDF up to 50 MB.',
                 ),
                 const SizedBox(height: 24),
                 Container(

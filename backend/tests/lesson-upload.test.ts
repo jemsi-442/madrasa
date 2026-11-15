@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ env: { LESSON_MEDIA_DIR: "" }, db: {
 } }));
 vi.mock("../src/config/env", () => ({ env: mocks.env }));
 vi.mock("../src/shared/db/prisma", () => ({ prisma: mocks.db }));
-import { uploadLessonResource, MAX_LESSON_UPLOAD_BYTES } from "../src/modules/learning/lesson-upload";
+import { uploadLessonResource, MAX_LESSON_UPLOAD_BYTES, MAX_LESSON_VIDEO_UPLOAD_BYTES } from "../src/modules/learning/lesson-upload";
 import { localLessonMedia } from "../src/modules/learning/local-lesson-media";
 const teacher = { userId: "7", orgId: "2", role: "TEACHER" as const };
 const metadata = { title: "Synthetic guide", format: "pdf" };
@@ -56,6 +56,27 @@ describe("lesson file uploads", () => {
     async function* large() { const block = Buffer.alloc(1024 * 1024); for (let n = 0; n <= MAX_LESSON_UPLOAD_BYTES / block.length; n++) yield block; }
     await expect(uploadLessonResource(teacher, "9", metadata, large())).rejects.toMatchObject({ statusCode: 413 });
     expect(await readdir(join(mocks.env.LESSON_MEDIA_DIR, "2"))).toEqual([]);
+  });
+  it("accepts a streamed MP4 larger than 50 MB", async () => {
+    async function* video() {
+      yield Buffer.from("\0\0\0\u0018ftypisom0000");
+      const block = Buffer.alloc(1024 * 1024);
+      for (let n = 0; n < 51; n++) yield block;
+    }
+    await uploadLessonResource(teacher, "9", { ...metadata, format: "mp4" }, video());
+    expect(mocks.db.mediaAsset.create.mock.calls[0]![0].data).toMatchObject({
+      assetType: "VIDEO", fileSizeBytes: BigInt(51 * 1024 * 1024 + 16),
+    });
+  });
+  it("rejects videos above 250 MB and removes the partial file", async () => {
+    async function* video() {
+      const block = Buffer.alloc(1024 * 1024);
+      for (let n = 0; n <= MAX_LESSON_VIDEO_UPLOAD_BYTES / block.length; n++) yield block;
+    }
+    await expect(uploadLessonResource(teacher, "9", { ...metadata, format: "mp4" }, video()))
+      .rejects.toMatchObject({ statusCode: 413 });
+    expect(await readdir(join(mocks.env.LESSON_MEDIA_DIR, "2"))).toEqual([]);
+    expect(mocks.db.mediaAsset.create).not.toHaveBeenCalled();
   });
   it("removes the file if course access changes during upload", async () => {
     mocks.db.courseLesson.findFirst.mockResolvedValueOnce({ id: 9n, courseId: 4n }).mockResolvedValueOnce(null);

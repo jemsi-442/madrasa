@@ -188,8 +188,11 @@ class AppState extends ChangeNotifier {
     String visibility,
     Uint8List bytes,
   ) {
-    if (bytes.isEmpty || bytes.length > lessonUploadLimit) {
-      throw const ApiException('Choose a file between 1 byte and 50 MB.', 422);
+    if (bytes.isEmpty || bytes.length > lessonUploadLimitFor(format)) {
+      throw ApiException(
+        'Choose a non-empty file up to ${lessonUploadLimitFor(format) ~/ (1024 * 1024)} MB.',
+        422,
+      );
     }
     final query = Uri(
       queryParameters: {

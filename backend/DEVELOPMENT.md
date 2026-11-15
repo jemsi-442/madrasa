@@ -2581,7 +2581,8 @@ or verified Quran achievement. The API and frontend preview were left running.
 - `POST /api/courses/lessons/:lessonId/upload?title=...&format=pdf&visibility=LOCKED`
   accepts the raw file body with `Content-Type: application/octet-stream` and the
   existing bearer authentication. Encode query values. Do not send multipart or JSON.
-- Allowed formats: PDF, PNG, JPG, MP4, MP3 and WAV. Maximum: 50 MiB per file.
+- Allowed formats: PDF, PNG, JPG, MP4, MP3 and WAV. Maximum: 250 MiB for MP4;
+  50 MiB for other formats. Both the picker and API enforce these limits.
   The API checks a file signature rather than trusting a supplied filename or MIME type.
 - Only a madrasa admin or the course's assigned teacher can upload. Tenant and
   teacher assignment checks run before reading the body and again before saving metadata.
@@ -2595,7 +2596,13 @@ or verified Quran achievement. The API and frontend preview were left running.
 - The dialog retains the selection and title on failure and shows an indeterminate
   uploading state, not a fabricated percentage. It does not automatically retry
   network failures: check the resource list before retrying an uncertain response.
-  Upload requests use the existing authenticated client and expire after three minutes.
+  Upload requests use the existing authenticated client and expire after fifteen minutes.
+  The API server allows fifteen minutes to receive a request body; deployment proxies
+  must also allow the intended upload size and duration.
+- Successful uploads appear immediately in the resource list without a browser refresh.
+  They do not automatically launch a player while the upload dialog is closing.
+  Select the new resource to preview it. The browser still reads the file into memory;
+  this is not a resumable or chunked client upload.
 - The file chooser uses Flutter's cross-platform file selector. Native Android/iOS
   picker acceptance still requires device testing; no native build is claimed here.
 - Signature validation is not malware scanning or full media decoding. Production

@@ -1,6 +1,10 @@
 import 'dart:typed_data';
 
 const lessonUploadLimit = 50 * 1024 * 1024;
+const lessonVideoUploadLimit = 250 * 1024 * 1024;
+
+int lessonUploadLimitFor(String? format) =>
+    format == 'mp4' ? lessonVideoUploadLimit : lessonUploadLimit;
 
 typedef LessonUploader =
     Future<dynamic> Function(

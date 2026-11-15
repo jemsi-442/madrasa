@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'lesson_media_viewer.dart';
@@ -30,6 +31,27 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
   String? selected;
   String? filter;
   bool revealInitialResource = false;
+  List<Map<String, dynamic>> currentRows = [];
+
+  void resourceAdded(dynamic result) {
+    final resource = Map<String, dynamic>.from(result as Map);
+    setState(() {
+      // Keep the resource list mounted; opening a platform viewer during the
+      // upload dialog's exit transition can obscure the underlying workspace.
+      selected = null;
+      filter = null;
+      revealInitialResource = false;
+      currentRows = [
+        ...currentRows.where((row) => '${row['id']}' != '${resource['id']}'),
+        resource,
+      ];
+      future = SynchronousFuture<dynamic>(currentRows);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Resource saved. Select it below to open.')),
+    );
+  }
+
   String resourceKind(Map<String, dynamic> row) {
     if (row['assetType'] == 'EMBED') return 'VIDEO';
     if (row['assetType'] == 'ATTACHMENT' &&
@@ -51,11 +73,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
           LessonTextEditor(lessonId: lesson, submit: widget.submit!),
     );
     if (!mounted || result == null || lesson != widget.lessonId) return;
-    setState(() {
-      selected = result['id']?.toString();
-      filter = null;
-      future = fetch();
-    });
+    resourceAdded(result);
   }
 
   Widget addButton() => Align(
@@ -92,11 +110,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
           LessonUploadEditor(lessonId: lesson, upload: widget.upload!),
     );
     if (!mounted || result == null || lesson != widget.lessonId) return;
-    setState(() {
-      selected = result['id']?.toString();
-      filter = null;
-      future = fetch();
-    });
+    resourceAdded(result);
   }
 
   void openResource(String id) {
@@ -139,168 +153,173 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       selected = null;
       filter = null;
       revealInitialResource = false;
+      currentRows = [];
       future = fetch();
     }
   }
 
   @override
-  Widget build(BuildContext context) => PageResult(
-    future: future,
-    onRetry: () => setState(() {
-      future = fetch();
-    }),
-    builder: (data) {
-      final rows = recordList(data);
-      final counts = <String, int>{};
-      for (final row in rows) {
-        final kind = resourceKind(row);
-        counts[kind] = (counts[kind] ?? 0) + 1;
-      }
-      final activeFilter = counts.containsKey(filter) ? filter : null;
-      final index = rows.indexWhere((row) => '${row['id']}' == selected);
-      if (index >= 0 && revealInitialResource) {
-        // Wait for the loaded player layout, not the earlier loading placeholder.
-        revealInitialResource = false;
-        reveal(playerAnchor);
-      }
-      final inlineVideo =
-          widget.openFirst &&
-          index >= 0 &&
-          resourceKind(rows[index]) == 'VIDEO';
-      if (rows.isEmpty) {
+  Widget build(BuildContext context) => SelectionContainer.disabled(
+    child: PageResult(
+      future: future,
+      onRetry: () => setState(() {
+        future = fetch();
+      }),
+      builder: (data) {
+        final rows = recordList(data);
+        currentRows = rows;
+        final counts = <String, int>{};
+        for (final row in rows) {
+          final kind = resourceKind(row);
+          counts[kind] = (counts[kind] ?? 0) + 1;
+        }
+        final activeFilter = counts.containsKey(filter) ? filter : null;
+        final index = rows.indexWhere((row) => '${row['id']}' == selected);
+        if (index >= 0 && revealInitialResource) {
+          // Wait for the loaded player layout, not the earlier loading placeholder.
+          revealInitialResource = false;
+          reveal(playerAnchor);
+        }
+        final inlineVideo =
+            widget.openFirst &&
+            index >= 0 &&
+            resourceKind(rows[index]) == 'VIDEO';
+        if (rows.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.submit != null || widget.upload != null) addButton(),
+              const EmptyRecords(
+                'No media resources have been added to this lesson.',
+              ),
+            ],
+          );
+        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.submit != null || widget.upload != null) addButton(),
-            const EmptyRecords(
-              'No media resources have been added to this lesson.',
+            SizedBox(key: playerAnchor),
+            if (index >= 0) ...[
+              if (inlineVideo)
+                Row(
+                  children: [
+                    const Icon(Icons.play_circle_outline),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        recordText(rows[index]['title'], 'Video lesson'),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close video',
+                      onPressed: () => setState(() => selected = null),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: inlineVideo ? 960 : double.infinity,
+                  ),
+                  child: LessonMediaViewer(
+                    key: ValueKey('teacher-resource-$selected'),
+                    compactVideo: inlineVideo,
+                    assetId: selected!,
+                    load: widget.load,
+                    apiBaseUrl: widget.apiBaseUrl,
+                    teacherResource: true,
+                    title: recordText(rows[index]['title'], 'Lesson resource'),
+                    position: index + 1,
+                    total: rows.length,
+                    onPrevious: index > 0
+                        ? () => openResource('${rows[index - 1]['id']}')
+                        : null,
+                    onNext: index + 1 < rows.length
+                        ? () => openResource('${rows[index + 1]['id']}')
+                        : null,
+                    onClose: () {
+                      setState(() => selected = null);
+                      reveal(resourcesAnchor);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            SizedBox(key: resourcesAnchor),
+            const PanelHeading(
+              'Lesson resources',
+              subtitle:
+                  'Preview the resources for this lesson without recording learner progress.',
+            ),
+            if (counts.length > 1) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: Text('All (${rows.length})'),
+                    selected: activeFilter == null,
+                    onSelected: (_) => setState(() => filter = null),
+                  ),
+                  for (final entry in const {
+                    'VIDEO': 'Video',
+                    'AUDIO': 'Audio',
+                    'IMAGE': 'Images',
+                    'PDF': 'PDF',
+                    'TEXT': 'Text',
+                  }.entries)
+                    if (counts.containsKey(entry.key))
+                      ChoiceChip(
+                        avatar: Icon(lessonResourceIcon(entry.key), size: 20),
+                        label: Text('${entry.value} (${counts[entry.key]})'),
+                        selected: activeFilter == entry.key,
+                        onSelected: (_) => setState(() => filter = entry.key),
+                      ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final textScale =
+                    MediaQuery.textScalerOf(context).scale(16) / 16;
+                final visibleCount = rows
+                    .where(
+                      (row) =>
+                          activeFilter == null ||
+                          resourceKind(row) == activeFilter,
+                    )
+                    .length;
+                final columns = (constraints.maxWidth / (360 * textScale))
+                    .floor()
+                    .clamp(1, visibleCount.clamp(1, 3));
+                final width =
+                    (constraints.maxWidth - 16 * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: [
+                    for (final row in rows)
+                      if (activeFilter == null ||
+                          resourceKind(row) == activeFilter)
+                        SizedBox(
+                          key: ValueKey('resource-card-${row['id']}'),
+                          width: width,
+                          child: resourceCard(row),
+                        ),
+                  ],
+                );
+              },
             ),
           ],
         );
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (widget.submit != null || widget.upload != null) addButton(),
-          SizedBox(key: playerAnchor),
-          if (index >= 0) ...[
-            if (inlineVideo)
-              Row(
-                children: [
-                  const Icon(Icons.play_circle_outline),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      recordText(rows[index]['title'], 'Video lesson'),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close video',
-                    onPressed: () => setState(() => selected = null),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: inlineVideo ? 960 : double.infinity,
-                ),
-                child: LessonMediaViewer(
-                  key: ValueKey('teacher-resource-$selected'),
-                  compactVideo: inlineVideo,
-                  assetId: selected!,
-                  load: widget.load,
-                  apiBaseUrl: widget.apiBaseUrl,
-                  teacherResource: true,
-                  title: recordText(rows[index]['title'], 'Lesson resource'),
-                  position: index + 1,
-                  total: rows.length,
-                  onPrevious: index > 0
-                      ? () => openResource('${rows[index - 1]['id']}')
-                      : null,
-                  onNext: index + 1 < rows.length
-                      ? () => openResource('${rows[index + 1]['id']}')
-                      : null,
-                  onClose: () {
-                    setState(() => selected = null);
-                    reveal(resourcesAnchor);
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-          SizedBox(key: resourcesAnchor),
-          const PanelHeading(
-            'Lesson resources',
-            subtitle:
-                'Preview the resources for this lesson without recording learner progress.',
-          ),
-          if (counts.length > 1) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: Text('All (${rows.length})'),
-                  selected: activeFilter == null,
-                  onSelected: (_) => setState(() => filter = null),
-                ),
-                for (final entry in const {
-                  'VIDEO': 'Video',
-                  'AUDIO': 'Audio',
-                  'IMAGE': 'Images',
-                  'PDF': 'PDF',
-                  'TEXT': 'Text',
-                }.entries)
-                  if (counts.containsKey(entry.key))
-                    ChoiceChip(
-                      avatar: Icon(lessonResourceIcon(entry.key), size: 20),
-                      label: Text('${entry.value} (${counts[entry.key]})'),
-                      selected: activeFilter == entry.key,
-                      onSelected: (_) => setState(() => filter = entry.key),
-                    ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-              final visibleCount = rows
-                  .where(
-                    (row) =>
-                        activeFilter == null ||
-                        resourceKind(row) == activeFilter,
-                  )
-                  .length;
-              final columns = (constraints.maxWidth / (360 * textScale))
-                  .floor()
-                  .clamp(1, visibleCount.clamp(1, 3));
-              final width =
-                  (constraints.maxWidth - 16 * (columns - 1)) / columns;
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  for (final row in rows)
-                    if (activeFilter == null ||
-                        resourceKind(row) == activeFilter)
-                      SizedBox(
-                        key: ValueKey('resource-card-${row['id']}'),
-                        width: width,
-                        child: resourceCard(row),
-                      ),
-                ],
-              );
-            },
-          ),
-        ],
-      );
-    },
+      },
+    ),
   );
 
   Widget resourceCard(Map<String, dynamic> row) {

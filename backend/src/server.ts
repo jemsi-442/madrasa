@@ -6,11 +6,14 @@ import { startManualDonorSmsWorker } from './jobs/manual-donor-sms';
 
 const app = createApp();
 
-app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, () => {
   startDonationSmsWorker(prisma);
   startManualDonorSmsWorker(prisma);
   console.log(
     `[${env.APP_NAME}] listening on http://localhost:${env.PORT} in ${env.NODE_ENV} mode`,
   );
 });
+
+// Allow bounded time for large lesson videos on slower connections.
+server.requestTimeout = 15 * 60 * 1000;
 
