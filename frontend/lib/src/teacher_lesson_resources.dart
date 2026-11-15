@@ -22,6 +22,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
   late Future<dynamic> future = fetch();
   String? selected;
   String? filter;
+  bool revealInitialResource = false;
   String resourceKind(Map<String, dynamic> row) =>
       row['assetType'] == 'EMBED' ? 'VIDEO' : recordText(row['assetType']);
   final playerAnchor = GlobalKey();
@@ -54,6 +55,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       final videos = rows.where((row) => resourceKind(row) == 'VIDEO');
       if (rows.isNotEmpty) {
         selected = '${(videos.isNotEmpty ? videos.first : rows.first)['id']}';
+        revealInitialResource = true;
       }
     }
     return data;
@@ -65,6 +67,7 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
     if (oldWidget.lessonId != widget.lessonId) {
       selected = null;
       filter = null;
+      revealInitialResource = false;
       future = fetch();
     }
   }
@@ -84,6 +87,11 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       }
       final activeFilter = counts.containsKey(filter) ? filter : null;
       final index = rows.indexWhere((row) => '${row['id']}' == selected);
+      if (index >= 0 && revealInitialResource) {
+        // Wait for the loaded player layout, not the earlier loading placeholder.
+        revealInitialResource = false;
+        reveal(playerAnchor);
+      }
       final inlineVideo =
           widget.openFirst &&
           index >= 0 &&

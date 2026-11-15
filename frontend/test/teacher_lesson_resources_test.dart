@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_media_delivery.dart';
@@ -5,6 +6,54 @@ import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_lesson_resources.dart';
 
 void main() {
+  testWidgets(
+    'delayed inline media is revealed once without stealing later scroll',
+    (tester) async {
+      final assets = Completer<dynamic>();
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              controller: scroll,
+              child: Column(
+                children: [
+                  const SizedBox(height: 900),
+                  TeacherLessonResources(
+                    lessonId: 'synthetic',
+                    apiBaseUrl: 'https://school.test',
+                    openFirst: true,
+                    load: (path) async {
+                      if (path.endsWith('/assets')) return assets.future;
+                      throw StateError('Synthetic unavailable video');
+                    },
+                  ),
+                  const SizedBox(height: 1200),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(scroll.offset, 0);
+      assets.complete([
+        {'id': 'v', 'title': 'Synthetic video', 'assetType': 'VIDEO'},
+      ]);
+      await tester.pumpAndSettle();
+      expect(scroll.offset, greaterThan(800));
+      expect(
+        tester.getTopLeft(find.byType(LessonMediaViewer)).dy,
+        lessThan(150),
+      );
+      scroll.jumpTo(200);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+      expect(scroll.offset, 200);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('documents and images use open actions instead of play', (
     tester,
   ) async {
