@@ -32,8 +32,21 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(
-      SelectionContainer.maybeOf(tester.element(find.text('My Courses'))),
+      SelectionContainer.maybeOf(
+        tester.element(find.text('Assigned Courses (1)')),
+      ),
       isNull,
+    );
+    expect(find.text('My Courses'), findsNothing);
+    expect(
+      find.text(
+        'Access your assigned courses, modules, lessons and learning resources.',
+      ),
+      findsNothing,
+    );
+    expect(
+      tester.getTopLeft(find.text('Synthetic media course')).dy,
+      lessThan(240),
     );
     await tester.enterText(find.byType(TextField), 'media');
     for (final width in [900.0, 1440.0, 390.0, 1440.0]) {
