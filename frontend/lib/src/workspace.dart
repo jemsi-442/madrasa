@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
+import 'school_updates_page.dart';
 
 import 'keyboard_scrolling.dart';
 import 'page_selection.dart';
@@ -712,6 +713,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         initialClassId: teachingClassId,
         onClassChanged: rememberClass,
         onOpenRecord: openLearningRecord,
+        refreshToken: refreshToken,
+      );
+    }
+    if (section.path == '/api/announcements' && session.role == 'TEACHER') {
+      return SchoolUpdatesPage(
+        load: widget.state.load,
         refreshToken: refreshToken,
       );
     }
