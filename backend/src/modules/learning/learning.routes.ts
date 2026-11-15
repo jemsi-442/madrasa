@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { createLessonText } from "./lesson-text";
+import { uploadLessonResource } from "./lesson-upload";
+import { HttpError } from "../../shared/errors/http-error";
 import { deliverTeacherMedia, openTeacherMedia } from "./teacher-media";
 
 import { authenticate } from "../../shared/middleware/authenticate";
@@ -43,6 +45,11 @@ coursesRouter.get("/assets/:assetId/deliver", asyncHandler(async (req, res) => {
   else res.sendFile(url.filePath);
 }));
 coursesRouter.use(authenticate, requireTenantContext);
+coursesRouter.post("/lessons/:lessonId/upload", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
+  if (!req.is("application/octet-stream")) throw new HttpError(415, "Send the file as application/octet-stream");
+  const data = await uploadLessonResource(req.authUser!, String(req.params.lessonId), req.query, req);
+  res.status(201).json({ success: true, data });
+}));
 coursesRouter.post("/lessons/:lessonId/text-resources", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
   const data = await createLessonText(req.authUser!, String(req.params.lessonId), req.body);
   res.status(201).json({ success: true, data });

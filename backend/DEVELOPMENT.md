@@ -2575,3 +2575,22 @@ Fixtures are removed by organization scope; existing demo courses, assignments a
 accounts are untouched. These checks verify backend behaviour, not teacher/parent
 browser acceptance. Course completion remains learner activity, not an assessment
 or verified Quran achievement. The API and frontend preview were left running.
+
+## Lesson File Upload API (Development Increment)
+
+- `POST /api/courses/lessons/:lessonId/upload?title=...&format=pdf&visibility=LOCKED`
+  accepts the raw file body with `Content-Type: application/octet-stream` and the
+  existing bearer authentication. Encode query values. Do not send multipart or JSON.
+- Allowed formats: PDF, PNG, JPG, MP4, MP3 and WAV. Maximum: 50 MiB per file.
+  The API checks a file signature rather than trusting a supplied filename or MIME type.
+- Only a madrasa admin or the course's assigned teacher can upload. Tenant and
+  teacher assignment checks run before reading the body and again before saving metadata.
+- Files stream to private `LESSON_MEDIA_DIR` storage. Random keys do not contain
+  original filenames. Interrupted, oversized, invalid and failed saves remove the new file.
+  The existing authenticated media-delivery flow serves accepted resources to authorised users.
+- `LOCKED` is the default. Opening media does not record achievement.
+- This increment is API-only: the browser/mobile file chooser, upload progress and
+  retry UI are not connected yet. Existing text authoring remains available in My Courses.
+- Signature validation is not malware scanning or full media decoding. Production
+  still needs scanning/quarantine, storage quotas, lifecycle/backup policy and
+  resumable large-file uploads. Do not treat this endpoint as production-hardened storage.
