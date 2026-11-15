@@ -95,90 +95,119 @@ class TeacherOverviewPage extends StatelessWidget {
                       'No teaching times are scheduled for today. Your assigned classes are available in My Classes.',
                     )
                   else
-                    RecordTable(
-                      minWidth: 620,
-                      columns: const [
-                        'Time',
-                        'Class & subject',
-                        "Today's focus",
-                        'Actions',
-                      ],
-                      rows: [
-                        for (final s in today)
-                          DataRow(
-                            cells: [
-                              DataCell(
-                                Text('${s['startsAt']} - ${s['endsAt']}'),
-                              ),
-                              DataCell(
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${recordMap(s['class'])['name']}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${s['subject']}',
-                                      style: const TextStyle(
-                                        color: muted,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                SizedBox(
-                                  width: 150,
-                                  child: Text(
-                                    recordText(s['focus'], 'Not set'),
-                                    maxLines: 2,
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 700) {
+                          return Column(
+                            children: [
+                              for (final period in today)
+                                _OverviewPeriodCard(
+                                  period: period,
+                                  onOpen: () => onOpen(
+                                    2,
+                                    classId:
+                                        '${recordMap(period['class'])['id']}',
                                   ),
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  spacing: 8,
-                                  children: [
-                                    OutlinedButton.icon(
-                                      onPressed: () => onOpen(
-                                        2,
-                                        classId:
-                                            '${recordMap(s['class'])['id']}',
-                                      ),
-                                      icon: const Icon(
-                                        Icons.chevron_right,
-                                        size: AfaqDesign.iconSmall,
-                                      ),
-                                      label: const Text('Open class'),
-                                    ),
-                                    if (onOpenPeriod != null)
-                                      OutlinedButton.icon(
-                                        key: ValueKey(
-                                          'record-period-${s['id']}',
-                                        ),
-                                        onPressed: () => onOpenPeriod!({
-                                          ...s,
+                                  onRecord: onOpenPeriod == null
+                                      ? null
+                                      : () => onOpenPeriod!({
+                                          ...period,
                                           'classId':
-                                              '${recordMap(s['class'])['id']}',
+                                              '${recordMap(period['class'])['id']}',
                                           'learnedOn': '${data['date']}',
                                         }),
-                                        icon: const Icon(
-                                          Icons.menu_book_outlined,
-                                        ),
-                                        label: const Text("Record Qur'an"),
-                                      ),
-                                  ],
                                 ),
-                              ),
                             ],
-                          ),
-                      ],
+                          );
+                        }
+                        return RecordTable(
+                          minWidth: 620,
+                          columns: const [
+                            'Time',
+                            'Class & subject',
+                            "Today's focus",
+                            'Actions',
+                          ],
+                          rows: [
+                            for (final s in today)
+                              DataRow(
+                                cells: [
+                                  DataCell(
+                                    Text('${s['startsAt']} - ${s['endsAt']}'),
+                                  ),
+                                  DataCell(
+                                    Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${recordMap(s['class'])['name']}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${s['subject']}',
+                                          style: const TextStyle(
+                                            color: muted,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  DataCell(
+                                    SizedBox(
+                                      width: 150,
+                                      child: Text(
+                                        recordText(s['focus'], 'Not set'),
+                                        maxLines: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      spacing: 8,
+                                      children: [
+                                        OutlinedButton.icon(
+                                          onPressed: () => onOpen(
+                                            2,
+                                            classId:
+                                                '${recordMap(s['class'])['id']}',
+                                          ),
+                                          icon: const Icon(
+                                            Icons.chevron_right,
+                                            size: AfaqDesign.iconSmall,
+                                          ),
+                                          label: const Text('Open class'),
+                                        ),
+                                        if (onOpenPeriod != null)
+                                          OutlinedButton.icon(
+                                            key: ValueKey(
+                                              'record-period-${s['id']}',
+                                            ),
+                                            onPressed: () => onOpenPeriod!({
+                                              ...s,
+                                              'classId':
+                                                  '${recordMap(s['class'])['id']}',
+                                              'learnedOn': '${data['date']}',
+                                            }),
+                                            icon: const Icon(
+                                              Icons.menu_book_outlined,
+                                            ),
+                                            label: const Text("Record Qur'an"),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        );
+                      },
                     ),
                 ],
               ),
@@ -371,6 +400,94 @@ class TeacherOverviewPage extends StatelessWidget {
         ],
       );
     },
+  );
+}
+
+class _OverviewPeriodCard extends StatelessWidget {
+  const _OverviewPeriodCard({
+    required this.period,
+    required this.onOpen,
+    this.onRecord,
+  });
+
+  final Map<String, dynamic> period;
+  final VoidCallback onOpen;
+  final VoidCallback? onRecord;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: ValueKey('overview-period-${period['id']}'),
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: blue.withValues(alpha: .04),
+      border: Border.all(color: blue.withValues(alpha: .16)),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.schedule_outlined, size: 20, color: blue),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${period['startsAt']} - ${period['endsAt']}',
+                style: const TextStyle(
+                  color: blue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          recordText(recordMap(period['class'])['name'], 'Class'),
+          style: const TextStyle(
+            color: ink,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          recordText(period['subject'], 'Subject not set'),
+          style: const TextStyle(color: muted, height: 1.5),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          "Today's focus",
+          style: TextStyle(color: muted, fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          recordText(period['focus'], 'Not set'),
+          style: const TextStyle(color: ink, height: 1.5),
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: onOpen,
+              icon: const Icon(Icons.arrow_forward, size: 20),
+              label: const Text('Open class'),
+            ),
+            if (onRecord != null)
+              OutlinedButton.icon(
+                key: ValueKey('record-period-${period['id']}'),
+                onPressed: onRecord,
+                icon: const Icon(Icons.menu_book_outlined, size: 20),
+                label: const Text("Record Qur'an"),
+              ),
+          ],
+        ),
+      ],
+    ),
   );
 }
 

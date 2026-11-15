@@ -196,6 +196,30 @@ Future<void> choosePassage(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('overview mobile timetable opens the correct teaching period', (
+    tester,
+  ) async {
+    screen(tester, 320);
+    Map<String, dynamic>? selected;
+    await tester.pumpWidget(
+      host(
+        TeacherOverviewPage(
+          load: teacherLoad,
+          onOpen: navigate,
+          onOpenPeriod: (period) => selected = period,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('overview-period-1')), findsOneWidget);
+    final action = find.byKey(const ValueKey('record-period-1'));
+    await tester.ensureVisible(action);
+    await tester.tap(action);
+    expect(selected?['classId'], '8');
+    expect(selected?['id'], '1');
+    expect(selected?['learnedOn'], attendanceDay(DateTime.now()));
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('overview follow-up opens the selected learner and class', (
     tester,
   ) async {
