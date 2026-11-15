@@ -7,6 +7,78 @@ import 'package:mif_app/src/app_layout.dart';
 import 'package:mif_app/src/page_selection.dart';
 
 void main() {
+  testWidgets('responsive sidebar and page survive repeated layout changes', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1920, 928);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PageSelection(
+          child: SelectionContainer.disabled(
+            child: Scaffold(
+              body: LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    if (constraints.maxWidth > 1000)
+                      SizedBox(
+                        width: 250,
+                        child: ListView(
+                          children: List.generate(
+                            12,
+                            (i) => Text('Navigation $i'),
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          PageSelection(
+                            child: Column(
+                              children: [
+                                const TextField(),
+                                ...List.generate(
+                                  30,
+                                  (i) => SizedBox(
+                                    height: 80,
+                                    child: Text('Lesson $i'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      SelectionContainer.maybeOf(tester.element(find.text('Navigation 0'))),
+      isNull,
+    );
+    expect(
+      SelectionContainer.maybeOf(tester.element(find.text('Lesson 0'))),
+      isNotNull,
+    );
+    await tester.enterText(find.byType(TextField), 'Synthetic lesson draft');
+    for (final width in [900.0, 1920.0, 900.0, 1920.0]) {
+      tester.view.physicalSize = Size(width, 928);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Lesson 0'), findsOneWidget);
+      expect(find.text('Synthetic lesson draft'), findsOneWidget);
+    }
+  });
+
   testWidgets('responsive scrollable keeps its draft after PDF resize', (
     tester,
   ) async {

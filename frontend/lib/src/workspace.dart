@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'design_tokens.dart';
 
 import 'keyboard_scrolling.dart';
+import 'page_selection.dart';
 import 'api_client.dart';
 import 'accountant_page.dart';
 import 'finance_operations_page.dart';
@@ -1102,122 +1103,130 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                             24,
                           ),
                           children: [
-                            Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 1560,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (selectedIndex == 0)
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  selectedIndex == 0
-                                                      ? session.role == 'PARENT'
-                                                            ? 'Welcome back, $firstName!'
-                                                            : firstName
-                                                      : section.title,
-                                                  style: TextStyle(
-                                                    fontFamily:
-                                                        AfaqDesign.bodyFont,
-                                                    fontSize: narrow ? 26 : 30,
-                                                    fontWeight: FontWeight.w700,
-                                                    height: 1.2,
-                                                    color: ink,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          if (!narrow &&
-                                              session.role == 'TEACHER' &&
-                                              selectedIndex == 0)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 20,
-                                                top: 12,
-                                              ),
-                                              child: FilledButton.icon(
-                                                onPressed: () => openTeacher(4),
-                                                icon: const Icon(
-                                                  Icons.calendar_month_outlined,
-                                                  size: AfaqDesign.iconSmall,
-                                                ),
-                                                label: const Text(
-                                                  'Take attendance',
-                                                ),
-                                              ),
-                                            ),
-                                          if (!narrow &&
-                                              session.role != 'TEACHER' &&
-                                              session.role != 'PARENT' &&
-                                              MediaQuery.sizeOf(
-                                                    context,
-                                                  ).width >=
-                                                  1280)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 24,
-                                                top: 6,
-                                              ),
-                                              child: Row(
+                            PageSelection(
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 1560,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (selectedIndex == 0)
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  const Icon(
-                                                    Icons
-                                                        .calendar_today_outlined,
-                                                    color: gold,
-                                                    size: AfaqDesign.iconSize,
-                                                  ),
-                                                  const SizedBox(width: 10),
                                                   Text(
-                                                    MaterialLocalizations.of(
-                                                      context,
-                                                    ).formatFullDate(
-                                                      DateTime.now(),
-                                                    ),
-                                                    style: const TextStyle(
-                                                      color: muted,
-                                                      fontSize: 12,
+                                                    selectedIndex == 0
+                                                        ? session.role ==
+                                                                  'PARENT'
+                                                              ? 'Welcome back, $firstName!'
+                                                              : firstName
+                                                        : section.title,
+                                                    style: TextStyle(
+                                                      fontFamily:
+                                                          AfaqDesign.bodyFont,
+                                                      fontSize: narrow
+                                                          ? 26
+                                                          : 30,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      height: 1.2,
+                                                      color: ink,
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                        ],
+                                            if (!narrow &&
+                                                session.role == 'TEACHER' &&
+                                                selectedIndex == 0)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 20,
+                                                  top: 12,
+                                                ),
+                                                child: FilledButton.icon(
+                                                  onPressed: () =>
+                                                      openTeacher(4),
+                                                  icon: const Icon(
+                                                    Icons
+                                                        .calendar_month_outlined,
+                                                    size: AfaqDesign.iconSmall,
+                                                  ),
+                                                  label: const Text(
+                                                    'Take attendance',
+                                                  ),
+                                                ),
+                                              ),
+                                            if (!narrow &&
+                                                session.role != 'TEACHER' &&
+                                                session.role != 'PARENT' &&
+                                                MediaQuery.sizeOf(
+                                                      context,
+                                                    ).width >=
+                                                    1280)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 24,
+                                                  top: 6,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons
+                                                          .calendar_today_outlined,
+                                                      color: gold,
+                                                      size: AfaqDesign.iconSize,
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Text(
+                                                      MaterialLocalizations.of(
+                                                        context,
+                                                      ).formatFullDate(
+                                                        DateTime.now(),
+                                                      ),
+                                                      style: const TextStyle(
+                                                        color: muted,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      if (selectedIndex == 0)
+                                        const SizedBox(height: 24),
+                                      KeyedSubtree(
+                                        key: ValueKey('page-$selectedIndex'),
+                                        child: pageContent(session),
                                       ),
-                                    if (selectedIndex == 0)
-                                      const SizedBox(height: 24),
-                                    KeyedSubtree(
-                                      key: ValueKey('page-$selectedIndex'),
-                                      child: pageContent(session),
-                                    ),
-                                    WorkspaceNextSteps(
-                                      pages: [
-                                        for (final index
-                                            in relatedWorkspacePages(
-                                              session.role,
-                                              selectedIndex,
-                                            ))
-                                          (
-                                            index: index,
-                                            title: sections[index].title,
-                                            purpose: sections[index].purpose,
-                                            icon: sections[index].icon,
-                                          ),
-                                      ],
-                                      onSelect: openRelated,
-                                    ),
-                                  ],
+                                      WorkspaceNextSteps(
+                                        pages: [
+                                          for (final index
+                                              in relatedWorkspacePages(
+                                                session.role,
+                                                selectedIndex,
+                                              ))
+                                            (
+                                              index: index,
+                                              title: sections[index].title,
+                                              purpose: sections[index].purpose,
+                                              icon: sections[index].icon,
+                                            ),
+                                        ],
+                                        onSelect: openRelated,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -1239,7 +1248,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) goBack();
       },
-      child: scaffold,
+      // Navigation can be removed at responsive breakpoints. Keep it outside
+      // the page's text-selection registry and select only laid-out content.
+      child: SelectionContainer.disabled(child: scaffold),
     );
   }
 }
