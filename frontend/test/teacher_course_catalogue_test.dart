@@ -54,6 +54,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('media'), findsOneWidget);
       expect(find.text('Synthetic media course'), findsOneWidget);
+      for (final label in ['In Progress', 'Completed', 'All My Courses']) {
+        final rect = tester.getRect(find.text(label));
+        expect(rect.left, greaterThanOrEqualTo(0));
+        expect(rect.right, lessThanOrEqualTo(width));
+      }
       expect(tester.takeException(), isNull);
     }
     await tester.tap(find.byTooltip('Clear search'));

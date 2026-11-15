@@ -75,22 +75,22 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
                         ),
                 ),
               );
-              final tabs = SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _tab(
-                      0,
-                      Icons.layers_outlined,
-                      'Assigned Courses (${widget.courses.length})',
-                    ),
-                    _tab(1, Icons.play_circle_outline, 'In Progress'),
-                    _tab(2, Icons.check_circle_outline, 'Completed'),
-                    _tab(3, Icons.grid_view_outlined, 'All My Courses'),
-                  ],
-                ),
+              final tabs = Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  _tab(
+                    0,
+                    Icons.layers_outlined,
+                    'Assigned Courses (${widget.courses.length})',
+                  ),
+                  _tab(1, Icons.play_circle_outline, 'In Progress'),
+                  _tab(2, Icons.check_circle_outline, 'Completed'),
+                  _tab(3, Icons.grid_view_outlined, 'All My Courses'),
+                ],
               );
-              if (box.maxWidth >= 1100) {
+              final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
+              if (box.maxWidth / textScale.clamp(1.0, 4.0) >= 1250) {
                 return Row(
                   children: [
                     Expanded(child: tabs),
@@ -174,7 +174,8 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
       onPressed: () => setState(() => tab = index),
       style: TextButton.styleFrom(
         foregroundColor: tab == index ? AfaqDesign.actionGold : AfaqDesign.ink,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       icon: Icon(icon, size: 24),
       label: Text(
