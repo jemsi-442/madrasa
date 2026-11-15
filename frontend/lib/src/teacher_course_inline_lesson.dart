@@ -74,6 +74,7 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
               : matches.isEmpty
               ? lessons.first
               : matches.first;
+          final lessonIndex = lesson == null ? -1 : lessons.indexOf(lesson);
           final moduleSelector = DropdownButtonFormField<int>(
             key: ValueKey('inline-module-$moduleIndex'),
             initialValue: moduleIndex,
@@ -157,6 +158,40 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                   apiBaseUrl: widget.apiBaseUrl,
                   openFirst: true,
                 ),
+                if (lessons.length > 1) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: lessonIndex > 0
+                            ? () => setState(
+                                () => lessonId =
+                                    '${lessons[lessonIndex - 1]['id']}',
+                              )
+                            : null,
+                        icon: const Icon(Icons.chevron_left),
+                        label: const Text('Previous lesson'),
+                      ),
+                      Text(
+                        'Lesson ${lessonIndex + 1} of ${lessons.length} in this module',
+                      ),
+                      FilledButton.icon(
+                        onPressed: lessonIndex + 1 < lessons.length
+                            ? () => setState(
+                                () => lessonId =
+                                    '${lessons[lessonIndex + 1]['id']}',
+                              )
+                            : null,
+                        icon: const Icon(Icons.chevron_right),
+                        label: const Text('Next lesson'),
+                      ),
+                    ],
+                  ),
+                ],
                 if (recordText(lesson['contentText'], '').isNotEmpty ||
                     recordText(lesson['summary'], '').isNotEmpty) ...[
                   const SizedBox(height: 20),
