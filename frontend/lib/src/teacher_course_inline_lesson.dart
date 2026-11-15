@@ -160,13 +160,9 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                 ),
                 if (lessons.length > 1) ...[
                   const SizedBox(height: 16),
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      OutlinedButton.icon(
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final previous = OutlinedButton.icon(
                         onPressed: lessonIndex > 0
                             ? () => setState(
                                 () => lessonId =
@@ -175,11 +171,12 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                             : null,
                         icon: const Icon(Icons.chevron_left),
                         label: const Text('Previous lesson'),
-                      ),
-                      Text(
+                      );
+                      final position = Text(
                         'Lesson ${lessonIndex + 1} of ${lessons.length} in this module',
-                      ),
-                      FilledButton.icon(
+                        textAlign: TextAlign.center,
+                      );
+                      final next = FilledButton.icon(
                         onPressed: lessonIndex + 1 < lessons.length
                             ? () => setState(
                                 () => lessonId =
@@ -188,8 +185,43 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                             : null,
                         icon: const Icon(Icons.chevron_right),
                         label: const Text('Next lesson'),
-                      ),
-                    ],
+                      );
+                      final largeText =
+                          MediaQuery.textScalerOf(context).scale(16) > 24;
+                      if (constraints.maxWidth < 640 || largeText) {
+                        return Column(
+                          key: const ValueKey(
+                            'inline-lesson-navigation-stacked',
+                          ),
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            position,
+                            const SizedBox(height: 12),
+                            if (constraints.maxWidth < 380 || largeText) ...[
+                              previous,
+                              const SizedBox(height: 8),
+                              next,
+                            ] else
+                              Row(
+                                children: [
+                                  Expanded(child: previous),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: next),
+                                ],
+                              ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          previous,
+                          const SizedBox(width: 12),
+                          Expanded(child: position),
+                          const SizedBox(width: 12),
+                          next,
+                        ],
+                      );
+                    },
                   ),
                 ],
                 if (recordText(lesson['contentText'], '').isNotEmpty ||

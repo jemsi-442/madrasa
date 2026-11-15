@@ -5,70 +5,87 @@ import 'package:mif_app/src/lesson_media_viewer.dart';
 import 'package:mif_app/src/teacher_course_inline_lesson.dart';
 
 void main() {
-  testWidgets('next and previous stay in the module and stop at boundaries', (
-    tester,
-  ) async {
-    final requests = <String>[];
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: TeacherCourseInlineLesson(
-              modules: const [
-                {'id': 'm', 'title': 'Synthetic module'},
-              ],
-              apiBaseUrl: 'https://school.test',
-              onClose: () {},
-              load: (path) async {
-                requests.add(path);
-                if (path.endsWith('/lessons'))
-                  return [
-                    {
-                      'id': 'a',
-                      'title': 'First lesson',
-                      'contentText': 'First notes',
-                    },
-                    {
-                      'id': 'b',
-                      'title': 'Second lesson',
-                      'contentText': 'Second notes',
-                    },
-                  ];
-                return [];
-              },
+  for (final width in [320.0, 390.0, 1440.0]) {
+    testWidgets('next and previous stop at boundaries at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final requests = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TeacherCourseInlineLesson(
+                modules: const [
+                  {'id': 'm', 'title': 'Synthetic module'},
+                ],
+                apiBaseUrl: 'https://school.test',
+                onClose: () {},
+                load: (path) async {
+                  requests.add(path);
+                  if (path.endsWith('/lessons'))
+                    return [
+                      {
+                        'id': 'a',
+                        'title': 'First lesson',
+                        'contentText': 'First notes',
+                      },
+                      {
+                        'id': 'b',
+                        'title': 'Second lesson',
+                        'contentText': 'Second notes',
+                      },
+                    ];
+                  return [];
+                },
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<OutlinedButton>(
-            find.widgetWithText(OutlinedButton, 'Previous lesson'),
-          )
-          .onPressed,
-      isNull,
-    );
-    await tester.tap(find.text('Next lesson'));
-    await tester.pumpAndSettle();
-    expect(find.text('Second notes'), findsOneWidget);
-    expect(find.text('Lesson 2 of 2 in this module'), findsOneWidget);
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.byWidgetPredicate((widget) => widget is FilledButton),
-          )
-          .onPressed,
-      isNull,
-    );
-    await tester.tap(find.text('Previous lesson'));
-    await tester.pumpAndSettle();
-    expect(find.text('First notes'), findsOneWidget);
-    expect(requests.where((p) => p.endsWith('/lessons')).length, 1);
-    expect(requests, contains('/api/courses/lessons/b/assets'));
-    expect(tester.takeException(), isNull);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('inline-lesson-navigation-stacked')),
+        width < 640 ? findsOneWidget : findsNothing,
+      );
+      final previousRect = tester.getRect(find.text('Previous lesson'));
+      final nextRect = tester.getRect(find.text('Next lesson'));
+      if (width < 380) {
+        expect(nextRect.top, greaterThan(previousRect.bottom));
+      } else {
+        expect(nextRect.top, closeTo(previousRect.top, 1));
+      }
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Previous lesson'),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('Next lesson'));
+      await tester.pumpAndSettle();
+      expect(find.text('Second notes'), findsOneWidget);
+      expect(find.text('Lesson 2 of 2 in this module'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byWidgetPredicate((widget) => widget is FilledButton),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('Previous lesson'));
+      await tester.pumpAndSettle();
+      expect(find.text('First notes'), findsOneWidget);
+      expect(requests.where((p) => p.endsWith('/lessons')).length, 1);
+      expect(requests, contains('/api/courses/lessons/b/assets'));
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final width in [320.0, 1440.0]) {
     testWidgets('cover opens authorized lesson inline in one click at $width', (
       tester,
