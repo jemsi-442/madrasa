@@ -30,95 +30,114 @@ class PdfReadingFrame extends StatelessWidget {
   final VoidCallback? onClose;
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(onClose == null ? 16 : 0),
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFFE9EEF3),
-        border: Border.all(color: const Color(0xFFD9E1E9)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF06243C), Color(0xFF193E53)],
-              ),
-              border: Border(
-                bottom: BorderSide(color: Color(0xFFB68A29), width: 3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFB68A29),
-                    borderRadius: BorderRadius.circular(10),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxHeight < 520;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(onClose == null ? 16 : 0),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFFE9EEF3),
+            border: Border.all(color: const Color(0xFFD9E1E9)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 12 : 18,
+                  vertical: compact ? 8 : 16,
+                ),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF06243C), Color(0xFF193E53)],
                   ),
-                  child: const Icon(
-                    Icons.picture_as_pdf_outlined,
-                    color: Colors.white,
-                    size: 26,
+                  border: Border(
+                    bottom: BorderSide(color: Color(0xFFB68A29), width: 3),
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'PDF DOCUMENT',
-                        style: TextStyle(
-                          color: Color(0xFFE9C978),
-                          fontSize: 11,
-                          letterSpacing: 1.5,
-                          fontWeight: FontWeight.w700,
-                        ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(compact ? 6 : 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB68A29),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          height: 1.25,
-                          fontWeight: FontWeight.w700,
+                      child: Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: Colors.white,
+                        size: compact ? 22 : 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!compact)
+                            const Text(
+                              'PDF DOCUMENT',
+                              style: TextStyle(
+                                color: Color(0xFFE9C978),
+                                fontSize: 11,
+                                letterSpacing: 1.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          if (!compact) const SizedBox(height: 5),
+                          Text(
+                            title,
+                            maxLines: compact ? 1 : 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 19,
+                              height: 1.25,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (onClose != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Close PDF viewer',
+                        onPressed: onClose,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white12,
+                          foregroundColor: Colors.white,
                         ),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                if (onClose != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    tooltip: 'Close PDF viewer',
-                    onPressed: onClose,
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white12,
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ],
-            ),
+              ),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: compact ? 4 : 10,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Color(0xFFD9E1E9))),
+                ),
+                // On short screens keep controls in one horizontally scrollable
+                // strip rather than consuming the document's reading height.
+                child: compact
+                    ? SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: toolbar,
+                      )
+                    : toolbar,
+              ),
+              Expanded(child: child),
+            ],
           ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Color(0xFFD9E1E9))),
-            ),
-            child: toolbar,
-          ),
-          Expanded(child: child),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 }
