@@ -159,6 +159,7 @@ Future<void> openFirst(WidgetTester tester) async {
 }
 
 Future<void> click(WidgetTester tester, String text) async {
+  await tester.pump();
   await tester.ensureVisible(find.text(text).first);
   await tester.tap(find.text(text).first);
   await tester.pumpAndSettle();
@@ -191,6 +192,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.widget<TextField>(composer).controller!.text, text);
         expect(find.text('Conversation history'), findsOneWidget);
+        expect(find.text('Sending to: Teacher Ahmad'), findsOneWidget);
+        await click(tester, 'Clear draft');
+        await click(tester, 'Keep draft');
+        expect(tester.widget<TextField>(composer).controller!.text, text);
         await click(tester, 'Homework update');
         expect(find.text('Replace this draft?'), findsOneWidget);
         await click(tester, 'Keep draft');
@@ -201,6 +206,25 @@ void main() {
             .toList();
         expect(sends, hasLength(1));
         expect(sends.single.$2['body'], text);
+        expect(
+          tester
+              .widget<FilledButton>(
+                find
+                    .ancestor(
+                      of: find.text('Send'),
+                      matching: find.byWidgetPredicate(
+                        (widget) => widget is FilledButton,
+                      ),
+                    )
+                    .first,
+              )
+              .onPressed,
+          isNull,
+        );
+        await tester.enterText(composer, 'Temporary draft');
+        await click(tester, 'Clear draft');
+        await click(tester, 'Discard draft');
+        expect(tester.widget<TextField>(composer).controller!.text, isEmpty);
         expect(tester.takeException(), isNull);
       },
     );
@@ -380,6 +404,7 @@ void main() {
       find.byKey(const ValueKey('message-composer')),
       'One message',
     );
+    await tester.pump();
     await tester.ensureVisible(find.text('Send'));
     await tester.tap(find.text('Send'));
     await tester.pump();

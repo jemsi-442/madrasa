@@ -718,7 +718,9 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
               child: TeacherTag('In-app message', color: blue),
             ),
             const SizedBox(height: 16),
-            messageComposer(),
+            messageComposer(
+              recipient: recordText(recordMap(result['contact'])['fullName']),
+            ),
             const SizedBox(height: 24),
             const PanelHeading('Conversation history'),
           ],
@@ -782,7 +784,7 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
     );
   }
 
-  Widget messageComposer() => Column(
+  Widget messageComposer({String? recipient}) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       TextField(
@@ -800,21 +802,53 @@ class FamilyMessagesPageState extends State<FamilyMessagesPage> {
           alignLabelWithHint: true,
         ),
       ),
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton.icon(
-          onPressed: sending || selectedId == null ? null : send,
-          icon: Icon(
-            sending ? Icons.hourglass_top : Icons.send_outlined,
-            size: AfaqDesign.iconSmall,
+      if (recipient != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Sending to: $recipient',
+            style: const TextStyle(color: muted),
           ),
-          label: Text(
-            sending
-                ? 'Sending...'
-                : pending == null
-                ? 'Send'
-                : 'Retry send',
-          ),
+        ),
+      ValueListenableBuilder<TextEditingValue>(
+        valueListenable: composer,
+        builder: (context, value, _) => Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            if (widget.teacherMode && value.text.isNotEmpty && pending == null)
+              TextButton.icon(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        await confirmLeave();
+                      },
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Clear draft'),
+              ),
+            FilledButton.icon(
+              onPressed:
+                  sending ||
+                      selectedId == null ||
+                      (pending == null &&
+                          (value.text.trim().isEmpty ||
+                              value.text.trim().length > 2000))
+                  ? null
+                  : send,
+              icon: Icon(
+                sending ? Icons.hourglass_top : Icons.send_outlined,
+                size: AfaqDesign.iconSmall,
+              ),
+              label: Text(
+                sending
+                    ? 'Sending...'
+                    : pending == null
+                    ? 'Send'
+                    : 'Retry send',
+              ),
+            ),
+          ],
         ),
       ),
     ],
