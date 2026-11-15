@@ -2,8 +2,69 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_document_surface.dart';
 import 'package:mif_app/src/lesson_media_delivery.dart';
+import 'package:mif_app/src/pdf_reading_frame.dart';
 
 void main() {
+  testWidgets('PDF opens fullscreen once and can minimize and expand again', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 600,
+            child: LessonDocumentSurface(
+              delivery: LessonMediaDelivery(
+                uri: Uri.parse('asset:guide'),
+                kind: 'PDF',
+                title: 'Synthetic PDF',
+                expiresAt: null,
+                downloadAllowed: false,
+                assetPath: 'assets/media-preview/guide.pdf',
+              ),
+              onReady: () {},
+              onError: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byTooltip('Minimize PDF'), findsOneWidget);
+    expect(find.byType(PdfReadingFrame), findsOneWidget);
+    final fullscreen = tester
+        .widgetList<LessonDocumentSurface>(find.byType(LessonDocumentSurface))
+        .singleWhere((surface) => surface.fullScreen);
+    fullscreen.onPageChanged!(2);
+    await tester.tap(find.byTooltip('Minimize PDF'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byTooltip('Minimize PDF'), findsNothing);
+    expect(find.text('Full-screen PDF'), findsOneWidget);
+    await tester.tap(find.text('Full-screen PDF'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byTooltip('Minimize PDF'), findsOneWidget);
+    expect(
+      tester
+          .widgetList<LessonDocumentSurface>(find.byType(LessonDocumentSurface))
+          .singleWhere((surface) => surface.fullScreen)
+          .initialPage,
+      2,
+    );
+    Navigator.of(tester.element(find.byType(PdfReadingFrame))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Full-screen PDF'), findsOneWidget);
+    await tester.tap(find.text('Full-screen PDF'));
+    await tester.pump();
+    expect(find.byTooltip('Minimize PDF'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'failed text leaves loading state without exposing error details',
     (tester) async {

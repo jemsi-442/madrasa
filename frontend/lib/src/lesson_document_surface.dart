@@ -15,11 +15,15 @@ class LessonDocumentSurface extends StatefulWidget {
     required this.onError,
     this.fullScreen = false,
     this.initialPage = 1,
+    this.onPageChanged,
+    this.onMinimize,
   });
   final LessonMediaDelivery delivery;
   final VoidCallback onReady, onError;
   final bool fullScreen;
   final int initialPage;
+  final ValueChanged<int>? onPageChanged;
+  final VoidCallback? onMinimize;
 
   @override
   State<LessonDocumentSurface> createState() => _LessonDocumentSurfaceState();
@@ -33,6 +37,44 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
   bool notified = false;
   bool textFailed = false;
   String? text;
+  bool expanded = false;
+  bool openingFullScreen = false;
+  OverlayEntry? fullscreenOverlay;
+  LocalHistoryEntry? fullscreenHistory;
+  ModalRoute<dynamic>? fullscreenRoute;
+
+  void openFullScreen() {
+    if (!mounted || expanded || widget.fullScreen) return;
+    setState(() {
+      openingFullScreen = false;
+      expanded = true;
+    });
+    fullscreenHistory = LocalHistoryEntry(
+      onRemove: () {
+        fullscreenHistory = null;
+        fullscreenRoute = null;
+        if (!mounted) return;
+        removeFullScreenOverlay();
+        setState(() => expanded = false);
+      },
+    );
+    fullscreenRoute = ModalRoute.of(context);
+    fullscreenRoute?.addLocalHistoryEntry(fullscreenHistory!);
+    final child = InheritedTheme.captureAll(context, buildFullScreen());
+    fullscreenOverlay = OverlayEntry(builder: (_) => child);
+    Overlay.of(context, rootOverlay: true).insert(fullscreenOverlay!);
+  }
+
+  void removeFullScreenOverlay() {
+    final overlay = fullscreenOverlay;
+    fullscreenOverlay = null;
+    overlay?.remove();
+    overlay?.dispose();
+  }
+
+  void minimize() {
+    fullscreenHistory?.remove();
+  }
 
   void fitPdfWidth() {
     if (!mounted || !pdf.isReady || pages == 0) return;
@@ -49,6 +91,10 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
     super.initState();
     page = widget.initialPage;
     if (widget.delivery.kind == 'TEXT') unawaited(loadText());
+    if (widget.delivery.kind == 'PDF' && !widget.fullScreen) {
+      openingFullScreen = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => openFullScreen());
+    }
   }
 
   void notify(bool success) {
@@ -105,6 +151,16 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
 
   @override
   void dispose() {
+    removeFullScreenOverlay();
+    final history = fullscreenHistory;
+    final route = fullscreenRoute;
+    fullscreenHistory = null;
+    // Removing history can notify the route; do it outside widget teardown.
+    if (history != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route?.isActive ?? false) history.remove();
+      });
+    }
     client.close();
     zoom.dispose();
     if (widget.delivery.kind == 'IMAGE' && widget.delivery.assetPath == null) {
@@ -115,6 +171,38 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
 
   @override
   Widget build(BuildContext context) {
+    return buildDocument(context);
+  }
+
+  Widget buildFullScreen() => Positioned.fill(
+    child: BlockSemantics(
+      child: SelectionContainer.disabled(
+        child: Material(
+          child: SafeArea(
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.escape): minimize,
+              },
+              child: Focus(
+                autofocus: true,
+                child: LessonDocumentSurface(
+                  delivery: widget.delivery,
+                  fullScreen: true,
+                  initialPage: page,
+                  onMinimize: minimize,
+                  onPageChanged: (value) => page = value,
+                  onReady: () => notify(true),
+                  onError: () => notify(false),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget buildDocument(BuildContext context) {
     final asset = widget.delivery.assetPath;
     if (widget.delivery.kind == 'TEXT') {
       return textFailed
@@ -165,9 +253,14 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
         ],
       );
     }
+    if (expanded || openingFullScreen) return const SizedBox.expand();
     return PdfReadingFrame(
       title: widget.delivery.title,
-      onClose: widget.fullScreen ? () => Navigator.of(context).pop() : null,
+      onClose: widget.fullScreen
+          ? widget.onMinimize ?? () => Navigator.of(context).pop()
+          : null,
+      closeLabel: 'Minimize PDF',
+      closeIcon: Icons.fullscreen_exit,
       toolbar: Wrap(
         spacing: 12,
         runSpacing: 8,
@@ -175,21 +268,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
         children: [
           if (!widget.fullScreen)
             OutlinedButton.icon(
-              onPressed: () => showDialog<void>(
-                context: context,
-                useSafeArea: true,
-                builder: (context) => Dialog.fullscreen(
-                  child: SafeArea(
-                    child: LessonDocumentSurface(
-                      delivery: widget.delivery,
-                      fullScreen: true,
-                      initialPage: page,
-                      onReady: () {},
-                      onError: () {},
-                    ),
-                  ),
-                ),
-              ),
+              onPressed: openFullScreen,
               icon: const Icon(Icons.fullscreen),
               label: const Text('Full-screen PDF'),
             ),
@@ -241,7 +320,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
                 useProgressiveLoading: false,
               ),
         controller: pdf,
-        initialPageNumber: widget.initialPage,
+        initialPageNumber: page,
         params: PdfViewerParams(
           backgroundColor: const Color(0xFFE9EEF3),
           margin: 18,
@@ -261,7 +340,10 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
           },
           onPageChanged: (value) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && value != null) setState(() => page = value);
+              if (mounted && value != null) {
+                setState(() => page = value);
+                widget.onPageChanged?.call(value);
+              }
             });
           },
           onDocumentLoadFinished: (document, succeeded) {

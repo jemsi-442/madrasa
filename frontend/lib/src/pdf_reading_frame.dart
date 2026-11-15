@@ -23,11 +23,15 @@ class PdfReadingFrame extends StatelessWidget {
     required this.toolbar,
     required this.child,
     this.onClose,
+    this.closeLabel = 'Close PDF viewer',
+    this.closeIcon = Icons.close,
   });
 
   final String title;
   final Widget toolbar, child;
   final VoidCallback? onClose;
+  final String closeLabel;
+  final IconData closeIcon;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -102,13 +106,13 @@ class PdfReadingFrame extends StatelessWidget {
                     if (onClose != null) ...[
                       const SizedBox(width: 8),
                       IconButton.filledTonal(
-                        tooltip: 'Close PDF viewer',
+                        tooltip: closeLabel,
                         onPressed: onClose,
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.white12,
                           foregroundColor: Colors.white,
                         ),
-                        icon: const Icon(Icons.close),
+                        icon: Icon(closeIcon),
                       ),
                     ],
                   ],
