@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdfrx/pdfrx.dart';
 import 'lesson_media_delivery.dart';
+import 'pdf_reading_frame.dart';
 
 class LessonDocumentSurface extends StatefulWidget {
   const LessonDocumentSurface({
@@ -164,133 +165,128 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
         ],
       );
     }
-    return Column(
-      children: [
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            if (!widget.fullScreen)
-              TextButton.icon(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  useSafeArea: true,
-                  builder: (context) => Dialog.fullscreen(
-                    child: SafeArea(
-                      child: Column(
-                        children: [
-                          AppBar(
-                            automaticallyImplyLeading: false,
-                            title: Text(widget.delivery.title),
-                            leading: IconButton(
-                              tooltip: 'Close PDF viewer',
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.close),
-                            ),
-                          ),
-                          Expanded(
-                            child: LessonDocumentSurface(
-                              delivery: widget.delivery,
-                              fullScreen: true,
-                              initialPage: page,
-                              onReady: () {},
-                              onError: () {},
-                            ),
-                          ),
-                        ],
-                      ),
+    return PdfReadingFrame(
+      title: widget.delivery.title,
+      onClose: widget.fullScreen ? () => Navigator.of(context).pop() : null,
+      toolbar: Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (!widget.fullScreen)
+            OutlinedButton.icon(
+              onPressed: () => showDialog<void>(
+                context: context,
+                useSafeArea: true,
+                builder: (context) => Dialog.fullscreen(
+                  child: SafeArea(
+                    child: LessonDocumentSurface(
+                      delivery: widget.delivery,
+                      fullScreen: true,
+                      initialPage: page,
+                      onReady: () {},
+                      onError: () {},
                     ),
                   ),
                 ),
-                icon: const Icon(Icons.fullscreen),
-                label: const Text('Full-screen PDF'),
               ),
-            IconButton(
-              tooltip: 'Previous PDF page',
-              onPressed: pages > 0 && page > 1
-                  ? () => pdf.goToPage(pageNumber: page - 1)
-                  : null,
-              icon: const Icon(Icons.chevron_left),
+              icon: const Icon(Icons.fullscreen),
+              label: const Text('Full-screen PDF'),
             ),
-            Text(pages == 0 ? 'Loading PDF...' : 'Page $page of $pages'),
-            IconButton(
-              tooltip: 'Next PDF page',
-              onPressed: pages > 0 && page < pages
-                  ? () => pdf.goToPage(pageNumber: page + 1)
-                  : null,
-              icon: const Icon(Icons.chevron_right),
-            ),
-            IconButton(
-              tooltip: 'Zoom out PDF',
-              onPressed: pages > 0 ? () => pdf.zoomDown() : null,
-              icon: const Icon(Icons.zoom_out),
-            ),
-            IconButton(
-              tooltip: 'Zoom in PDF',
-              onPressed: pages > 0 ? () => pdf.zoomUp() : null,
-              icon: const Icon(Icons.zoom_in),
-            ),
-            TextButton.icon(
-              onPressed: pages > 0 ? fitPdfWidth : null,
-              icon: const Icon(Icons.fit_screen),
-              label: const Text('Fit width'),
-            ),
-          ],
-        ),
-        Expanded(
-          child: PdfViewer(
-            asset != null
-                ? PdfDocumentRefAsset(asset, useProgressiveLoading: false)
-                : PdfDocumentRefUri(
-                    widget.delivery.uri,
-                    useProgressiveLoading: false,
+          PdfControlGroup(
+            children: [
+              IconButton(
+                tooltip: 'Previous PDF page',
+                onPressed: pages > 0 && page > 1
+                    ? () => pdf.goToPage(pageNumber: page - 1)
+                    : null,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Text(pages == 0 ? 'Loading PDF...' : 'Page $page of $pages'),
+              IconButton(
+                tooltip: 'Next PDF page',
+                onPressed: pages > 0 && page < pages
+                    ? () => pdf.goToPage(pageNumber: page + 1)
+                    : null,
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+          PdfControlGroup(
+            children: [
+              IconButton(
+                tooltip: 'Zoom out PDF',
+                onPressed: pages > 0 ? () => pdf.zoomDown() : null,
+                icon: const Icon(Icons.zoom_out),
+              ),
+              IconButton(
+                tooltip: 'Zoom in PDF',
+                onPressed: pages > 0 ? () => pdf.zoomUp() : null,
+                icon: const Icon(Icons.zoom_in),
+              ),
+              TextButton.icon(
+                onPressed: pages > 0 ? fitPdfWidth : null,
+                icon: const Icon(Icons.fit_screen),
+                label: const Text('Fit width'),
+              ),
+            ],
+          ),
+        ],
+      ),
+      child: PdfViewer(
+        asset != null
+            ? PdfDocumentRefAsset(asset, useProgressiveLoading: false)
+            : PdfDocumentRefUri(
+                widget.delivery.uri,
+                useProgressiveLoading: false,
+              ),
+        controller: pdf,
+        initialPageNumber: widget.initialPage,
+        params: PdfViewerParams(
+          backgroundColor: const Color(0xFFE9EEF3),
+          margin: 18,
+          // Start at the text, not the blank lower margin of the last page.
+          pageAnchorEnd: PdfPageAnchor.top,
+          onViewSizeChanged: (size, previousSize, controller) {
+            if (previousSize == null || size == previousSize) return;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              fitPdfWidth();
+            });
+          },
+          onViewerReady: (document, controller) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => pages = document.pages.length);
+            });
+            notify(true);
+          },
+          onPageChanged: (value) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && value != null) setState(() => page = value);
+            });
+          },
+          onDocumentLoadFinished: (document, succeeded) {
+            if (!succeeded) notify(false);
+          },
+          errorBannerBuilder: (context, error, stack, document) =>
+              const Center(child: Text('This PDF could not be displayed.')),
+          // Document links must never silently launch another app or tab.
+          linkHandlerParams: PdfLinkHandlerParams(
+            onLinkTap: (link) {
+              if (link.dest != null) {
+                pdf.goToDest(link.dest!);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'External document links are not opened in the lesson viewer.',
+                    ),
                   ),
-            controller: pdf,
-            initialPageNumber: widget.initialPage,
-            params: PdfViewerParams(
-              // Start at the text, not the blank lower margin of the last page.
-              pageAnchorEnd: PdfPageAnchor.top,
-              onViewSizeChanged: (size, previousSize, controller) {
-                if (previousSize == null || size == previousSize) return;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  fitPdfWidth();
-                });
-              },
-              onViewerReady: (document, controller) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) setState(() => pages = document.pages.length);
-                });
-                notify(true);
-              },
-              onPageChanged: (value) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && value != null) setState(() => page = value);
-                });
-              },
-              onDocumentLoadFinished: (document, succeeded) {
-                if (!succeeded) notify(false);
-              },
-              errorBannerBuilder: (context, error, stack, document) =>
-                  const Center(child: Text('This PDF could not be displayed.')),
-              // Document links must never silently launch another app or tab.
-              linkHandlerParams: PdfLinkHandlerParams(
-                onLinkTap: (link) {
-                  if (link.dest != null) {
-                    pdf.goToDest(link.dest!);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'External document links are not opened in the lesson viewer.',
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
-            ),
+                );
+              }
+            },
           ),
         ),
-      ],
+      ),
     );
   }
 }

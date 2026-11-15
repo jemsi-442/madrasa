@@ -289,7 +289,9 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
           child: ColoredBox(
             color: document ? const Color(0xFFF3F4F3) : const Color(0xFF0D0E10),
             child: Padding(
-              padding: EdgeInsets.all(document ? 12 : 0),
+              padding: EdgeInsets.all(
+                document && source.kind != 'PDF' ? 12 : 0,
+              ),
               child: KeyedSubtree(
                 key: ValueKey(generation),
                 child: widget.surfaceBuilder != null
