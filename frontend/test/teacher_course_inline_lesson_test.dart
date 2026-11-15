@@ -6,6 +6,52 @@ import 'package:mif_app/src/teacher_course_inline_lesson.dart';
 import 'package:mif_app/src/page_selection.dart';
 
 void main() {
+  testWidgets('retry resumes initial lesson search after an empty module', (
+    tester,
+  ) async {
+    var attempts = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TeacherCourseInlineLesson(
+              modules: const [
+                {'id': 'empty', 'title': 'Empty module'},
+                {'id': 'practice', 'title': 'Practice module'},
+              ],
+              apiBaseUrl: 'https://school.test',
+              onClose: () {},
+              load: (path) async {
+                if (path == '/api/courses/modules/practice/lessons') {
+                  attempts++;
+                  if (attempts == 1) throw StateError('Temporary outage');
+                  return [
+                    {
+                      'id': 'lesson',
+                      'title': 'Recovered lesson',
+                      'contentText': 'Recovered synthetic notes',
+                    },
+                  ];
+                }
+                return [];
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('We could not load this page. Please try again.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    expect(attempts, 2);
+    expect(find.text('Recovered synthetic notes'), findsOneWidget);
+    expect(find.text('Try again'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [320.0, 390.0, 1440.0]) {
     testWidgets('next and previous stop at boundaries at $width', (
       tester,

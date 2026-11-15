@@ -30,6 +30,7 @@ class TeacherCourseInlineLesson extends StatefulWidget {
 class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
   int moduleIndex = 0;
   String? lessonId;
+  bool findingInitialLesson = true;
   late Future<dynamic> future = loadInitial();
 
   Future<dynamic> loadModule(int index) => widget.load(
@@ -42,6 +43,7 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
       if (!mounted) return data;
       if (recordList(data).isNotEmpty) {
         moduleIndex = i;
+        findingInitialLesson = false;
         return data;
       }
     }
@@ -73,7 +75,12 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
         const SizedBox(height: 12),
         PageResult(
           future: future,
-          onRetry: () => setState(() => future = loadModule(moduleIndex)),
+          onRetry: () => setState(() {
+            // An initial search may fail after passing empty modules.
+            future = findingInitialLesson
+                ? loadInitial()
+                : loadModule(moduleIndex);
+          }),
           builder: (data) {
             final lessons = recordList(data);
             final matches = lessons.where((row) => '${row['id']}' == lessonId);
@@ -103,6 +110,7 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                 if (value == null || value == moduleIndex) return;
                 setState(() {
                   moduleIndex = value;
+                  findingInitialLesson = false;
                   lessonId = null;
                   future = loadModule(value);
                 });
