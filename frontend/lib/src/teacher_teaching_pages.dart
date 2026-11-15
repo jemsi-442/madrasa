@@ -101,7 +101,7 @@ class TeacherOverviewPage extends StatelessWidget {
                         'Time',
                         'Class & subject',
                         "Today's focus",
-                        '',
+                        'Actions',
                       ],
                       rows: [
                         for (final s in today)
@@ -222,24 +222,35 @@ class TeacherOverviewPage extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: 12,
+                          vertical: 8,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                           side: const BorderSide(color: line),
                         ),
-                        leading: Icon(icon, color: color),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(icon, color: color, size: 26),
+                        ),
                         title: Text(
                           title,
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: Text(
                           subtitle,
-                          style: const TextStyle(fontSize: 11, color: muted),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: muted,
+                            height: 1.5,
+                          ),
                         ),
                         trailing: const Icon(
                           Icons.chevron_right,
@@ -279,7 +290,7 @@ class TeacherOverviewPage extends StatelessWidget {
                               s,
                               subtitle: recordList(
                                 s['supportNotes'],
-                              ).map((n) => '${n['note']}').join(),
+                              ).map((n) => '${n['note']}').join('\n'),
                             ),
                           ),
                           TextButton(
@@ -288,7 +299,11 @@ class TeacherOverviewPage extends StatelessWidget {
                               classId: '${s['classId']}',
                               student: s,
                             ),
-                            child: const Text('View'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: gold,
+                              backgroundColor: gold.withValues(alpha: .10),
+                            ),
+                            child: const Text('Follow up'),
                           ),
                         ],
                       ),
@@ -300,7 +315,13 @@ class TeacherOverviewPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const PanelHeading('Recent learning updates'),
+                  PanelHeading(
+                    'Recent learning updates',
+                    action: TextButton(
+                      onPressed: () => onOpen(3),
+                      child: const Text('View all'),
+                    ),
+                  ),
                   if (recent.isEmpty)
                     const EmptyRecords(
                       'Saved learning sessions will appear here.',
@@ -310,21 +331,24 @@ class TeacherOverviewPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.menu_book_outlined,
-                          color: forest,
+                        leading: CircleAvatar(
+                          backgroundColor: forest.withValues(alpha: .10),
+                          child: const Icon(
+                            Icons.menu_book_outlined,
+                            color: forest,
+                          ),
                         ),
                         title: Text(
                           '${recordMap(s['student'])['fullName']}',
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: Text(
-                          '${learningActivities[s['activity']]} | ${passageLabel(s)}\n${shortDate(s['learnedOn'])}',
+                          '${learningActivities[s['activity']] ?? 'Learning session'} | ${passageLabel(s)}\n${shortDate(s['learnedOn'])}',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 13,
                             color: muted,
                             height: 1.7,
                           ),

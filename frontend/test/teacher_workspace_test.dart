@@ -196,6 +196,37 @@ Future<void> choosePassage(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('overview follow-up opens the selected learner and class', (
+    tester,
+  ) async {
+    screen(tester, 1672);
+    int? destination;
+    String? selectedClass;
+    Map<String, dynamic>? selectedStudent;
+    await tester.pumpWidget(
+      host(
+        TeacherOverviewPage(
+          load: teacherLoad,
+          onOpen: (page, {classId, student}) {
+            destination = page;
+            selectedClass = classId;
+            selectedStudent = student;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Follow up'));
+    await tester.tap(find.text('Follow up'));
+    expect(destination, 2);
+    expect(selectedClass, learner['classId']);
+    expect(selectedStudent?['id'], learner['id']);
+    await tester.ensureVisible(find.text('View all'));
+    await tester.tap(find.text('View all'));
+    expect(destination, 3);
+    expect(selectedStudent, isNull);
+    expect(find.text('78%'), findsNothing);
+  });
   for (final providerAvailable in [true, false]) {
     testWidgets(
       'reader preserves session draft without saving (provider $providerAvailable)',

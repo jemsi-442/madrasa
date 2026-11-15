@@ -1135,6 +1135,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                                         ? session.role ==
                                                                   'PARENT'
                                                               ? 'Welcome back, $firstName!'
+                                                              : session.role ==
+                                                                    'TEACHER'
+                                                              ? 'Dashboard'
                                                               : firstName
                                                         : section.title,
                                                     style: TextStyle(
@@ -1149,6 +1152,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                                       color: ink,
                                                     ),
                                                   ),
+                                                  if (session.role ==
+                                                      'TEACHER') ...[
+                                                    const SizedBox(height: 8),
+                                                    const Text(
+                                                      'Overview of your classes, students and daily activities.',
+                                                      style: TextStyle(
+                                                        color: muted,
+                                                        fontSize: 15,
+                                                        height: 1.5,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ],
                                               ),
                                             ),
