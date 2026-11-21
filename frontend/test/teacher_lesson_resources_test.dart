@@ -8,6 +8,51 @@ import 'package:mif_app/src/page_selection.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  testWidgets('resource access labels do not imply upload publishes a lesson', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TeacherLessonResources(
+              lessonId: 'synthetic',
+              apiBaseUrl: 'https://school.test',
+              load: (_) async => [
+                {
+                  'id': '1',
+                  'title': 'Private video',
+                  'assetType': 'VIDEO',
+                  'visibility': 'LOCKED',
+                },
+                {
+                  'id': '2',
+                  'title': 'Shared guide',
+                  'assetType': 'PDF',
+                  'visibility': 'FREE',
+                },
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Locked for learners. Teacher preview only.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Learner access requires a published course and lesson, and course permission.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Watch video'), findsOneWidget);
+    expect(find.text('Open PDF'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('saved upload appears without reload or automatic player', (
     tester,
   ) async {
@@ -52,11 +97,9 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Upload file'));
     await tester.pumpAndSettle();
-    Navigator.of(tester.element(find.byType(LessonUploadEditor))).pop({
-      'id': 'new-pdf',
-      'title': 'Uploaded PDF',
-      'assetType': 'PDF',
-    });
+    Navigator.of(
+      tester.element(find.byType(LessonUploadEditor)),
+    ).pop({'id': 'new-pdf', 'title': 'Uploaded PDF', 'assetType': 'PDF'});
     await tester.pumpAndSettle();
     expect(find.text('Existing guide'), findsOneWidget);
     expect(find.text('Uploaded video'), findsOneWidget);

@@ -269,7 +269,7 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Make available to eligible learners'),
                   subtitle: const Text(
-                    'Off keeps the resource locked. Course access rules still apply.',
+                    'Off keeps the resource locked. On allows eligible learners only after the course and lesson are published. Uploading does not publish them.',
                   ),
                   value: available,
                   onChanged: busy

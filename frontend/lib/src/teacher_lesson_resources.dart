@@ -48,7 +48,13 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
       future = SynchronousFuture<dynamic>(currentRows);
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Resource saved. Select it below to open.')),
+      SnackBar(
+        content: Text(
+          resource['visibility'] == 'LOCKED'
+              ? 'Resource saved and locked for learners. You can preview it below.'
+              : 'Resource saved. Select it below to open.',
+        ),
+      ),
     );
   }
 
@@ -385,6 +391,32 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
                       ),
                     ],
                   ),
+                  if (row['visibility'] == 'LOCKED' ||
+                      row['visibility'] == 'FREE')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            row['visibility'] == 'LOCKED'
+                                ? Icons.lock_outline
+                                : Icons.verified_user_outlined,
+                            size: 20,
+                            color: color,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              row['visibility'] == 'LOCKED'
+                                  ? 'Locked for learners. Teacher preview only.'
+                                  : 'Learner access requires a published course and lesson, and course permission.',
+                              style: TextStyle(color: color, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Divider(
