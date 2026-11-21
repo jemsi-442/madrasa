@@ -778,6 +778,25 @@ assignments are preserved. The optional `--mobile` run uses a 390x844 browser
 viewport, touch gestures and menu-item taps; it is not a physical-device test.
 No production database or migration is involved.
 
+## Shared Teacher-to-Learner Video Demo
+
+In the existing local demo madrasa, `quran.teacher@afaq.test` and
+`learner@example.com` can use **Shared video lesson (Demo)**. The learner stays
+in `MADRASA_CHILD`; the original teacher practice draft is not changed.
+The separate course uses the existing synthetic silent video, not Quran content.
+It is `FREE` for learners in that madrasa and programme, not restricted to one
+learner. `LOCKED` content remains locked even with an access grant.
+
+From `backend`, run `node scripts/prepare-shared-video-demo.mjs --confirm-local-development`.
+This repeatable local-only script uses saved credentials without printing them,
+creates missing demo items through the teacher/admin APIs, publishes through the
+admin API and checks the learner course, lesson and video delivery endpoints.
+It closes only its own login sessions. Viewing does not record achievement.
+
+To inspect: sign in as the learner, open **My courses**, choose **Shared video
+lesson (Demo)**, then **Watch the sample video**. API delivery has been checked;
+browser playback and a fresh multipart teacher upload are separate checks.
+
 ## Production Notes
 
 - All business queries must remain tenant-scoped by `org_id`
