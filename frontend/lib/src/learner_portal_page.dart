@@ -803,6 +803,26 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
     quranProgress(),
   ]);
 
+  Widget readPassage(Map<String, dynamic> session) {
+    final chapter = int.tryParse('${session['surahId']}');
+    final from = int.tryParse('${session['ayahFrom']}');
+    final to = int.tryParse('${session['ayahTo']}');
+    return OutlinedButton.icon(
+      onPressed: chapter == null || from == null || to == null
+          ? null
+          : () => showQuranReader(
+              context,
+              widget.load,
+              contentPath: '$base/quran/content',
+              initialChapterId: chapter,
+              ayahFrom: from,
+              ayahTo: to,
+            ),
+      icon: const Icon(Icons.menu_book_outlined),
+      label: const Text('Read this passage'),
+    );
+  }
+
   Widget quranProgress() => data('$base/quran?page=$sessionPage', (result) {
     final chapters = recordList(result['chapters']),
         latest = recordMap(result['latestSession']);
@@ -958,6 +978,10 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
                     learningObservations[latest['observation']],
                   ),
                   detail('Teacher', recordMap(latest['teacher'])['fullName']),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: readPassage(latest),
+                  ),
                   const TeacherNotice(
                     'Reading and revision are separate activities. Only independent memorisation contributes to the tracker.',
                   ),
@@ -976,6 +1000,7 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
                 'Surah / ayahs',
                 'Activity',
                 'Observation',
+                'Read',
               ],
               rows: [
                 for (final row in recordList(result['sessions']))
@@ -995,6 +1020,7 @@ class _LearnerPortalPageState extends State<LearnerPortalPage> {
                           recordText(learningObservations[row['observation']]),
                         ),
                       ),
+                      DataCell(readPassage(row)),
                     ],
                   ),
               ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/admin_theme.dart';
 import 'package:mif_app/src/learner_portal_page.dart';
+import 'package:mif_app/src/quran_reader.dart';
 import 'package:mif_app/src/workspace.dart';
 
 const student = {
@@ -173,6 +174,39 @@ void screen(WidgetTester tester, double width) {
 }
 
 void main() {
+  testWidgets('recorded passage opens learner reader at the recorded range', (
+    tester,
+  ) async {
+    screen(tester, 1440);
+    final requests = <String>[];
+    await tester.pumpWidget(
+      host(
+        LearnerPortalPage(
+          page: 7,
+          onOpen: (_) {},
+          load: (path) async {
+            requests.add(path);
+            if (path.endsWith('/content/chapters')) {
+              return {'chapters': <dynamic>[]};
+            }
+            return load(path);
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final button = find.text('Read this passage').first;
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    final reader = tester.widget<QuranReader>(find.byType(QuranReader));
+    expect(reader.initialChapterId, 67);
+    expect(reader.ayahFrom, 1);
+    expect(reader.ayahTo, 8);
+    expect(reader.contentPath, '/api/learner/workspace/quran/content');
+    expect(requests.last, '/api/learner/workspace/quran/content/chapters');
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'Quran learning links to lesson progress and teacher assessments',
     (tester) async {
