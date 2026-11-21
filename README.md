@@ -235,6 +235,33 @@ These are **local/demo-only** credentials. Do not use them in a shared or produc
 
 Daily development uses **one database from `backend/.env` (`mms` locally), one Redis and one API on port 4000**. Superadmin, school, teacher, parent and learner dashboards all use this same backend. Demo means synthetic accounts/data, not another database.
 
+#### One-madrasa ERP walkthrough
+
+Use **Afaq Demo Madrasa**, the existing `demo-madrasa` tenant, with the saved
+accounts in the ignored `LOCAL_CREDENTIALS.md`. Its display name has changed;
+its login code, passwords, classes, curriculum assignments and history have not.
+Other demo institutions remain untouched. Do not run reset/reseed commands to
+start this walkthrough.
+
+From `backend`, `node scripts/prepare-erp-demo.mjs --confirm-local-development`
+checks the local development configuration, requires the existing active school
+and all five school roles, and sets only its display name. Reruns are safe.
+It prints aggregate inventory, never credentials or student records. Inventory
+does not certify that every workflow works end to end.
+
+Use http://127.0.0.1:8087/ and test one synthetic learner throughout these steps:
+
+1. Superadmin: open Afaq Demo Madrasa and inspect its existing curriculum assignment.
+2. School admin: confirm the class, teacher, adopted curriculum, learner login and guardian link belong to that madrasa.
+3. Teacher: open that assigned class, record attendance and a learning observation; record and submit an assessment separately.
+4. School admin: review and release the assessment/report through the existing workflow.
+5. Learner and linked parent: verify only the authorised learner's published results appear. Reading resources is not assessed achievement.
+6. Accountant: inspect the learner's invoice and use only the existing development/mock payment flow to test payment and receipt handling. Do not send real payments or SMS.
+7. Superadmin and IT: inspect institutional summaries and technical audit/session records respectively, without giving IT academic-edit permissions.
+
+Verify persistence after signing out and back in. Do not treat course completion,
+teacher observations and published assessment results as interchangeable metrics.
+
 #### Shared development server
 
 Start it from the repository root in its own terminal:
