@@ -83,6 +83,48 @@ try {
   const valid = video.ok && video.headers.get('content-type')?.includes('video/mp4');
   await video.body?.cancel();
   if (!valid) throw new Error('Video delivery failed');
+  if (process.argv.includes('--verify-upload')) {
+    stage = 'Teacher file upload';
+    const bytes = await readFile(new URL('../../frontend/assets/media-preview/video.mp4', import.meta.url));
+    const title = 'Uploaded silent video (Demo)';
+    let uploaded = await db.mediaAsset.findFirst({ where: {
+      orgId: org.id, courseId: BigInt(cid), lessonId: BigInt(lesson.id), title,
+      storageKey: { startsWith: 'afaq-file:' },
+    } });
+    const reused = Boolean(uploaded);
+    if (!uploaded) {
+      const query = new URLSearchParams({ title, format: 'mp4', visibility: 'FREE' });
+      const response = await fetch(`${origin}/api/courses/lessons/${lesson.id}/upload?${query}`, {
+        method: 'POST', redirect: 'error', signal: AbortSignal.timeout(30000),
+        headers: { Authorization: `Bearer ${tokens.TEACHER}`, 'Content-Type': 'application/octet-stream' },
+        body: bytes,
+      });
+      if (response.status !== 201) throw new Error('Teacher upload failed');
+      uploaded = (await response.json()).data;
+    }
+    const detail = await call(`/learner/lessons/${lesson.id}`, tokens.LEARNER);
+    const visible = detail.lesson.assets.find(row => String(row.id) === String(uploaded.id));
+    if (!visible?.sourceReady || visible.accessState !== 'OPEN') throw new Error('Uploaded resource unavailable');
+    const delivery = await call(`/learner/assets/${uploaded.id}/open`, tokens.LEARNER);
+    stage = 'Uploaded video byte delivery and unsigned access protection';
+    if (delivery.delivery?.status !== 'READY' || !delivery.delivery.inlineUrl) throw new Error('Delivery not ready');
+    const deliveryUrl = new URL(delivery.delivery.inlineUrl, origin);
+    if (deliveryUrl.origin !== origin || deliveryUrl.pathname !== `/api/learner/assets/${uploaded.id}/deliver`) throw new Error('Unexpected upload delivery URL');
+    const response = await fetch(deliveryUrl, {
+      headers: { Range: 'bytes=0-31' }, redirect: 'error', signal: AbortSignal.timeout(15000),
+    });
+    if (response.status !== 206 || !response.headers.get('content-type')?.includes('video/mp4') ||
+        response.headers.get('content-range') !== `bytes 0-31/${bytes.length}`) {
+      await response.body?.cancel();
+      throw new Error('Uploaded video range failed');
+    }
+    if (!Buffer.from(await response.arrayBuffer()).equals(bytes.subarray(0, 32))) throw new Error('Uploaded bytes differ');
+    deliveryUrl.search = '';
+    const unsigned = await fetch(deliveryUrl, { redirect: 'error', signal: AbortSignal.timeout(15000) });
+    await unsigned.body?.cancel();
+    if (unsigned.status !== 401) throw new Error('Unsigned delivery not denied');
+    console.log(`PASS: ${reused ? 'reused' : 'uploaded'} file, learner resource visibility, exact video range bytes and unsigned delivery denied. No completion recorded.`);
+  }
   console.log('PASS: teacher-created sample, admin publication, learner course, lesson and video delivery. FREE sample is available to this madrasa programme. Existing drafts and learner programme preserved.');
 } catch {
   console.error(`Shared video demo stopped at ${stage}. No credentials printed. Completed demo steps remain available for retry.`);

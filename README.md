@@ -793,9 +793,21 @@ creates missing demo items through the teacher/admin APIs, publishes through the
 admin API and checks the learner course, lesson and video delivery endpoints.
 It closes only its own login sessions. Viewing does not record achievement.
 
+To verify a real file upload as well, run from `backend`:
+
+```bash
+node scripts/prepare-shared-video-demo.mjs --confirm-local-development --verify-upload
+```
+
+This uploads the bundled synthetic MP4 through the teacher's raw-file upload API,
+then checks learner visibility, exact video range bytes and denial of unsigned
+delivery. Subsequent runs reuse **Uploaded silent video (Demo)** instead of adding
+duplicates. It does not record learner completion or reset existing data.
+
 To inspect: sign in as the learner, open **My courses**, choose **Shared video
-lesson (Demo)**, then **Watch the sample video**. API delivery has been checked;
-browser playback and a fresh multipart teacher upload are separate checks.
+lesson (Demo)**, then **Watch the sample video** and **Uploaded silent video (Demo)**.
+Teacher API upload and learner delivery have been checked; browser upload,
+playback and large-file behaviour still require separate UI checks.
 
 ## Production Notes
 
