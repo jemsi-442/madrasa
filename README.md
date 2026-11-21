@@ -257,6 +257,20 @@ aggregate counts are printed. A failed relationship check does not reset or
 repair records automatically. A passing check does not validate API permissions,
 published results, browser behaviour or payment processing.
 
+`node scripts/check-erp-demo-api.mjs` checks the local API at port 4000 using
+saved school credentials. It requires a shared learner with a reserved `.test`
+email, verifies five role identities and selected read endpoints, and checks
+that learner/accountant roles cannot open the accounting/teacher endpoints
+respectively. It logs out only sessions it creates. Login/logout create audit
+records; teaching, finance, messages and passwords remain unchanged.
+Missing test links stop the check before login rather than reassigning students.
+This is a smoke check, not the full attendance-to-published-report walkthrough.
+
+Last local check: the relationship inventory passed, but the API smoke check
+stopped before login because no `.test` learner had both teacher and parent
+links. API workflow verification remains pending; do not interpret the inventory
+as a successful end-to-end test.
+
 Use http://127.0.0.1:8087/ and test one synthetic learner throughout these steps:
 
 1. Superadmin: open Afaq Demo Madrasa and inspect its existing curriculum assignment.
