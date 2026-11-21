@@ -266,10 +266,17 @@ records; teaching, finance, messages and passwords remain unchanged.
 Missing test links stop the check before login rather than reassigning students.
 This is a smoke check, not the full attendance-to-published-report walkthrough.
 
-Last local check: the relationship inventory passed, but the API smoke check
-stopped before login because no `.test` learner had both teacher and parent
-links. API workflow verification remains pending; do not interpret the inventory
-as a successful end-to-end test.
+To complete missing demo links, run
+`node scripts/link-erp-demo.mjs --confirm-local-development` from `backend`.
+It requires exactly one active `.test` learner, reuses an existing demo teaching
+class in the same branch and the existing demo parent, and preserves existing
+class assignments, guardian links, history and passwords. Repeated runs do not
+duplicate links. It stops rather than replacing an incompatible class.
+
+Last local API smoke check passed all 22 checkpoints across five school roles
+after linking the test learner. All five check sessions were logged out.
+This verifies selected read endpoints and two role denials, not creation of
+attendance, assessment submission/publication, receipts or browser rendering.
 
 Use http://127.0.0.1:8087/ and test one synthetic learner throughout these steps:
 
