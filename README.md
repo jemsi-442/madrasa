@@ -249,6 +249,14 @@ and all five school roles, and sets only its display name. Reruns are safe.
 It prints aggregate inventory, never credentials or student records. Inventory
 does not certify that every workflow works end to end.
 
+Run `node scripts/check-erp-demo.mjs` from `backend` to check the existing
+relationships without writing data. It counts active learner accounts linked
+to a student with both a same-madrasa class teacher and a linked parent account,
+and checks for active admin/accountant accounts and existing invoices. Only
+aggregate counts are printed. A failed relationship check does not reset or
+repair records automatically. A passing check does not validate API permissions,
+published results, browser behaviour or payment processing.
+
 Use http://127.0.0.1:8087/ and test one synthetic learner throughout these steps:
 
 1. Superadmin: open Afaq Demo Madrasa and inspect its existing curriculum assignment.
