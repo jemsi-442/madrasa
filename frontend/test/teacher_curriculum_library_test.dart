@@ -106,7 +106,7 @@ void main() {
       await tester.tap(find.text('View lessons'));
       await tester.pumpAndSettle();
       expect(find.text('Guided practice'), findsOneWidget);
-      expect(find.text('Record lesson taught'), findsOneWidget);
+      expect(find.text('Record teaching'), findsOneWidget);
       expect(writes, 0);
       await tester.ensureVisible(find.text('My assigned curriculum'));
       await tester.tap(find.text('My assigned curriculum'));
@@ -118,8 +118,12 @@ void main() {
       await tester.ensureVisible(find.byTooltip('Clear search'));
       await tester.tap(find.byTooltip('Clear search'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      final academicYear = find.ancestor(
+        of: find.text('Academic year'),
+        matching: find.byType(DropdownButtonFormField<String>),
+      );
+      await tester.ensureVisible(academicYear);
+      await tester.tap(academicYear);
       await tester.pumpAndSettle();
       await tester.tap(find.text('2027').last);
       await tester.pumpAndSettle();

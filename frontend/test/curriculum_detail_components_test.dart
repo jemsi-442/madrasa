@@ -278,19 +278,21 @@ void main() {
       expect(find.text('Teaching activities'), findsOneWidget);
       expect(find.text('Linked learning objectives'), findsOneWidget);
       expect(records, 0);
-      await tester.ensureVisible(find.text('Record lesson taught'));
+      await tester.ensureVisible(find.text('Record teaching'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Record lesson taught'));
+      await tester.tap(find.text('Record teaching'));
       expect(records, 1);
       await tester.ensureVisible(find.byType(TextField));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'READ-01');
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Shared lesson plans'));
+      expect(find.text('Shared lesson plans (1)'), findsOneWidget);
+      await tester.ensureVisible(find.text('Linked learning objectives'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Shared lesson plans'));
+      await tester.tap(find.text('Linked learning objectives'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Shared lesson plans'));
+      expect(find.text('READ-01'), findsWidgets);
+      await tester.tap(find.text('Linked learning objectives'));
       await tester.pumpAndSettle();
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,

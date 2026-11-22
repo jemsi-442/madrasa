@@ -170,21 +170,29 @@ class SchoolCurriculumDetail extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            Text(
-              'Current curriculum: v${version['version']}${historyDate(adoption['createdAt']).isEmpty ? '' : ' · in use since ${historyDate(adoption['createdAt'])}'}',
-              style: const TextStyle(color: AfaqDesign.muted, height: 1.5),
-            ),
+            _metadata('Current curriculum', 'Version ${version['version']}'),
+            if (historyDate(adoption['createdAt']).isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _metadata('In use since', historyDate(adoption['createdAt'])),
+            ],
             if (adoption['teachingCoverage'] is Map) ...[
-              const SizedBox(height: 18),
-              Text(
-                'Teaching coverage: ${adoption['teachingCoverage']['taughtLessons']} / ${adoption['teachingCoverage']['totalLessons']} lessons',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              const Divider(height: 36),
+              const Text(
+                'Teaching coverage',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              _metadata(
+                '${adoption['teachingCoverage']['taughtLessons']} of ${adoption['teachingCoverage']['totalLessons']} lessons',
+                (adoption['teachingCoverage']['totalLessons'] as num) > 0
+                    ? '${((adoption['teachingCoverage']['taughtLessons'] as num) / (adoption['teachingCoverage']['totalLessons'] as num) * 100).clamp(0, 100).round()}%'
+                    : 'Not started',
               ),
               if ((adoption['teachingCoverage']['totalLessons'] as num) > 0)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: LinearProgressIndicator(
-                    minHeight: 7,
+                    minHeight: 12,
                     borderRadius: BorderRadius.circular(8),
                     color: AfaqDesign.green,
                     backgroundColor: AfaqDesign.cardTint(AfaqDesign.green, .12),
@@ -197,7 +205,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
                   ),
                 ),
               const Text(
-                'Current version only. Teacher-reported teaching, not learner achievement.',
+                'Based on teaching records for this version. Learner results are recorded in Assessments.',
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.5,
@@ -288,35 +296,54 @@ class SchoolCurriculumDetail extends StatelessWidget {
                         value: '${lessons[i]['activities'] ?? ''}',
                       ),
                       const Divider(height: 32),
-                      const Text(
-                        'Linked learning objectives',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ExpansionTile(
+                        key: PageStorageKey(
+                          '${assignment['id']}-lesson-${lessons[i]['id'] ?? i}-objectives',
+                        ),
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(top: 8),
+                        title: const Text(
+                          'Linked learning objectives',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        children: [
+                          if ((lessons[i]['objectives'] as List).isEmpty)
+                            const Text(
+                              'No learning objectives linked.',
+                              style: TextStyle(color: AfaqDesign.muted),
+                            ),
+                          for (final link in lessons[i]['objectives'])
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: CurriculumDetailField(
+                                label: '${link['objective']['code']}',
+                                value: '${link['objective']['description']}',
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      if ((lessons[i]['objectives'] as List).isEmpty)
-                        const Text(
-                          'No learning objectives linked.',
-                          style: TextStyle(color: AfaqDesign.muted),
-                        ),
-                      for (final link in lessons[i]['objectives'])
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: CurriculumDetailField(
-                            label: '${link['objective']['code']}',
-                            value: '${link['objective']['description']}',
-                          ),
-                        ),
                       if (!isAdmin &&
                           lessons[i]['id'] != null &&
                           adoptions.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilledButton.icon(
-                            onPressed: () => onRecord(lessons[i]),
-                            icon: const Icon(Icons.check_circle_outline),
-                            label: const Text('Record lesson taught'),
-                          ),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 16,
+                          runSpacing: 12,
+                          children: [
+                            Text(
+                              adoptions.length == 1
+                                  ? 'For ${adoptions.first['class']['name']}'
+                                  : 'Choose a class when recording',
+                              style: const TextStyle(color: AfaqDesign.muted),
+                            ),
+                            FilledButton.icon(
+                              onPressed: () => onRecord(lessons[i]),
+                              icon: const Icon(Icons.check_circle_outline),
+                              label: const Text('Record teaching'),
+                            ),
+                          ],
                         ),
                       ],
                     ],
@@ -354,29 +381,28 @@ class SchoolCurriculumDetail extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(24),
-          decoration: AfaqDesign.panelDecoration(color: AfaqDesign.paper),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Wrap(
-                spacing: 8,
+                spacing: 14,
                 runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  Text(
+                    '${version['subject']}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: AfaqDesign.ink,
+                    ),
+                  ),
                   CurriculumDetailTag('${version['level']}'),
                   CurriculumDetailTag(
                     'Version ${version['version']}',
                     accent: AfaqDesign.actionGold,
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '${version['subject']}',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AfaqDesign.ink,
-                ),
               ),
               if ('${version['description'] ?? ''}'.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -411,7 +437,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 7, child: plans),
+                Expanded(flex: 5, child: plans),
                 const SizedBox(width: 24),
                 Expanded(flex: 3, child: classes),
               ],
@@ -422,6 +448,34 @@ class SchoolCurriculumDetail extends StatelessWidget {
     );
   }
 
+  Widget _metadata(String label, String value) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: AfaqDesign.ink,
+            fontSize: 16,
+            height: 1.4,
+          ),
+        ),
+      ),
+      const SizedBox(width: 16),
+      Flexible(
+        child: Text(
+          value,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            color: AfaqDesign.ink,
+            fontSize: 16,
+            height: 1.4,
+          ),
+        ),
+      ),
+    ],
+  );
+
   Widget _section({
     required String title,
     required String id,
@@ -429,28 +483,41 @@ class SchoolCurriculumDetail extends StatelessWidget {
     required IconData icon,
     required bool expanded,
     required List<Widget> children,
-  }) => Container(
-    decoration: AfaqDesign.panelDecoration(),
-    child: ExpansionTile(
-      key: PageStorageKey('${assignment['id']}-$id-$openLessons'),
-      maintainState: true,
-      initiallyExpanded: expanded,
-      tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      shape: const Border(),
-      collapsedShape: const Border(),
-      leading: Icon(icon, color: AfaqDesign.actionGold),
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-      ),
-      subtitle: Text(
-        '$count ${id == 'topics' ? 'topics' : 'lesson plans'}',
-        style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
-      ),
-      children: children,
-    ),
-  );
+  }) => !isAdmin && id == 'lessons'
+      ? CurriculumDetailPanel(
+          title: '$title ($count)',
+          icon: icon,
+          accent: AfaqDesign.actionGold,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        )
+      : Container(
+          decoration: AfaqDesign.panelDecoration(),
+          child: ExpansionTile(
+            key: PageStorageKey('${assignment['id']}-$id-$openLessons'),
+            maintainState: true,
+            initiallyExpanded: expanded,
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 8,
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            leading: Icon(icon, color: AfaqDesign.actionGold),
+            title: Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              '$count ${id == 'topics' ? 'topics' : 'lesson plans'}',
+              style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
+            ),
+            children: children,
+          ),
+        );
 }
 
 class CurriculumLessonPlansBrowser extends StatefulWidget {

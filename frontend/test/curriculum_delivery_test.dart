@@ -68,12 +68,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Lesson plan'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Shared lesson plans'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Shared lesson plans'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Record lesson taught'));
-      await tester.tap(find.text('Record lesson taught'));
+      expect(find.textContaining('Shared lesson plans ('), findsOneWidget);
+      await tester.ensureVisible(find.text('Record teaching'));
+      await tester.tap(find.text('Record teaching'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm taught'));
       await tester.pumpAndSettle();
@@ -166,12 +163,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Lesson plan'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Shared lesson plans'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Shared lesson plans'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Record lesson taught'));
-      await tester.tap(find.text('Record lesson taught'));
+      expect(find.textContaining('Shared lesson plans ('), findsOneWidget);
+      await tester.ensureVisible(find.text('Record teaching'));
+      await tester.tap(find.text('Record teaching'));
       await tester.pumpAndSettle();
       expect(
         tester
@@ -313,18 +307,18 @@ void main() {
           await tester.tap(find.text('Lesson plan'));
           await tester.pumpAndSettle();
         }
-        await tester.ensureVisible(find.text('Shared lesson plans'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Shared lesson plans'));
-        await tester.pumpAndSettle();
         if (admin) {
-          expect(find.text('Record lesson taught'), findsNothing);
+          await tester.ensureVisible(find.text('Shared lesson plans'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Shared lesson plans'));
+          await tester.pumpAndSettle();
+          expect(find.text('Record teaching'), findsNothing);
           expect(writes, isEmpty);
           return;
         }
-        await tester.ensureVisible(find.text('Record lesson taught'));
+        await tester.ensureVisible(find.text('Record teaching'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Record lesson taught'));
+        await tester.tap(find.text('Record teaching'));
         await tester.pumpAndSettle();
         expect(find.textContaining('not student attendance'), findsOneWidget);
         await tester.tap(find.text('Confirm taught'));
@@ -350,7 +344,7 @@ void main() {
         await tester.tap(find.text('Close'));
         await tester.pumpAndSettle();
         expect(loads, 1);
-        await tester.tap(find.text('Record lesson taught'));
+        await tester.tap(find.text('Record teaching'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Confirm taught'));
         await tester.pumpAndSettle();
