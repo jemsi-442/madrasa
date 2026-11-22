@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { reorderCourseOutline } from './course-order';
 import { createLessonText } from "./lesson-text";
 import { uploadLessonResource } from "./lesson-upload";
 import { HttpError } from "../../shared/errors/http-error";
@@ -45,6 +46,12 @@ coursesRouter.get("/assets/:assetId/deliver", asyncHandler(async (req, res) => {
   else res.sendFile(url.filePath);
 }));
 coursesRouter.use(authenticate, requireTenantContext);
+coursesRouter.patch('/:id/modules/order', requireRole('ADMIN', 'TEACHER'), asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await reorderCourseOutline(req.authUser!, String(req.params.id), 'modules', req.body) });
+}));
+coursesRouter.patch('/modules/:id/lessons/order', requireRole('ADMIN', 'TEACHER'), asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await reorderCourseOutline(req.authUser!, String(req.params.id), 'lessons', req.body) });
+}));
 coursesRouter.post("/lessons/:lessonId/upload", requireRole("ADMIN", "TEACHER"), asyncHandler(async (req, res) => {
   if (!req.is("application/octet-stream")) throw new HttpError(415, "Send the file as application/octet-stream");
   const data = await uploadLessonResource(req.authUser!, String(req.params.lessonId), req.query, req);

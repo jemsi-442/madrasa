@@ -287,6 +287,62 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     child: child,
   );
 
+  Future<void> reorder(int from, int to, {Map<String, dynamic>? parent}) async {
+    if (saving || loading) return;
+    final rows = parent == null ? modules : lessons['${parent['id']}']!;
+    if (to > from) to--;
+    if (from == to) return;
+    final next = List<Map<String, dynamic>>.of(rows);
+    next.insert(to, next.removeAt(from));
+    setState(() => saving = true);
+    try {
+      await widget.update(
+        parent == null
+            ? '/api/courses/${course!['id']}/modules/order'
+            : '/api/courses/modules/${parent['id']}/lessons/order',
+        {
+          'ids': next.map((row) => '${row['id']}').toList(),
+          'expectedIds': rows.map((row) => '${row['id']}').toList(),
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        for (var i = 0; i < next.length; i++) {
+          next[i] = {...next[i], 'position': i + 1};
+        }
+        if (parent == null) {
+          modules = next;
+        } else {
+          lessons['${parent['id']}'] = next;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Order was not saved. Your lesson edits are safe. Save your edits and reopen the course if its outline changed elsewhere.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Widget dragHandle(int index, String label) => ReorderableDragStartListener(
+    index: index,
+    enabled: !saving && !loading,
+    child: Tooltip(
+      message: 'Drag to reorder $label',
+      child: const Padding(
+        padding: EdgeInsets.all(8),
+        child: Icon(Icons.drag_indicator, color: navy),
+      ),
+    ),
+  );
+
   Widget get outline => panel(
     Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -314,49 +370,81 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
         const SizedBox(height: 20),
         if (modules.isEmpty)
           const Text('Add a module to start organising lessons.'),
-        for (final parent in modules)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xffe0e5f0)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ExpansionTile(
-                initiallyExpanded: true,
-                shape: const Border(),
-                collapsedShape: const Border(),
-                leading: const Icon(Icons.folder_open, color: gold),
-                title: Text(
-                  recordText(parent['title']),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                children: [
-                  for (final row
-                      in lessons['${parent['id']}'] ?? <Map<String, dynamic>>[])
-                    ListTile(
-                      selected: lesson?['id'] == row['id'],
-                      selectedTileColor: const Color(0xfffff4d9),
-                      leading: const Icon(Icons.article_outlined),
-                      title: Text(recordText(row['title'])),
-                      subtitle: Text(friendlyStatus(row['publicationStatus'])),
-                      onTap: saving
-                          ? null
-                          : () async {
-                              if (await canLeave() && mounted) {
-                                setState(() => select(parent, row));
-                              }
-                            },
-                    ),
-                  TextButton.icon(
-                    onPressed: saving ? null : () => add(parent: parent),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add lesson'),
-                  ),
-                ],
-              ),
+        if (modules.length > 1 || lessons.values.any((rows) => rows.length > 1))
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Drag handles to arrange modules and lessons. Order saves automatically.',
             ),
           ),
+        ReorderableListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          onReorder: (from, to) => reorder(from, to),
+          children: [
+            for (final parent in modules)
+              Padding(
+                key: ValueKey('module-${parent['id']}'),
+                padding: const EdgeInsets.only(bottom: 16),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xffe0e5f0)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ExpansionTile(
+                    initiallyExpanded: true,
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    leading: dragHandle(modules.indexOf(parent), 'module'),
+                    title: Text(
+                      recordText(parent['title']),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    children: [
+                      ReorderableListView(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        buildDefaultDragHandles: false,
+                        onReorder: (from, to) =>
+                            reorder(from, to, parent: parent),
+                        children: [
+                          for (final row
+                              in lessons['${parent['id']}'] ??
+                                  <Map<String, dynamic>>[])
+                            ListTile(
+                              key: ValueKey('lesson-${row['id']}'),
+                              selected: lesson?['id'] == row['id'],
+                              selectedTileColor: const Color(0xfffff4d9),
+                              leading: dragHandle(
+                                lessons['${parent['id']}']!.indexOf(row),
+                                'lesson',
+                              ),
+                              title: Text(recordText(row['title'])),
+                              subtitle: Text(
+                                friendlyStatus(row['publicationStatus']),
+                              ),
+                              onTap: saving
+                                  ? null
+                                  : () async {
+                                      if (await canLeave() && mounted) {
+                                        setState(() => select(parent, row));
+                                      }
+                                    },
+                            ),
+                        ],
+                      ),
+                      TextButton.icon(
+                        onPressed: saving ? null : () => add(parent: parent),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add lesson'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ],
     ),
   );

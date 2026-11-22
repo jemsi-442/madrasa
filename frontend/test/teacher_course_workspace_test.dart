@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/src/teacher_course_workspace.dart';
+import 'package:mif_app/src/teacher_course_workspace.dart';
 
 void main() {
   testWidgets('edits stay in workspace and save to selected lesson', (
@@ -12,15 +12,17 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final writes = <Map<String, dynamic>>[];
     Future<dynamic> load(String path) async {
-      if (path == '/api/teaching/courses')
+      if (path == '/api/teaching/courses') {
         return [
           {'id': '1', 'title': 'Sample course'},
         ];
-      if (path.endsWith('/modules'))
+      }
+      if (path.endsWith('/modules')) {
         return [
           {'id': '2', 'title': 'Getting started', 'position': 1},
         ];
-      if (path.endsWith('/lessons'))
+      }
+      if (path.endsWith('/lessons')) {
         return [
           {
             'id': '3',
@@ -28,7 +30,14 @@ void main() {
             'contentText': 'Original notes',
             'publicationStatus': 'DRAFT',
           },
+          {
+            'id': '4',
+            'title': 'Second lesson',
+            'contentText': 'Second notes',
+            'publicationStatus': 'DRAFT',
+          },
         ];
+      }
       return <Map<String, dynamic>>[];
     }
 
@@ -57,6 +66,17 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Unsaved changes'), findsOneWidget);
+    final lessonList = tester
+        .widgetList<ReorderableListView>(find.byType(ReorderableListView))
+        .last;
+    lessonList.onReorder(0, 2);
+    await tester.pumpAndSettle();
+    expect(writes.single['path'], '/api/courses/modules/2/lessons/order');
+    expect(writes.single['ids'], ['4', '3']);
+    expect(writes.single['expectedIds'], ['3', '4']);
+    expect(find.text('Revised notes'), findsOneWidget);
+    expect(find.text('Unsaved changes'), findsOneWidget);
+    writes.clear();
     await tester.pumpWidget(app());
     await tester.pump();
     expect(find.text('Revised notes'), findsOneWidget);
