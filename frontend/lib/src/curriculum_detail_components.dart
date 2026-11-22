@@ -205,7 +205,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
                   ),
                 ),
               const Text(
-                'Based on teaching records for this version. Learner results are recorded in Assessments.',
+                'Based on teaching records for this version.\n\nLearner results are recorded in Assessments.',
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.5,
@@ -292,9 +292,19 @@ class SchoolCurriculumDetail extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      CurriculumDetailField(
-                        label: 'Teaching activities',
-                        value: '${lessons[i]['activities'] ?? ''}',
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AfaqDesign.cardTint(
+                            AfaqDesign.actionGold,
+                            .05,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: CurriculumDetailField(
+                          label: 'Teaching activities',
+                          value: '${lessons[i]['activities'] ?? ''}',
+                        ),
                       ),
                       const Divider(height: 32),
                       ExpansionTile(

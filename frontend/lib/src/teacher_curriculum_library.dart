@@ -399,7 +399,7 @@ class _CurriculumCard extends StatelessWidget {
                     ),
                     _count(
                       Icons.school_outlined,
-                      '${adoptions.length} classes',
+                      '${adoptions.length} ${adoptions.length == 1 ? 'class' : 'classes'}',
                     ),
                   ],
                 ),
@@ -477,12 +477,19 @@ class _CurriculumCard extends StatelessWidget {
     );
   }
 
-  Widget _count(IconData icon, String text) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 19, color: AfaqDesign.ink),
-      const SizedBox(width: 6),
-      Text(text, style: const TextStyle(color: AfaqDesign.ink, fontSize: 13)),
-    ],
+  Widget _count(IconData icon, String text) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: AfaqDesign.cardTint(AfaqDesign.blue, .06),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 19, color: AfaqDesign.ink),
+        const SizedBox(width: 6),
+        Text(text, style: const TextStyle(color: AfaqDesign.ink, fontSize: 13)),
+      ],
+    ),
   );
 }

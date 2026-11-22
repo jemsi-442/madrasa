@@ -343,7 +343,7 @@ void main() {
           .first;
       expect(
         tester.getTopLeft(objective).dx,
-        closeTo(tester.getTopLeft(find.text('Teaching activities')).dx + 16, 1),
+        closeTo(tester.getTopLeft(find.text('Teaching activities')).dx - 2, 1),
       );
       final objectivesTile = tester.widget<ExpansionTile>(
         find
