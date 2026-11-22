@@ -867,6 +867,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     switch (section.title) {
       case 'Curriculum':
         return SchoolCurriculumPage(
+          initialClassId: session.role == 'TEACHER' ? teachingClassId : null,
           load: widget.state.load,
           submit: widget.state.submit,
           isAdmin: session.role == 'ADMIN',

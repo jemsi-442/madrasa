@@ -657,18 +657,24 @@ class TeacherClassesPage extends StatelessWidget {
                               children: [
                                 FilledButton.icon(
                                   onPressed: () =>
+                                      onOpen(10, classId: '${c['id']}'),
+                                  icon: const Icon(Icons.menu_book_outlined),
+                                  label: const Text('Plan & teach'),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () =>
                                       onOpen(2, classId: '${c['id']}'),
                                   icon: const Icon(
                                     Icons.chevron_right,
                                     size: AfaqDesign.iconSmall,
                                   ),
-                                  label: const Text('View class'),
+                                  label: const Text('Students'),
                                 ),
                                 TextButton.icon(
                                   onPressed: () =>
                                       onOpen(5, classId: '${c['id']}'),
                                   icon: const Icon(Icons.menu_book_outlined),
-                                  label: const Text('My courses'),
+                                  label: const Text('Course resources'),
                                 ),
                                 TextButton(
                                   onPressed: () =>

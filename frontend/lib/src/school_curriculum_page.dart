@@ -17,12 +17,14 @@ class SchoolCurriculumPage extends StatefulWidget {
     required this.isAdmin,
     this.refreshToken = 0,
     this.embedded = false,
+    this.initialClassId,
   });
   final PageLoader load;
   final PageSubmitter submit;
   final bool isAdmin;
   final int refreshToken;
   final bool embedded;
+  final String? initialClassId;
   @override
   State<SchoolCurriculumPage> createState() => _SchoolCurriculumPageState();
 }
@@ -34,6 +36,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
   final recordedDeliveries = <String>{};
   String? selectedAssignment;
   bool openLessons = false;
+  late String? classId = widget.initialClassId;
   final pageScroll = ScrollController();
 
   @override
@@ -273,6 +276,11 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
   @override
   void didUpdateWidget(covariant SchoolCurriculumPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialClassId != widget.initialClassId) {
+      classId = widget.initialClassId;
+      selectedAssignment = null;
+      openLessons = false;
+    }
     if (oldWidget.refreshToken != widget.refreshToken) reload();
   }
 
@@ -446,7 +454,23 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         );
       }
       final data = Map<String, dynamic>.from(snapshot.data as Map);
-      final assignments = data['assignments'] as List;
+      final assignments = (data['assignments'] as List)
+          .map((raw) {
+            final item = Map<String, dynamic>.from(raw as Map);
+            if (!widget.isAdmin && classId != null) {
+              item['adoptions'] = (item['adoptions'] as List)
+                  .where((adoption) => '${adoption['class']['id']}' == classId)
+                  .toList();
+            }
+            return item;
+          })
+          .where(
+            (item) =>
+                widget.isAdmin ||
+                classId == null ||
+                (item['adoptions'] as List).isNotEmpty,
+          )
+          .toList();
       final showDetails =
           !widget.isAdmin &&
           assignments.any((item) => '${item['id']}' == selectedAssignment);
@@ -458,6 +482,42 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
         padding: widget.embedded ? EdgeInsets.zero : const EdgeInsets.all(24),
         children: [
+          if (!widget.isAdmin) ...[
+            DropdownButtonFormField<String>(
+              key: ValueKey('curriculum-class-$classId'),
+              initialValue: classId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Teaching class',
+                prefixIcon: Icon(Icons.groups_outlined),
+              ),
+              items: [
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('All assigned classes'),
+                ),
+                for (final item in (data['classes'] as List))
+                  DropdownMenuItem(
+                    value: '${item['id']}',
+                    child: Text('${item['name']}'),
+                  ),
+                if (classId != null &&
+                    !(data['classes'] as List).any(
+                      (item) => '${item['id']}' == classId,
+                    ))
+                  DropdownMenuItem(
+                    value: classId,
+                    child: const Text('Selected class unavailable'),
+                  ),
+              ],
+              onChanged: (value) => setState(() {
+                classId = value;
+                selectedAssignment = null;
+                openLessons = false;
+              }),
+            ),
+            const SizedBox(height: 20),
+          ],
           if (!widget.isAdmin)
             Offstage(
               offstage: showDetails,
@@ -513,6 +573,8 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                         ? 'Waiting for a published framework'
                         : (data['classes'] as List).isEmpty
                         ? 'A class assignment is needed'
+                        : classId != null
+                        ? 'No curriculum adopted for this class'
                         : 'Your classes are waiting for curriculum',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),

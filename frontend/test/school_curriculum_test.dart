@@ -4,6 +4,56 @@ import 'package:mif_app/src/school_curriculum_page.dart';
 import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  testWidgets('class handoff scopes curriculum without modifying API data', (
+    tester,
+  ) async {
+    final assignments = [
+      for (final id in ['1', '2'])
+        {
+          'id': 'a$id',
+          'version': {
+            'subject': 'Subject $id',
+            'version': '1.0',
+            'level': 'Level 1',
+            'topics': [],
+            'lessons': [],
+          },
+          'adoptions': [
+            {
+              'id': 'ad$id',
+              'class': {'id': id, 'name': 'Class $id', 'academicYear': '2026'},
+            },
+          ],
+        },
+    ];
+    Widget page(String id) => MaterialApp(
+      home: Scaffold(
+        body: SchoolCurriculumPage(
+          isAdmin: false,
+          initialClassId: id,
+          load: (_) async => {
+            'assignments': assignments,
+            'classes': [
+              {'id': '1', 'name': 'Class 1'},
+              {'id': '2', 'name': 'Class 2'},
+            ],
+            'subjects': [],
+          },
+          submit: (_, body) async => {},
+        ),
+      ),
+    );
+    await tester.pumpWidget(page('1'));
+    await tester.pumpAndSettle();
+    expect(find.text('Subject 1'), findsWidgets);
+    expect(find.text('Subject 2'), findsNothing);
+    await tester.pumpWidget(page('2'));
+    await tester.pumpAndSettle();
+    expect(find.text('Subject 2'), findsWidgets);
+    expect(find.text('Subject 1'), findsNothing);
+    expect((assignments.first['adoptions'] as List).length, 1);
+    expect(tester.takeException(), isNull);
+  });
   for (final status in [401, 403]) {
     testWidgets(
       'curriculum refresh clears old view on access failure $status',

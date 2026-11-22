@@ -451,14 +451,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('View class').first);
-    await tester.tap(find.text('View class').first);
+    await tester.ensureVisible(find.text('Plan & teach').first);
+    await tester.tap(find.text('Plan & teach').first);
+    expect(destination, 10);
+    expect(selected, '8');
+    await tester.tap(find.text('Students').first);
     expect(destination, 2);
     expect(selected, '8');
     await tester.tap(find.text('Attendance'));
     expect(destination, 4);
     expect(selected, '8');
-    await tester.tap(find.text('My courses'));
+    await tester.tap(find.text('Course resources'));
     expect(destination, 5);
     expect(selected, '8');
   });
