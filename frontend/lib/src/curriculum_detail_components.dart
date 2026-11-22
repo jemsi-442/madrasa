@@ -270,6 +270,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
               CurriculumLessonPlansBrowser(
                 key: ValueKey('${assignment['id']}-${version['id']}'),
                 lessons: lessons,
+                compact: !isAdmin,
                 buildLesson: (i) => CurriculumDetailPanel(
                   title: '${lessons[i]['title']}',
                   accent: AfaqDesign.actionGold,
@@ -525,10 +526,12 @@ class CurriculumLessonPlansBrowser extends StatefulWidget {
     super.key,
     required this.lessons,
     required this.buildLesson,
+    this.compact = false,
   });
 
   final List lessons;
   final Widget Function(int index) buildLesson;
+  final bool compact;
 
   @override
   State<CurriculumLessonPlansBrowser> createState() =>
@@ -538,6 +541,7 @@ class CurriculumLessonPlansBrowser extends StatefulWidget {
 class _CurriculumLessonPlansBrowserState
     extends State<CurriculumLessonPlansBrowser> {
   final search = TextEditingController();
+  bool showAll = false;
 
   @override
   void dispose() {
@@ -562,6 +566,9 @@ class _CurriculumLessonPlansBrowserState
       ].join(' ').toLowerCase();
       if (query.isEmpty || terms.every(text.contains)) matches.add(i);
     }
+    final visible = widget.compact && query.isEmpty && !showAll
+        ? matches.take(1).toList()
+        : matches;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -587,7 +594,7 @@ class _CurriculumLessonPlansBrowserState
         ),
         const SizedBox(height: 12),
         Text(
-          'Showing ${matches.length} of ${widget.lessons.length} lesson plans',
+          'Showing ${visible.length} of ${widget.lessons.length} lesson plans',
           style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
         ),
         const SizedBox(height: 16),
@@ -613,12 +620,24 @@ class _CurriculumLessonPlansBrowserState
               ],
             ),
           ),
-        for (final index in matches) ...[
+        for (final index in visible) ...[
           KeyedSubtree(
             key: ValueKey(widget.lessons[index]['id'] ?? index),
             child: widget.buildLesson(index),
           ),
-          if (index != matches.last) const SizedBox(height: 16),
+          if (index != visible.last) const SizedBox(height: 16),
+        ],
+        if (widget.compact && query.isEmpty && matches.length > 1) ...[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => showAll = !showAll),
+            icon: Icon(showAll ? Icons.expand_less : Icons.expand_more),
+            label: Text(
+              showAll
+                  ? 'Show fewer lesson plans'
+                  : 'Show ${matches.length - 1} more lesson ${matches.length == 2 ? 'plan' : 'plans'}',
+            ),
+          ),
         ],
       ],
     );

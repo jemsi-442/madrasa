@@ -3,6 +3,52 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_detail_components.dart';
 
 void main() {
+  testWidgets('compact plans expand and search hidden lessons', (tester) async {
+    final lessons = List.generate(
+      3,
+      (i) => {
+        'id': 'synthetic-$i',
+        'title': 'Plan $i',
+        'activities': '',
+        'objectives': <Map>[],
+      },
+    );
+    int? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CurriculumLessonPlansBrowser(
+              lessons: lessons,
+              compact: true,
+              buildLesson: (index) => TextButton(
+                onPressed: () => selected = index,
+                child: Text('Plan $index'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Plan 0'), findsOneWidget);
+    expect(find.text('Plan 2'), findsNothing);
+    await tester.tap(find.text('Show 2 more lesson plans'));
+    await tester.pumpAndSettle();
+    expect(find.text('Plan 2'), findsOneWidget);
+    await tester.tap(find.text('Show fewer lesson plans'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Plan 2');
+    await tester.pumpAndSettle();
+    expect(find.text('Plan 0'), findsNothing);
+    await tester.tap(find.widgetWithText(TextButton, 'Plan 2'));
+    expect(selected, 2);
+    await tester.tap(find.byTooltip('Clear lesson search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Plan 0'), findsOneWidget);
+    expect(find.text('Plan 2'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [390.0, 1100.0]) {
     testWidgets('lesson search keeps original lesson actions at $width', (
       tester,
