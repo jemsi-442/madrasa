@@ -17,7 +17,7 @@ void main() {
       'lesson': {'id': '12', 'title': 'Ongoing practice'},
     },
   ];
-  for (final width in [390.0, 1440.0]) {
+  for (final width in [390.0, 1024.0, 1440.0]) {
     testWidgets('tracker filters and rechecks lesson access at $width', (
       t,
     ) async {
@@ -42,6 +42,20 @@ void main() {
       );
       expect(find.text('Finished practice'), findsOneWidget);
       expect(find.text('Ongoing practice'), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.text('Continue lesson'),
+          matching: find.byWidgetPredicate((w) => w is FilledButton),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.text('Review lesson'),
+          matching: find.byWidgetPredicate((w) => w is TextButton),
+        ),
+        findsOneWidget,
+      );
       await tap(t, find.widgetWithText(ChoiceChip, 'In progress  1'));
       expect(find.text('Finished practice'), findsNothing);
       expect(find.text('Ongoing practice'), findsOneWidget);
@@ -103,6 +117,43 @@ void main() {
     expect(find.text('Ongoing practice'), findsNothing);
     await tap(t, find.text('Clear filters'));
     expect(find.text('Ongoing practice'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+  testWidgets('long lesson titles wrap without squeezing desktop actions', (
+    t,
+  ) async {
+    const title =
+        'Synthetic practice lesson with a longer title for checking readable table layout';
+    await host(
+      t,
+      LearnerProgressPage(
+        load: (_) async => {
+          'items': [
+            {
+              ...rows.last,
+              'lesson': {'id': '12', 'title': title},
+            },
+          ],
+        },
+        submit: (_, _) async => throw StateError('Unexpected write'),
+        apiBaseUrl: 'https://school.test',
+        onBrowse: () {},
+      ),
+      width: 1024,
+    );
+    expect(find.text(title), findsOneWidget);
+    expect(find.byType(Table), findsOneWidget);
+    expect(
+      t
+          .getSize(
+            find.ancestor(
+              of: find.text('Continue lesson'),
+              matching: find.byWidgetPredicate((w) => w is FilledButton),
+            ),
+          )
+          .height,
+      greaterThanOrEqualTo(44),
+    );
     expect(t.takeException(), isNull);
   });
   testWidgets('empty tracker offers courses without inventing progress', (

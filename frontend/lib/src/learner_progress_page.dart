@@ -60,6 +60,39 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
   bool completed(Map<String, dynamic> row) =>
       row['completedAt'] != null || recordNumber(row['progressPercent']) >= 100;
 
+  Widget lessonAction(Map<String, dynamic> row) {
+    final style = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(136, 44)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 14),
+      ),
+      textStyle: const WidgetStatePropertyAll(
+        TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+    return completed(row)
+        ? TextButton.icon(
+            style: style,
+            iconAlignment: IconAlignment.end,
+            onPressed: () => open(row),
+            icon: const Icon(Icons.arrow_forward, size: 20),
+            label: const Text('Review lesson'),
+          )
+        : FilledButton.icon(
+            style: style.copyWith(
+              backgroundColor: const WidgetStatePropertyAll(Color(0xFFF1BD39)),
+              foregroundColor: const WidgetStatePropertyAll(ink),
+            ),
+            iconAlignment: IconAlignment.end,
+            onPressed: () => open(row),
+            icon: const Icon(Icons.arrow_forward, size: 20),
+            label: const Text('Continue lesson'),
+          );
+  }
+
   Future<void> open(Map<String, dynamic> row) async {
     final id = recordText(recordMap(row['lesson'])['id'], '');
     if (id.isEmpty) return;
@@ -398,8 +431,8 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                         columnWidths: const {
                           0: FlexColumnWidth(3),
                           1: FlexColumnWidth(2),
-                          2: FlexColumnWidth(1.5),
-                          3: FlexColumnWidth(1.5),
+                          2: FixedColumnWidth(200),
+                          3: FixedColumnWidth(170),
                         },
                         defaultVerticalAlignment:
                             TableCellVerticalAlignment.middle,
@@ -470,6 +503,8 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                               ),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w700,
+                                                fontSize: 16,
+                                                height: 1.35,
                                               ),
                                             ),
                                             const SizedBox(height: 4),
@@ -481,6 +516,8 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                               ),
                                               style: const TextStyle(
                                                 color: muted,
+                                                fontSize: 14,
+                                                height: 1.35,
                                               ),
                                             ),
                                           ],
@@ -499,6 +536,8 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                             8,
                                           ),
                                           child: LinearProgressIndicator(
+                                            semanticsLabel:
+                                                'Recorded lesson progress',
                                             value:
                                                 (recordNumber(
                                                           row['progressPercent'],
@@ -547,15 +586,18 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                                 : gold,
                                           ),
                                           const SizedBox(width: 8),
-                                          Text(
-                                            completed(row)
-                                                ? 'Completed'
-                                                : 'In progress',
-                                            style: TextStyle(
-                                              color: completed(row)
-                                                  ? forest
-                                                  : gold,
-                                              fontWeight: FontWeight.w600,
+                                          Flexible(
+                                            child: Text(
+                                              completed(row)
+                                                  ? 'Completed'
+                                                  : 'In progress',
+                                              style: TextStyle(
+                                                color: completed(row)
+                                                    ? forest
+                                                    : gold,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -565,35 +607,10 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.all(8),
-                                  child: completed(row)
-                                      ? TextButton.icon(
-                                          iconAlignment: IconAlignment.end,
-                                          onPressed: () => open(row),
-                                          icon: const Icon(
-                                            Icons.arrow_forward,
-                                            size: 20,
-                                          ),
-                                          label: const Text('Review lesson'),
-                                        )
-                                      : FilledButton.icon(
-                                          iconAlignment: IconAlignment.end,
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xFFF1BD39,
-                                            ),
-                                            foregroundColor: ink,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                          ),
-                                          onPressed: () => open(row),
-                                          icon: const Icon(
-                                            Icons.arrow_forward,
-                                            size: 20,
-                                          ),
-                                          label: const Text('Continue lesson'),
-                                        ),
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: lessonAction(row),
+                                  ),
                                 ),
                               ],
                             ),
@@ -677,15 +694,7 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                     Text(
                                       '${recordNumber(row['progressPercent']).clamp(0, 100).round()}% recorded',
                                     ),
-                                    TextButton.icon(
-                                      onPressed: () => open(row),
-                                      icon: const Icon(Icons.arrow_forward),
-                                      label: Text(
-                                        completed(row)
-                                            ? 'Review lesson'
-                                            : 'Continue lesson',
-                                      ),
-                                    ),
+                                    lessonAction(row),
                                   ],
                                 ),
                               ],
