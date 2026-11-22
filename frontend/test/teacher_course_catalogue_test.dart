@@ -35,7 +35,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('assigned demos remain accessible through compact course rows', (
+  testWidgets('assigned courses use spaced cards with working lesson actions', (
     tester,
   ) async {
     final requests = <String>[];
@@ -81,6 +81,14 @@ void main() {
     expect(find.byType(Image), findsNothing);
     expect(find.text('Play lesson'), findsNothing);
     expect(find.text('Manage lessons'), findsNWidgets(3));
+    final firstCard = tester.getRect(
+      find.byKey(const ValueKey('teacher-course-row-1')),
+    );
+    final secondCard = tester.getRect(
+      find.byKey(const ValueKey('teacher-course-row-2')),
+    );
+    expect(firstCard.top, secondCard.top);
+    expect(secondCard.left - firstCard.right, 20);
     await tester.tap(find.text('Manage lessons').first);
     expect(opened, '1');
     expect(find.text('Synthetic teaching course'), findsOneWidget);

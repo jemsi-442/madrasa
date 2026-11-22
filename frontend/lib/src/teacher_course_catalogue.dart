@@ -114,78 +114,129 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
                   : 'No courses match your search.',
             )
           else
-            for (final c in filtered)
-              Padding(
-                key: ValueKey('teacher-course-row-${c['id']}'),
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFDCE5EF)),
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, box) {
-                      final details = Row(
-                        children: [
-                          const Icon(
-                            Icons.menu_book_outlined,
-                            color: AfaqDesign.ink,
-                            size: 30,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  recordText(c['title']),
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: AfaqDesign.ink,
-                                  ),
-                                ),
-                                if (recordMap(c['subject'])['name'] !=
-                                    null) ...[
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    recordText(recordMap(c['subject'])['name']),
-                                  ),
-                                ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
+                final columns =
+                    constraints.maxWidth / scale >= 1150 && filtered.length >= 3
+                    ? 3
+                    : constraints.maxWidth / scale >= 700
+                    ? 2
+                    : 1;
+                final width =
+                    (constraints.maxWidth - (columns - 1) * 20) / columns;
+                return Wrap(
+                  spacing: 20,
+                  runSpacing: 20,
+                  children: [
+                    for (final c in filtered)
+                      SizedBox(
+                        key: ValueKey('teacher-course-row-${c['id']}'),
+                        width: width,
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFFF0F6FC),
+                                Color(0xFFFFFFFF),
+                                Color(0xFFFCF8EF),
                               ],
                             ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFDCE5EF)),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x0C173C5C),
+                                blurRadius: 20,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
                           ),
-                        ],
-                      );
-                      final action = FilledButton.icon(
-                        onPressed: () => widget.onOpen(c),
-                        icon: const Icon(Icons.library_books_outlined),
-                        label: const Text('Manage lessons'),
-                      );
-                      if (box.maxWidth < 650 ||
-                          MediaQuery.textScalerOf(context).scale(16) > 24) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            details,
-                            const SizedBox(height: 16),
-                            action,
-                          ],
-                        );
-                      }
-                      return Row(
-                        children: [
-                          Expanded(child: details),
-                          const SizedBox(width: 24),
-                          action,
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
+                          child: LayoutBuilder(
+                            builder: (context, box) {
+                              final details = Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE3EDF8),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: const Icon(
+                                      Icons.menu_book_outlined,
+                                      color: AfaqDesign.ink,
+                                      size: 32,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        recordText(c['title']),
+                                        style: const TextStyle(
+                                          fontSize: 23,
+                                          fontWeight: FontWeight.w700,
+                                          color: AfaqDesign.ink,
+                                        ),
+                                      ),
+                                      if (recordMap(c['subject'])['name'] !=
+                                          null) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          recordText(
+                                            recordMap(c['subject'])['name'],
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            height: 1.5,
+                                            color: Color(0xFF546B83),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              );
+                              final action = FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(48),
+                                  backgroundColor: const Color(0xFF987019),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () => widget.onOpen(c),
+                                icon: const Icon(Icons.library_books_outlined),
+                                label: const Text('Manage lessons'),
+                              );
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  details,
+                                  const SizedBox(height: 24),
+                                  const Divider(
+                                    color: Color(0xFFE1E7ED),
+                                    height: 1,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  action,
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
