@@ -196,6 +196,34 @@ Future<void> choosePassage(WidgetTester tester) async {
 }
 
 void main() {
+  for (final width in [320.0, 1672.0]) {
+    testWidgets('overview opens curriculum for scheduled class at $width', (
+      tester,
+    ) async {
+      screen(tester, width);
+      int? destination;
+      String? selectedClass;
+      await tester.pumpWidget(
+        host(
+          TeacherOverviewPage(
+            load: teacherLoad,
+            onOpen: (page, {classId, student}) {
+              destination = page;
+              selectedClass = classId;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Open class'), findsNothing);
+      final action = find.text('Plan & teach');
+      await tester.ensureVisible(action);
+      await tester.tap(action);
+      expect(destination, 10);
+      expect(selectedClass, '8');
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('overview mobile timetable opens the correct teaching period', (
     tester,
   ) async {

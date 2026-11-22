@@ -104,7 +104,7 @@ class TeacherOverviewPage extends StatelessWidget {
                                 _OverviewPeriodCard(
                                   period: period,
                                   onOpen: () => onOpen(
-                                    2,
+                                    10,
                                     classId:
                                         '${recordMap(period['class'])['id']}',
                                   ),
@@ -174,7 +174,7 @@ class TeacherOverviewPage extends StatelessWidget {
                                       children: [
                                         OutlinedButton.icon(
                                           onPressed: () => onOpen(
-                                            2,
+                                            10,
                                             classId:
                                                 '${recordMap(s['class'])['id']}',
                                           ),
@@ -182,7 +182,7 @@ class TeacherOverviewPage extends StatelessWidget {
                                             Icons.chevron_right,
                                             size: AfaqDesign.iconSmall,
                                           ),
-                                          label: const Text('Open class'),
+                                          label: const Text('Plan & teach'),
                                         ),
                                         if (onOpenPeriod != null)
                                           OutlinedButton.icon(
@@ -475,7 +475,7 @@ class _OverviewPeriodCard extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onOpen,
               icon: const Icon(Icons.arrow_forward, size: 20),
-              label: const Text('Open class'),
+              label: const Text('Plan & teach'),
             ),
             if (onRecord != null)
               OutlinedButton.icon(
