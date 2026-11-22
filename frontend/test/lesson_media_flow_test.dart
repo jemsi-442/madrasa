@@ -286,7 +286,7 @@ void main() {
 
   for (final width in [390.0, 1440.0]) {
     testWidgets(
-      'lesson workspace places contents beside media and resources below at $width',
+      'lesson workspace places resources beside notes on desktop at $width',
       (t) async {
         final f = MediaFixture();
         await host(
@@ -319,11 +319,12 @@ void main() {
         final resources = t.getRect(find.text('Lesson resources'));
         if (width > 980) {
           expect(contents.left, greaterThan(stage.right));
-          expect(contents.top, lessThan(stage.bottom));
+          expect(resources.left, greaterThan(stage.right));
+          expect(resources.top, lessThan(stage.bottom));
         } else {
           expect(contents.top, greaterThan(stage.bottom));
         }
-        expect(resources.top, greaterThan(stage.bottom));
+        if (width < 980) expect(resources.top, greaterThan(stage.bottom));
         if (width > 980) {
           await tap(t, find.byKey(const ValueKey('media-focus-view')));
           expect(

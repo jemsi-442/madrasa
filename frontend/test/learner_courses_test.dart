@@ -52,7 +52,7 @@ class CoursesFixture {
     'title': title,
     'accessState': access,
     'sourceReady': ready,
-    'assetType': 'PDF',
+    'assetType': kind,
   };
   Future<dynamic> load(String path) async {
     paths.add(path);
@@ -431,7 +431,7 @@ void main() {
         );
         expect(tester.widget<FilledButton>(button).onPressed, isNull);
       }
-      await tap(tester, 'View in app');
+      await tap(tester, 'Open PDF');
       expect(data.paths.last, '/api/learner/assets/30/open');
       expect(find.text('Inline PDF'), findsOneWidget);
       expect(find.text('Open in browser'), findsNothing);
@@ -441,7 +441,7 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('return-to-lesson-text')));
       await tester.pumpAndSettle();
-      await tap(tester, 'View in app');
+      await tap(tester, 'Open PDF');
       expect(data.paths.where((p) => p.endsWith('/30/open')).length, 2);
       await tester.pumpWidget(const SizedBox());
     },
@@ -451,7 +451,12 @@ void main() {
     testWidgets('$kind opens within the lesson', (tester) async {
       final data = CoursesFixture()..kind = kind;
       await host(tester, data.reader());
-      await tap(tester, 'View in app');
+      await tap(tester, switch (kind) {
+        'TEXT' => 'Read text',
+        'AUDIO' => 'Listen to audio',
+        'VIDEO' => 'Watch video',
+        _ => 'View resource',
+      });
       expect(find.text('Inline $kind'), findsOneWidget);
       expect(find.text('Open in browser'), findsNothing);
       expect(data.writes, isEmpty);
@@ -462,7 +467,7 @@ void main() {
   testWidgets('expired resource links cannot mount the viewer', (tester) async {
     final data = CoursesFixture()..expires = DateTime(2000);
     await host(tester, data.reader());
-    await tap(tester, 'View in app');
+    await tap(tester, 'Open PDF');
     expect(find.text('Inline PDF'), findsNothing);
     expect(find.textContaining('expired'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
@@ -473,7 +478,7 @@ void main() {
     (tester) async {
       final data = CoursesFixture()..deliveryUrl = 'javascript:alert(1)';
       await host(tester, data.reader());
-      await tap(tester, 'View in app');
+      await tap(tester, 'Open PDF');
       expect(
         find.textContaining('not a signed school resource'),
         findsOneWidget,

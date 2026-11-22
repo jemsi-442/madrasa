@@ -64,7 +64,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   String? error;
   String resourceFilter = 'ALL';
   String? autoOpenedLesson;
-  double readingSize = 16;
+  double readingSize = 18;
   final progressByLesson = <String, Map<String, dynamic>>{};
 
   Future<dynamic> requestLesson(String id) {
@@ -373,11 +373,12 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       children: [
         PanelHeading(
           'Lesson resources',
-          subtitle: '${assets.length} resources in this lesson',
+          subtitle:
+              '${assets.length} ${assets.length == 1 ? 'resource' : 'resources'}',
         ),
         if (assets.isEmpty)
           const EmptyRecords('No resources attached to this lesson.'),
-        if (assets.isNotEmpty) ...[
+        if (assets.length > 1) ...[
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -453,7 +454,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Container(
-                              height: 76,
+                              height: widget.embedded ? 76 : 132,
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: resourceAccent(
@@ -470,7 +471,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                     color: resourceAccent(
                                       recordText(asset['assetType']),
                                     ),
-                                    size: 36,
+                                    size: widget.embedded ? 36 : 56,
                                   ),
                                   const Spacer(),
                                   if (resourceOpen(asset))
@@ -528,8 +529,14 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                         'VIDEO',
                                         'AUDIO',
                                       ].contains(asset['assetType'])
-                                    ? 'Play in app'
-                                    : 'View in app',
+                                    ? (asset['assetType'] == 'AUDIO'
+                                          ? 'Listen to audio'
+                                          : 'Watch video')
+                                    : asset['assetType'] == 'PDF'
+                                    ? 'Open PDF'
+                                    : asset['assetType'] == 'TEXT'
+                                    ? 'Read text'
+                                    : 'View resource',
                               ),
                             ),
                           ],
@@ -560,37 +567,52 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const PanelHeading('Lesson notes'),
           Wrap(
-            spacing: 8,
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 16,
+            runSpacing: 12,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Icon(
-                Icons.text_fields,
-                size: AfaqDesign.iconSmall,
-                color: muted,
+              const Text(
+                'Lesson notes',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: ink,
+                ),
               ),
-              Text(
-                '${readingSize.toInt()}px',
-                style: const TextStyle(color: muted, fontSize: 12),
-              ),
-              IconButton(
-                tooltip: 'Smaller lesson text',
-                onPressed: readingSize <= 14
-                    ? null
-                    : () => setState(() => readingSize -= 2),
-                icon: const Icon(Icons.remove, size: AfaqDesign.iconSmall),
-              ),
-              IconButton(
-                tooltip: 'Larger lesson text',
-                onPressed: readingSize >= 24
-                    ? null
-                    : () => setState(() => readingSize += 2),
-                icon: const Icon(Icons.add, size: AfaqDesign.iconSmall),
-              ),
-              TextButton(
-                onPressed: () => setState(() => readingSize = 16),
-                child: const Text('Reset text size'),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
+                children: [
+                  const Icon(
+                    Icons.text_fields,
+                    size: AfaqDesign.iconSmall,
+                    color: muted,
+                  ),
+                  Text(
+                    '${readingSize.toInt()}px',
+                    style: const TextStyle(color: muted, fontSize: 12),
+                  ),
+                  IconButton(
+                    tooltip: 'Smaller lesson text',
+                    onPressed: readingSize <= 14
+                        ? null
+                        : () => setState(() => readingSize -= 2),
+                    icon: const Icon(Icons.remove, size: AfaqDesign.iconSmall),
+                  ),
+                  IconButton(
+                    tooltip: 'Larger lesson text',
+                    onPressed: readingSize >= 24
+                        ? null
+                        : () => setState(() => readingSize += 2),
+                    icon: const Icon(Icons.add, size: AfaqDesign.iconSmall),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => readingSize = 18),
+                    child: const Text('Reset text size'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -608,7 +630,45 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
   );
 
   Widget completion(Map<String, dynamic> progress) {
-    final completed = recordNumber(progress['progressPercent']) >= 100;
+    final completed =
+        progress['completedAt'] != null ||
+        recordNumber(progress['progressPercent']) >= 100;
+    if (!widget.embedded && completed) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: forest.withValues(alpha: .08),
+          border: Border.all(color: forest.withValues(alpha: .18)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, size: 36, color: forest),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Lesson completed',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: forest,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'This lesson is marked complete.',
+                    style: TextStyle(color: muted, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final status = TeacherTag(
       completed ? 'Completed' : '${progress['progressPercent'] ?? 0}% recorded',
       color: completed ? forest : muted,
@@ -1276,6 +1336,68 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                     if (!focusView)
                       LayoutBuilder(
                         builder: (context, box) {
+                          if (!widget.embedded) {
+                            final notes = Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (selectedAsset != null) ...[
+                                  stage,
+                                  const SizedBox(height: 20),
+                                ],
+                                reading(lesson),
+                              ],
+                            );
+                            final sidebar = Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Focus(
+                                  key: resourcesAnchor,
+                                  focusNode: resourcesFocus,
+                                  child: resources(assets),
+                                ),
+                                const SizedBox(height: 16),
+                                completion(progress),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Opening a resource does not mark a lesson complete.',
+                                  style: TextStyle(color: muted, height: 1.5),
+                                ),
+                                const SizedBox(height: 20),
+                                OutlinedButton.icon(
+                                  onPressed: saving ? null : goBack,
+                                  icon: const Icon(Icons.arrow_back),
+                                  label: const Text('Back to course'),
+                                ),
+                                if (widget.outline.isNotEmpty) ...[
+                                  const SizedBox(height: 20),
+                                  contents(
+                                    progress,
+                                    compact: box.maxWidth < 1000,
+                                  ),
+                                ],
+                              ],
+                            );
+                            if (box.maxWidth >= 1000 &&
+                                MediaQuery.textScalerOf(context).scale(18) <=
+                                    27) {
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(flex: 2, child: notes),
+                                  const SizedBox(width: 24),
+                                  Expanded(child: sidebar),
+                                ],
+                              );
+                            }
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                notes,
+                                const SizedBox(height: 24),
+                                sidebar,
+                              ],
+                            );
+                          }
                           if (box.maxWidth >= 980 &&
                               widget.outline.isNotEmpty) {
                             return Row(
@@ -1337,7 +1459,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                           );
                         },
                       ),
-                    if (!focusView) ...[
+                    if (!focusView && widget.embedded) ...[
                       if (widget.embedded) ...[
                         const SizedBox(height: 24),
                         separateMedia(assets),

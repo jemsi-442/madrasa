@@ -70,7 +70,7 @@ void main() {
     );
     expect(decoration.boxShadow, hasLength(2));
     expect(decoration.gradient, isNotNull);
-      await tester.tap(key('resume-course'));
+    await tester.tap(key('resume-course'));
     expect(resumed, isTrue);
     expect(tester.takeException(), isNull);
   });
@@ -298,7 +298,8 @@ void main() {
         isNull,
       );
       await tap(t, find.text('Reset text size'));
-      expect(find.text('16px'), findsOneWidget);
+      expect(find.text('18px'), findsOneWidget);
+      await tap(t, find.byTooltip('Smaller lesson text'));
       await tap(t, find.byTooltip('Smaller lesson text'));
       expect(find.text('14px'), findsOneWidget);
       expect(
