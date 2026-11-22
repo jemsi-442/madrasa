@@ -69,7 +69,21 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
   String date(dynamic value) {
     final parsed = DateTime.tryParse('$value')?.toLocal();
     if (parsed == null) return 'Date unavailable';
-    return '${parsed.day}/${parsed.month}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year} at ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -257,14 +271,32 @@ class _HistoryState extends State<CurriculumDeliveryHistoryDialog> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        CurriculumDetailField(
-                          label: 'Recorded by',
-                          value: '${row['teacher']['fullName']}',
-                        ),
-                        const SizedBox(height: 16),
-                        CurriculumDetailField(
-                          label: 'Taught on (local time)',
-                          value: date(row['taughtAt']),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.maxWidth >= 480
+                                ? (constraints.maxWidth - 24) / 2
+                                : constraints.maxWidth;
+                            return Wrap(
+                              spacing: 24,
+                              runSpacing: 16,
+                              children: [
+                                SizedBox(
+                                  width: width,
+                                  child: CurriculumDetailField(
+                                    label: 'Recorded by',
+                                    value: '${row['teacher']['fullName']}',
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: width,
+                                  child: CurriculumDetailField(
+                                    label: 'Taught on (local time)',
+                                    value: date(row['taughtAt']),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),

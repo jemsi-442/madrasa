@@ -324,6 +324,16 @@ void main() {
       );
       expect(find.textContaining('v1.0'), findsOneWidget);
       expect(find.text('Reading page 1'), findsOneWidget);
+      expect(find.textContaining('20 Oct 2026 at '), findsOneWidget);
+      final teacherLabel = tester.getTopLeft(find.text('Recorded by'));
+      final dateLabel = tester.getTopLeft(find.text('Taught on (local time)'));
+      if (width >= 1440) {
+        expect(dateLabel.dy, teacherLabel.dy);
+        expect(dateLabel.dx, greaterThan(teacherLabel.dx));
+      } else {
+        expect(dateLabel.dy, greaterThan(teacherLabel.dy));
+        expect(dateLabel.dx, teacherLabel.dx);
+      }
       await tester.tap(find.text('Lessons without teaching records'));
       await tester.pumpAndSettle();
       expect(find.text('Synthetic next lesson'), findsOneWidget);
