@@ -14,11 +14,15 @@ class TeacherCourseInlineLesson extends StatefulWidget {
     required this.apiBaseUrl,
     required this.onClose,
     this.submit,
+    this.update,
+    this.course,
     this.upload,
   });
   final List<Map<String, dynamic>> modules;
   final PageLoader load;
   final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? update;
+  final Map<String, dynamic>? course;
   final LessonUploader? upload;
   final String apiBaseUrl;
   final VoidCallback onClose;
@@ -168,7 +172,12 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                 if (lesson == null)
                   const EmptyRecords('No lessons are available in this module.')
                 else ...[
-                  TeacherLessonAccess(lesson: lesson),
+                  TeacherLessonAccess(
+                    key: ValueKey('access-${lesson['id']}'),
+                    lesson: lesson,
+                    course: widget.course,
+                    update: widget.update,
+                  ),
                   const SizedBox(height: 16),
                   TeacherLessonResources(
                     upload: widget.upload,

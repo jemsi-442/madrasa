@@ -15,11 +15,13 @@ class TeacherCourseCard extends StatefulWidget {
     required this.refreshToken,
     this.apiBaseUrl = '',
     this.submit,
+    this.update,
     this.upload,
   });
   final Map<String, dynamic> course;
   final PageLoader load;
   final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? update;
   final LessonUploader? upload;
   final String apiBaseUrl;
   final VoidCallback onOpen;
@@ -301,6 +303,8 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 return const EmptyRecords('No modules have been added yet.');
               }
               return TeacherCourseInlineLesson(
+                update: widget.update,
+                course: widget.course,
                 upload: widget.upload,
                 submit: widget.submit,
                 modules: rows,

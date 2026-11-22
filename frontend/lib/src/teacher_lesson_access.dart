@@ -1,10 +1,111 @@
 import 'package:flutter/material.dart';
 
 /// Publication is separate from uploading and from learner permissions.
-class TeacherLessonAccess extends StatelessWidget {
-  const TeacherLessonAccess({super.key, required this.lesson});
+class TeacherLessonAccess extends StatefulWidget {
+  const TeacherLessonAccess({
+    super.key,
+    required this.lesson,
+    this.course,
+    this.update,
+  });
 
   final Map<String, dynamic> lesson;
+  final Map<String, dynamic>? course;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? update;
+
+  @override
+  State<TeacherLessonAccess> createState() => _TeacherLessonAccessState();
+}
+
+class _TeacherLessonAccessState extends State<TeacherLessonAccess> {
+  late Map<String, dynamic> lesson = Map.of(widget.lesson);
+  bool saving = false;
+  String? error;
+
+  @override
+  void didUpdateWidget(covariant TeacherLessonAccess oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!saving &&
+        (oldWidget.lesson['id'] != widget.lesson['id'] ||
+            oldWidget.lesson['publicationStatus'] !=
+                widget.lesson['publicationStatus'] ||
+            oldWidget.lesson['visibility'] != widget.lesson['visibility'])) {
+      lesson = Map.of(widget.lesson);
+      error = null;
+    }
+  }
+
+  Future<void> changeAccess(bool publish) async {
+    var visibility = '${lesson['visibility'] ?? 'LOCKED'}';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(publish ? 'Publish lesson' : 'Hide lesson from learners'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              publish
+                  ? 'Only learners with access to the published course and matching programme can see this lesson. Resource restrictions remain unchanged.'
+                  : 'This lesson returns to draft. Uploaded files and recorded learner progress are kept.',
+            ),
+            if (publish) ...[
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                initialValue: visibility,
+                decoration: const InputDecoration(labelText: 'Lesson access'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'FREE',
+                    child: Text('Available to course learners'),
+                  ),
+                  DropdownMenuItem(value: 'PAID', child: Text('Paid access')),
+                  DropdownMenuItem(value: 'PREVIEW', child: Text('Preview')),
+                  DropdownMenuItem(value: 'LOCKED', child: Text('Locked')),
+                  DropdownMenuItem(value: 'UNLISTED', child: Text('Unlisted')),
+                ],
+                onChanged: (value) => visibility = value!,
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(publish ? 'Publish lesson' : 'Hide lesson'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    final changes = <String, dynamic>{
+      'publicationStatus': publish ? 'PUBLISHED' : 'DRAFT',
+      if (publish) 'visibility': visibility,
+    };
+    try {
+      await widget.update!(
+        '/api/courses/lessons/${Uri.encodeComponent('${lesson['id']}')}',
+        changes,
+      );
+      if (mounted) setState(() => lesson = {...lesson, ...changes});
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => error = 'Could not save lesson access. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +114,7 @@ class TeacherLessonAccess extends StatelessWidget {
     final (title, description, icon, color) = switch (status) {
       'DRAFT' => (
         'Draft lesson',
-        'Learners cannot see this lesson yet. Ask your madrasa administrator to publish the course and lesson when ready.',
+        'Learners cannot see this lesson yet. Publish when ready; the course must also be published by your madrasa administrator.',
         Icons.edit_note_outlined,
         const Color(0xFF956B18),
       ),
@@ -27,6 +128,12 @@ class TeacherLessonAccess extends StatelessWidget {
         'Published, but locked',
         'Learners cannot open this lesson while it is locked. Ask your madrasa administrator to review lesson access.',
         Icons.lock_outline,
+        const Color(0xFF956B18),
+      ),
+      'PUBLISHED' when lesson['visibility'] == 'UNLISTED' => (
+        'Published, but unlisted',
+        'This lesson is hidden from the learner lesson list. Change lesson access to make it available.',
+        Icons.visibility_off_outlined,
         const Color(0xFF956B18),
       ),
       'PUBLISHED' => (
@@ -64,6 +171,51 @@ class TeacherLessonAccess extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(description, style: const TextStyle(height: 1.5)),
+                if (widget.course != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Course: ${widget.course!['publicationStatus'] ?? 'Unknown'} | Programme: ${widget.course!['programme'] ?? 'Unknown'}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  if (widget.course!['publicationStatus'] != 'PUBLISHED')
+                    const Text(
+                      'Course is not published. Learners cannot see its lessons yet.',
+                    ),
+                ],
+                if (widget.update != null && lesson['id'] != null) ...[
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: saving ? null : () => changeAccess(true),
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: Text(
+                          saving
+                              ? 'Saving...'
+                              : status == 'PUBLISHED'
+                              ? 'Change lesson access'
+                              : 'Publish lesson',
+                        ),
+                      ),
+                      if (status == 'PUBLISHED')
+                        OutlinedButton.icon(
+                          onPressed: saving ? null : () => changeAccess(false),
+                          icon: const Icon(Icons.visibility_off_outlined),
+                          label: const Text('Hide from learners'),
+                        ),
+                    ],
+                  ),
+                ],
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
               ],
             ),
           ),

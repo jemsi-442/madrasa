@@ -3,6 +3,73 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_lesson_access.dart';
 
 void main() {
+  testWidgets('Hide keeps resources and publishes only after confirmation', (
+    tester,
+  ) async {
+    final writes = <Map<String, dynamic>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TeacherLessonAccess(
+            lesson: {
+              'id': '42',
+              'publicationStatus': 'PUBLISHED',
+              'visibility': 'FREE',
+            },
+            course: {
+              'publicationStatus': 'DRAFT',
+              'programme': 'MADRASA_CHILD',
+            },
+            update: (path, body) async {
+              expect(path, '/api/courses/lessons/42');
+              writes.add(body);
+            },
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('Course is not published'), findsOneWidget);
+    await tester.tap(find.text('Hide from learners'));
+    await tester.pumpAndSettle();
+    expect(writes, isEmpty);
+    await tester.tap(find.text('Hide lesson'));
+    await tester.pumpAndSettle();
+    expect(writes.single, {'publicationStatus': 'DRAFT'});
+    expect(find.text('Draft lesson'), findsOneWidget);
+    await tester.tap(find.text('Publish lesson'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Publish lesson').last);
+    await tester.pumpAndSettle();
+    expect(writes.last, {
+      'publicationStatus': 'PUBLISHED',
+      'visibility': 'FREE',
+    });
+    expect(find.text('Lesson published'), findsOneWidget);
+  });
+
+  testWidgets('Failed save preserves status', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TeacherLessonAccess(
+            lesson: {
+              'id': '42',
+              'publicationStatus': 'PUBLISHED',
+              'visibility': 'FREE',
+            },
+            update: (_, _) async => throw Exception('offline'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Hide from learners'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hide lesson'));
+    await tester.pumpAndSettle();
+    expect(find.text('Lesson published'), findsOneWidget);
+    expect(find.textContaining('Could not save'), findsOneWidget);
+  });
+
   for (final entry in <String, String>{
     'DRAFT': 'Draft lesson',
     'ARCHIVED': 'Archived lesson',
