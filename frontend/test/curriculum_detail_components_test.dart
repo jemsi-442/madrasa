@@ -3,6 +3,48 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_detail_components.dart';
 
 void main() {
+  testWidgets('lesson search recovery differs from an empty version', (
+    tester,
+  ) async {
+    final lessons = List.generate(
+      2,
+      (i) => {
+        'id': 'synthetic-$i',
+        'title': 'Plan $i',
+        'activities': '',
+        'objectives': <Map>[],
+      },
+    );
+    Widget screen(List<Map<String, Object>> items) => MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: CurriculumLessonPlansBrowser(
+            lessons: items,
+            compact: true,
+            buildLesson: (i) => Text('Plan $i'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(screen(lessons));
+    await tester.enterText(find.byType(TextField), 'missing');
+    await tester.pumpAndSettle();
+    expect(find.text('No matching lesson plans'), findsOneWidget);
+    await tester.tap(find.text('Show all lesson plans'));
+    await tester.pumpAndSettle();
+    expect(find.text('Plan 0'), findsOneWidget);
+    expect(find.text('Plan 1'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '',
+    );
+    await tester.pumpWidget(screen([]));
+    await tester.pumpAndSettle();
+    expect(find.text('No lesson plans in this version'), findsOneWidget);
+    expect(find.text('Show all lesson plans'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('returning to a framework restores only its lesson search', (
     tester,
   ) async {

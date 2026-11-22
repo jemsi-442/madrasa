@@ -654,21 +654,45 @@ class _CurriculumLessonPlansBrowserState
           Container(
             padding: const EdgeInsets.all(24),
             decoration: AfaqDesign.panelDecoration(),
-            child: const Column(
+            child: Column(
               children: [
-                Icon(Icons.search_off, color: AfaqDesign.muted, size: 32),
-                SizedBox(height: 12),
+                Icon(
+                  widget.lessons.isEmpty
+                      ? Icons.menu_book_outlined
+                      : Icons.search_off,
+                  color: AfaqDesign.muted,
+                  size: 32,
+                ),
+                const SizedBox(height: 12),
                 Text(
-                  'No matching lesson plans',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  widget.lessons.isEmpty
+                      ? 'No lesson plans in this version'
+                      : 'No matching lesson plans',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
-                  'Try another word or clear the search.',
-                  style: TextStyle(color: AfaqDesign.muted, height: 1.5),
+                  widget.lessons.isEmpty
+                      ? 'Ask your madrasa administrator about the assigned curriculum.'
+                      : 'Try another word or return to all lesson plans.',
+                  style: const TextStyle(color: AfaqDesign.muted, height: 1.5),
                   textAlign: TextAlign.center,
                 ),
+                if (widget.lessons.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => updateSearchState(() {
+                      search.clear();
+                      showAll = true;
+                    }),
+                    icon: const Icon(Icons.menu_book_outlined),
+                    label: const Text('Show all lesson plans'),
+                  ),
+                ],
               ],
             ),
           ),
