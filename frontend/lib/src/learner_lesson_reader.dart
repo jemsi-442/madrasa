@@ -1186,12 +1186,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                                 ),
                               )
                       : LessonMediaViewer(
-                          compactVideo:
-                              widget.embedded &&
-                              [
-                                'VIDEO',
-                                'EMBED',
-                              ].contains(selectedAsset!['assetType']),
+                          compactVideo: [
+                            'VIDEO',
+                            'EMBED',
+                          ].contains(selectedAsset!['assetType']),
                           key: ValueKey(selectedAsset!['id']),
                           assetId: recordText(selectedAsset!['id']),
                           title: recordText(

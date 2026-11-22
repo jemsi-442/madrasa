@@ -114,6 +114,36 @@ Future<void> tap(WidgetTester t, Finder target) async {
 }
 
 void main() {
+  for (final width in [390.0, 1440.0]) {
+    testWidgets('standalone learner uses inline video controls at $width', (
+      t,
+    ) async {
+      final f = MediaFixture()
+        ..kind = 'VIDEO'
+        ..includeAudio = false;
+      await host(
+        t,
+        LearnerLessonReader(
+          id: '22',
+          openVideoOnLoad: true,
+          apiBaseUrl: 'https://school.test',
+          submit: f.submit,
+          load: f.load,
+          surfaceBuilder: f.surface,
+        ),
+        width: width,
+      );
+      final player = t.widget<LessonMediaViewer>(
+        find.byType(LessonMediaViewer),
+      );
+      expect(player.compactVideo, isTrue);
+      expect(player.teacherResource, isFalse);
+      expect(find.text('Test VIDEO surface'), findsOneWidget);
+      expect(f.paths, contains('/api/learner/assets/30/open'));
+      expect(f.writes, isEmpty);
+      expect(t.takeException(), isNull);
+    });
+  }
   for (final layout in [(390.0, 1.0), (1440.0, 1.0), (390.0, 2.0)]) {
     final (width, scale) = layout;
     testWidgets('embedded media open in separate panels at $width/$scale', (

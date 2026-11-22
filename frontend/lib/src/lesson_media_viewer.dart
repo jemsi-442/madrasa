@@ -235,6 +235,16 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
               widget.focusView ? Icons.close_fullscreen : Icons.open_in_full,
             ),
           ),
+        if (widget.onClose != null)
+          IconButton(
+            key: const ValueKey('return-to-lesson-text'),
+            tooltip: 'Close player',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            visualDensity: VisualDensity.standard,
+            onPressed: widget.onClose,
+            color: Colors.white,
+            icon: const Icon(Icons.close),
+          ),
       ],
     ),
   );
