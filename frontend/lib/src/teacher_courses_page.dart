@@ -10,6 +10,7 @@ import 'design_tokens.dart';
 import 'teacher_course_modules.dart';
 import 'teacher_lesson_reading.dart';
 import 'teacher_course_catalogue.dart';
+import 'teacher_course_workspace.dart';
 
 enum TeacherLearningDestination { quran, assessments }
 
@@ -546,48 +547,69 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
   }
 
   @override
-  Widget build(BuildContext context) => SurfacePanel(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (course != null)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+  Widget build(BuildContext context) =>
+      course == null && widget.submit != null && widget.update != null
+      ? TeacherCourseWorkspace(
+          load: widget.load,
+          submit: widget.submit!,
+          update: widget.update!,
+          upload: widget.upload,
+          apiBaseUrl: widget.apiBaseUrl,
+          onPreview: (selectedCourse, selectedModule, selectedLesson) {
+            setState(() {
+              course = selectedCourse;
+              module = selectedModule;
+              lessonId = '${selectedLesson['id']}';
+              future = fetch();
+            });
+          },
+        )
+      : SurfacePanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextButton.icon(
-                onPressed: backToCourses,
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('All my courses'),
+              if (course != null)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: backToCourses,
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('All my courses'),
+                    ),
+                    if (module != null)
+                      const Icon(Icons.chevron_right, size: 18, color: muted),
+                    if (module != null)
+                      TextButton(
+                        key: const ValueKey('teacher-course-breadcrumb'),
+                        onPressed: backToModules,
+                        child: Text(
+                          recordText(course?['title'], 'Course modules'),
+                        ),
+                      ),
+                    if (lessonId != null)
+                      const Icon(Icons.chevron_right, size: 18, color: muted),
+                    if (lessonId != null)
+                      TextButton(
+                        key: const ValueKey('teacher-module-breadcrumb'),
+                        onPressed: () => setState(() => lessonId = null),
+                        child: Text(
+                          recordText(module?['title'], 'Module lessons'),
+                        ),
+                      ),
+                  ],
+                ),
+              if (course != null) const SizedBox(height: 16),
+              // Re-check the current module on refresh; never retain old lesson text
+              // when the request fails or the lesson has been removed.
+              PageResult(
+                future: future,
+                onRetry: reload,
+                builder: (data) => content(recordList(data)),
               ),
-              if (module != null)
-                const Icon(Icons.chevron_right, size: 18, color: muted),
-              if (module != null)
-                TextButton(
-                  key: const ValueKey('teacher-course-breadcrumb'),
-                  onPressed: backToModules,
-                  child: Text(recordText(course?['title'], 'Course modules')),
-                ),
-              if (lessonId != null)
-                const Icon(Icons.chevron_right, size: 18, color: muted),
-              if (lessonId != null)
-                TextButton(
-                  key: const ValueKey('teacher-module-breadcrumb'),
-                  onPressed: () => setState(() => lessonId = null),
-                  child: Text(recordText(module?['title'], 'Module lessons')),
-                ),
             ],
           ),
-        if (course != null) const SizedBox(height: 16),
-        // Re-check the current module on refresh; never retain old lesson text
-        // when the request fails or the lesson has been removed.
-        PageResult(
-          future: future,
-          onRetry: reload,
-          builder: (data) => content(recordList(data)),
-        ),
-      ],
-    ),
-  );
+        );
 }
