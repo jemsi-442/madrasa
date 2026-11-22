@@ -153,7 +153,7 @@ class WorkspaceRecordDetails extends StatelessWidget {
                   ? 'Not recorded'
                   : value.replaceAll('_', ' '),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: color,
               ),
@@ -293,7 +293,7 @@ class WorkspaceDetailsDialog extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Read-only details',
-                      style: TextStyle(fontSize: 13, color: AfaqDesign.muted),
+                      style: TextStyle(fontSize: 14, color: AfaqDesign.muted),
                     ),
                   ),
                 ],

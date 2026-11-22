@@ -168,18 +168,24 @@ ThemeData afaqControlTheme(ThemeData base) {
       ),
       floatingLabelStyle: const TextStyle(
         color: ink,
-        fontSize: 16,
+        // InputDecorator scales floating labels to 75%.
+        fontSize: AfaqDesign.secondarySize / 0.75,
         fontWeight: FontWeight.w700,
       ),
       hintStyle: const TextStyle(
         color: muted,
-        fontSize: 14,
+        fontSize: AfaqDesign.bodySize,
         fontWeight: FontWeight.w400,
       ),
-      helperStyle: const TextStyle(color: muted, fontSize: 13),
+      helperStyle: const TextStyle(
+        color: muted,
+        fontSize: AfaqDesign.secondarySize,
+        height: 1.5,
+      ),
       errorStyle: const TextStyle(
         color: Color(0xffb42336),
-        fontSize: 13,
+        fontSize: AfaqDesign.secondarySize,
+        height: 1.5,
         fontWeight: FontWeight.w500,
       ),
       errorMaxLines: 3,
@@ -225,6 +231,16 @@ ThemeData afaqControlTheme(ThemeData base) {
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
         fontSize: AfaqDesign.labelSize,
+      ),
+      labelMedium: base.textTheme.labelMedium?.copyWith(
+        fontSize: AfaqDesign.secondarySize,
+        letterSpacing: 0,
+        height: 1.4,
+      ),
+      labelSmall: base.textTheme.labelSmall?.copyWith(
+        fontSize: AfaqDesign.secondarySize,
+        letterSpacing: 0,
+        height: 1.4,
       ),
       titleMedium: base.textTheme.titleMedium?.copyWith(
         letterSpacing: 0,

@@ -16,6 +16,20 @@ import 'package:mif_app/src/public_shell.dart';
 import 'package:mif_app/src/oversight_visuals.dart';
 
 void main() {
+  test('shared typography keeps secondary copy and form guidance readable', () {
+    for (final theme in [buildAfaqTheme(), adminTheme(ThemeData())]) {
+      final text = theme.textTheme;
+      for (final style in [text.bodySmall, text.labelSmall, text.labelMedium]) {
+        expect(style!.fontSize, greaterThanOrEqualTo(14));
+      }
+      expect(text.bodyMedium!.fontSize, greaterThanOrEqualTo(16));
+      final input = theme.inputDecorationTheme;
+      expect(input.helperStyle!.fontSize, greaterThanOrEqualTo(14));
+      expect(input.errorStyle!.fontSize, greaterThanOrEqualTo(14));
+      expect(input.floatingLabelStyle!.fontSize! * 0.75, 14);
+    }
+  });
+
   testWidgets('oversight metrics use four semantic soft glow surfaces', (
     tester,
   ) async {

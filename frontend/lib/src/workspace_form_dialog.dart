@@ -59,7 +59,7 @@ class WorkspaceFormDialog extends StatelessWidget {
                 Text(
                   eyebrow,
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: 14,
                     letterSpacing: 1.6,
                     fontWeight: FontWeight.w700,
                     color: AfaqDesign.actionGold,
@@ -123,7 +123,7 @@ class WorkspaceFormSection extends StatelessWidget {
         Text(
           description,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             height: 1.5,
             color: AfaqDesign.muted,
           ),
@@ -164,7 +164,7 @@ class WorkspaceFormNotice extends StatelessWidget {
             child: Text(
               message,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 height: 1.5,
                 color: isError ? const Color(0xffb42318) : AfaqDesign.ink,
               ),

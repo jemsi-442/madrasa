@@ -85,7 +85,7 @@ class StudentIdentity extends StatelessWidget {
           backgroundColor: const Color(0xFFE7F0FC),
           child: Text(
             initials,
-            style: const TextStyle(fontSize: 13, color: blue),
+            style: const TextStyle(fontSize: 14, color: blue),
           ),
         ),
         const SizedBox(width: 12),
@@ -101,7 +101,7 @@ class StudentIdentity extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 subtitle ?? recordText(student['admissionNo'], ''),
-                style: const TextStyle(fontSize: 11, color: muted),
+                style: const TextStyle(fontSize: 14, color: muted),
               ),
             ],
           ),
@@ -196,7 +196,7 @@ class LearningHistory extends StatelessWidget {
                     if (s['timetableSlot'] != null)
                       Text(
                         '${recordMap(s['timetableSlot'])['startsAt']}-${recordMap(s['timetableSlot'])['endsAt']}',
-                        style: const TextStyle(fontSize: 11, color: muted),
+                        style: const TextStyle(fontSize: 14, color: muted),
                       ),
                   ],
                 ),

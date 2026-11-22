@@ -120,7 +120,7 @@ class WorkspaceAccountMenu extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AfaqDesign.muted,
-                              fontSize: 13,
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -241,7 +241,7 @@ class WorkspaceFooter extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AfaqDesign.muted,
-            fontSize: 12,
+            fontSize: 14,
             height: 1.5,
           ),
         ),

@@ -64,7 +64,7 @@ class CurriculumDetailField extends StatelessWidget {
       Text(
         label,
         style: const TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w700,
           color: AfaqDesign.muted,
         ),
@@ -103,7 +103,7 @@ class CurriculumDetailTag extends StatelessWidget {
       style: TextStyle(
         color: accent,
         fontWeight: FontWeight.w700,
-        fontSize: 13,
+        fontSize: 14,
       ),
     ),
   );
@@ -207,7 +207,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
               const Text(
                 'Based on teaching records for this version.\n\nLearner results are recorded in Assessments.',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   height: 1.5,
                   color: AfaqDesign.muted,
                 ),
@@ -230,7 +230,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
                 child: Text(
                   historySummary(Map<String, dynamic>.from(history)),
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     height: 1.6,
                     color: AfaqDesign.muted,
                   ),
@@ -541,7 +541,7 @@ class SchoolCurriculumDetail extends StatelessWidget {
             ),
             subtitle: Text(
               '$count ${id == 'topics' ? 'topics' : 'lesson plans'}',
-              style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
+              style: const TextStyle(color: AfaqDesign.muted, fontSize: 14),
             ),
             children: children,
           ),
@@ -622,7 +622,7 @@ class _CurriculumLessonPlansBrowserState
         const SizedBox(height: 12),
         Text(
           'Showing ${visible.length} of ${widget.lessons.length} lesson plans',
-          style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
+          style: const TextStyle(color: AfaqDesign.muted, fontSize: 14),
         ),
         const SizedBox(height: 16),
         if (matches.isEmpty)
@@ -713,7 +713,7 @@ class CurriculumTopicDetail extends StatelessWidget {
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             '${objectives.length} learning ${objectives.length == 1 ? 'objective' : 'objectives'}',
-            style: const TextStyle(color: AfaqDesign.muted, fontSize: 13),
+            style: const TextStyle(color: AfaqDesign.muted, fontSize: 14),
           ),
         ),
         children: [
