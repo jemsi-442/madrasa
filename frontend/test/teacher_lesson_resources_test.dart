@@ -8,6 +8,44 @@ import 'package:mif_app/src/page_selection.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  testWidgets(
+    'every resource exposes its access conditions without opening media',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TeacherLessonResources(
+                lessonId: 'synthetic',
+                apiBaseUrl: 'https://school.test',
+                load: (_) async => [
+                  for (final access in ['PAID', 'PREVIEW', 'UNLISTED', null])
+                    {
+                      'id': '$access',
+                      'title': 'Synthetic $access resource',
+                      'assetType': 'TEXT',
+                      'visibility': access,
+                    },
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (final description in [
+        'Paid access. Publication and learner entitlement checks still apply.',
+        'Preview access. Availability depends on publication and course permissions.',
+        'Unlisted resource. This does not bypass course permissions.',
+        'Access not specified. Check learner access before sharing.',
+      ]) {
+        expect(find.text(description), findsOneWidget);
+      }
+      expect(find.byType(LessonMediaViewer), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final fails in [false, true]) {
     testWidgets('resource access confirmation and save (fails: $fails)', (
       tester,

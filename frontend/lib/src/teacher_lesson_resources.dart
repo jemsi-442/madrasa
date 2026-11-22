@@ -421,6 +421,18 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
 
   Widget resourceCard(Map<String, dynamic> row) {
     final kind = resourceKind(row);
+    final accessDescription = switch (row['visibility']) {
+      'LOCKED' => 'Locked for learners. Teacher preview only.',
+      'FREE' =>
+        'Learner access requires a published course and lesson, and course permission.',
+      'PAID' =>
+        'Paid access. Publication and learner entitlement checks still apply.',
+      'PREVIEW' =>
+        'Preview access. Availability depends on publication and course permissions.',
+      'UNLISTED' =>
+        'Unlisted resource. This does not bypass course permissions.',
+      _ => 'Access not specified. Check learner access before sharing.',
+    };
     final (action, color) = switch (kind) {
       'VIDEO' || 'EMBED' => ('Watch video', const Color(0xFF1763B5)),
       'AUDIO' => ('Play audio', const Color(0xFF7545AF)),
@@ -482,32 +494,28 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
                       ),
                     ],
                   ),
-                  if (row['visibility'] == 'LOCKED' ||
-                      row['visibility'] == 'FREE')
-                    Padding(
-                      padding: const EdgeInsets.only(top: 14),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            row['visibility'] == 'LOCKED'
-                                ? Icons.lock_outline
-                                : Icons.verified_user_outlined,
-                            size: 20,
-                            color: color,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          row['visibility'] == 'LOCKED'
+                              ? Icons.lock_outline
+                              : Icons.verified_user_outlined,
+                          size: 20,
+                          color: color,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            accessDescription,
+                            style: TextStyle(color: color, height: 1.4),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              row['visibility'] == 'LOCKED'
-                                  ? 'Locked for learners. Teacher preview only.'
-                                  : 'Learner access requires a published course and lesson, and course permission.',
-                              style: TextStyle(color: color, height: 1.4),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Divider(
