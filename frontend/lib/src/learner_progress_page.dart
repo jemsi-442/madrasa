@@ -92,38 +92,63 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'My progress',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'See your recorded lesson activity.',
-            style: TextStyle(fontSize: 17, color: muted),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              if (widget.onQuran != null)
-                OutlinedButton.icon(
-                  onPressed: widget.onQuran,
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text("Qur'an learning"),
-                ),
-              if (widget.onAssessments != null)
-                OutlinedButton.icon(
-                  onPressed: widget.onAssessments,
-                  icon: const Icon(Icons.fact_check_outlined),
-                  label: const Text('Teacher assessments'),
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, box) {
+              const heading = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My progress',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: ink,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'See your recorded lesson activity.',
+                    style: TextStyle(fontSize: 17, color: muted),
+                  ),
+                ],
+              );
+              final actions = Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  if (widget.onQuran != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onQuran,
+                      icon: const Icon(Icons.menu_book_outlined),
+                      label: const Text("Qur'an learning"),
+                    ),
+                  if (widget.onAssessments != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onAssessments,
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: const Text('Teacher assessments'),
+                    ),
+                ],
+              );
+              if (widget.onQuran == null && widget.onAssessments == null) {
+                return heading;
+              }
+              if (box.maxWidth >= 1000 &&
+                  MediaQuery.textScalerOf(context).scale(14) <= 20) {
+                return Row(
+                  children: [
+                    Expanded(child: heading),
+                    const SizedBox(width: 24),
+                    Flexible(child: actions),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [heading, const SizedBox(height: 16), actions],
+              );
+            },
           ),
           const SizedBox(height: 16),
           LayoutBuilder(
@@ -548,7 +573,35 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                 : null,
                             child: const Text('Previous'),
                           ),
-                          Text('${currentPage + 1} / $pages'),
+                          if (MediaQuery.sizeOf(context).width >= 900 &&
+                              MediaQuery.textScalerOf(context).scale(14) <= 20)
+                            for (final number in {
+                              0,
+                              if (currentPage > 0) currentPage - 1,
+                              currentPage,
+                              if (currentPage + 1 < pages) currentPage + 1,
+                              pages - 1,
+                            }.toList()..sort())
+                              Semantics(
+                                selected: number == currentPage,
+                                label: 'Page ${number + 1} of $pages',
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size(44, 44),
+                                    backgroundColor: number == currentPage
+                                        ? ink
+                                        : null,
+                                    foregroundColor: number == currentPage
+                                        ? Colors.white
+                                        : ink,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => page = number),
+                                  child: Text('${number + 1}'),
+                                ),
+                              )
+                          else
+                            Text('${currentPage + 1} / $pages'),
                           OutlinedButton(
                             onPressed: currentPage + 1 < pages
                                 ? () => setState(() => page = currentPage + 1)

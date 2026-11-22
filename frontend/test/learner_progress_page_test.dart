@@ -66,6 +66,8 @@ void main() {
     t,
   ) async {
     var browsed = false;
+    var quranOpened = false;
+    var assessmentsOpened = false;
     await host(
       t,
       LearnerProgressPage(
@@ -73,11 +75,17 @@ void main() {
         submit: (_, _) async => throw StateError('Unexpected write'),
         apiBaseUrl: 'https://school.test',
         onBrowse: () => browsed = true,
+        onQuran: () => quranOpened = true,
+        onAssessments: () => assessmentsOpened = true,
       ),
       width: 390,
       scale: 2,
     );
     expect(find.text('No lesson progress recorded yet.'), findsOneWidget);
+    await tap(t, find.text("Qur'an learning"));
+    await tap(t, find.text('Teacher assessments'));
+    expect(quranOpened, isTrue);
+    expect(assessmentsOpened, isTrue);
     await tap(t, find.text('Browse courses'));
     expect(browsed, isTrue);
     expect(t.takeException(), isNull);
@@ -108,6 +116,11 @@ void main() {
     await tap(t, find.text('Next'));
     expect(find.text('Practice 5'), findsOneWidget);
     expect(find.text('Showing 6-10 of 12 lessons'), findsOneWidget);
+    await tap(t, find.widgetWithText(OutlinedButton, '3'));
+    expect(find.text('Showing 11-12 of 12 lessons'), findsOneWidget);
+    expect(find.text('Practice 10'), findsOneWidget);
+    await tap(t, find.widgetWithText(OutlinedButton, '1'));
+    expect(find.text('Practice 0'), findsOneWidget);
     await t.enterText(find.byType(TextField), 'Practice 11');
     await t.pumpAndSettle();
     expect(
