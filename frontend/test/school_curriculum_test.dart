@@ -224,19 +224,18 @@ void main() {
             await tester.tap(find.text('Lesson plan'));
             await tester.pumpAndSettle();
           }
-          expect(find.text('Teaching coverage: 1 / 3 lessons'), findsOneWidget);
+          expect(find.text('Teaching coverage'), findsOneWidget);
+          expect(find.text('1 of 3 lessons'), findsOneWidget);
           expect(
             find.textContaining(
               'Previous: Arabic / Level 1 / v0.9 · in use from 1/1/2026 to 15/9/2026',
             ),
             findsOneWidget,
           );
-          expect(
-            find.textContaining(
-              'Current curriculum: v1.0 · in use since 15/9/2026',
-            ),
-            findsOneWidget,
-          );
+          expect(find.text('Current curriculum'), findsOneWidget);
+          expect(find.text('Version 1.0'), findsWidgets);
+          expect(find.text('In use since'), findsOneWidget);
+          expect(find.text('15/9/2026'), findsOneWidget);
           if (admin) {
             await tester.ensureVisible(find.text('Use in a class'));
             await tester.pumpAndSettle();
@@ -269,10 +268,14 @@ void main() {
           // Let the adoption confirmation snackbar stop covering the mobile list.
           await tester.pump(const Duration(seconds: 5));
           await tester.pumpAndSettle();
-          await tester.ensureVisible(find.text('Shared lesson plans'));
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('Shared lesson plans'));
-          await tester.pumpAndSettle();
+          if (admin) {
+            await tester.ensureVisible(find.text('Shared lesson plans'));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Shared lesson plans'));
+            await tester.pumpAndSettle();
+          } else {
+            expect(find.text('Shared lesson plans (1)'), findsOneWidget);
+          }
           expect(find.text('Read in pairs'), findsOneWidget);
           expect(tester.takeException(), isNull);
         });

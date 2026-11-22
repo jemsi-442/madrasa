@@ -243,6 +243,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         final first = Completer<dynamic>();
         final writes = <Map<String, dynamic>>[];
+        final historyRequests = <String>[];
         var loads = 0;
         final data = {
           'subjects': [],
@@ -286,7 +287,11 @@ void main() {
             home: Scaffold(
               body: SchoolCurriculumPage(
                 isAdmin: admin,
-                load: (_) async {
+                load: (path) async {
+                  if (path.startsWith('/api/school-curriculum/deliveries?')) {
+                    historyRequests.add(path);
+                    return {'items': [], 'hasMore': false};
+                  }
                   loads++;
                   return data;
                 },
@@ -321,6 +326,8 @@ void main() {
         await tester.tap(find.text('Record teaching'));
         await tester.pumpAndSettle();
         expect(find.textContaining('not student attendance'), findsOneWidget);
+        expect(find.text('View teaching history'), findsNothing);
+        expect(writes, isEmpty);
         await tester.tap(find.text('Confirm taught'));
         await tester.pump();
         expect(
@@ -373,9 +380,20 @@ void main() {
               .onPressed,
           isNull,
         );
-        await tester.tap(find.text('Close'));
+        await tester.ensureVisible(find.text('View teaching history'));
+        await tester.tap(find.text('View teaching history'));
         await tester.pumpAndSettle();
         expect(loads, 2);
+        expect(find.text('Teaching history: Class A'), findsOneWidget);
+        expect(historyRequests, hasLength(1));
+        expect(
+          Uri.parse(
+            historyRequests.single,
+          ).queryParameters['classCurriculumId'],
+          'adoption-1',
+        );
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
         expect(writes, hasLength(2));
         expect(tester.takeException(), isNull);
       });

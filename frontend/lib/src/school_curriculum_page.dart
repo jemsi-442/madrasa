@@ -82,6 +82,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         : null;
     var sending = false;
     String? failure;
+    Map? historyAdoption;
     final assessmentClassId = await showDialog<String>(
       context: context,
       barrierDismissible: false,
@@ -150,6 +151,19 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                 ),
               ),
               actions: [
+                if (recorded)
+                  OutlinedButton.icon(
+                    onPressed: sending
+                        ? null
+                        : () {
+                            historyAdoption = adoptions.firstWhere(
+                              (item) => '${item['id']}' == selected,
+                            );
+                            Navigator.pop(dialogContext);
+                          },
+                    icon: const Icon(Icons.history),
+                    label: const Text('View teaching history'),
+                  ),
                 if (recorded && widget.onOpenAssessments != null)
                   OutlinedButton.icon(
                     onPressed: sending
@@ -233,10 +247,21 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
       ),
     );
     if (!mounted) return;
+    if (confirmed) reload();
+    if (historyAdoption != null) {
+      final adoption = historyAdoption!;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => CurriculumDeliveryHistoryDialog(
+          load: widget.load,
+          adoptionId: '${adoption['id']}',
+          className: '${adoption['class']['name']}',
+        ),
+      );
+      return;
+    }
     if (assessmentClassId != null) {
       widget.onOpenAssessments?.call(assessmentClassId);
-    } else if (confirmed) {
-      reload();
     }
   }
 
