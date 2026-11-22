@@ -3,6 +3,7 @@ import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'teacher_lesson_reading.dart';
 import 'teacher_lesson_resources.dart';
+import 'teacher_lesson_access.dart';
 
 /// Browse and open authorized lessons without leaving the course catalogue.
 class TeacherCourseInlineLesson extends StatefulWidget {
@@ -167,6 +168,8 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                 if (lesson == null)
                   const EmptyRecords('No lessons are available in this module.')
                 else ...[
+                  TeacherLessonAccess(lesson: lesson),
+                  const SizedBox(height: 16),
                   TeacherLessonResources(
                     upload: widget.upload,
                     submit: widget.submit,

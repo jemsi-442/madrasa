@@ -3,6 +3,7 @@ import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'foundation_ui.dart';
 import 'teacher_lesson_resources.dart';
+import 'teacher_lesson_access.dart';
 import 'teacher_ui.dart';
 import 'workspace_form_dialog.dart';
 import 'design_tokens.dart';
@@ -370,6 +371,8 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
             text: recordText(lesson['contentText'], ''),
           ),
           const SizedBox(height: 24),
+          TeacherLessonAccess(lesson: lesson),
+          const SizedBox(height: 16),
           TeacherLessonResources(
             upload: widget.upload,
             submit: widget.submit,
