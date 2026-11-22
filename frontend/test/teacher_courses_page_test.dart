@@ -216,15 +216,17 @@ void main() {
         find.text('Synthetic teacher media practice course'),
         findsOneWidget,
       );
-      expect(find.text('Course Modules'), findsOneWidget);
+      await tester.tap(find.text('Manage lessons'));
+      await tester.pumpAndSettle();
       expect(find.text('Synthetic module'), findsOneWidget);
-      await tester.ensureVisible(find.text('Synthetic module'));
-      await tester.tap(find.text('Synthetic module'));
+      await tester.ensureVisible(find.text('View lessons'));
+      await tester.tap(find.text('View lessons'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Synthetic lesson'));
       await tester.pumpAndSettle();
       expect(find.text('Synthetic lesson'), findsOneWidget);
       expect(find.text('Course Modules'), findsNothing);
-      expect(find.byTooltip('Close lesson'), findsOneWidget);
-      expect(find.text('Lesson 1 of 2 in this module'), findsOneWidget);
+      expect(find.text('Lesson 1 of 2'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(find.text('Next lesson'));
       await tester.tap(find.text('Next lesson'));
@@ -314,7 +316,7 @@ void main() {
   );
 
   testWidgets(
-    'course card exposes an accessible open action without a duplicate banner',
+    'course row exposes an accessible manage action without a duplicate banner',
     (tester) async {
       final semantics = tester.ensureSemantics();
       try {
@@ -337,11 +339,11 @@ void main() {
         expect(find.text('My Courses'), findsNothing);
         expect(find.text('Synthetic course'), findsOneWidget);
         expect(
-          tester.getSemantics(find.bySemanticsLabel('Open course')),
+          tester.getSemantics(find.bySemanticsLabel('Manage lessons')),
           containsSemantics(
             isButton: true,
             hasTapAction: true,
-            label: 'Open course',
+            label: 'Manage lessons',
           ),
         );
       } finally {
@@ -530,7 +532,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      for (final label in ['Open course', 'View lessons', 'Long lesson 1']) {
+      for (final label in ['Manage lessons', 'View lessons', 'Long lesson 1']) {
         await tester.ensureVisible(find.text(label));
         await tester.pumpAndSettle();
         await tester.tap(find.text(label));
@@ -612,7 +614,7 @@ void main() {
         }
 
         await render();
-        await tapText('Open course');
+        await tapText('Manage lessons');
         await tapText('View lessons');
         await tester.tap(find.byKey(const ValueKey('teacher-course-item-33')));
         await tester.pumpAndSettle();
@@ -642,7 +644,6 @@ void main() {
         expect(find.text('First synthetic text'), findsOneWidget);
         expect(requests, [
           '/api/teaching/courses',
-          '/api/courses/11/modules',
           '/api/courses/11/modules',
           '/api/courses/modules/22/lessons',
           '/api/courses/lessons/33/assets',
@@ -706,7 +707,7 @@ void main() {
       }
 
       await render();
-      for (final label in ['Open course', 'View lessons', 'Read lesson']) {
+      for (final label in ['Manage lessons', 'View lessons', 'Read lesson']) {
         await tester.ensureVisible(find.text(label));
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
@@ -762,8 +763,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Open course'));
-      await tester.tap(find.text('Open course'));
+      await tester.ensureVisible(find.text('Manage lessons'));
+      await tester.tap(find.text('Manage lessons'));
       await tester.pumpAndSettle();
       expect(find.text('Reading module'), findsOneWidget);
       expect(find.text('0 lessons'), findsNothing);
@@ -790,7 +791,7 @@ void main() {
       expect(find.text('View lessons'), findsOneWidget);
       await tester.tap(find.text('All my courses'));
       await tester.pumpAndSettle();
-      expect(find.text('Open course'), findsOneWidget);
+      expect(find.text('Manage lessons'), findsOneWidget);
       expect(requests.every((path) => !path.contains('quran')), isTrue);
       expect(tester.takeException(), isNull);
     },

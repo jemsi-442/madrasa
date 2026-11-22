@@ -4,52 +4,42 @@ import 'package:mif_app/src/teacher_course_catalogue.dart';
 import 'package:mif_app/src/page_selection.dart';
 
 void main() {
-  for (final hiddenDemos in [false, true]) {
-    testWidgets('empty catalogue is clear with hidden demos: $hiddenDemos', (
-      tester,
-    ) async {
-      final requests = <String>[];
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: TeacherCourseCatalogue(
-              courses: hiddenDemos
-                  ? const [
-                      {'id': '1', 'slug': 'afaq-teacher-media-demo'},
-                      {'id': '2', 'slug': 'afaq-shared-video-demo'},
-                    ]
-                  : const [],
-              load: (path) async {
-                requests.add(path);
-                return [];
-              },
-              refreshToken: 0,
-              onOpen: (_) {},
-              onModule: (_, _) {},
-            ),
+  testWidgets('empty catalogue explains assignment', (tester) async {
+    final requests = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TeacherCourseCatalogue(
+            courses: const [],
+            load: (path) async {
+              requests.add(path);
+              return [];
+            },
+            refreshToken: 0,
+            onOpen: (_) {},
+            onModule: (_, _) {},
           ),
         ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Assigned Courses (0)'), findsOneWidget);
-      expect(find.byType(TextField), findsNothing);
-      expect(
-        find.text(
-          hiddenDemos
-              ? 'No courses to display.'
-              : 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.',
-        ),
-        findsOneWidget,
-      );
-      expect(requests, isEmpty);
-      expect(tester.takeException(), isNull);
-    });
-  }
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Assigned Courses (0)'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(
+      find.text(
+        'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.',
+      ),
+      findsOneWidget,
+    );
+    expect(requests, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
 
-  testWidgets('legacy media demo cards are excluded from catalogue and count', (
+  testWidgets('assigned demos remain accessible through compact course rows', (
     tester,
   ) async {
     final requests = <String>[];
+    String? opened;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -77,7 +67,7 @@ void main() {
                 return [];
               },
               refreshToken: 0,
-              onOpen: (_) {},
+              onOpen: (course) => opened = '${course['id']}',
               onModule: (_, _) {},
             ),
           ),
@@ -85,15 +75,24 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Assigned Courses (1)'), findsOneWidget);
-    expect(find.text('Teacher media practice (Demo)'), findsNothing);
-    expect(find.text('Shared video lesson (Demo)'), findsNothing);
+    expect(find.text('Assigned Courses (3)'), findsOneWidget);
+    expect(find.text('Teacher media practice (Demo)'), findsOneWidget);
+    expect(find.text('Shared video lesson (Demo)'), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(find.text('Play lesson'), findsNothing);
+    expect(find.text('Manage lessons'), findsNWidgets(3));
+    await tester.tap(find.text('Manage lessons').first);
+    expect(opened, '1');
     expect(find.text('Synthetic teaching course'), findsOneWidget);
     expect(
       requests.any((path) => path.contains('/1/') || path.contains('/2/')),
       isFalse,
     );
     await tester.enterText(find.byType(TextField), 'media');
+    await tester.pumpAndSettle();
+    expect(find.text('Teacher media practice (Demo)'), findsOneWidget);
+    expect(find.text('Shared video lesson (Demo)'), findsNothing);
+    await tester.enterText(find.byType(TextField), 'missing course');
     await tester.pumpAndSettle();
     expect(find.text('No courses match your search.'), findsOneWidget);
     expect(tester.takeException(), isNull);

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'lesson_upload.dart';
 import 'dashboard_components.dart';
 import 'design_tokens.dart';
-import 'teacher_course_card.dart';
 
 class TeacherCourseCatalogue extends StatefulWidget {
   const TeacherCourseCatalogue({
@@ -41,15 +40,7 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
 
   @override
   Widget build(BuildContext context) {
-    // Retain the legacy media fixtures in storage, but not in the teaching UI.
-    final courses = widget.courses
-        .where(
-          (course) => !const {
-            'afaq-teacher-media-demo',
-            'afaq-shared-video-demo',
-          }.contains(course['slug']),
-        )
-        .toList();
+    final courses = widget.courses;
     final filtered = courses
         .where(
           (c) =>
@@ -118,25 +109,82 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
           const SizedBox(height: 20),
           if (filtered.isEmpty)
             EmptyRecords(
-              courses.isEmpty || search.trim().isEmpty
-                  ? widget.courses.isEmpty
-                        ? 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.'
-                        : 'No courses to display.'
+              courses.isEmpty
+                  ? 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.'
                   : 'No courses match your search.',
             )
           else
             for (final c in filtered)
-              TeacherCourseCard(
-                update: widget.update,
-                upload: widget.upload,
-                submit: widget.submit,
-                key: ValueKey('teacher-course-card-${c['id']}'),
-                course: c,
-                load: widget.load,
-                apiBaseUrl: widget.apiBaseUrl,
-                refreshToken: widget.refreshToken,
-                onOpen: () => widget.onOpen(c),
-                onModule: (m) => widget.onModule(c, m),
+              Padding(
+                key: ValueKey('teacher-course-row-${c['id']}'),
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFDCE5EF)),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final details = Row(
+                        children: [
+                          const Icon(
+                            Icons.menu_book_outlined,
+                            color: AfaqDesign.ink,
+                            size: 30,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  recordText(c['title']),
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: AfaqDesign.ink,
+                                  ),
+                                ),
+                                if (recordMap(c['subject'])['name'] !=
+                                    null) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    recordText(recordMap(c['subject'])['name']),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                      final action = FilledButton.icon(
+                        onPressed: () => widget.onOpen(c),
+                        icon: const Icon(Icons.library_books_outlined),
+                        label: const Text('Manage lessons'),
+                      );
+                      if (box.maxWidth < 650 ||
+                          MediaQuery.textScalerOf(context).scale(16) > 24) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            details,
+                            const SizedBox(height: 16),
+                            action,
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: details),
+                          const SizedBox(width: 24),
+                          action,
+                        ],
+                      );
+                    },
+                  ),
+                ),
               ),
         ],
       ),
