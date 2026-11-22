@@ -93,6 +93,7 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
                   color: AfaqDesign.ink,
                 ),
               );
+              if (courses.isEmpty) return heading;
               final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
               if (box.maxWidth / textScale.clamp(1.0, 4.0) >= 700) {
                 return Row(
@@ -117,8 +118,10 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
           const SizedBox(height: 20),
           if (filtered.isEmpty)
             EmptyRecords(
-              search.isEmpty
-                  ? 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.'
+              courses.isEmpty || search.trim().isEmpty
+                  ? widget.courses.isEmpty
+                        ? 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.'
+                        : 'No courses to display.'
                   : 'No courses match your search.',
             )
           else

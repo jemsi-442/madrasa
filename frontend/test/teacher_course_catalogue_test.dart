@@ -4,6 +4,48 @@ import 'package:mif_app/src/teacher_course_catalogue.dart';
 import 'package:mif_app/src/page_selection.dart';
 
 void main() {
+  for (final hiddenDemos in [false, true]) {
+    testWidgets('empty catalogue is clear with hidden demos: $hiddenDemos', (
+      tester,
+    ) async {
+      final requests = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TeacherCourseCatalogue(
+              courses: hiddenDemos
+                  ? const [
+                      {'id': '1', 'slug': 'afaq-teacher-media-demo'},
+                      {'id': '2', 'slug': 'afaq-shared-video-demo'},
+                    ]
+                  : const [],
+              load: (path) async {
+                requests.add(path);
+                return [];
+              },
+              refreshToken: 0,
+              onOpen: (_) {},
+              onModule: (_, _) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Assigned Courses (0)'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(
+        find.text(
+          hiddenDemos
+              ? 'No courses to display.'
+              : 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.',
+        ),
+        findsOneWidget,
+      );
+      expect(requests, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('legacy media demo cards are excluded from catalogue and count', (
     tester,
   ) async {
