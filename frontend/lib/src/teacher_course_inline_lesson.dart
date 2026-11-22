@@ -17,6 +17,7 @@ class TeacherCourseInlineLesson extends StatefulWidget {
     this.update,
     this.course,
     this.upload,
+    this.initialModuleId,
   });
   final List<Map<String, dynamic>> modules;
   final PageLoader load;
@@ -25,6 +26,7 @@ class TeacherCourseInlineLesson extends StatefulWidget {
   final Map<String, dynamic>? course;
   final LessonUploader? upload;
   final String apiBaseUrl;
+  final String? initialModuleId;
   final VoidCallback onClose;
 
   @override
@@ -43,6 +45,17 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
   );
 
   Future<dynamic> loadInitial() async {
+    final selectedIndex = widget.modules.indexWhere(
+      (module) => '${module['id']}' == widget.initialModuleId,
+    );
+    if (selectedIndex >= 0) {
+      final data = await loadModule(selectedIndex);
+      if (mounted) {
+        moduleIndex = selectedIndex;
+        findingInitialLesson = false;
+      }
+      return data;
+    }
     for (var i = 0; i < widget.modules.length; i++) {
       final data = await loadModule(i);
       if (!mounted) return data;

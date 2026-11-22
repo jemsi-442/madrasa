@@ -249,6 +249,30 @@ void main() {
       expect(find.byType(LessonMediaViewer), findsNothing);
       expect(find.text('Course Modules'), findsOneWidget);
       expect(requests.where((p) => p == '/api/courses/c/modules').length, 1);
+      final emptyModule = find.byKey(
+        const ValueKey('teacher-course-item-empty'),
+      );
+      await tester.ensureVisible(emptyModule);
+      await tester.tap(emptyModule);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No lessons are available in this module.'),
+        findsOneWidget,
+      );
+      expect(find.byType(LessonMediaViewer), findsNothing);
+      expect(requests.last, '/api/courses/modules/empty/lessons');
+      await tester.ensureVisible(find.byTooltip('Close lesson'));
+      await tester.tap(find.byTooltip('Close lesson'));
+      await tester.pumpAndSettle();
+      final practiceModule = find.byKey(
+        const ValueKey('teacher-course-item-m'),
+      );
+      await tester.ensureVisible(practiceModule);
+      await tester.tap(practiceModule);
+      await tester.pumpAndSettle();
+      expect(find.text('Synthetic lesson notes'), findsOneWidget);
+      expect(find.text('Course Modules'), findsNothing);
+      expect(requests.where((p) => p == '/api/courses/c/modules').length, 1);
       expect(navigation, 0);
       expect(tester.takeException(), isNull);
     });

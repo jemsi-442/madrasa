@@ -35,6 +35,7 @@ class TeacherCourseCard extends StatefulWidget {
 class _TeacherCourseCardState extends State<TeacherCourseCard> {
   late Future<dynamic> modules = fetch();
   bool playing = false;
+  String? selectedModuleId;
   final playbackAnchor = GlobalKey();
 
   void play() {
@@ -47,6 +48,11 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
         duration: const Duration(milliseconds: 250),
       );
     });
+  }
+
+  void playModule(Map<String, dynamic> module) {
+    selectedModuleId = '${module['id']}';
+    play();
   }
 
   Future<dynamic> fetch() => widget.load(
@@ -265,6 +271,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 return const EmptyRecords('No modules have been added yet.');
               }
               return TeacherCourseInlineLesson(
+                initialModuleId: selectedModuleId,
                 update: widget.update,
                 course: widget.course,
                 upload: widget.upload,
@@ -272,7 +279,10 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                 modules: rows,
                 load: widget.load,
                 apiBaseUrl: widget.apiBaseUrl,
-                onClose: () => setState(() => playing = false),
+                onClose: () => setState(() {
+                  playing = false;
+                  selectedModuleId = null;
+                }),
               );
             },
           ),
@@ -292,7 +302,7 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
               return TeacherCourseModules(
                 course: const {},
                 modules: rows,
-                onOpen: widget.onModule,
+                onOpen: playModule,
               );
             },
           ),

@@ -222,17 +222,12 @@ void main() {
       await tester.tap(find.text('Synthetic module'));
       await tester.pumpAndSettle();
       expect(find.text('Synthetic lesson'), findsOneWidget);
-      expect(find.text('01'), findsOneWidget);
-      expect(find.text('02'), findsOneWidget);
-      expect(find.text('15 min estimated'), findsOneWidget);
-      expect(
-        find.textContaining('Practice reading and discussing'),
-        findsOneWidget,
-      );
-      expect(find.text('0 min estimated'), findsNothing);
+      expect(find.text('Course Modules'), findsNothing);
+      expect(find.byTooltip('Close lesson'), findsOneWidget);
+      expect(find.text('Lesson 1 of 2 in this module'), findsOneWidget);
       expect(tester.takeException(), isNull);
-      await tester.ensureVisible(find.text('Second synthetic lesson'));
-      await tester.tap(find.text('Second synthetic lesson'));
+      await tester.ensureVisible(find.text('Next lesson'));
+      await tester.tap(find.text('Next lesson'));
       await tester.pumpAndSettle();
       expect(find.text('Second lesson reading content.'), findsOneWidget);
       expect(tester.takeException(), isNull);
