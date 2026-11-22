@@ -41,7 +41,16 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.courses
+    // Retain the legacy media fixtures in storage, but not in the teaching UI.
+    final courses = widget.courses
+        .where(
+          (course) => !const {
+            'afaq-teacher-media-demo',
+            'afaq-shared-video-demo',
+          }.contains(course['slug']),
+        )
+        .toList();
+    final filtered = courses
         .where(
           (c) =>
               '${c['title'] ?? ''} ${c['summary'] ?? ''} ${recordMap(c['subject'])['name'] ?? ''}'
@@ -77,7 +86,7 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
                 ),
               );
               final heading = Text(
-                'Assigned Courses (${widget.courses.length})',
+                'Assigned Courses (${courses.length})',
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,

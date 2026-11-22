@@ -4,6 +4,59 @@ import 'package:mif_app/src/teacher_course_catalogue.dart';
 import 'package:mif_app/src/page_selection.dart';
 
 void main() {
+  testWidgets('legacy media demo cards are excluded from catalogue and count', (
+    tester,
+  ) async {
+    final requests = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TeacherCourseCatalogue(
+              courses: const [
+                {
+                  'id': '1',
+                  'slug': 'afaq-teacher-media-demo',
+                  'title': 'Teacher media practice (Demo)',
+                },
+                {
+                  'id': '2',
+                  'slug': 'afaq-shared-video-demo',
+                  'title': 'Shared video lesson (Demo)',
+                },
+                {
+                  'id': '3',
+                  'slug': 'regular-course',
+                  'title': 'Synthetic teaching course',
+                },
+              ],
+              load: (path) async {
+                requests.add(path);
+                return [];
+              },
+              refreshToken: 0,
+              onOpen: (_) {},
+              onModule: (_, _) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Assigned Courses (1)'), findsOneWidget);
+    expect(find.text('Teacher media practice (Demo)'), findsNothing);
+    expect(find.text('Shared video lesson (Demo)'), findsNothing);
+    expect(find.text('Synthetic teaching course'), findsOneWidget);
+    expect(
+      requests.any((path) => path.contains('/1/') || path.contains('/2/')),
+      isFalse,
+    );
+    await tester.enterText(find.byType(TextField), 'media');
+    await tester.pumpAndSettle();
+    expect(find.text('No courses match your search.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('responsive catalogue isolates selection and preserves search', (
     tester,
   ) async {
