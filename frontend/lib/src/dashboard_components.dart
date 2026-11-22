@@ -81,7 +81,7 @@ class PanelHeading extends StatelessWidget {
                 Text(
                   subtitle!,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: AfaqDesign.secondarySize,
                     color: muted,
                     height: 1.5,
                   ),
@@ -322,7 +322,16 @@ class RingChart extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 5),
-              Text(caption, style: const TextStyle(color: muted, fontSize: 12)),
+              SizedBox(
+                width: 130,
+                child: Text(
+                  caption,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: muted, fontSize: 14),
+                ),
+              ),
             ],
           ),
         ],
@@ -347,7 +356,7 @@ class RingChart extends StatelessWidget {
                 Expanded(
                   child: Text(
                     item.label,
-                    style: const TextStyle(color: muted, fontSize: 13),
+                    style: const TextStyle(color: muted, fontSize: 14),
                   ),
                 ),
                 ConstrainedBox(
@@ -368,7 +377,7 @@ class RingChart extends StatelessWidget {
                   total == 0
                       ? '-'
                       : '${(item.value / total * 100).toStringAsFixed(percentageDigits)}%',
-                  style: const TextStyle(color: muted, fontSize: 12),
+                  style: const TextStyle(color: muted, fontSize: 14),
                 ),
               ],
             ),
@@ -376,7 +385,9 @@ class RingChart extends StatelessWidget {
       ],
     );
     return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth >= 390
+      builder: (context, constraints) =>
+          constraints.maxWidth >=
+              520 * MediaQuery.textScalerOf(context).scale(14) / 14
           ? Row(
               children: [
                 ring,
@@ -438,23 +449,25 @@ class ColumnChart extends StatelessWidget {
       1,
       maximum ?? items.map((e) => e.value).reduce(math.max),
     );
+    final labelScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final labelHeight = 42 * labelScale;
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: math.max(constraints.maxWidth, items.length * 52.0),
+          width: math.max(constraints.maxWidth, items.length * 96 * labelScale),
           child: Column(
             children: [
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '0 - $maxValue',
-                  style: const TextStyle(fontSize: 11, color: muted),
+                  style: const TextStyle(fontSize: 14, color: muted),
                 ),
               ),
               const SizedBox(height: 12),
               SizedBox(
-                height: height,
+                height: height + 64 * (labelScale - 1),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -475,7 +488,7 @@ class ColumnChart extends StatelessWidget {
                                     child: Text(
                                       '${item.value}',
                                       style: const TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 14,
                                         color: ink,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -485,7 +498,7 @@ class ColumnChart extends StatelessWidget {
                                   Flexible(
                                     child: Container(
                                       height:
-                                          (height - 65).clamp(
+                                          (height - 85).clamp(
                                             0,
                                             double.infinity,
                                           ) *
@@ -512,13 +525,19 @@ class ColumnChart extends StatelessWidget {
                                   Container(height: 1, color: line),
                                   const SizedBox(height: 10),
                                   SizedBox(
-                                    height: 34,
-                                    child: Text(
-                                      item.label,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: muted,
+                                    height: labelHeight,
+                                    child: Tooltip(
+                                      message: item.label,
+                                      child: Text(
+                                        item.label,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          height: 1.4,
+                                          color: muted,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -563,12 +582,16 @@ Future<void> showRecordDetails(
                   children: [
                     Text(
                       field.key,
-                      style: const TextStyle(color: muted, fontSize: 12),
+                      style: const TextStyle(color: muted, fontSize: 14),
                     ),
                     const SizedBox(height: 4),
                     SelectableText(
                       field.value,
-                      style: const TextStyle(color: ink, fontSize: 15),
+                      style: const TextStyle(
+                        color: ink,
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
                     ),
                   ],
                 ),
