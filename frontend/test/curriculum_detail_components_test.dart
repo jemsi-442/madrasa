@@ -3,6 +3,65 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/curriculum_detail_components.dart';
 
 void main() {
+  testWidgets('returning to a framework restores only its lesson search', (
+    tester,
+  ) async {
+    final bucket = PageStorageBucket();
+    final lessons = List.generate(
+      3,
+      (i) => {
+        'id': 'synthetic-$i',
+        'title': 'Plan $i',
+        'activities': '',
+        'objectives': <Map>[],
+      },
+    );
+    Widget screen(String? framework) => MaterialApp(
+      home: Scaffold(
+        body: PageStorage(
+          bucket: bucket,
+          child: framework == null
+              ? const SizedBox()
+              : CurriculumLessonPlansBrowser(
+                  key: ValueKey(framework),
+                  lessons: lessons,
+                  compact: true,
+                  buildLesson: (i) => Text('Plan $i'),
+                ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(screen('first-version'));
+    await tester.tap(find.text('Show 2 more lesson plans'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Plan 2');
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(screen(null));
+    await tester.pumpWidget(screen('other-version'));
+    expect(find.text('Plan 0'), findsOneWidget);
+    expect(find.text('Plan 2'), findsNothing);
+    await tester.pumpWidget(screen('first-version'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'Plan 2',
+    );
+    expect(find.text('Plan 0'), findsNothing);
+    expect(find.text('Plan 2'), findsNWidgets(2));
+    await tester.tap(find.byTooltip('Clear lesson search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Plan 0'), findsOneWidget);
+    expect(find.text('Plan 2'), findsOneWidget);
+    await tester.pumpWidget(screen(null));
+    await tester.pumpWidget(screen('first-version'));
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '',
+    );
+    expect(find.text('Plan 2'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('compact plans expand and search hidden lessons', (tester) async {
     final lessons = List.generate(
       3,

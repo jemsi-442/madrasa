@@ -569,6 +569,31 @@ class _CurriculumLessonPlansBrowserState
     extends State<CurriculumLessonPlansBrowser> {
   final search = TextEditingController();
   bool showAll = false;
+  bool restored = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (restored) return;
+    restored = true;
+    if (widget.key == null) return;
+    final saved = PageStorage.maybeOf(
+      context,
+    )?.readState(context, identifier: widget.key);
+    if (saved is Map) {
+      search.text = saved['query'] as String? ?? '';
+      showAll = saved['showAll'] == true;
+    }
+  }
+
+  void updateSearchState([VoidCallback? change]) {
+    setState(() => change?.call());
+    if (widget.key == null) return;
+    PageStorage.maybeOf(context)?.writeState(context, {
+      'query': search.text,
+      'showAll': showAll,
+    }, identifier: widget.key);
+  }
 
   @override
   void dispose() {
@@ -613,11 +638,11 @@ class _CurriculumLessonPlansBrowserState
                 ? null
                 : IconButton(
                     tooltip: 'Clear lesson search',
-                    onPressed: () => setState(search.clear),
+                    onPressed: () => updateSearchState(search.clear),
                     icon: const Icon(Icons.close),
                   ),
           ),
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) => updateSearchState(),
         ),
         const SizedBox(height: 12),
         Text(
@@ -657,7 +682,7 @@ class _CurriculumLessonPlansBrowserState
         if (widget.compact && query.isEmpty && matches.length > 1) ...[
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () => setState(() => showAll = !showAll),
+            onPressed: () => updateSearchState(() => showAll = !showAll),
             icon: Icon(showAll ? Icons.expand_less : Icons.expand_more),
             label: Text(
               showAll
