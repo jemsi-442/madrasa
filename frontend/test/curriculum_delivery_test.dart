@@ -103,49 +103,53 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final writes = <Map<String, dynamic>>[];
       String? assessmentClass;
+      var loads = 0;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: SchoolCurriculumPage(
               isAdmin: false,
               onOpenAssessments: (id) => assessmentClass = id,
-              load: (_) async => {
-                'subjects': [],
-                'classes': [],
-                'assignments': [
-                  {
-                    'id': 'assignment-1',
-                    'version': {
-                      'subject': 'Arabic',
-                      'level': 'Level 1',
-                      'version': '1.0',
-                      'description': 'Synthetic example',
-                      'topics': [],
-                      'lessons': [
-                        {
-                          'id': 'lesson-1',
-                          'title': 'Reading words',
-                          'durationMinutes': 20,
-                          'activities': 'Guided practice',
-                          'objectives': [],
-                        },
+              load: (_) async {
+                loads++;
+                return {
+                  'subjects': [],
+                  'classes': [],
+                  'assignments': [
+                    {
+                      'id': 'assignment-1',
+                      'version': {
+                        'subject': 'Arabic',
+                        'level': 'Level 1',
+                        'version': '1.0',
+                        'description': 'Synthetic example',
+                        'topics': [],
+                        'lessons': [
+                          {
+                            'id': 'lesson-1',
+                            'title': 'Reading words',
+                            'durationMinutes': 20,
+                            'activities': 'Guided practice',
+                            'objectives': [],
+                          },
+                        ],
+                      },
+                      'adoptions': [
+                        for (final name in ['A', 'B'])
+                          {
+                            'id': 'adoption-$name',
+                            'history': [],
+                            'class': {
+                              'id': name,
+                              'name': 'Class $name',
+                              'academicYear': '2026',
+                            },
+                            'subject': {'name': 'Arabic'},
+                          },
                       ],
                     },
-                    'adoptions': [
-                      for (final name in ['A', 'B'])
-                        {
-                          'id': 'adoption-$name',
-                          'history': [],
-                          'class': {
-                            'id': name,
-                            'name': 'Class $name',
-                            'academicYear': '2026',
-                          },
-                          'subject': {'name': 'Arabic'},
-                        },
-                    ],
-                  },
-                ],
+                  ],
+                };
               },
               submit: (_, body) async {
                 writes.add(Map<String, dynamic>.from(body));
@@ -205,6 +209,10 @@ void main() {
       await tester.tap(find.text('Confirm taught'));
       await tester.pumpAndSettle();
       expect(find.text('Recorded'), findsOneWidget);
+      expect(
+        find.text('Teaching recorded successfully for Class B: Reading words.'),
+        findsOneWidget,
+      );
       expect(find.text('Open class assessments'), findsOneWidget);
       await selectClass('A');
       expect(find.text('Recorded'), findsNothing);
@@ -230,6 +238,7 @@ void main() {
       await tester.tap(find.text('Open class assessments'));
       await tester.pumpAndSettle();
       expect(assessmentClass, 'B');
+      expect(loads, 2);
       expect(writes, hasLength(3));
       expect(tester.takeException(), isNull);
     },

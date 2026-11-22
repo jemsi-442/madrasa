@@ -140,9 +140,9 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                             'Confirm only after teaching this lesson. This records teaching now, not student attendance, assessment or achievement. An internet connection is required.',
                       ),
                       if (recorded)
-                        const WorkspaceFormNotice(
+                        WorkspaceFormNotice(
                           message:
-                              'Teaching recorded successfully during this visit.',
+                              'Teaching recorded successfully for ${adoptions.firstWhere((item) => '${item['id']}' == selected)['class']['name']}: ${lesson['title']}.',
                         ),
                       if (failure != null)
                         WorkspaceFormNotice(message: failure!, isError: true),
