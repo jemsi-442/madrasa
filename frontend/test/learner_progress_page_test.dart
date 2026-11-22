@@ -59,6 +59,11 @@ void main() {
       await t.enterText(find.byType(TextField), 'missing');
       await t.pumpAndSettle();
       expect(find.text('No lessons match these filters.'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'All  0'), findsOneWidget);
+      await tap(t, find.byTooltip('Clear search'));
+      expect(find.text('Finished practice'), findsNothing);
+      expect(find.text('Ongoing practice'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'All  2'), findsOneWidget);
       await tap(t, find.text('Clear filters'));
       expect(find.text('Finished practice'), findsOneWidget);
       expect(find.text('Ongoing practice'), findsOneWidget);
@@ -71,6 +76,35 @@ void main() {
       expect(t.takeException(), isNull);
     });
   }
+  testWidgets('course counts and search reset preserve selected course', (
+    t,
+  ) async {
+    await host(
+      t,
+      LearnerProgressPage(
+        load: (_) async => {'items': rows},
+        submit: (_, _) async => throw StateError('Unexpected write'),
+        apiBaseUrl: 'https://school.test',
+        onBrowse: () {},
+      ),
+      width: 1440,
+    );
+    await tap(t, find.text('All courses'));
+    await tap(t, find.text('Sample course').last);
+    expect(find.widgetWithText(ChoiceChip, 'All  1'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Completed  1'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'In progress  0'), findsOneWidget);
+    expect(find.text('Ongoing practice'), findsNothing);
+    await t.enterText(find.byType(TextField), 'missing');
+    await t.pumpAndSettle();
+    expect(find.widgetWithText(ChoiceChip, 'All  0'), findsOneWidget);
+    await tap(t, find.byTooltip('Clear search'));
+    expect(find.text('Finished practice'), findsOneWidget);
+    expect(find.text('Ongoing practice'), findsNothing);
+    await tap(t, find.text('Clear filters'));
+    expect(find.text('Ongoing practice'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
   testWidgets('empty tracker offers courses without inventing progress', (
     t,
   ) async {

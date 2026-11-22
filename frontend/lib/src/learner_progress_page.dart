@@ -90,16 +90,22 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
         courses[recordText(item['id'])] = recordText(item['title']);
       }
       final selectedCourse = courses.containsKey(course) ? course : '';
-      final filtered = rows.where((row) {
+      final matching = rows.where((row) {
         final lesson = recordMap(row['lesson']);
         final item = recordMap(row['course']);
         return (selectedCourse.isEmpty ||
                 recordText(item['id']) == selectedCourse) &&
-            (status == 'All' || (status == 'Completed') == completed(row)) &&
             '${lesson['title']} ${item['title']}'.toLowerCase().contains(
               search.trim().toLowerCase(),
             );
       }).toList();
+      final matchingDone = matching.where(completed).length;
+      final filtered = matching
+          .where(
+            (row) =>
+                status == 'All' || (status == 'Completed') == completed(row),
+          )
+          .toList();
       final done = rows.where(completed).length;
       final pages = (filtered.length / pageSize).ceil().clamp(1, 1000000);
       final currentPage = page.clamp(0, pages - 1);
@@ -255,9 +261,20 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                   builder: (context, box) {
                     final searchField = TextField(
                       controller: searchController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Search lessons or courses',
-                        prefixIcon: Icon(Icons.search),
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: search.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                icon: const Icon(Icons.close),
+                                onPressed: () => setState(() {
+                                  searchController.clear();
+                                  search = '';
+                                  page = 0;
+                                }),
+                              ),
                       ),
                       onChanged: (value) => setState(() {
                         search = value;
@@ -314,10 +331,10 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                       ChoiceChip(
                         label: Text(
                           '$value  ${value == 'All'
-                              ? rows.length
+                              ? matching.length
                               : value == 'Completed'
-                              ? done
-                              : rows.length - done}',
+                              ? matchingDone
+                              : matching.length - matchingDone}',
                         ),
                         selected: status == value,
                         onSelected: (_) => setState(() {
