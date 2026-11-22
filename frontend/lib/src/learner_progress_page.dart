@@ -178,7 +178,7 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
               runSpacing: 16,
               children: [
                 for (final metric in [
-                  ('Tracked lessons', rows.length, blue),
+                  ('Tracked lessons', rows.length, const Color(0xFF34219C)),
                   ('Completed', done, forest),
                   ('In progress', rows.length - done, gold),
                 ])
@@ -187,6 +187,10 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                         ? (box.maxWidth - 32) / 3
                         : box.maxWidth,
                     child: SurfacePanel(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 18,
+                      ),
                       color: metric.$1 == 'Tracked lessons'
                           ? const Color(0xFFF0EDFF)
                           : metric.$1 == 'Completed'
@@ -200,7 +204,11 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                               children: [
                                 Text(
                                   metric.$1,
-                                  style: const TextStyle(color: muted),
+                                  style: const TextStyle(
+                                    color: muted,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -240,6 +248,7 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
           ),
           const SizedBox(height: 20),
           SurfacePanel(
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -262,7 +271,12 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                     final searchField = TextField(
                       controller: searchController,
                       decoration: InputDecoration(
-                        labelText: 'Search lessons or courses',
+                        hintText: 'Search lessons or courses',
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
+                        ),
                         prefixIcon: const Icon(Icons.search),
                         suffixIcon: search.isEmpty
                             ? null
@@ -285,7 +299,13 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                       key: ValueKey(selectedCourse),
                       initialValue: selectedCourse,
                       isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Course'),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
                       items: [
                         const DropdownMenuItem(
                           value: '',
@@ -329,6 +349,17 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                   children: [
                     for (final value in ['All', 'In progress', 'Completed'])
                       ChoiceChip(
+                        showCheckmark: false,
+                        selectedColor: ink,
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: status == value ? ink : line),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        labelStyle: TextStyle(
+                          color: status == value ? Colors.white : ink,
+                          fontWeight: FontWeight.w600,
+                        ),
                         label: Text(
                           '$value  ${value == 'All'
                               ? matching.length
@@ -405,7 +436,7 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                               children: [
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
+                                    vertical: 10,
                                     horizontal: 12,
                                   ),
                                   child: Row(
@@ -503,14 +534,31 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                             .withValues(alpha: .10),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: Text(
-                                        completed(row)
-                                            ? 'Completed'
-                                            : 'In progress',
-                                        style: TextStyle(
-                                          color: completed(row) ? forest : gold,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            completed(row)
+                                                ? Icons.check
+                                                : Icons.timelapse,
+                                            size: 19,
+                                            color: completed(row)
+                                                ? forest
+                                                : gold,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            completed(row)
+                                                ? 'Completed'
+                                                : 'In progress',
+                                            style: TextStyle(
+                                              color: completed(row)
+                                                  ? forest
+                                                  : gold,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -519,6 +567,7 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                   padding: const EdgeInsets.all(8),
                                   child: completed(row)
                                       ? TextButton.icon(
+                                          iconAlignment: IconAlignment.end,
                                           onPressed: () => open(row),
                                           icon: const Icon(
                                             Icons.arrow_forward,
@@ -527,6 +576,17 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                                           label: const Text('Review lesson'),
                                         )
                                       : FilledButton.icon(
+                                          iconAlignment: IconAlignment.end,
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: const Color(
+                                              0xFFF1BD39,
+                                            ),
+                                            foregroundColor: ink,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
                                           onPressed: () => open(row),
                                           icon: const Icon(
                                             Icons.arrow_forward,
