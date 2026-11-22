@@ -278,24 +278,25 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
           ),
           const SizedBox(height: 24),
         ],
-        const Divider(height: 1),
-        const SizedBox(height: 24),
-        PageResult(
-          future: modules,
-          onRetry: () => setState(() => modules = fetch()),
-          builder: (data) {
-            final rows = recordList(data);
-            if (rows.isEmpty) {
-              return const Text('No modules have been added yet.');
-            }
-            return TeacherCourseModules(
-              course: const {},
-              modules: rows,
-              onOpen: widget.onModule,
-              onViewAll: widget.onOpen,
-            );
-          },
-        ),
+        if (!playing) ...[
+          const Divider(height: 1),
+          const SizedBox(height: 24),
+          PageResult(
+            future: modules,
+            onRetry: () => setState(() => modules = fetch()),
+            builder: (data) {
+              final rows = recordList(data);
+              if (rows.isEmpty) {
+                return const Text('No modules have been added yet.');
+              }
+              return TeacherCourseModules(
+                course: const {},
+                modules: rows,
+                onOpen: widget.onModule,
+              );
+            },
+          ),
+        ],
       ],
     ),
   );

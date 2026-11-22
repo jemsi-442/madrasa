@@ -216,8 +216,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(requests, ['/api/courses/c/modules']);
+      expect(find.text('Course Modules'), findsOneWidget);
+      expect(find.text('View all modules'), findsNothing);
       await tester.tap(find.byTooltip('Play lesson'));
       await tester.pumpAndSettle();
+      expect(find.text('Course Modules'), findsNothing);
       expect(navigation, 0);
       expect(find.byType(LessonMediaViewer), findsOneWidget);
       expect(
@@ -244,6 +247,8 @@ void main() {
       await tester.tap(find.byTooltip('Close lesson'));
       await tester.pumpAndSettle();
       expect(find.byType(LessonMediaViewer), findsNothing);
+      expect(find.text('Course Modules'), findsOneWidget);
+      expect(requests.where((p) => p == '/api/courses/c/modules').length, 1);
       expect(navigation, 0);
       expect(tester.takeException(), isNull);
     });
