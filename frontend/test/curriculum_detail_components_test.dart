@@ -338,6 +338,26 @@ void main() {
       await tester.tap(find.text('Linked learning objectives'));
       await tester.pumpAndSettle();
       expect(find.text('READ-01'), findsWidgets);
+      final objective = find
+          .text('Recognise and read the assigned words independently.')
+          .first;
+      expect(
+        tester.getTopLeft(objective).dx,
+        closeTo(tester.getTopLeft(find.text('Teaching activities')).dx + 16, 1),
+      );
+      final objectivesTile = tester.widget<ExpansionTile>(
+        find
+            .ancestor(
+              of: find.text('Linked learning objectives'),
+              matching: find.byType(ExpansionTile),
+            )
+            .first,
+      );
+      expect(
+        objectivesTile.expandedCrossAxisAlignment,
+        CrossAxisAlignment.stretch,
+      );
+      expect(objectivesTile.shape, const Border());
       await tester.tap(find.text('Linked learning objectives'));
       await tester.pumpAndSettle();
       expect(

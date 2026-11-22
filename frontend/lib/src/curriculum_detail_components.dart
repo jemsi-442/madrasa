@@ -302,7 +302,13 @@ class SchoolCurriculumDetail extends StatelessWidget {
                           '${assignment['id']}-lesson-${lessons[i]['id'] ?? i}-objectives',
                         ),
                         tilePadding: EdgeInsets.zero,
-                        childrenPadding: const EdgeInsets.only(top: 8),
+                        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                        shape: const Border(),
+                        collapsedShape: const Border(),
+                        childrenPadding: const EdgeInsets.only(
+                          top: 8,
+                          bottom: 4,
+                        ),
                         title: const Text(
                           'Linked learning objectives',
                           style: TextStyle(fontWeight: FontWeight.w700),
@@ -314,8 +320,19 @@ class SchoolCurriculumDetail extends StatelessWidget {
                               style: TextStyle(color: AfaqDesign.muted),
                             ),
                           for (final link in lessons[i]['objectives'])
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AfaqDesign.blue.withValues(alpha: 0.04),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AfaqDesign.blue.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                ),
+                              ),
                               child: CurriculumDetailField(
                                 label: '${link['objective']['code']}',
                                 value: '${link['objective']['description']}',
