@@ -68,7 +68,11 @@ class LearningRecordLinks extends StatelessWidget {
         const SizedBox(height: 6),
         const Text(
           'Open the source records or reports for this class. Reports use recorded attendance, Qur\'an sessions and published assessments for the chosen period.',
-          style: TextStyle(color: muted, fontSize: 12, height: 1.5),
+          style: TextStyle(
+            color: muted,
+            fontSize: AfaqDesign.secondarySize,
+            height: 1.5,
+          ),
         ),
         const SizedBox(height: 12),
         Wrap(

@@ -59,41 +59,55 @@ class PanelHeading extends StatelessWidget {
   final Widget? action;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: Row(
+  Widget build(BuildContext context) {
+    final heading = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: ink,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 5),
-                Text(
-                  subtitle!,
-                  style: const TextStyle(
-                    fontSize: AfaqDesign.secondarySize,
-                    color: muted,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ],
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: ink,
           ),
         ),
-        if (action != null) ...[const SizedBox(width: 12), action!],
+        if (subtitle != null) ...[
+          const SizedBox(height: 5),
+          Text(
+            subtitle!,
+            style: const TextStyle(
+              fontSize: AfaqDesign.secondarySize,
+              color: muted,
+              height: 1.5,
+            ),
+          ),
+        ],
       ],
-    ),
-  );
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(18) / 18;
+          if (action == null) return heading;
+          if (constraints.maxWidth < 560 * textScale) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [heading, const SizedBox(height: 12), action!],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: heading),
+              const SizedBox(width: 16),
+              Flexible(child: action!),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 class PanelColumns extends StatelessWidget {
