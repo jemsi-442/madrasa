@@ -180,6 +180,7 @@ class _TeacherCourseInlineLessonState extends State<TeacherCourseInlineLesson> {
                   ),
                   const SizedBox(height: 16),
                   TeacherLessonResources(
+                    update: widget.update,
                     upload: widget.upload,
                     submit: widget.submit,
                     key: ValueKey('inline-resources-${lesson['id']}'),

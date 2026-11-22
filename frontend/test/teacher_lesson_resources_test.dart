@@ -8,6 +8,76 @@ import 'package:mif_app/src/page_selection.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  for (final fails in [false, true]) {
+    testWidgets('resource access confirmation and save (fails: $fails)', (
+      tester,
+    ) async {
+      var writes = 0;
+      var reads = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TeacherLessonResources(
+                lessonId: 'synthetic',
+                apiBaseUrl: 'https://school.test',
+                load: (_) async {
+                  reads++;
+                  return [
+                    {
+                      'id': '42',
+                      'title': 'Synthetic guide',
+                      'assetType': 'PDF',
+                      'visibility': 'FREE',
+                    },
+                  ];
+                },
+                update: (path, body) async {
+                  writes++;
+                  expect(path, '/api/courses/assets/42');
+                  expect(body, {'visibility': 'LOCKED'});
+                  if (fails) throw Exception('Unavailable');
+                  return {'id': '42', 'visibility': 'LOCKED'};
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Change learner access'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(writes, 0);
+      await tester.tap(find.text('Change learner access'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Locked').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save access'));
+      await tester.pumpAndSettle();
+      expect(writes, 1);
+      expect(reads, 1);
+      expect(find.text('Synthetic guide'), findsOneWidget);
+      expect(
+        find.text('Locked for learners. Teacher preview only.'),
+        fails ? findsNothing : findsOneWidget,
+      );
+      expect(
+        find.text(
+          fails
+              ? 'Could not save resource access. Please try again.'
+              : 'Resource access saved.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(LessonMediaViewer), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('resource access labels do not imply upload publishes a lesson', (
     tester,
   ) async {

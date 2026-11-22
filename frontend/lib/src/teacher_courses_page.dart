@@ -382,6 +382,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
           ),
           const SizedBox(height: 16),
           TeacherLessonResources(
+            update: widget.update,
             upload: widget.upload,
             submit: widget.submit,
             key: ValueKey('teacher-lesson-resources-$lessonId'),

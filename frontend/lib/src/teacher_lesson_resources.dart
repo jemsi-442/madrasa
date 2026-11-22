@@ -15,12 +15,14 @@ class TeacherLessonResources extends StatefulWidget {
     this.openFirst = false,
     this.submit,
     this.upload,
+    this.update,
   });
   final String lessonId, apiBaseUrl;
   final PageLoader load;
   final bool openFirst;
   final Future<dynamic> Function(String, Map<String, dynamic>)? submit;
   final LessonUploader? upload;
+  final Future<dynamic> Function(String, Map<String, dynamic>)? update;
 
   @override
   State<TeacherLessonResources> createState() => _TeacherLessonResourcesState();
@@ -32,6 +34,95 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
   String? filter;
   bool revealInitialResource = false;
   List<Map<String, dynamic>> currentRows = [];
+  final Set<String> savingAccess = {};
+
+  Future<void> changeAccess(Map<String, dynamic> resource) async {
+    final id = '${resource['id']}';
+    final lesson = widget.lessonId;
+    var visibility = '${resource['visibility'] ?? 'LOCKED'}';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Resource access'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(recordText(resource['title'])),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                initialValue: visibility,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Learner access'),
+                items: const [
+                  DropdownMenuItem(value: 'LOCKED', child: Text('Locked')),
+                  DropdownMenuItem(
+                    value: 'FREE',
+                    child: Text('Course learners'),
+                  ),
+                  DropdownMenuItem(value: 'PAID', child: Text('Paid access')),
+                  DropdownMenuItem(value: 'PREVIEW', child: Text('Preview')),
+                  DropdownMenuItem(value: 'UNLISTED', child: Text('Unlisted')),
+                ],
+                onChanged: (value) => visibility = value ?? visibility,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Course and lesson publication, programme and access permissions still apply. Locking keeps the file and existing progress.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save access'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || lesson != widget.lessonId) return;
+    setState(() => savingAccess.add(id));
+    try {
+      final result = await widget.update!(
+        '/api/courses/assets/${Uri.encodeComponent(id)}',
+        {'visibility': visibility},
+      );
+      if (!mounted || lesson != widget.lessonId) return;
+      setState(() {
+        currentRows = [
+          for (final row in currentRows)
+            if ('${row['id']}' == id)
+              {
+                ...row,
+                'visibility': visibility,
+                if (result is Map) ...Map<String, dynamic>.from(result),
+              }
+            else
+              row,
+        ];
+        future = SynchronousFuture<dynamic>(currentRows);
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Resource access saved.')));
+    } catch (_) {
+      if (!mounted || lesson != widget.lessonId) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save resource access. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => savingAccess.remove(id));
+    }
+  }
 
   void resourceAdded(dynamic result) {
     final resource = Map<String, dynamic>.from(result as Map);
@@ -424,6 +515,20 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
                       color: color.withValues(alpha: .16),
                     ),
                   ),
+                  if (widget.update != null) ...[
+                    OutlinedButton.icon(
+                      onPressed: savingAccess.contains('${row['id']}')
+                          ? null
+                          : () => changeAccess(row),
+                      icon: const Icon(Icons.manage_accounts_outlined),
+                      label: Text(
+                        savingAccess.contains('${row['id']}')
+                            ? 'Saving access...'
+                            : 'Change learner access',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   Row(
                     children: [
                       Expanded(
