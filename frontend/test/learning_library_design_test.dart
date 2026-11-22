@@ -283,6 +283,14 @@ void main() {
     (t) async {
       final f = JourneyFixture();
       await host(t, f.journey(), width: 320, scale: 2);
+      expect(
+        find.byKey(const ValueKey('lesson-reading-controls')),
+        findsOneWidget,
+      );
+      expect(
+        t.getSize(find.byKey(const ValueKey('lesson-reading-column'))).width,
+        lessThanOrEqualTo(760),
+      );
       for (var i = 0; i < 4; i++) {
         await tap(t, find.byTooltip('Larger lesson text'));
       }
@@ -313,6 +321,7 @@ void main() {
         isNull,
       );
       expect(f.writes, isEmpty);
+      expect(t.takeException(), isNull);
     },
   );
 

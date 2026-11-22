@@ -378,6 +378,7 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
         ),
         if (assets.isEmpty)
           const EmptyRecords('No resources attached to this lesson.'),
+        if (assets.length == 1) const SizedBox(height: 18),
         if (assets.length > 1) ...[
           const SizedBox(height: 16),
           Wrap(
@@ -581,48 +582,71 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                   color: ink,
                 ),
               ),
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 4,
-                children: [
-                  const Icon(
-                    Icons.text_fields,
-                    size: AfaqDesign.iconSmall,
-                    color: muted,
-                  ),
-                  Text(
-                    '${readingSize.toInt()}px',
-                    style: const TextStyle(color: muted, fontSize: 12),
-                  ),
-                  IconButton(
-                    tooltip: 'Smaller lesson text',
-                    onPressed: readingSize <= 14
-                        ? null
-                        : () => setState(() => readingSize -= 2),
-                    icon: const Icon(Icons.remove, size: AfaqDesign.iconSmall),
-                  ),
-                  IconButton(
-                    tooltip: 'Larger lesson text',
-                    onPressed: readingSize >= 24
-                        ? null
-                        : () => setState(() => readingSize += 2),
-                    icon: const Icon(Icons.add, size: AfaqDesign.iconSmall),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() => readingSize = 18),
-                    child: const Text('Reset text size'),
-                  ),
-                ],
+              Container(
+                key: const ValueKey('lesson-reading-controls'),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: blue.withValues(alpha: .05),
+                  border: Border.all(color: line),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 4,
+                  children: [
+                    const Icon(
+                      Icons.text_fields,
+                      size: AfaqDesign.iconSmall,
+                      color: muted,
+                    ),
+                    Text(
+                      '${readingSize.toInt()}px',
+                      style: const TextStyle(color: muted, fontSize: 12),
+                    ),
+                    IconButton(
+                      tooltip: 'Smaller lesson text',
+                      onPressed: readingSize <= 14
+                          ? null
+                          : () => setState(() => readingSize -= 2),
+                      icon: const Icon(
+                        Icons.remove,
+                        size: AfaqDesign.iconSmall,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Larger lesson text',
+                      onPressed: readingSize >= 24
+                          ? null
+                          : () => setState(() => readingSize += 2),
+                      icon: const Icon(Icons.add, size: AfaqDesign.iconSmall),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => readingSize = 18),
+                      child: const Text('Reset text size'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const Divider(height: 24),
-          SelectableText(
-            lesson['contentText'] == null ||
-                    recordText(lesson['contentText']).trim().isEmpty
-                ? 'This lesson has no reading text. Explore its resources to continue learning.'
-                : recordText(lesson['contentText']),
-            style: TextStyle(fontSize: readingSize, height: 1.8, color: ink),
+          const Divider(height: 36),
+          Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              key: const ValueKey('lesson-reading-column'),
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: SelectableText(
+                lesson['contentText'] == null ||
+                        recordText(lesson['contentText']).trim().isEmpty
+                    ? 'This lesson has no reading text. Explore its resources to continue learning.'
+                    : recordText(lesson['contentText']),
+                style: TextStyle(
+                  fontSize: readingSize,
+                  height: 1.8,
+                  color: ink,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -1317,7 +1341,9 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                       Text(
                         recordText(lesson['title']),
                         style: TextStyle(
-                          fontSize: widget.embedded ? 22 : 30,
+                          fontSize: MediaQuery.sizeOf(context).width < 600
+                              ? 28
+                              : 36,
                           fontWeight: FontWeight.w700,
                           color: ink,
                           height: 1.2,
@@ -1328,7 +1354,11 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                         padding: const EdgeInsets.only(top: 10),
                         child: Text(
                           recordText(lesson['summary']),
-                          style: const TextStyle(color: muted, height: 1.6),
+                          style: const TextStyle(
+                            color: muted,
+                            fontSize: 18,
+                            height: 1.6,
+                          ),
                         ),
                       ),
                     if (!widget.embedded) const SizedBox(height: 24),
