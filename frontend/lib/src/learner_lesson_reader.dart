@@ -350,6 +350,10 @@ class _LearnerLessonReaderState extends State<LearnerLessonReader> {
                       if (separateAssets[kind] case final asset?)
                         LessonMediaViewer(
                           key: ValueKey('separate-media-${asset['id']}'),
+                          onClose: () {
+                            setState(() => separateAssets.remove(kind));
+                            reveal(resourcesAnchor, resourcesFocus);
+                          },
                           assetId: recordText(asset['id']),
                           title: recordText(asset['title']),
                           load: widget.load,

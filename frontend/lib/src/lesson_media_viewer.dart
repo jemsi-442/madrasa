@@ -311,6 +311,7 @@ class _LessonMediaViewerState extends State<LessonMediaViewer> {
                         delivery: source,
                         onReady: onLoaded,
                         onError: onFailed,
+                        onClose: widget.onClose,
                       )
                     : platform.LessonMediaSurface(
                         overlayControls: widget.compactVideo,

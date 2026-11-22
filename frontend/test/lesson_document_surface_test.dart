@@ -6,6 +6,50 @@ import 'package:mif_app/src/lesson_media_delivery.dart';
 import 'package:mif_app/src/pdf_reading_frame.dart';
 
 void main() {
+  for (final kind in ['PDF', 'TEXT']) {
+    testWidgets('$kind fullscreen returns directly to the lesson', (
+      tester,
+    ) async {
+      var closed = false;
+      if (kind == 'TEXT') {
+        await tester.runAsync(
+          () => rootBundle.loadString('assets/media-preview/checklist.txt'),
+        );
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, update) => closed
+                  ? const Text('Lesson resources')
+                  : LessonDocumentSurface(
+                      delivery: LessonMediaDelivery(
+                        uri: Uri.parse('asset:sample'),
+                        kind: kind,
+                        title: 'Synthetic document',
+                        expiresAt: null,
+                        downloadAllowed: false,
+                        assetPath: kind == 'TEXT'
+                            ? 'assets/media-preview/checklist.txt'
+                            : 'assets/media-preview/guide.pdf',
+                      ),
+                      onReady: () {},
+                      onError: () {},
+                      onClose: () => update(() => closed = true),
+                    ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Back to lesson'));
+      await tester.pumpAndSettle();
+      expect(find.text('Lesson resources'), findsOneWidget);
+      expect(find.byType(PdfReadingFrame), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final size in [const Size(390, 844), const Size(844, 390)]) {
     testWidgets('PDF fullscreen and Escape preserve the lesson at $size', (
       tester,
@@ -169,6 +213,9 @@ void main() {
   testWidgets('bundled text becomes selectable and signals readiness once', (
     tester,
   ) async {
+    await tester.runAsync(
+      () => rootBundle.loadString('assets/media-preview/checklist.txt'),
+    );
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 600);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -196,6 +243,10 @@ void main() {
           ),
         ),
       ),
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
     );
     await tester.pumpAndSettle();
     expect(find.byType(SelectableText), findsOneWidget);

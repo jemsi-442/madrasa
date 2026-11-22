@@ -17,6 +17,7 @@ class LessonDocumentSurface extends StatefulWidget {
     this.initialPage = 1,
     this.onPageChanged,
     this.onMinimize,
+    this.onClose,
   });
   final LessonMediaDelivery delivery;
   final VoidCallback onReady, onError;
@@ -24,6 +25,7 @@ class LessonDocumentSurface extends StatefulWidget {
   final int initialPage;
   final ValueChanged<int>? onPageChanged;
   final VoidCallback? onMinimize;
+  final VoidCallback? onClose;
 
   @override
   State<LessonDocumentSurface> createState() => _LessonDocumentSurfaceState();
@@ -99,6 +101,11 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
 
   void minimize() {
     fullscreenHistory?.remove();
+  }
+
+  void closeReader() {
+    minimize();
+    widget.onClose?.call();
   }
 
   void fitPdfWidth() {
@@ -224,6 +231,7 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
                         fullScreen: true,
                         initialPage: page,
                         onMinimize: minimize,
+                        onClose: widget.onClose == null ? null : closeReader,
                         onPageChanged: (value) => page = value,
                         onReady: () => notify(true),
                         onError: () => notify(false),
@@ -260,6 +268,12 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
+        if (widget.onClose != null)
+          TextButton.icon(
+            onPressed: closeReader,
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Back to lesson'),
+          ),
         const Icon(Icons.menu_book_outlined, size: 20),
         const Text('Reading view'),
         PdfControlGroup(
@@ -375,6 +389,12 @@ class _LessonDocumentSurfaceState extends State<LessonDocumentSurface> {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          if (widget.onClose != null)
+            TextButton.icon(
+              onPressed: closeReader,
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Back to lesson'),
+            ),
           if (!widget.fullScreen)
             OutlinedButton.icon(
               onPressed: openFullScreen,
