@@ -59,6 +59,15 @@ void main() {
       await t.enterText(find.byType(TextField), 'missing');
       await t.pumpAndSettle();
       expect(find.text('No lessons match these filters.'), findsOneWidget);
+      await tap(t, find.text('Clear filters'));
+      expect(find.text('Finished practice'), findsOneWidget);
+      expect(find.text('Ongoing practice'), findsOneWidget);
+      expect(
+        t.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
+      );
+      expect(find.text('Clear filters'), findsNothing);
+      expect(writes, isEmpty);
       expect(t.takeException(), isNull);
     });
   }

@@ -31,6 +31,21 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
   String course = '', status = 'All', search = '';
   int page = 0;
   static const pageSize = 5;
+  final searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  void clearFilters() => setState(() {
+    searchController.clear();
+    search = '';
+    course = '';
+    status = 'All';
+    page = 0;
+  });
 
   @override
   void didUpdateWidget(covariant LearnerProgressPage oldWidget) {
@@ -239,6 +254,7 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                 LayoutBuilder(
                   builder: (context, box) {
                     final searchField = TextField(
+                      controller: searchController,
                       decoration: const InputDecoration(
                         labelText: 'Search lessons or courses',
                         prefixIcon: Icon(Icons.search),
@@ -308,6 +324,14 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                           status = value;
                           page = 0;
                         }),
+                      ),
+                    if (search.isNotEmpty ||
+                        selectedCourse.isNotEmpty ||
+                        status != 'All')
+                      TextButton.icon(
+                        onPressed: clearFilters,
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Clear filters'),
                       ),
                   ],
                 ),
@@ -502,50 +526,95 @@ class _LearnerProgressPageState extends State<LearnerProgressPage> {
                     return Column(
                       children: [
                         for (final row in visible) ...[
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: Icon(
-                              completed(row)
-                                  ? Icons.check_circle_outline
-                                  : Icons.timelapse,
-                              color: completed(row) ? forest : gold,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: completed(row)
+                                  ? const Color(0xFFF2FAF6)
+                                  : const Color(0xFFFFFAEF),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: line),
                             ),
-                            title: Text(
-                              recordText(recordMap(row['lesson'])['title']),
-                            ),
-                            subtitle: Text(
-                              recordText(recordMap(row['course'])['title']),
-                            ),
-                          ),
-                          LinearProgressIndicator(
-                            value: (recordNumber(row['progressPercent']) / 100)
-                                .clamp(0, 1),
-                            color: completed(row) ? forest : gold,
-                            backgroundColor: line,
-                            minHeight: 6,
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            alignment: WrapAlignment.spaceBetween,
-                            spacing: 16,
-                            runSpacing: 8,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Text(
-                                '${recordNumber(row['progressPercent']).clamp(0, 100).round()}% recorded',
-                              ),
-                              TextButton.icon(
-                                onPressed: () => open(row),
-                                icon: const Icon(Icons.arrow_forward),
-                                label: Text(
-                                  completed(row)
-                                      ? 'Review lesson'
-                                      : 'Continue lesson',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Icon(
+                                      completed(row)
+                                          ? Icons.check_circle_outline
+                                          : Icons.timelapse,
+                                      color: completed(row) ? forest : gold,
+                                    ),
+                                    Text(
+                                      completed(row)
+                                          ? 'Completed'
+                                          : 'In progress',
+                                      style: TextStyle(
+                                        color: completed(row) ? forest : gold,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 12),
+                                Text(
+                                  recordText(recordMap(row['lesson'])['title']),
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  recordText(recordMap(row['course'])['title']),
+                                  style: const TextStyle(
+                                    color: muted,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                LinearProgressIndicator(
+                                  value:
+                                      (recordNumber(row['progressPercent']) /
+                                              100)
+                                          .clamp(0, 1),
+                                  color: completed(row) ? forest : gold,
+                                  backgroundColor: line,
+                                  minHeight: 6,
+                                  borderRadius: BorderRadius.circular(8),
+                                  semanticsLabel: 'Recorded lesson progress',
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  spacing: 16,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${recordNumber(row['progressPercent']).clamp(0, 100).round()}% recorded',
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: () => open(row),
+                                      icon: const Icon(Icons.arrow_forward),
+                                      label: Text(
+                                        completed(row)
+                                            ? 'Review lesson'
+                                            : 'Continue lesson',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                          const Divider(height: 24),
+                          const SizedBox(height: 12),
                         ],
                       ],
                     );
