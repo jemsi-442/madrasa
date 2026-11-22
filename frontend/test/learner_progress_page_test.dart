@@ -42,7 +42,7 @@ void main() {
       );
       expect(find.text('Finished practice'), findsOneWidget);
       expect(find.text('Ongoing practice'), findsOneWidget);
-      await tap(t, find.widgetWithText(ChoiceChip, 'In progress'));
+      await tap(t, find.widgetWithText(ChoiceChip, 'In progress  1'));
       expect(find.text('Finished practice'), findsNothing);
       expect(find.text('Ongoing practice'), findsOneWidget);
       await tap(t, find.text('Continue lesson'));
@@ -80,6 +80,44 @@ void main() {
     expect(find.text('No lesson progress recorded yet.'), findsOneWidget);
     await tap(t, find.text('Browse courses'));
     expect(browsed, isTrue);
+    expect(t.takeException(), isNull);
+  });
+  testWidgets('pagination and search reset work on desktop', (t) async {
+    await host(
+      t,
+      LearnerProgressPage(
+        load: (_) async => {
+          'items': List.generate(
+            12,
+            (i) => {
+              'progressPercent': 20,
+              'course': {'id': '1', 'title': 'Synthetic course'},
+              'lesson': {'id': '$i', 'title': 'Practice $i'},
+            },
+          ),
+        },
+        submit: (_, _) async => throw StateError('Unexpected write'),
+        apiBaseUrl: 'https://school.test',
+        onBrowse: () {},
+      ),
+      width: 1440,
+    );
+    expect(find.byType(Table), findsOneWidget);
+    expect(find.text('Practice 0'), findsOneWidget);
+    expect(find.text('Practice 5'), findsNothing);
+    await tap(t, find.text('Next'));
+    expect(find.text('Practice 5'), findsOneWidget);
+    expect(find.text('Showing 6-10 of 12 lessons'), findsOneWidget);
+    await t.enterText(find.byType(TextField), 'Practice 11');
+    await t.pumpAndSettle();
+    expect(
+      find
+          .text('Practice 11', findRichText: false)
+          .evaluate()
+          .where((element) => element.widget is Text),
+      hasLength(1),
+    );
+    expect(find.text('Showing 1-1 of 1 lessons'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 }
