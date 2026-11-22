@@ -63,3 +63,39 @@ test('rapid saves trigger only one debounced update', async () => {
   assert.equal(sent.length, 1);
   reload.close();
 });
+
+test('stopped apps hold edits until a replacement is ready', () => {
+  const sent = [];
+  const reload = new AutoReload(m => sent.push(m), () => {});
+  reload.message({ event: 'app.start', params: { appId: 'old' } });
+  reload.message({ event: 'app.started' });
+  reload.changed();
+  reload.flush();
+  reload.message({ event: 'app.stop', params: { appId: 'old' } });
+  reload.message({ id: 1, result: { code: 0 } });
+  reload.changed();
+  reload.flush();
+  assert.equal(sent.length, 1);
+  reload.message({ event: 'app.start', params: { appId: 'new' } });
+  reload.flush();
+  assert.equal(sent.length, 1);
+  reload.message({ event: 'app.started' });
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1].params.appId, 'new');
+  assert.equal(sent[1].params.fullRestart, false);
+  reload.close();
+});
+
+test('closing ignores late saves and daemon replies', async () => {
+  const sent = [];
+  const reload = new AutoReload(m => sent.push(m), () => {}, 10);
+  reload.message({ event: 'app.start', params: { appId: 'app' } });
+  reload.message({ event: 'app.started' });
+  reload.changed();
+  reload.close();
+  reload.changed();
+  reload.message({ event: 'app.started' });
+  reload.flush();
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal(sent.length, 0);
+});

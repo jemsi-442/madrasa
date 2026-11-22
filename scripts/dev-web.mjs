@@ -9,12 +9,13 @@ export class AutoReload {
     Object.assign(this, { send, report, delay, nextId: 0, pending: false });
   }
   changed() {
+    if (this.closed) return;
     this.pending = true;
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.flush(), this.delay);
   }
   flush() {
-    if (!this.ready || !this.appId || this.inFlight || !this.pending) return;
+    if (this.closed || !this.ready || !this.appId || this.inFlight || !this.pending) return;
     this.pending = false;
     this.inFlight = ++this.nextId;
     this.send({ id: this.inFlight, method: 'app.restart', params: {
@@ -23,7 +24,19 @@ export class AutoReload {
     } });
   }
   message(message) {
-    if (message.event === 'app.start') this.appId = message.params.appId;
+    if (this.closed) return;
+    if (message.event === 'app.stop' && message.params?.appId === this.appId) {
+      // Keep unsent edits queued, but never send to an app that has stopped.
+      this.pending ||= Boolean(this.inFlight);
+      this.ready = false;
+      this.appId = null;
+      this.inFlight = null;
+      return;
+    }
+    if (message.event === 'app.start') {
+      this.appId = message.params.appId;
+      this.ready = false;
+    }
     if (message.event === 'app.started') {
       this.ready = true;
       this.report('Afaq auto reload ready. Save a Dart file to update the open app.');
@@ -39,7 +52,12 @@ export class AutoReload {
       this.flush();
     }
   }
-  close() { clearTimeout(this.timer); }
+  close() {
+    this.closed = true;
+    this.pending = false;
+    this.inFlight = null;
+    clearTimeout(this.timer);
+  }
 }
 
 export function webOptions(environment = process.env) {
