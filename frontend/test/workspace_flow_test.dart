@@ -141,6 +141,62 @@ void main() {
   }
   for (final width in [390.0, 1440.0]) {
     testWidgets(
+      'curriculum journey retains selected class and supports return at $width',
+      (tester) async {
+        await showWorkspace(tester, 'TEACHER', width: width);
+        tester
+            .widget<TeacherOverviewPage>(find.byType(TeacherOverviewPage))
+            .onOpen(10, classId: 'class-1');
+        await tester.pumpAndSettle();
+        var curriculum = tester.widget<SchoolCurriculumPage>(
+          find.byType(SchoolCurriculumPage),
+        );
+        expect(curriculum.initialClassId, 'class-1');
+        expect(find.byKey(const ValueKey('next-page-5')), findsNothing);
+        curriculum.onClassChanged!('class-2');
+        curriculum.onOpenAssessments!('class-2');
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<AssessmentsPage>(find.byType(AssessmentsPage))
+              .initialClassId,
+          'class-2',
+        );
+        await tap(tester, find.byKey(const ValueKey('workspace-back')));
+        curriculum = tester.widget<SchoolCurriculumPage>(
+          find.byType(SchoolCurriculumPage),
+        );
+        expect(curriculum.initialClassId, 'class-2');
+        // Sidebar navigation uses the most recent curriculum selection too.
+        if (width < 600) {
+          await tap(tester, find.byTooltip('Open navigation'));
+        }
+        await tap(tester, find.byKey(const ValueKey('nav-4')));
+        expect(
+          tester
+              .widget<AttendanceRegisterPage>(
+                find.byType(AttendanceRegisterPage),
+              )
+              .initialClassId,
+          'class-2',
+        );
+        await tap(tester, find.byKey(const ValueKey('workspace-back')));
+        tester
+            .widget<SchoolCurriculumPage>(find.byType(SchoolCurriculumPage))
+            .onClassChanged!('');
+        if (width < 600) {
+          await tap(tester, find.byTooltip('Open navigation'));
+        }
+        await tap(tester, find.byKey(const ValueKey('nav-8')));
+        expect(
+          tester
+              .widget<AssessmentsPage>(find.byType(AssessmentsPage))
+              .initialClassId,
+          isNull,
+        );
+      },
+    );
+    testWidgets(
       'course record actions retain class and return location at $width',
       (tester) async {
         await showWorkspace(tester, 'TEACHER', width: width);
@@ -254,6 +310,7 @@ void main() {
     expect(relatedWorkspacePages('TEACHER', 3), [8, 9]);
     expect(relatedWorkspacePages('TEACHER', 7), isEmpty);
     expect(relatedWorkspacePages('TEACHER', 5), isEmpty);
+    expect(relatedWorkspacePages('TEACHER', 10), isEmpty);
     final order = workspacePageOrder('TEACHER')!;
     expect(order.toSet().length, sectionsForRole('TEACHER').length);
     for (final page in order) {

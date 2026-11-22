@@ -13,7 +13,9 @@ List<int> relatedWorkspacePages(String role, int page) {
   // Returning to an earlier task belongs to Back or the sidebar, not Next.
   if (role == 'TEACHER') {
     return switch (page) {
-      10 => const [5],
+      // Curriculum owns lesson planning and its class-assessment handoff.
+      // My courses is a separate resource library, not a required next step.
+      10 => const [],
       1 => const [2, 4],
       2 => const [4, 8],
       4 => const [3, 8],
