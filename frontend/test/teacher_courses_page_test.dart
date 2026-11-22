@@ -728,7 +728,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('no longer available'), findsOneWidget);
       expect(find.text('Must not open automatically'), findsNothing);
-      await tester.tap(find.text('Module lessons'));
+      await tester.tap(find.byKey(const ValueKey('teacher-module-breadcrumb')));
       await tester.pumpAndSettle();
       expect(find.text('Other lesson'), findsOneWidget);
     },
@@ -778,15 +778,19 @@ void main() {
       await tester.tap(find.text('Read lesson'));
       await tester.pumpAndSettle();
       expect(find.text('Synthetic lesson content.'), findsOneWidget);
-      expect(find.text('COURSE'), findsOneWidget);
-      expect(find.text('MODULE'), findsOneWidget);
+      expect(find.text('COURSE'), findsNothing);
+      expect(find.text('MODULE'), findsNothing);
+      expect(find.text('Synthetic Arabic course'), findsOneWidget);
+      expect(find.text('Reading module'), findsOneWidget);
       expect(find.text('Lesson 1 of 1'), findsOneWidget);
       expect(find.text('Lesson content'), findsNothing);
-      await tester.ensureVisible(find.text('Module lessons'));
-      await tester.tap(find.text('Module lessons'));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('teacher-module-breadcrumb')),
+      );
+      await tester.tap(find.byKey(const ValueKey('teacher-module-breadcrumb')));
       await tester.pumpAndSettle();
       expect(find.text('Read lesson'), findsOneWidget);
-      await tester.tap(find.text('Course modules'));
+      await tester.tap(find.byKey(const ValueKey('teacher-course-breadcrumb')));
       await tester.pumpAndSettle();
       expect(find.text('View lessons'), findsOneWidget);
       await tester.tap(find.text('All my courses'));

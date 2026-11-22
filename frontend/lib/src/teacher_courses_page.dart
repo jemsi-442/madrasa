@@ -258,7 +258,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
           ),
         if (lessonId != null && lesson == null)
           const EmptyRecords(
-            'This lesson is no longer available in this module. Return to Module lessons to choose another.',
+            'This lesson is no longer available in this module. Select the module above to choose another lesson.',
           )
         else if (lesson != null) ...[
           Padding(
@@ -313,43 +313,6 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Wrap(
-                  spacing: 28,
-                  runSpacing: 12,
-                  children: [
-                    for (final item in [
-                      ('COURSE', recordText(course?['title'])),
-                      ('MODULE', recordText(module?['title'])),
-                    ])
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.$1,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              letterSpacing: 1,
-                              fontWeight: FontWeight.w700,
-                              color: muted,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.$2,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: ink,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1, color: Color(0x335FC0D0)),
-                ),
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -602,15 +565,17 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
                 const Icon(Icons.chevron_right, size: 18, color: muted),
               if (module != null)
                 TextButton(
+                  key: const ValueKey('teacher-course-breadcrumb'),
                   onPressed: backToModules,
-                  child: const Text('Course modules'),
+                  child: Text(recordText(course?['title'], 'Course modules')),
                 ),
               if (lessonId != null)
                 const Icon(Icons.chevron_right, size: 18, color: muted),
               if (lessonId != null)
                 TextButton(
+                  key: const ValueKey('teacher-module-breadcrumb'),
                   onPressed: () => setState(() => lessonId = null),
-                  child: const Text('Module lessons'),
+                  child: Text(recordText(module?['title'], 'Module lessons')),
                 ),
             ],
           ),
