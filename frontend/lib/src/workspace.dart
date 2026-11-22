@@ -868,6 +868,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       case 'Curriculum':
         return SchoolCurriculumPage(
           initialClassId: session.role == 'TEACHER' ? teachingClassId : null,
+          onOpenAssessments: session.role == 'TEACHER'
+              ? (classId) => openTeacher(8, classId: classId)
+              : null,
           load: widget.state.load,
           submit: widget.state.submit,
           isAdmin: session.role == 'ADMIN',

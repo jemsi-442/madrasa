@@ -105,11 +105,13 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final writes = <Map<String, dynamic>>[];
+      String? assessmentClass;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: SchoolCurriculumPage(
               isAdmin: false,
+              onOpenAssessments: (id) => assessmentClass = id,
               load: (_) async => {
                 'subjects': [],
                 'classes': [],
@@ -180,19 +182,27 @@ void main() {
         isNull,
       );
       Future<void> selectClass(String name) async {
-        await tester.tap(find.byType(DropdownButtonFormField<String>));
+        await tester.tap(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is DropdownButtonFormField<String> &&
+                widget.decoration.labelText == 'Class taught',
+          ),
+        );
         await tester.pumpAndSettle();
         await tester.tap(find.text('Class $name (2026)').last);
         await tester.pumpAndSettle();
       }
 
       await selectClass('A');
+      expect(find.text('Open class assessments'), findsNothing);
       await tester.tap(find.text('Confirm taught'));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Confirmation was not received'),
         findsOneWidget,
       );
+      expect(find.text('Open class assessments'), findsNothing);
       await selectClass('B');
       expect(
         find.textContaining('Confirmation was not received'),
@@ -201,8 +211,10 @@ void main() {
       await tester.tap(find.text('Confirm taught'));
       await tester.pumpAndSettle();
       expect(find.text('Recorded'), findsOneWidget);
+      expect(find.text('Open class assessments'), findsOneWidget);
       await selectClass('A');
       expect(find.text('Recorded'), findsNothing);
+      expect(find.text('Open class assessments'), findsNothing);
       expect(
         find.textContaining('Teaching recorded successfully'),
         findsNothing,
@@ -221,8 +233,10 @@ void main() {
             .onPressed,
         isNull,
       );
-      await tester.tap(find.text('Close'));
+      await tester.tap(find.text('Open class assessments'));
       await tester.pumpAndSettle();
+      expect(assessmentClass, 'B');
+      expect(writes, hasLength(3));
       expect(tester.takeException(), isNull);
     },
   );

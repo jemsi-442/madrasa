@@ -18,6 +18,7 @@ class SchoolCurriculumPage extends StatefulWidget {
     this.refreshToken = 0,
     this.embedded = false,
     this.initialClassId,
+    this.onOpenAssessments,
   });
   final PageLoader load;
   final PageSubmitter submit;
@@ -25,6 +26,7 @@ class SchoolCurriculumPage extends StatefulWidget {
   final int refreshToken;
   final bool embedded;
   final String? initialClassId;
+  final ValueChanged<String>? onOpenAssessments;
   @override
   State<SchoolCurriculumPage> createState() => _SchoolCurriculumPageState();
 }
@@ -78,7 +80,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         : null;
     var sending = false;
     String? failure;
-    await showDialog<void>(
+    final assessmentClassId = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
@@ -146,6 +148,22 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                 ),
               ),
               actions: [
+                if (recorded && widget.onOpenAssessments != null)
+                  OutlinedButton.icon(
+                    onPressed: sending
+                        ? null
+                        : () {
+                            final adoption = adoptions.firstWhere(
+                              (item) => '${item['id']}' == selected,
+                            );
+                            Navigator.pop(
+                              dialogContext,
+                              '${adoption['class']['id']}',
+                            );
+                          },
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: const Text('Open class assessments'),
+                  ),
                 TextButton(
                   onPressed: sending
                       ? null
@@ -212,7 +230,12 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         },
       ),
     );
-    if (confirmed && mounted) reload();
+    if (!mounted) return;
+    if (assessmentClassId != null) {
+      widget.onOpenAssessments?.call(assessmentClassId);
+    } else if (confirmed) {
+      reload();
+    }
   }
 
   String historyDate(dynamic value) {
