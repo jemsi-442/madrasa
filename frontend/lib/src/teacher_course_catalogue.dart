@@ -33,7 +33,6 @@ class TeacherCourseCatalogue extends StatefulWidget {
 class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
   String search = '';
   final searchController = TextEditingController();
-  int tab = 0;
   @override
   void dispose() {
     searchController.dispose();
@@ -77,25 +76,19 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
                         ),
                 ),
               );
-              final tabs = Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: [
-                  _tab(
-                    0,
-                    Icons.layers_outlined,
-                    'Assigned Courses (${widget.courses.length})',
-                  ),
-                  _tab(1, Icons.play_circle_outline, 'In Progress'),
-                  _tab(2, Icons.check_circle_outline, 'Completed'),
-                  _tab(3, Icons.grid_view_outlined, 'All My Courses'),
-                ],
+              final heading = Text(
+                'Assigned Courses (${widget.courses.length})',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AfaqDesign.ink,
+                ),
               );
               final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-              if (box.maxWidth / textScale.clamp(1.0, 4.0) >= 1250) {
+              if (box.maxWidth / textScale.clamp(1.0, 4.0) >= 700) {
                 return Row(
                   children: [
-                    Expanded(child: tabs),
+                    Expanded(child: heading),
                     const SizedBox(width: 16),
                     SizedBox(width: 280, child: searchField),
                   ],
@@ -104,7 +97,7 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  tabs,
+                  heading,
                   const SizedBox(height: 12),
                   searchField,
                   const SizedBox(height: 12),
@@ -112,34 +105,8 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
               );
             },
           ),
-          const Divider(height: 1, color: Color(0xFFE3E8EF)),
           const SizedBox(height: 20),
-          if (tab == 1 || tab == 2)
-            Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 32,
-                    color: AfaqDesign.blue,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Personal course completion is not tracked for teacher assignments.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, height: 1.6),
-                  ),
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: () => setState(() => tab = 0),
-                    icon: const Icon(Icons.menu_book_outlined),
-                    label: const Text('View assigned courses'),
-                  ),
-                ],
-              ),
-            )
-          else if (filtered.isEmpty)
+          if (filtered.isEmpty)
             EmptyRecords(
               search.isEmpty
                   ? 'No courses are assigned to you yet. Ask your madrasa administrator to assign a course.'
@@ -163,28 +130,4 @@ class _TeacherCourseCatalogueState extends State<TeacherCourseCatalogue> {
       ),
     );
   }
-
-  Widget _tab(int index, IconData icon, String label) => Container(
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(
-          color: tab == index ? AfaqDesign.actionGold : Colors.transparent,
-          width: 3,
-        ),
-      ),
-    ),
-    child: TextButton.icon(
-      onPressed: () => setState(() => tab = index),
-      style: TextButton.styleFrom(
-        foregroundColor: tab == index ? AfaqDesign.actionGold : AfaqDesign.ink,
-        minimumSize: const Size(48, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      icon: Icon(icon, size: 24),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-      ),
-    ),
-  );
 }

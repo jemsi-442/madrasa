@@ -54,7 +54,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('media'), findsOneWidget);
       expect(find.text('Synthetic media course'), findsOneWidget);
-      for (final label in ['In Progress', 'Completed', 'All My Courses']) {
+      for (final label in ['Assigned Courses (1)']) {
         final rect = tester.getRect(find.text(label));
         expect(rect.left, greaterThanOrEqualTo(0));
         expect(rect.right, lessThanOrEqualTo(width));
@@ -66,7 +66,7 @@ void main() {
     expect(find.text('media'), findsNothing);
   });
 
-  testWidgets('search and tabs do not invent teacher completion', (
+  testWidgets('search works without duplicate tabs or teacher completion', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 1100);
@@ -96,19 +96,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Synthetic language course'), findsOneWidget);
     expect(find.text('Synthetic media course'), findsNothing);
-    await tester.tap(find.text('Completed'));
-    await tester.pumpAndSettle();
+    for (final label in ['In Progress', 'Completed', 'All My Courses']) {
+      expect(find.text(label), findsNothing);
+    }
     expect(
       find.textContaining('Personal course completion is not tracked'),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('60%'), findsNothing);
-    await tester.tap(find.text('View assigned courses'));
-    await tester.pumpAndSettle();
     expect(find.text('Synthetic language course'), findsOneWidget);
     expect(find.text('Synthetic media course'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
-    expect(find.text('Not tracked'), findsOneWidget);
+    expect(find.text('Not tracked'), findsNothing);
     await tester.tap(find.byTooltip('Clear search'));
     await tester.pumpAndSettle();
     expect(find.text('Synthetic media course'), findsOneWidget);

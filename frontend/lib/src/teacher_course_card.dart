@@ -227,44 +227,6 @@ class _TeacherCourseCardState extends State<TeacherCourseCard> {
                     recordText(widget.course['summary']),
                     style: const TextStyle(fontSize: 19, height: 1.6),
                   ),
-                const SizedBox(height: 18),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFE1E6EF)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Course progress',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        'Not tracked',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF66788F),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Personal completion is not recorded for teaching assignments.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF66788F),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 if (layoutWidth < 1250) ...[const SizedBox(height: 20), action],
               ],
             );
