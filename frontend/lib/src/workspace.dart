@@ -868,6 +868,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       case 'Curriculum':
         return SchoolCurriculumPage(
           initialClassId: session.role == 'TEACHER' ? teachingClassId : null,
+          onClassChanged: session.role == 'TEACHER' ? rememberClass : null,
           onOpenAssessments: session.role == 'TEACHER'
               ? (classId) => openTeacher(8, classId: classId)
               : null,

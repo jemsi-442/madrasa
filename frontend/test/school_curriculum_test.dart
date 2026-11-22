@@ -7,6 +7,7 @@ void main() {
   testWidgets('class handoff scopes curriculum without modifying API data', (
     tester,
   ) async {
+    final selections = <String>[];
     final assignments = [
       for (final id in ['1', '2'])
         {
@@ -31,6 +32,7 @@ void main() {
         body: SchoolCurriculumPage(
           isAdmin: false,
           initialClassId: id,
+          onClassChanged: selections.add,
           load: (_) async => {
             'assignments': assignments,
             'classes': [
@@ -51,6 +53,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Subject 2'), findsWidgets);
     expect(find.text('Subject 1'), findsNothing);
+    expect(selections, isEmpty);
+    final classPicker = find.byWidgetPredicate(
+      (widget) =>
+          widget is DropdownButtonFormField<String> &&
+          widget.decoration.labelText == 'Teaching class',
+    );
+    await tester.tap(classPicker);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Class 1').last);
+    await tester.pumpAndSettle();
+    expect(selections, ['1']);
+    expect(find.text('Subject 1'), findsWidgets);
+    expect(find.text('Subject 2'), findsNothing);
+    await tester.tap(classPicker);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All assigned classes').last);
+    await tester.pumpAndSettle();
+    expect(selections, ['1', '']);
+    expect(find.text('Subject 1'), findsWidgets);
+    expect(find.text('Subject 2'), findsWidgets);
     expect((assignments.first['adoptions'] as List).length, 1);
     expect(tester.takeException(), isNull);
   });

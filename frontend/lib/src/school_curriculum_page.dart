@@ -19,6 +19,7 @@ class SchoolCurriculumPage extends StatefulWidget {
     this.embedded = false,
     this.initialClassId,
     this.onOpenAssessments,
+    this.onClassChanged,
   });
   final PageLoader load;
   final PageSubmitter submit;
@@ -27,6 +28,7 @@ class SchoolCurriculumPage extends StatefulWidget {
   final bool embedded;
   final String? initialClassId;
   final ValueChanged<String>? onOpenAssessments;
+  final ValueChanged<String>? onClassChanged;
   @override
   State<SchoolCurriculumPage> createState() => _SchoolCurriculumPageState();
 }
@@ -508,7 +510,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
           if (!widget.isAdmin) ...[
             DropdownButtonFormField<String>(
               key: ValueKey('curriculum-class-$classId'),
-              initialValue: classId,
+              initialValue: classId ?? '',
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Teaching class',
@@ -516,7 +518,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
               ),
               items: [
                 const DropdownMenuItem(
-                  value: null,
+                  value: '',
                   child: Text('All assigned classes'),
                 ),
                 for (final item in (data['classes'] as List))
@@ -533,11 +535,14 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                     child: const Text('Selected class unavailable'),
                   ),
               ],
-              onChanged: (value) => setState(() {
-                classId = value;
-                selectedAssignment = null;
-                openLessons = false;
-              }),
+              onChanged: (value) {
+                setState(() {
+                  classId = value == null || value.isEmpty ? null : value;
+                  selectedAssignment = null;
+                  openLessons = false;
+                });
+                widget.onClassChanged?.call(classId ?? '');
+              },
             ),
             const SizedBox(height: 20),
           ],
