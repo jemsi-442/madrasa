@@ -36,6 +36,9 @@ class TeacherCourseWorkspace extends StatefulWidget {
 class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   final title = TextEditingController(), notes = TextEditingController();
   final outlineSearch = TextEditingController();
+  // These lists use the page's scroll; never restore offsets from tile storage.
+  final moduleScroll = ScrollController(keepScrollOffset: false);
+  final lessonScrolls = <String, ScrollController>{};
   String outlineStatus = 'ALL';
   bool get outlineFiltered =>
       outlineSearch.text.trim().isNotEmpty || outlineStatus != 'ALL';
@@ -82,6 +85,10 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     title.dispose();
     notes.dispose();
     outlineSearch.dispose();
+    moduleScroll.dispose();
+    for (final controller in lessonScrolls.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -456,6 +463,8 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           ),
         ReorderableListView(
           key: const PageStorageKey('course-outline-module-scroll'),
+          scrollController: moduleScroll,
+          primary: false,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
@@ -533,6 +542,11 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                         key: PageStorageKey(
                           'course-outline-lessons-${parent['id']}',
                         ),
+                        scrollController: lessonScrolls.putIfAbsent(
+                          '${parent['id']}',
+                          () => ScrollController(keepScrollOffset: false),
+                        ),
+                        primary: false,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         buildDefaultDragHandles: false,

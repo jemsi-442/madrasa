@@ -2,6 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_course_workspace.dart';
 
+// Simulates an expansion flag left in page storage by an earlier widget tree.
+class _ExpansionStateBucket extends PageStorageBucket {
+  @override
+  dynamic readState(BuildContext context, {Object? identifier}) {
+    if (context.widget is ExpansionTile ||
+        context.findAncestorWidgetOfExactType<ReorderableListView>() != null) {
+      return true;
+    }
+    return super.readState(context, identifier: identifier);
+  }
+}
+
 void main() {
   testWidgets('edits stay in workspace and save to selected lesson', (
     tester,
@@ -45,15 +57,18 @@ void main() {
     Widget app() => MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
-          child: TeacherCourseWorkspace(
-            load: load,
-            submit: (_, body) async => body,
-            update: (path, body) async {
-              if (failSave) throw StateError('Simulated connection failure');
-              writes.add({'path': path, ...body});
-              return body;
-            },
-            onPreview: (_, _, _) {},
+          child: PageStorage(
+            bucket: _ExpansionStateBucket(),
+            child: TeacherCourseWorkspace(
+              load: load,
+              submit: (_, body) async => body,
+              update: (path, body) async {
+                if (failSave) throw StateError('Simulated connection failure');
+                writes.add({'path': path, ...body});
+                return body;
+              },
+              onPreview: (_, _, _) {},
+            ),
           ),
         ),
       ),
@@ -116,14 +131,15 @@ void main() {
     );
     await tester.enterText(find.byKey(const ValueKey('outline-search')), '');
     await tester.pumpAndSettle();
-    final status = tester.widget<DropdownButtonFormField<String>>(
-      find.byKey(const ValueKey('outline-status')),
-    );
-    status.onChanged!('PUBLISHED');
+    await tester.tap(find.byKey(const ValueKey('outline-status')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Published').last);
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('lesson-3')), findsNothing);
     expect(find.text('Revised notes'), findsOneWidget);
-    status.onChanged!('ALL');
+    await tester.tap(find.byKey(const ValueKey('outline-status')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All statuses').last);
     await tester.pumpAndSettle();
     final lessonList = tester
         .widgetList<ReorderableListView>(find.byType(ReorderableListView))
