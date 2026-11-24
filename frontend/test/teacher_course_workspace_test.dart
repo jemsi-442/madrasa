@@ -15,6 +15,71 @@ class _ExpansionStateBucket extends PageStorageBucket {
 }
 
 void main() {
+  testWidgets('narrow outline survives expansion and status filtering', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: PageStorage(
+              bucket: _ExpansionStateBucket(),
+              child: TeacherCourseWorkspace(
+                load: (path) async {
+                  if (path == '/api/teaching/courses') {
+                    return [
+                      {'id': 'c1', 'title': 'Sample course'},
+                    ];
+                  }
+                  if (path.endsWith('/modules')) {
+                    return [
+                      {'id': 'm1', 'title': 'Practice module', 'position': 1},
+                    ];
+                  }
+                  if (path.endsWith('/lessons')) {
+                    return [
+                      {
+                        'id': 'l1',
+                        'title': 'Practice lesson',
+                        'publicationStatus': 'DRAFT',
+                      },
+                    ];
+                  }
+                  return <Map<String, dynamic>>[];
+                },
+                submit: (_, body) async => body,
+                update: (_, body) async => body,
+                onPreview: (_, _, _) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    for (var i = 0; i < 2; i++) {
+      await tester.ensureVisible(find.text('Practice module').first);
+      await tester.tap(find.text('Practice module').first);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    }
+    for (final label in ['Draft', 'All statuses']) {
+      final filter = find.byKey(const ValueKey('outline-status'));
+      await tester.ensureVisible(filter);
+      await tester.tap(filter);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('lesson-l1')), findsOneWidget);
+    }
+  });
+
   testWidgets('edits stay in workspace and save to selected lesson', (
     tester,
   ) async {

@@ -23,25 +23,42 @@ class CourseSectionHeading extends StatelessWidget {
       border: Border.all(color: const Color(0xffd5e1ef)),
       borderRadius: BorderRadius.circular(12),
     ),
-    child: Row(
-      children: [
-        Container(width: 4, height: 28, color: const Color(0xffc49329)),
-        const SizedBox(width: 12),
-        Icon(icon, size: 24, color: const Color(0xff997018)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Color(0xff092b48),
-              height: 1.25,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 480;
+        final heading = Row(
+          children: [
+            Container(width: 4, height: 28, color: const Color(0xffc49329)),
+            const SizedBox(width: 12),
+            Icon(icon, size: 24, color: const Color(0xff997018)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xff092b48),
+                  height: 1.25,
+                ),
+              ),
             ),
-          ),
-        ),
-        if (action != null) ...[const SizedBox(width: 12), action!],
-      ],
+            if (action != null && !stacked) ...[
+              const SizedBox(width: 12),
+              action!,
+            ],
+          ],
+        );
+        if (!stacked || action == null) return heading;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            heading,
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: [action!]),
+          ],
+        );
+      },
     ),
   );
 }
