@@ -2,25 +2,34 @@ import 'package:flutter/material.dart';
 
 /// Consistent section labels within the course authoring workspace.
 class CourseSectionHeading extends StatelessWidget {
-  const CourseSectionHeading(this.title, {super.key, required this.icon});
+  const CourseSectionHeading(
+    this.title, {
+    super.key,
+    required this.icon,
+    this.action,
+  });
 
   final String title;
   final IconData icon;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     decoration: BoxDecoration(
-      color: const Color(0xfff5f7fb),
+      gradient: const LinearGradient(
+        colors: [Color(0xffedf1f9), Color(0xfffafbfe)],
+      ),
       border: Border.all(color: const Color(0xffd5e1ef)),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
+        Container(width: 4, height: 28, color: const Color(0xffc49329)),
+        const SizedBox(width: 12),
         Icon(icon, size: 24, color: const Color(0xff997018)),
         const SizedBox(width: 12),
-        Flexible(
+        Expanded(
           child: Text(
             title,
             style: const TextStyle(
@@ -31,6 +40,7 @@ class CourseSectionHeading extends StatelessWidget {
             ),
           ),
         ),
+        if (action != null) ...[const SizedBox(width: 12), action!],
       ],
     ),
   );

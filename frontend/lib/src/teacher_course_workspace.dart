@@ -358,21 +358,14 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            const CourseSectionHeading(
-              'Course outline',
-              icon: Icons.account_tree_outlined,
-            ),
-            OutlinedButton.icon(
-              onPressed: saving ? null : () => add(),
-              icon: const Icon(Icons.add),
-              label: const Text('Add module'),
-            ),
-          ],
+        CourseSectionHeading(
+          'Course outline',
+          icon: Icons.account_tree_outlined,
+          action: OutlinedButton.icon(
+            onPressed: saving ? null : () => add(),
+            icon: const Icon(Icons.add),
+            label: const Text('Add module'),
+          ),
         ),
         const SizedBox(height: 20),
         if (modules.isEmpty)
@@ -600,21 +593,28 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  const CourseSectionHeading(
-                    'Edit lesson',
-                    icon: Icons.edit_note,
-                  ),
-                  if (dirty)
-                    const Text(
-                      'Unsaved changes',
-                      style: TextStyle(color: gold),
-                    ),
-                ],
+              CourseSectionHeading(
+                'Edit lesson',
+                icon: Icons.edit_note,
+                action: OutlinedButton.icon(
+                  onPressed: dirty || saving
+                      ? null
+                      : () => widget.onPreview(course!, module!, lesson!),
+                  icon: const Icon(Icons.visibility_outlined),
+                  label: const Text('Preview lesson'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                dirty
+                    ? 'Unsaved changes'
+                    : lesson!['publicationStatus'] == 'PUBLISHED'
+                    ? 'Published'
+                    : 'Draft',
+                style: TextStyle(
+                  color: dirty ? gold : navy,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 24),
               TextField(
@@ -699,6 +699,110 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           ),
   );
 
+  Widget get courseStatistics {
+    final rows = lessons.values.expand((items) => items).toList();
+    final published = rows
+        .where((row) => row['publicationStatus'] == 'PUBLISHED')
+        .length;
+    final metrics = [
+      (
+        'Modules',
+        modules.length,
+        Icons.layers_outlined,
+        const Color(0xffeee8ff),
+        const Color(0xff6341b5),
+      ),
+      (
+        'Total lessons',
+        rows.length,
+        Icons.menu_book_outlined,
+        const Color(0xffe6f1ff),
+        const Color(0xff2463ae),
+      ),
+      (
+        'Published lessons',
+        published,
+        Icons.check_circle_outline,
+        const Color(0xffe4f6ed),
+        const Color(0xff23804f),
+      ),
+      (
+        'Draft lessons',
+        rows.length - published,
+        Icons.edit_outlined,
+        const Color(0xfffff4dc),
+        const Color(0xffa57718),
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 1000
+            ? 4
+            : constraints.maxWidth >= 500
+            ? 2
+            : 1;
+        final width = (constraints.maxWidth - (columns - 1) * 16) / columns;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            for (final metric in metrics)
+              Container(
+                width: width,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      metric.$4,
+                      Color.lerp(metric.$4, Colors.white, .5)!,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: metric.$5.withValues(alpha: .15)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            metric.$1,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: navy,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${metric.$2}',
+                            style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w700,
+                              color: navy,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: metric.$5.withValues(alpha: .09),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(metric.$3, size: 32, color: metric.$5),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -722,13 +826,6 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
               SizedBox(height: 6),
               Text('Organise your course and create lessons.'),
             ],
-          ),
-          OutlinedButton.icon(
-            onPressed: lesson == null || dirty || saving || loading
-                ? null
-                : () => widget.onPreview(course!, module!, lesson!),
-            icon: const Icon(Icons.visibility_outlined),
-            label: const Text('Preview lesson'),
           ),
         ],
       ),
@@ -782,7 +879,9 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
             ],
           ),
         )
-      else
+      else ...[
+        courseStatistics,
+        const SizedBox(height: 22),
         LayoutBuilder(
           builder: (context, constraints) => constraints.maxWidth >= 1000
               ? Row(
@@ -798,6 +897,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                   children: [outline, const SizedBox(height: 20), editor],
                 ),
         ),
+      ],
     ],
   );
 }
