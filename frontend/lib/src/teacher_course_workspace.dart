@@ -162,6 +162,8 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
       if (!mounted) return;
       setState(() {
         course = selected;
+        outlineSearch.clear();
+        outlineStatus = 'ALL';
         modules = rows;
         lessons
           ..clear()
@@ -299,6 +301,8 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
       if (created['id'] == null) throw StateError('Missing created record');
       setState(() {
         rows.add(created);
+        outlineSearch.clear();
+        outlineStatus = 'ALL';
         if (parent == null) {
           lessons['${created['id']}'] = [];
         } else {
@@ -423,16 +427,20 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           ),
         ),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
+        KeyedSubtree(
           key: const ValueKey('outline-status'),
-          initialValue: outlineStatus,
-          decoration: const InputDecoration(labelText: 'Lesson status'),
-          items: const [
-            DropdownMenuItem(value: 'ALL', child: Text('All statuses')),
-            DropdownMenuItem(value: 'DRAFT', child: Text('Draft')),
-            DropdownMenuItem(value: 'PUBLISHED', child: Text('Published')),
-          ],
-          onChanged: (value) => setState(() => outlineStatus = value ?? 'ALL'),
+          child: DropdownButtonFormField<String>(
+            key: ValueKey(outlineStatus),
+            initialValue: outlineStatus,
+            decoration: const InputDecoration(labelText: 'Lesson status'),
+            items: const [
+              DropdownMenuItem(value: 'ALL', child: Text('All statuses')),
+              DropdownMenuItem(value: 'DRAFT', child: Text('Draft')),
+              DropdownMenuItem(value: 'PUBLISHED', child: Text('Published')),
+            ],
+            onChanged: (value) =>
+                setState(() => outlineStatus = value ?? 'ALL'),
+          ),
         ),
         const SizedBox(height: 16),
         if (outlineFiltered)

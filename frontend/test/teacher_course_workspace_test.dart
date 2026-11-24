@@ -15,6 +15,67 @@ class _ExpansionStateBucket extends PageStorageBucket {
 }
 
 void main() {
+  testWidgets('created module is visible despite active outline filters', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TeacherCourseWorkspace(
+              load: (path) async => path == '/api/teaching/courses'
+                  ? [
+                      {'id': 'c1', 'title': 'Sample course'},
+                    ]
+                  : <Map<String, dynamic>>[],
+              submit: (_, body) async => {'id': 'm1', ...body},
+              update: (_, body) async => body,
+              onPreview: (_, _, _) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('outline-search')),
+      'missing',
+    );
+    await tester.tap(find.byKey(const ValueKey('outline-status')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Published').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add module'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      ),
+      'New module',
+    );
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+    expect(find.text('New module'), findsOneWidget);
+    expect(find.text('All statuses'), findsOneWidget);
+    expect(
+      find.text('Filtered outline. Clear filters to reorder.'),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('outline-search')))
+          .controller!
+          .text,
+      isEmpty,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('narrow outline survives expansion and status filtering', (
     tester,
   ) async {
