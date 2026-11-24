@@ -78,24 +78,32 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   Future<bool> canLeave() async {
     if (saving) return false;
     if (!dirty) return true;
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Discard unsaved changes?'),
-            content: const Text('Your lesson edits have not been saved.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Keep editing'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Discard'),
-              ),
-            ],
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save your lesson changes?'),
+        content: const Text(
+          'Save before continuing, or keep editing this lesson.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'stay'),
+            child: const Text('Keep editing'),
           ),
-        ) ??
-        false;
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'discard'),
+            child: const Text('Discard'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: const Text('Save and continue'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return false;
+    if (action == 'save') return save();
+    return action == 'discard';
   }
 
   Future<void> openCourse(Map<String, dynamic> selected) async {
@@ -151,13 +159,13 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     error = null;
   }
 
-  Future<void> save() async {
-    if (saving || lesson == null) return;
+  Future<bool> save() async {
+    if (saving || lesson == null) return false;
     if (title.text.trim().length < 2) {
       setState(
         () => error = 'Enter a lesson title of at least two characters.',
       );
-      return;
+      return false;
     }
     setState(() {
       saving = true;
@@ -166,7 +174,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     try {
       final changes = {'title': title.text.trim(), 'contentText': notes.text};
       await widget.update('/api/courses/lessons/${lesson!['id']}', changes);
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         lesson = {...lesson!, ...changes};
         final rows = lessons['${module!['id']}']!;
@@ -177,12 +185,14 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Lesson saved')));
+      return true;
     } catch (_) {
       if (mounted) {
         setState(
           () => error = 'Lesson could not be saved. Your edits are still here.',
         );
       }
+      return false;
     } finally {
       if (mounted) setState(() => saving = false);
     }

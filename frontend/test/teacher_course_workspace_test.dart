@@ -11,6 +11,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final writes = <Map<String, dynamic>>[];
+    var failSave = false;
     Future<dynamic> load(String path) async {
       if (path == '/api/teaching/courses') {
         return [
@@ -48,6 +49,7 @@ void main() {
             load: load,
             submit: (_, body) async => body,
             update: (path, body) async {
+              if (failSave) throw StateError('Simulated connection failure');
               writes.add({'path': path, ...body});
               return body;
             },
@@ -85,6 +87,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(writes.single['path'], '/api/courses/lessons/3');
     expect(writes.single['contentText'], 'Revised notes');
+    expect(find.text('Unsaved changes'), findsNothing);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Revised notes'),
+      'Keep these changes',
+    );
+    await tester.ensureVisible(find.text('Second lesson'));
+    await tester.tap(find.text('Second lesson'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Keep editing'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keep these changes'), findsOneWidget);
+
+    failSave = true;
+    await tester.tap(find.text('Second lesson'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save and continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keep these changes'), findsOneWidget);
+    expect(find.text('Unsaved changes'), findsOneWidget);
+    expect(find.textContaining('Your edits are still here'), findsOneWidget);
+
+    failSave = false;
+    await tester.tap(find.text('Second lesson'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save and continue'));
+    await tester.pumpAndSettle();
+    expect(writes.last['path'], '/api/courses/lessons/3');
+    expect(writes.last['contentText'], 'Keep these changes');
+    expect(find.text('Second notes'), findsOneWidget);
     expect(find.text('Unsaved changes'), findsNothing);
     expect(tester.takeException(), isNull);
   });
