@@ -82,6 +82,41 @@ void main() {
     expect(find.text('Revised notes'), findsOneWidget);
     expect(find.text('Unsaved changes'), findsOneWidget);
     expect(writes, isEmpty);
+    await tester.enterText(
+      find.byKey(const ValueKey('outline-search')),
+      'second',
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('lesson-3')), findsNothing);
+    expect(find.byKey(const ValueKey('lesson-4')), findsOneWidget);
+    expect(find.text('Revised notes'), findsOneWidget);
+    expect(find.text('Unsaved changes'), findsOneWidget);
+    for (final list in tester.widgetList<ReorderableListView>(
+      find.byType(ReorderableListView),
+    )) {
+      list.onReorder(0, 1);
+    }
+    expect(writes, isEmpty);
+    await tester.enterText(
+      find.byKey(const ValueKey('outline-search')),
+      'missing',
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('No modules or lessons match these filters.'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byKey(const ValueKey('outline-search')), '');
+    await tester.pumpAndSettle();
+    final status = tester.widget<DropdownButtonFormField<String>>(
+      find.byKey(const ValueKey('outline-status')),
+    );
+    status.onChanged!('PUBLISHED');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('lesson-3')), findsNothing);
+    expect(find.text('Revised notes'), findsOneWidget);
+    status.onChanged!('ALL');
+    await tester.pumpAndSettle();
     final lessonList = tester
         .widgetList<ReorderableListView>(find.byType(ReorderableListView))
         .last;

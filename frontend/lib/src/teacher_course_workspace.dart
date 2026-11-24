@@ -35,6 +35,34 @@ class TeacherCourseWorkspace extends StatefulWidget {
 
 class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   final title = TextEditingController(), notes = TextEditingController();
+  final outlineSearch = TextEditingController();
+  String outlineStatus = 'ALL';
+  bool get outlineFiltered =>
+      outlineSearch.text.trim().isNotEmpty || outlineStatus != 'ALL';
+
+  List<Map<String, dynamic>> visibleLessons(Map<String, dynamic> parent) {
+    final query = outlineSearch.text.trim().toLowerCase();
+    final moduleMatches = recordText(
+      parent['title'],
+    ).toLowerCase().contains(query);
+    return (lessons['${parent['id']}'] ?? <Map<String, dynamic>>[])
+        .where(
+          (row) =>
+              (outlineStatus == 'ALL' ||
+                  row['publicationStatus'] == outlineStatus) &&
+              (moduleMatches ||
+                  recordText(row['title']).toLowerCase().contains(query)),
+        )
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get visibleModules => modules.where((parent) {
+    if (!outlineFiltered || visibleLessons(parent).isNotEmpty) return true;
+    return outlineStatus == 'ALL' &&
+        recordText(
+          parent['title'],
+        ).toLowerCase().contains(outlineSearch.text.trim().toLowerCase());
+  }).toList();
   List<Map<String, dynamic>> courses = [], modules = [];
   final Map<String, List<Map<String, dynamic>>> lessons = {};
   Map<String, dynamic>? course, module, lesson;
@@ -53,6 +81,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   void dispose() {
     title.dispose();
     notes.dispose();
+    outlineSearch.dispose();
     super.dispose();
   }
 
@@ -344,9 +373,11 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
 
   Widget dragHandle(int index, String label) => ReorderableDragStartListener(
     index: index,
-    enabled: !saving && !loading,
+    enabled: !saving && !loading && !outlineFiltered,
     child: Tooltip(
-      message: 'Drag to reorder $label',
+      message: outlineFiltered
+          ? 'Clear filters to reorder'
+          : 'Drag to reorder $label',
       child: const Padding(
         padding: EdgeInsets.all(8),
         child: Icon(Icons.drag_indicator, color: navy),
@@ -368,9 +399,50 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           ),
         ),
         const SizedBox(height: 20),
+        TextField(
+          key: const ValueKey('outline-search'),
+          controller: outlineSearch,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: 'Find a module or lesson',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: outlineSearch.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => setState(outlineSearch.clear),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          key: const ValueKey('outline-status'),
+          initialValue: outlineStatus,
+          decoration: const InputDecoration(labelText: 'Lesson status'),
+          items: const [
+            DropdownMenuItem(value: 'ALL', child: Text('All statuses')),
+            DropdownMenuItem(value: 'DRAFT', child: Text('Draft')),
+            DropdownMenuItem(value: 'PUBLISHED', child: Text('Published')),
+          ],
+          onChanged: (value) => setState(() => outlineStatus = value ?? 'ALL'),
+        ),
+        const SizedBox(height: 16),
+        if (outlineFiltered)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text('Filtered outline. Clear filters to reorder.'),
+          ),
+        if (modules.isNotEmpty && visibleModules.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Text('No modules or lessons match these filters.'),
+          ),
         if (modules.isEmpty)
           const Text('Add a module to start organising lessons.'),
-        if (modules.length > 1 || lessons.values.any((rows) => rows.length > 1))
+        if (!outlineFiltered &&
+            (modules.length > 1 ||
+                lessons.values.any((rows) => rows.length > 1)))
           const Padding(
             padding: EdgeInsets.only(bottom: 12),
             child: Text(
@@ -387,9 +459,11 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
-          onReorder: (from, to) => reorder(from, to),
+          onReorder: (from, to) {
+            if (!outlineFiltered) reorder(from, to);
+          },
           children: [
-            for (final parent in modules)
+            for (final parent in visibleModules)
               Padding(
                 key: ValueKey('module-${parent['id']}'),
                 padding: const EdgeInsets.only(bottom: 16),
@@ -462,12 +536,13 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         buildDefaultDragHandles: false,
-                        onReorder: (from, to) =>
-                            reorder(from, to, parent: parent),
+                        onReorder: (from, to) {
+                          if (!outlineFiltered) {
+                            reorder(from, to, parent: parent);
+                          }
+                        },
                         children: [
-                          for (final row
-                              in lessons['${parent['id']}'] ??
-                                  <Map<String, dynamic>>[])
+                          for (final row in visibleLessons(parent))
                             Padding(
                               key: ValueKey('lesson-${row['id']}'),
                               padding: const EdgeInsets.only(bottom: 8),
