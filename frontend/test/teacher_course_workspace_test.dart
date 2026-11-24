@@ -359,6 +359,41 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('lesson-3')));
     await tester.pumpAndSettle();
     expect(find.text('Keep these changes'), findsOneWidget);
+
+    const formattedNotes = '  First paragraph with  two spaces.\n\n'
+        '    Indented practice step.\n';
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Keep these changes'),
+      formattedNotes,
+    );
+    await tester.pump();
+    await tester.ensureVisible(find.text('Save changes'));
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+    expect(writes.last['contentText'], formattedNotes);
+    await tester.ensureVisible(find.text('Second lesson'));
+    await tester.tap(find.text('Second lesson'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('lesson-3')));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, formattedNotes), findsOneWidget);
+
+    final savedWriteCount = writes.length;
+    await tester.enterText(
+      find.widgetWithText(TextField, formattedNotes),
+      'Unwanted changes',
+    );
+    await tester.tap(find.text('Second lesson'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard'));
+    await tester.pumpAndSettle();
+    expect(find.text('Second notes'), findsOneWidget);
+    expect(find.text('Unsaved changes'), findsNothing);
+    expect(writes.length, savedWriteCount);
+    await tester.tap(find.byKey(const ValueKey('lesson-3')));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, formattedNotes), findsOneWidget);
+    expect(find.text('Unwanted changes'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
