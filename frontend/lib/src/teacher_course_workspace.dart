@@ -384,7 +384,12 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           const Padding(
             padding: EdgeInsets.only(bottom: 12),
             child: Text(
-              'Drag handles to arrange modules and lessons. Order saves automatically.',
+              'Drag to reorder. Changes to order save automatically.',
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Color(0xff60748c),
+              ),
             ),
           ),
         ReorderableListView(
@@ -400,8 +405,16 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
+                    color: const Color(0xfff6f8fc),
                     border: Border.all(color: const Color(0xffe0e5f0)),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x080c3454),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: ExpansionTile(
                     key: PageStorageKey(
@@ -415,7 +428,30 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                     childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                     shape: const Border(),
                     collapsedShape: const Border(),
-                    leading: dragHandle(modules.indexOf(parent), 'module'),
+                    leading: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        dragHandle(modules.indexOf(parent), 'module'),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xffe7edf7),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${modules.indexOf(parent) + 1}'.padLeft(2, '0'),
+                            style: const TextStyle(
+                              color: navy,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     title: Text(
                       recordText(parent['title']),
                       style: const TextStyle(
@@ -442,26 +478,93 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                           for (final row
                               in lessons['${parent['id']}'] ??
                                   <Map<String, dynamic>>[])
-                            ListTile(
+                            Padding(
                               key: ValueKey('lesson-${row['id']}'),
-                              selected: lesson?['id'] == row['id'],
-                              selectedTileColor: const Color(0xfffff4d9),
-                              leading: dragHandle(
-                                lessons['${parent['id']}']!.indexOf(row),
-                                'lesson',
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Material(
+                                color: lesson?['id'] == row['id']
+                                    ? const Color(0xfffff3d6)
+                                    : Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: lesson?['id'] == row['id']
+                                        ? const Color(0xffddbc6d)
+                                        : const Color(0xffe5eaf2),
+                                  ),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
+                                  selected: lesson?['id'] == row['id'],
+                                  selectedTileColor: const Color(0xfffff4d9),
+                                  leading: dragHandle(
+                                    lessons['${parent['id']}']!.indexOf(row),
+                                    'lesson',
+                                  ),
+                                  title: Text(
+                                    recordText(row['title']),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w600,
+                                      color: navy,
+                                    ),
+                                  ),
+                                  trailing: Icon(
+                                    lesson?['id'] == row['id']
+                                        ? Icons.edit_outlined
+                                        : Icons.chevron_right,
+                                    size: 20,
+                                    color: navy,
+                                  ),
+                                  subtitle: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Container(
+                                      margin: const EdgeInsets.only(top: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            row['publicationStatus'] ==
+                                                'PUBLISHED'
+                                            ? const Color(0xffe3f3e9)
+                                            : const Color(0xffedf0f5),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        friendlyStatus(
+                                          row['publicationStatus'],
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color:
+                                              row['publicationStatus'] ==
+                                                  'PUBLISHED'
+                                              ? const Color(0xff21724c)
+                                              : const Color(0xff52647a),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  onTap: saving
+                                      ? null
+                                      : () async {
+                                          if (lesson?['id'] == row['id']) {
+                                            return;
+                                          }
+                                          if (await canLeave() && mounted) {
+                                            setState(() => select(parent, row));
+                                          }
+                                        },
+                                ),
                               ),
-                              title: Text(recordText(row['title'])),
-                              subtitle: Text(
-                                friendlyStatus(row['publicationStatus']),
-                              ),
-                              onTap: saving
-                                  ? null
-                                  : () async {
-                                      if (lesson?['id'] == row['id']) return;
-                                      if (await canLeave() && mounted) {
-                                        setState(() => select(parent, row));
-                                      }
-                                    },
                             ),
                         ],
                       ),
