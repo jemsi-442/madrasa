@@ -198,6 +198,15 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     error = null;
   }
 
+  void updateDirtyState() {
+    setState(() {
+      dirty =
+          lesson != null &&
+          (title.text.trim() != recordText(lesson!['title'], '').trim() ||
+              notes.text != recordText(lesson!['contentText'], ''));
+    });
+  }
+
   Future<bool> save() async {
     if (saving || lesson == null) return false;
     if (title.text.trim().length < 2) {
@@ -756,7 +765,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                 controller: title,
                 enabled: !saving,
                 maxLength: 150,
-                onChanged: (_) => setState(() => dirty = true),
+                onChanged: (_) => updateDirtyState(),
                 decoration: const InputDecoration(labelText: 'Lesson title'),
               ),
               const SizedBox(height: 8),
@@ -775,7 +784,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                 enabled: !saving,
                 minLines: 5,
                 maxLines: 12,
-                onChanged: (_) => setState(() => dirty = true),
+                onChanged: (_) => updateDirtyState(),
                 decoration: const InputDecoration(
                   hintText: 'Write the lesson content here...',
                   border: OutlineInputBorder(),
