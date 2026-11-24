@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Browser text inputs must receive Space rather than a page-level shortcut.
+class PageSpaceActivator extends SingleActivator {
+  const PageSpaceActivator({super.shift}) : super(LogicalKeyboardKey.space);
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) {
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (context != null &&
+        (context.widget is EditableText ||
+            context.findAncestorWidgetOfExactType<EditableText>() != null)) {
+      return false;
+    }
+    return super.accepts(event, state);
+  }
+}
+
 Map<ShortcutActivator, Intent> get pageKeyboardShortcuts => {
-  ...WidgetsApp.defaultShortcuts,
+  for (final entry in WidgetsApp.defaultShortcuts.entries)
+    if (!(entry.key.triggers?.contains(LogicalKeyboardKey.space) ?? false))
+      entry.key: entry.value,
   const SingleActivator(LogicalKeyboardKey.home): const PageBoundaryIntent(
     false,
   ),
@@ -11,7 +29,7 @@ Map<ShortcutActivator, Intent> get pageKeyboardShortcuts => {
       const PageBoundaryIntent(false),
   const SingleActivator(LogicalKeyboardKey.end, control: true):
       const PageBoundaryIntent(true),
-  const SingleActivator(LogicalKeyboardKey.space): const PrioritizedIntents(
+  const PageSpaceActivator(): const PrioritizedIntents(
     orderedIntents: [
       ActivateIntent(),
       ScrollIntent(
@@ -20,8 +38,7 @@ Map<ShortcutActivator, Intent> get pageKeyboardShortcuts => {
       ),
     ],
   ),
-  const SingleActivator(
-    LogicalKeyboardKey.space,
+  const PageSpaceActivator(
     shift: true,
   ): const PrioritizedIntents(
     orderedIntents: [

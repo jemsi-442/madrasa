@@ -496,6 +496,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(TextField));
     await tester.pumpAndSettle();
+    final spaceEvent = KeyDownEvent(
+      physicalKey: PhysicalKeyboardKey.space,
+      logicalKey: LogicalKeyboardKey.space,
+      timeStamp: Duration.zero,
+    );
+    for (final shortcut in pageKeyboardShortcuts.keys) {
+      expect(
+        shortcut.accepts(spaceEvent, HardwareKeyboard.instance),
+        isFalse,
+        reason: 'Page shortcuts must not intercept spaces inside an editor',
+      );
+    }
     await press(tester, LogicalKeyboardKey.home);
     expect(text.selection.baseOffset, 0);
     await press(tester, LogicalKeyboardKey.end);
@@ -503,7 +515,9 @@ void main() {
     await press(tester, LogicalKeyboardKey.arrowLeft);
     // On web, the DOM input handles arrow movement, not synthetic Flutter keys.
     if (!kIsWeb) expect(text.selection.baseOffset, text.text.length - 1);
-    await press(tester, LogicalKeyboardKey.space);
+    final handled = await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pumpAndSettle();
+    expect(handled, isFalse, reason: 'Space must reach the text input');
     expect(position(tester, primaryView).pixels, 0);
     await press(tester, LogicalKeyboardKey.tab);
     expect(button.hasFocus, isTrue);
