@@ -25,6 +25,12 @@ try {
     assert.deepEqual(errors, [], 'Startup must not raise JavaScript errors');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     console.log(`${width}px: first Flutter frame in ${Date.now() - start}ms`);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await opened(page);
+      assert.deepEqual(errors, [], 'Refreshing must not raise JavaScript errors');
+      console.log(`${width}px: refresh ${attempt} opened successfully`);
+    }
     await context.close();
   }
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
