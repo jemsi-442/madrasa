@@ -62,6 +62,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Course outline'), findsOneWidget);
     expect(find.text('Edit lesson'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Total lessons')).dy,
+      lessThan(tester.getTopLeft(find.text('Selected course')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('Selected course')).dy,
+      lessThan(tester.getTopLeft(find.text('Course outline')).dy),
+    );
     for (var attempt = 0; attempt < 2; attempt++) {
       await tester.tap(find.text('Getting started'));
       await tester.pumpAndSettle();

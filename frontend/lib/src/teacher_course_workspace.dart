@@ -910,6 +910,10 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           padding: const EdgeInsets.only(bottom: 16),
           child: Text(error!, style: const TextStyle(color: Colors.red)),
         ),
+      if (!loading && course != null) ...[
+        courseStatistics,
+        const SizedBox(height: 22),
+      ],
       if (courses.isNotEmpty)
         panel(
           DropdownButtonFormField<String>(
@@ -955,8 +959,6 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           ),
         )
       else ...[
-        courseStatistics,
-        const SizedBox(height: 22),
         LayoutBuilder(
           builder: (context, constraints) => constraints.maxWidth >= 1000
               ? Row(
