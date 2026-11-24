@@ -241,95 +241,122 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     if (!await canLeave() || !mounted || course == null) return;
     String value = '';
     final formKey = GlobalKey<FormState>();
-    final result = await showDialog<String>(
+    bool submitting = false;
+    String? creationError;
+    final rows = parent == null ? modules : lessons['${parent['id']}']!;
+    final position =
+        rows.fold<int>(
+          0,
+          (max, row) => recordNumber(row['position']) > max
+              ? recordNumber(row['position']).toInt()
+              : max,
+        ) +
+        1;
+    final slug = 'lesson-${DateTime.now().microsecondsSinceEpoch}';
+    final created = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) {
-        void create() {
-          if (formKey.currentState!.validate()) {
-            Navigator.pop(context, value.trim());
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          Future<void> create() async {
+            if (submitting || !formKey.currentState!.validate()) return;
+            setDialogState(() {
+              submitting = true;
+              creationError = null;
+            });
+            try {
+              final result = recordMap(
+                await widget.submit(
+                  parent == null
+                      ? '/api/courses/${course!['id']}/modules'
+                      : '/api/courses/modules/${parent['id']}/lessons',
+                  {
+                    'title': value.trim(),
+                    'position': position,
+                    if (parent != null) ...{
+                      'slug': slug,
+                      'publicationStatus': 'DRAFT',
+                      'visibility': 'LOCKED',
+                    },
+                  },
+                ),
+              );
+              if (result['id'] == null) {
+                throw StateError('Missing created record');
+              }
+              if (context.mounted) Navigator.pop(context, result);
+            } catch (_) {
+              if (!context.mounted) return;
+              setDialogState(() {
+                submitting = false;
+                creationError =
+                    'Could not confirm creation. Your title is still here. Check the outline before retrying if the connection was interrupted.';
+              });
+            }
           }
-        }
 
-        return AlertDialog(
-          title: Text(parent == null ? 'Add module' : 'Add lesson'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              autofocus: true,
-              maxLength: 150,
-              textInputAction: TextInputAction.done,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: (text) => (text ?? '').trim().length < 2
-                  ? 'Enter a title of at least two characters.'
-                  : null,
-              onFieldSubmitted: (_) => create(),
-              onChanged: (text) => value = text,
-              decoration: const InputDecoration(labelText: 'Title'),
+          return PopScope(
+            canPop: !submitting,
+            child: AlertDialog(
+              title: Text(parent == null ? 'Add module' : 'Add lesson'),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      enabled: !submitting,
+                      autofocus: true,
+                      maxLength: 150,
+                      textInputAction: TextInputAction.done,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (text) => (text ?? '').trim().length < 2
+                          ? 'Enter a title of at least two characters.'
+                          : null,
+                      onFieldSubmitted: (_) => create(),
+                      onChanged: (text) => value = text,
+                      decoration: const InputDecoration(labelText: 'Title'),
+                    ),
+                    if (creationError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          creationError!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: submitting ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: submitting ? null : create,
+                  child: Text(submitting ? 'Creating...' : 'Create'),
+                ),
+              ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(onPressed: create, child: const Text('Create')),
-          ],
-        );
-      },
+          );
+        },
+      ),
     );
-    if (result == null || !mounted) return;
+    if (created == null || !mounted) return;
     setState(() {
-      saving = true;
       error = null;
-    });
-    try {
-      final rows = parent == null ? modules : lessons['${parent['id']}']!;
-      final position =
-          rows.fold<int>(
-            0,
-            (max, row) => recordNumber(row['position']) > max
-                ? recordNumber(row['position']).toInt()
-                : max,
-          ) +
-          1;
-      final created = recordMap(
-        await widget.submit(
-          parent == null
-              ? '/api/courses/${course!['id']}/modules'
-              : '/api/courses/modules/${parent['id']}/lessons',
-          {
-            'title': result,
-            'position': position,
-            if (parent != null) ...{
-              'slug': 'lesson-${DateTime.now().microsecondsSinceEpoch}',
-              'publicationStatus': 'DRAFT',
-              'visibility': 'LOCKED',
-            },
-          },
-        ),
-      );
-      if (!mounted) return;
-      if (created['id'] == null) throw StateError('Missing created record');
-      setState(() {
-        rows.add(created);
-        outlineSearch.clear();
-        outlineStatus = 'ALL';
-        if (parent == null) {
-          lessons['${created['id']}'] = [];
-        } else {
-          select(parent, created);
-        }
-      });
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => error =
-              'Could not create this item. Check the course before retrying.',
-        );
+      rows.add(created);
+      outlineSearch.clear();
+      outlineStatus = 'ALL';
+      if (parent == null) {
+        lessons['${created['id']}'] = [];
+      } else {
+        select(parent, created);
       }
-    } finally {
-      if (mounted) setState(() => saving = false);
-    }
+    });
   }
 
   Widget panel(Widget child) => Container(

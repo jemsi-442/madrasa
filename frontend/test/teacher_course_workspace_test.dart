@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_course_workspace.dart';
@@ -22,6 +24,8 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    var createAttempts = 0;
+    final creation = Completer<Map<String, dynamic>>();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -32,7 +36,11 @@ void main() {
                       {'id': 'c1', 'title': 'Sample course'},
                     ]
                   : <Map<String, dynamic>>[],
-              submit: (_, body) async => {'id': 'm1', ...body},
+              submit: (_, body) async {
+                createAttempts++;
+                if (createAttempts == 1) throw StateError('Connection failed');
+                return creation.future;
+              },
               update: (_, body) async => body,
               onPreview: (_, _, _) {},
             ),
@@ -67,6 +75,31 @@ void main() {
     );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.textContaining('Your title is still here'), findsOneWidget);
+    expect(find.text('New module'), findsOneWidget);
+    expect(createAttempts, 1);
+    await tester.tap(find.text('Create'));
+    await tester.pump();
+    expect(createAttempts, 2);
+    expect(find.text('Creating...'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Creating...'),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, 'Cancel'))
+          .onPressed,
+      isNull,
+    );
+    creation.complete({'id': 'm1', 'title': 'New module', 'position': 1});
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('New module'), findsOneWidget);
     expect(find.text('All statuses'), findsOneWidget);
     expect(
