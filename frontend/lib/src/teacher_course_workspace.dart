@@ -240,31 +240,42 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   Future<void> add({Map<String, dynamic>? parent}) async {
     if (!await canLeave() || !mounted || course == null) return;
     String value = '';
+    final formKey = GlobalKey<FormState>();
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(parent == null ? 'Add module' : 'Add lesson'),
-        content: TextField(
-          autofocus: true,
-          maxLength: 150,
-          onChanged: (text) => value = text,
-          decoration: const InputDecoration(labelText: 'Title'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder: (context) {
+        void create() {
+          if (formKey.currentState!.validate()) {
+            Navigator.pop(context, value.trim());
+          }
+        }
+
+        return AlertDialog(
+          title: Text(parent == null ? 'Add module' : 'Add lesson'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              autofocus: true,
+              maxLength: 150,
+              textInputAction: TextInputAction.done,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: (text) => (text ?? '').trim().length < 2
+                  ? 'Enter a title of at least two characters.'
+                  : null,
+              onFieldSubmitted: (_) => create(),
+              onChanged: (text) => value = text,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
           ),
-          FilledButton(
-            onPressed: () {
-              if (value.trim().length >= 2) {
-                Navigator.pop(context, value.trim());
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(onPressed: create, child: const Text('Create')),
+          ],
+        );
+      },
     );
     if (result == null || !mounted) return;
     setState(() {

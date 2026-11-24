@@ -51,6 +51,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Add module'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Enter a title of at least two characters.'),
+      findsOneWidget,
+    );
+    expect(find.byType(AlertDialog), findsOneWidget);
     await tester.enterText(
       find.descendant(
         of: find.byType(AlertDialog),
@@ -58,7 +65,7 @@ void main() {
       ),
       'New module',
     );
-    await tester.tap(find.text('Create'));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(find.text('New module'), findsOneWidget);
     expect(find.text('All statuses'), findsOneWidget);
