@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_course_workspace.dart';
+import 'package:mif_app/src/teacher_courses_page.dart';
 
 // Simulates an expansion flag left in page storage by an earlier widget tree.
 class _ExpansionStateBucket extends PageStorageBucket {
@@ -17,6 +18,71 @@ class _ExpansionStateBucket extends PageStorageBucket {
 }
 
 void main() {
+  testWidgets('Course page guards sidebar departure with unsaved notes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final page = GlobalKey<TeacherCoursesPageState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TeacherCoursesPage(
+              key: page,
+              load: (path) async {
+                if (path == '/api/teaching/courses') {
+                  return [
+                    {'id': 'c1', 'title': 'Test course'},
+                  ];
+                }
+                if (path.endsWith('/modules')) {
+                  return [
+                    {'id': 'm1', 'title': 'Test module'},
+                  ];
+                }
+                if (path.endsWith('/lessons')) {
+                  return [
+                    {
+                      'id': 'l1',
+                      'title': 'Test lesson',
+                      'contentText': 'Original notes',
+                      'publicationStatus': 'DRAFT',
+                    },
+                  ];
+                }
+                return <Map<String, dynamic>>[];
+              },
+              submit: (_, body) async => body,
+              update: (_, body) async => body,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(await page.currentState!.confirmLeave(), isTrue);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Original notes'),
+      'Keep these notes',
+    );
+    await tester.pump();
+    final stay = page.currentState!.confirmLeave();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Keep editing'));
+    await tester.pumpAndSettle();
+    expect(await stay, isFalse);
+    expect(find.text('Keep these notes'), findsOneWidget);
+    final discard = page.currentState!.confirmLeave();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard'));
+    await tester.pumpAndSettle();
+    expect(await discard, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Back preserves notes until the teacher confirms leaving', (
     tester,
   ) async {

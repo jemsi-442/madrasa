@@ -30,10 +30,10 @@ class TeacherCourseWorkspace extends StatefulWidget {
   onPreview;
 
   @override
-  State<TeacherCourseWorkspace> createState() => _TeacherCourseWorkspaceState();
+  State<TeacherCourseWorkspace> createState() => TeacherCourseWorkspaceState();
 }
 
-class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
+class TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   final title = TextEditingController(), notes = TextEditingController();
   final outlineSearch = TextEditingController();
   // These lists use the page's scroll; never restore offsets from tile storage.

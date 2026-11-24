@@ -50,10 +50,15 @@ class TeacherCoursesPage extends StatefulWidget {
   onRecordLearning;
 
   @override
-  State<TeacherCoursesPage> createState() => _TeacherCoursesPageState();
+  State<TeacherCoursesPage> createState() => TeacherCoursesPageState();
 }
 
-class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
+class TeacherCoursesPageState extends State<TeacherCoursesPage> {
+  final authoringKey = GlobalKey<TeacherCourseWorkspaceState>();
+
+  Future<bool> confirmLeave() async =>
+      await authoringKey.currentState?.canLeave() ?? true;
+
   late Map<String, dynamic>? course = widget.initialLocation?.course;
   late Map<String, dynamic>? module = widget.initialLocation?.module;
   late String? lessonId = widget.initialLocation?.lessonId;
@@ -550,6 +555,7 @@ class _TeacherCoursesPageState extends State<TeacherCoursesPage> {
   Widget build(BuildContext context) =>
       course == null && widget.submit != null && widget.update != null
       ? TeacherCourseWorkspace(
+          key: authoringKey,
           load: widget.load,
           submit: widget.submit!,
           update: widget.update!,

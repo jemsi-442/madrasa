@@ -428,6 +428,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   final messagesKey = GlobalKey<FamilyMessagesPageState>();
   final quranKey = GlobalKey<TeacherQuranPageState>();
+  final coursesKey = GlobalKey<TeacherCoursesPageState>();
   TeacherCourseLocation? teachingCourseLocation;
   String? teachingClassId;
   Map<String, dynamic>? teachingPeriod;
@@ -486,6 +487,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   Future<bool> leaveTeacherDraft() async {
+    if (!(await coursesKey.currentState?.confirmLeave() ?? true)) return false;
     if (!(await quranKey.currentState?.confirmLeave() ?? true)) return false;
     return await messagesKey.currentState?.confirmLeave() ?? true;
   }
@@ -655,6 +657,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   Widget pageContent(AuthSession session) {
     if (session.role == 'TEACHER' && selectedIndex == 5) {
       return TeacherCoursesPage(
+        key: coursesKey,
         update: widget.state.update,
         upload: widget.state.uploadLesson,
         submit: widget.state.submit,
