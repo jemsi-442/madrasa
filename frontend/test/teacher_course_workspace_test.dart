@@ -68,6 +68,12 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Unsaved changes'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('lesson-3')));
+    await tester.pumpAndSettle();
+    expect(find.text('Save your lesson changes?'), findsNothing);
+    expect(find.text('Revised notes'), findsOneWidget);
+    expect(find.text('Unsaved changes'), findsOneWidget);
+    expect(writes, isEmpty);
     final lessonList = tester
         .widgetList<ReorderableListView>(find.byType(ReorderableListView))
         .last;
@@ -117,6 +123,9 @@ void main() {
     expect(writes.last['contentText'], 'Keep these changes');
     expect(find.text('Second notes'), findsOneWidget);
     expect(find.text('Unsaved changes'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('lesson-3')));
+    await tester.pumpAndSettle();
+    expect(find.text('Keep these changes'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

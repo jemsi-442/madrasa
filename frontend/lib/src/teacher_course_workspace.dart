@@ -437,6 +437,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                               onTap: saving
                                   ? null
                                   : () async {
+                                      if (lesson?['id'] == row['id']) return;
                                       if (await canLeave() && mounted) {
                                         setState(() => select(parent, row));
                                       }
