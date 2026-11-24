@@ -117,41 +117,48 @@ class _PublicHomeScreenState extends State<PublicHomeScreen> {
             onNavigate: widget.onNavigate,
           ),
           Expanded(
-            child: Scrollbar(
+            child: PrimaryScrollController(
               controller: scrollController,
-              thumbVisibility: MediaQuery.sizeOf(context).width >= 900,
-              interactive: true,
-              child: SingleChildScrollView(
-                key: const PageStorageKey('public-home-scroll'),
-                controller: scrollController,
-                child: Column(
-                  children: [
-                    _HomeHero(
-                      key: topKey,
-                      featuresKey: featuresKey,
-                      onJoin: () => widget.onNavigate('/register'),
-                      onExplore: () => openSection('About'),
+              child: Focus(
+                autofocus: true,
+                skipTraversal: true,
+                child: Scrollbar(
+                  controller: scrollController,
+                  thumbVisibility: MediaQuery.sizeOf(context).width >= 900,
+                  interactive: true,
+                  child: SingleChildScrollView(
+                    key: const PageStorageKey('public-home-scroll'),
+                    primary: true,
+                    child: Column(
+                      children: [
+                        _HomeHero(
+                          key: topKey,
+                          featuresKey: featuresKey,
+                          onJoin: () => widget.onNavigate('/register'),
+                          onExplore: () => openSection('About'),
+                        ),
+                        _AboutSection(
+                          key: aboutKey,
+                          onJoin: () => widget.onNavigate('/register'),
+                        ),
+                        HomeStorySections(
+                          storyKey: storyKey,
+                          practiceKey: practiceKey,
+                        ),
+                        HomeTeamSection(key: teamKey),
+                        HomeSchoolSection(
+                          key: schoolsKey,
+                          onNavigate: widget.onNavigate,
+                        ),
+                        HomePartnershipSection(
+                          key: partnersKey,
+                          faqKey: faqKey,
+                          onNavigate: widget.onNavigate,
+                        ),
+                        PublicSiteFooter(onNavigate: widget.onNavigate),
+                      ],
                     ),
-                    _AboutSection(
-                      key: aboutKey,
-                      onJoin: () => widget.onNavigate('/register'),
-                    ),
-                    HomeStorySections(
-                      storyKey: storyKey,
-                      practiceKey: practiceKey,
-                    ),
-                    HomeTeamSection(key: teamKey),
-                    HomeSchoolSection(
-                      key: schoolsKey,
-                      onNavigate: widget.onNavigate,
-                    ),
-                    HomePartnershipSection(
-                      key: partnersKey,
-                      faqKey: faqKey,
-                      onNavigate: widget.onNavigate,
-                    ),
-                    PublicSiteFooter(onNavigate: widget.onNavigate),
-                  ],
+                  ),
                 ),
               ),
             ),
