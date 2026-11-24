@@ -572,6 +572,55 @@ void main() {
     expect(position(tester, primaryView).pixels, 0);
   });
 
+  desktopTest('multiline notes retain caret selection and deletion', (
+    tester,
+  ) async {
+    // Browser DOM editing needs browser-level events rather than synthetic keys.
+    if (kIsWeb) return;
+    viewport(tester);
+    final text = TextEditingController(
+      text: 'First line\nSecond line\nThird line',
+    );
+    addTearDown(text.dispose);
+    await tester.pumpWidget(
+      harness(
+        SingleChildScrollView(
+          primary: true,
+          child: Column(
+            children: [
+              Shortcuts(
+                shortcuts: pageKeyboardShortcuts,
+                child: TextField(controller: text, minLines: 5, maxLines: 12),
+              ),
+              const SizedBox(height: 2000),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(TextField));
+    text.selection = const TextSelection.collapsed(offset: 11);
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    expect(text.selection.extentOffset, 0);
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(text.selection.extentOffset, 11);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await press(tester, LogicalKeyboardKey.arrowRight);
+    await press(tester, LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(text.selection.textInside(text.text), 'Se');
+    await press(tester, LogicalKeyboardKey.backspace);
+    expect(text.text, 'First line\ncond line\nThird line');
+    await press(tester, LogicalKeyboardKey.delete);
+    expect(text.text, 'First line\nond line\nThird line');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await press(tester, LogicalKeyboardKey.keyA);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(text.selection.textInside(text.text), text.text);
+    expect(position(tester, primaryView).pixels, 0);
+  });
+
   desktopTest('dialog keys scroll the dialog and not the page behind it', (
     tester,
   ) async {
