@@ -70,6 +70,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   final Map<String, List<Map<String, dynamic>>> lessons = {};
   Map<String, dynamic>? course, module, lesson;
   bool loading = true, saving = false, dirty = false;
+  bool confirmingExit = false, allowExit = false;
   String? error;
   int courseSelectionRevision = 0;
   static const navy = Color(0xff092b49), gold = Color(0xffac7b16);
@@ -141,6 +142,25 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
     if (!mounted) return false;
     if (action == 'save') return save();
     return action == 'discard';
+  }
+
+  Future<void> leaveWorkspace(Object? result) async {
+    if (confirmingExit || saving) return;
+    confirmingExit = true;
+    try {
+      if (!await canLeave() || !mounted) return;
+      final route = ModalRoute.of(context);
+      if (route?.isCurrent != true) return;
+      setState(() => allowExit = true);
+      // Let PopScope receive the permission before retrying navigation.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && route?.isCurrent == true) {
+          Navigator.of(context).pop(result);
+        }
+      });
+    } finally {
+      confirmingExit = false;
+    }
   }
 
   Future<void> openCourse(Map<String, dynamic> selected) async {
@@ -948,102 +968,108 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        spacing: 16,
-        runSpacing: 12,
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'My courses',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                  color: navy,
+  Widget build(BuildContext context) => PopScope<Object?>(
+    canPop: allowExit || (!dirty && !saving),
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) leaveWorkspace(result);
+    },
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: 16,
+          runSpacing: 12,
+          children: [
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'My courses',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: navy,
+                  ),
                 ),
-              ),
-              SizedBox(height: 6),
-              Text('Organise your course and create lessons.'),
-            ],
+                SizedBox(height: 6),
+                Text('Organise your course and create lessons.'),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(error!, style: const TextStyle(color: Colors.red)),
+          ),
+        if (!loading && course != null) ...[
+          courseStatistics,
+          const SizedBox(height: 22),
+        ],
+        if (courses.isNotEmpty)
+          panel(
+            DropdownButtonFormField<String>(
+              key: ValueKey('${course?['id']}-$courseSelectionRevision'),
+              initialValue: course?['id']?.toString(),
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Selected course'),
+              items: courses
+                  .map(
+                    (row) => DropdownMenuItem(
+                      value: '${row['id']}',
+                      child: Text(recordText(row['title'])),
+                    ),
+                  )
+                  .toList(),
+              onChanged: loading || saving
+                  ? null
+                  : (id) async {
+                      if (id != null) {
+                        await openCourse(
+                          courses.firstWhere((row) => '${row['id']}' == id),
+                        );
+                        if (mounted) {
+                          setState(() => courseSelectionRevision++);
+                        }
+                      }
+                    },
+            ),
+          ),
+        const SizedBox(height: 20),
+        if (loading)
+          const LinearProgressIndicator()
+        else if (course == null)
+          panel(
+            Column(
+              children: [
+                const Text('No assigned courses available.'),
+                TextButton(
+                  onPressed: initialize,
+                  child: const Text('Check courses'),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          LayoutBuilder(
+            builder: (context, constraints) => constraints.maxWidth >= 1000
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: outline),
+                      const SizedBox(width: 20),
+                      Expanded(flex: 3, child: editor),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [outline, const SizedBox(height: 20), editor],
+                  ),
           ),
         ],
-      ),
-      const SizedBox(height: 20),
-      if (error != null)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Text(error!, style: const TextStyle(color: Colors.red)),
-        ),
-      if (!loading && course != null) ...[
-        courseStatistics,
-        const SizedBox(height: 22),
       ],
-      if (courses.isNotEmpty)
-        panel(
-          DropdownButtonFormField<String>(
-            key: ValueKey('${course?['id']}-$courseSelectionRevision'),
-            initialValue: course?['id']?.toString(),
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Selected course'),
-            items: courses
-                .map(
-                  (row) => DropdownMenuItem(
-                    value: '${row['id']}',
-                    child: Text(recordText(row['title'])),
-                  ),
-                )
-                .toList(),
-            onChanged: loading || saving
-                ? null
-                : (id) async {
-                    if (id != null) {
-                      await openCourse(
-                        courses.firstWhere((row) => '${row['id']}' == id),
-                      );
-                      if (mounted) {
-                        setState(() => courseSelectionRevision++);
-                      }
-                    }
-                  },
-          ),
-        ),
-      const SizedBox(height: 20),
-      if (loading)
-        const LinearProgressIndicator()
-      else if (course == null)
-        panel(
-          Column(
-            children: [
-              const Text('No assigned courses available.'),
-              TextButton(
-                onPressed: initialize,
-                child: const Text('Check courses'),
-              ),
-            ],
-          ),
-        )
-      else ...[
-        LayoutBuilder(
-          builder: (context, constraints) => constraints.maxWidth >= 1000
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 2, child: outline),
-                    const SizedBox(width: 20),
-                    Expanded(flex: 3, child: editor),
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [outline, const SizedBox(height: 20), editor],
-                ),
-        ),
-      ],
-    ],
+    ),
   );
 }

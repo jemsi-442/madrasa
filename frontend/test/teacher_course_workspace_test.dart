@@ -17,6 +17,91 @@ class _ExpansionStateBucket extends PageStorageBucket {
 }
 
 void main() {
+  testWidgets('Back preserves notes until the teacher confirms leaving', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final navigator = GlobalKey<NavigatorState>();
+    var failSave = true;
+    final writes = <Map<String, dynamic>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: const Scaffold(body: Text('Course home')),
+      ),
+    );
+    unawaited(
+      navigator.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            body: SingleChildScrollView(
+              child: TeacherCourseWorkspace(
+                load: (path) async {
+                  if (path == '/api/teaching/courses') {
+                    return [
+                      {'id': 'c1', 'title': 'Test course'},
+                    ];
+                  }
+                  if (path.endsWith('/modules')) {
+                    return [
+                      {'id': 'm1', 'title': 'Test module'},
+                    ];
+                  }
+                  if (path.endsWith('/lessons')) {
+                    return [
+                      {
+                        'id': 'l1',
+                        'title': 'Test lesson',
+                        'contentText': 'Original notes',
+                        'publicationStatus': 'DRAFT',
+                      },
+                    ];
+                  }
+                  return <Map<String, dynamic>>[];
+                },
+                submit: (_, body) async => body,
+                update: (_, body) async {
+                  if (failSave) throw StateError('Offline');
+                  writes.add(body);
+                  return body;
+                },
+                onPreview: (_, _, _) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final notes = find.widgetWithText(TextField, 'Original notes');
+    await tester.enterText(notes, 'Notes to preserve');
+    await tester.pump();
+    await navigator.currentState!.maybePop();
+    await tester.pumpAndSettle();
+    expect(find.text('Save your lesson changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep editing'));
+    await tester.pumpAndSettle();
+    expect(find.text('Notes to preserve'), findsOneWidget);
+    await navigator.currentState!.maybePop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save and continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Notes to preserve'), findsOneWidget);
+    expect(find.byType(TeacherCourseWorkspace), findsOneWidget);
+    expect(writes, isEmpty);
+    failSave = false;
+    await navigator.currentState!.maybePop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save and continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Course home'), findsOneWidget);
+    expect(find.byType(TeacherCourseWorkspace), findsNothing);
+    expect(writes.single['contentText'], 'Notes to preserve');
+  });
+
   testWidgets('created module is visible despite active outline filters', (
     tester,
   ) async {
