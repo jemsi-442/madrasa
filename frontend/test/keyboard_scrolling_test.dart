@@ -481,7 +481,10 @@ void main() {
           primary: true,
           child: Column(
             children: [
-              TextField(controller: text),
+              Shortcuts(
+                shortcuts: pageKeyboardShortcuts,
+                child: TextField(controller: text, maxLines: 5),
+              ),
               TextButton(
                 focusNode: button,
                 onPressed: () => clicks++,
@@ -507,6 +510,49 @@ void main() {
         isFalse,
         reason: 'Page shortcuts must not intercept spaces inside an editor',
       );
+    }
+    // PageSelection installs another shortcut scope around editors on web.
+    // None of its navigation shortcuts may consume native editing keys.
+    for (final modifier in <LogicalKeyboardKey?>[
+      null,
+      LogicalKeyboardKey.shiftLeft,
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.altLeft,
+      LogicalKeyboardKey.metaLeft,
+    ]) {
+      if (modifier != null) await tester.sendKeyDownEvent(modifier);
+      for (final key in [
+        LogicalKeyboardKey.arrowLeft,
+        LogicalKeyboardKey.arrowRight,
+        LogicalKeyboardKey.arrowUp,
+        LogicalKeyboardKey.arrowDown,
+        LogicalKeyboardKey.home,
+        LogicalKeyboardKey.end,
+        LogicalKeyboardKey.pageUp,
+        LogicalKeyboardKey.pageDown,
+        LogicalKeyboardKey.enter,
+        LogicalKeyboardKey.backspace,
+        LogicalKeyboardKey.delete,
+        LogicalKeyboardKey.keyA,
+        LogicalKeyboardKey.keyC,
+        LogicalKeyboardKey.keyV,
+        LogicalKeyboardKey.keyX,
+        LogicalKeyboardKey.keyZ,
+      ]) {
+        final event = KeyDownEvent(
+          physicalKey: PhysicalKeyboardKey.keyA,
+          logicalKey: key,
+          timeStamp: Duration.zero,
+        );
+        for (final shortcut in pageKeyboardShortcuts.keys) {
+          expect(
+            shortcut.accepts(event, HardwareKeyboard.instance),
+            isFalse,
+            reason: '$key with $modifier belongs to the focused editor',
+          );
+        }
+      }
+      if (modifier != null) await tester.sendKeyUpEvent(modifier);
     }
     await press(tester, LogicalKeyboardKey.home);
     expect(text.selection.baseOffset, 0);

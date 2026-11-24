@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// Browser text inputs must receive Space rather than a page-level shortcut.
-class PageSpaceActivator extends SingleActivator {
-  const PageSpaceActivator({super.shift}) : super(LogicalKeyboardKey.space);
+// Let native text editing handle caret movement, selection and whitespace.
+class PageShortcutActivator extends ShortcutActivator {
+  const PageShortcutActivator(this.delegate);
+
+  final ShortcutActivator delegate;
+
+  @override
+  Iterable<LogicalKeyboardKey>? get triggers => delegate.triggers;
+
+  @override
+  String debugDescribeKeys() => delegate.debugDescribeKeys();
 
   @override
   bool accepts(KeyEvent event, HardwareKeyboard state) {
@@ -13,23 +21,39 @@ class PageSpaceActivator extends SingleActivator {
             context.findAncestorWidgetOfExactType<EditableText>() != null)) {
       return false;
     }
-    return super.accepts(event, state);
+    return delegate.accepts(event, state);
   }
 }
 
 Map<ShortcutActivator, Intent> get pageKeyboardShortcuts => {
   for (final entry in WidgetsApp.defaultShortcuts.entries)
     if (!(entry.key.triggers?.contains(LogicalKeyboardKey.space) ?? false))
-      entry.key: entry.value,
-  const SingleActivator(LogicalKeyboardKey.home): const PageBoundaryIntent(
+      (entry.key.triggers?.any(
+                    (key) =>
+                        key == LogicalKeyboardKey.tab ||
+                        key == LogicalKeyboardKey.escape,
+                  ) ??
+                  false)
+              ? entry.key
+              : PageShortcutActivator(entry.key):
+          entry.value,
+  const PageShortcutActivator(SingleActivator(LogicalKeyboardKey.home)):
+      const PageBoundaryIntent(false),
+  const PageShortcutActivator(SingleActivator(LogicalKeyboardKey.end)):
+      const PageBoundaryIntent(true),
+  const PageShortcutActivator(
+    SingleActivator(LogicalKeyboardKey.home, control: true),
+  ): const PageBoundaryIntent(
     false,
   ),
-  const SingleActivator(LogicalKeyboardKey.end): const PageBoundaryIntent(true),
-  const SingleActivator(LogicalKeyboardKey.home, control: true):
-      const PageBoundaryIntent(false),
-  const SingleActivator(LogicalKeyboardKey.end, control: true):
-      const PageBoundaryIntent(true),
-  const PageSpaceActivator(): const PrioritizedIntents(
+  const PageShortcutActivator(
+    SingleActivator(LogicalKeyboardKey.end, control: true),
+  ): const PageBoundaryIntent(
+    true,
+  ),
+  const PageShortcutActivator(
+    SingleActivator(LogicalKeyboardKey.space),
+  ): const PrioritizedIntents(
     orderedIntents: [
       ActivateIntent(),
       ScrollIntent(
@@ -38,8 +62,8 @@ Map<ShortcutActivator, Intent> get pageKeyboardShortcuts => {
       ),
     ],
   ),
-  const PageSpaceActivator(
-    shift: true,
+  const PageShortcutActivator(
+    SingleActivator(LogicalKeyboardKey.space, shift: true),
   ): const PrioritizedIntents(
     orderedIntents: [
       ActivateIntent(),
