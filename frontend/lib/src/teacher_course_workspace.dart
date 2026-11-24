@@ -388,6 +388,7 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
             ),
           ),
         ReorderableListView(
+          key: const PageStorageKey('course-outline-module-scroll'),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
@@ -403,16 +404,35 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ExpansionTile(
+                    key: PageStorageKey(
+                      'course-outline-module-${parent['id']}',
+                    ),
                     initiallyExpanded: true,
+                    tilePadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                     shape: const Border(),
                     collapsedShape: const Border(),
                     leading: dragHandle(modules.indexOf(parent), 'module'),
                     title: Text(
                       recordText(parent['title']),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: navy,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${lessons['${parent['id']}']?.length ?? 0} lessons',
                     ),
                     children: [
                       ReorderableListView(
+                        // Keep scroll offsets separate from ExpansionTile's stored bool.
+                        key: PageStorageKey(
+                          'course-outline-lessons-${parent['id']}',
+                        ),
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         buildDefaultDragHandles: false,
@@ -445,6 +465,13 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                             ),
                         ],
                       ),
+                      if ((lessons['${parent['id']}'] ?? []).isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            'No lessons yet. Add your first lesson below.',
+                          ),
+                        ),
                       TextButton.icon(
                         onPressed: saving ? null : () => add(parent: parent),
                         icon: const Icon(Icons.add),

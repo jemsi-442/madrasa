@@ -62,6 +62,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Course outline'), findsOneWidget);
     expect(find.text('Edit lesson'), findsOneWidget);
+    for (var attempt = 0; attempt < 2; attempt++) {
+      await tester.tap(find.text('Getting started'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Getting started'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('lesson-3')), findsOneWidget);
+    }
     await tester.enterText(
       find.widgetWithText(TextField, 'Original notes'),
       'Revised notes',
