@@ -655,10 +655,13 @@ debugger. Keep the terminal running. Source changes require restarting this
 preview; it never reloads somebody's open form automatically. Do not run two
 preview commands on the same port.
 
-For automatic Dart updates while developing, use the debug mode instead:
+The command defaults to this stable release preview even without `WEB_MODE`.
+Debug hot reload is currently experimental: a fresh page may open, but browser
+refresh can stall before Dart main starts. Do not use it for normal demo review.
+To investigate automatic Dart updates explicitly, use:
 
 ```bash
-node scripts/dev-web.mjs
+WEB_MODE=debug node scripts/dev-web.mjs
 ```
 
 Open `http://127.0.0.1:8087/#/login`. The initial compilation is slower;

@@ -61,7 +61,9 @@ export class AutoReload {
 }
 
 export function webOptions(environment = process.env) {
-  const mode = environment.WEB_MODE ?? 'debug';
+  // Debug's browser reconnection can stall before Dart main runs on this SDK.
+  // Keep normal local browsing reliable until that path passes refresh tests.
+  const mode = environment.WEB_MODE ?? 'release';
   if (!['debug', 'release'].includes(mode)) throw new Error('WEB_MODE must be debug or release');
   const port = environment.WEB_PORT ?? '8087';
   const api = environment.API_BASE_URL ?? 'http://127.0.0.1:4000';

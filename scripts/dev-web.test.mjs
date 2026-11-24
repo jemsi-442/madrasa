@@ -13,7 +13,12 @@ test('release preview keeps the familiar origin and bypasses debug compilation',
 });
 
 test('debug remains opt-in capable and invalid preview settings fail early', () => {
-  assert.equal(webOptions({}).mode, 'debug');
+  assert.equal(webOptions({}).mode, 'release');
+  assert.ok(webOptions({}).args.includes('--release'));
+  const debug = webOptions({ WEB_MODE: 'debug' });
+  assert.equal(debug.mode, 'debug');
+  assert.ok(debug.args.includes('--debug'));
+  assert.ok(!debug.args.includes('--release'));
   assert.throws(() => webOptions({ WEB_MODE: 'invalid' }));
   assert.throws(() => webOptions({ WEB_PORT: '80' }));
   assert.throws(() => webOptions({ API_BASE_URL: 'http://user:password@localhost' }));
