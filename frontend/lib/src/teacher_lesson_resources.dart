@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'course_section_heading.dart';
 import 'package:flutter/foundation.dart';
 import 'lesson_upload.dart';
 import 'dashboard_components.dart';
@@ -348,11 +349,20 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
               const SizedBox(height: 24),
             ],
             SizedBox(key: resourcesAnchor),
-            const PanelHeading(
+            const CourseSectionHeading(
               'Lesson resources',
-              subtitle:
-                  'Preview the resources for this lesson without recording learner progress.',
+              icon: Icons.perm_media_outlined,
             ),
+            const SizedBox(height: 12),
+            const Text(
+              'Preview the resources for this lesson without recording learner progress.',
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Color(0xff60748c),
+              ),
+            ),
+            const SizedBox(height: 16),
             if (counts.length > 1) ...[
               Wrap(
                 spacing: 8,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dashboard_components.dart';
+import 'course_section_heading.dart';
 import 'lesson_upload.dart';
 import 'teacher_lesson_access.dart';
 import 'teacher_lesson_resources.dart';
@@ -362,13 +363,9 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
           spacing: 12,
           runSpacing: 12,
           children: [
-            const Text(
+            const CourseSectionHeading(
               'Course outline',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: navy,
-              ),
+              icon: Icons.account_tree_outlined,
             ),
             OutlinedButton.icon(
               onPressed: saving ? null : () => add(),
@@ -608,13 +605,9 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text(
+                  const CourseSectionHeading(
                     'Edit lesson',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: navy,
-                    ),
+                    icon: Icons.edit_note,
                   ),
                   if (dirty)
                     const Text(
@@ -637,9 +630,9 @@ class _TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
                 style: const TextStyle(color: navy),
               ),
               const SizedBox(height: 24),
-              const Text(
+              const CourseSectionHeading(
                 'Lesson notes',
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+                icon: Icons.notes_outlined,
               ),
               const SizedBox(height: 12),
               TextField(
