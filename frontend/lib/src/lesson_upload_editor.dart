@@ -25,6 +25,7 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
   String? format, error;
   int size = 0;
   bool busy = false, choosing = false, available = false;
+  bool readingFile = false;
   bool confirmingClose = false, closing = false;
   String? suggestedTitle;
 
@@ -138,16 +139,19 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
     if (!form.currentState!.validate() || file == null) return;
     setState(() {
       busy = true;
+      readingFile = true;
       error = null;
     });
     try {
       final bytes = await file!.readAsBytes();
+      if (!mounted) return;
       if (bytes.isEmpty || bytes.length > lessonUploadLimitFor(format)) {
         throw ApiException(
           'The file must be non-empty and no larger than ${lessonUploadLimitFor(format) ~/ (1024 * 1024)} MB.',
           422,
         );
       }
+      setState(() => readingFile = false);
       final result = await widget.upload(
         widget.lessonId,
         title.text.trim(),
@@ -171,7 +175,12 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
         });
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() {
+          busy = false;
+          readingFile = false;
+        });
+      }
     }
   }
 
@@ -317,15 +326,24 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
                     ),
                   ),
                 if (busy)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        LinearProgressIndicator(),
-                        SizedBox(height: 10),
-                        Text(
-                          'Uploading and checking your file. Keep this window open.',
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 10),
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            readingFile
+                                ? 'Preparing your file...'
+                                : 'Uploading your file. Waiting for server confirmation...',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Keep this window open until the upload finishes.',
                         ),
                       ],
                     ),

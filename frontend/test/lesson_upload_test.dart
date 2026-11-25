@@ -315,6 +315,26 @@ void main() {
       await tester.pump();
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(
+        find.textContaining('Waiting for server confirmation'),
+        findsOneWidget,
+      );
+      for (final label in ['Remove file', 'Change file', 'Upload resource']) {
+        final button = tester.widget<ButtonStyleButton>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is ButtonStyleButton &&
+                find
+                    .descendant(
+                      of: find.byWidget(widget),
+                      matching: find.text(label),
+                    )
+                    .evaluate()
+                    .isNotEmpty,
+          ),
+        );
+        expect(button.onPressed, isNull, reason: '$label must be disabled');
+      }
+      expect(
         tester
             .widget<TextButton>(find.widgetWithText(TextButton, 'Cancel'))
             .onPressed,
