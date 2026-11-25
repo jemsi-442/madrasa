@@ -2,8 +2,53 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_text_editor.dart';
+import 'package:mif_app/src/api_client.dart';
 
 void main() {
+  for (final entry in {
+    401: 'Your session has expired.',
+    403: 'You no longer have permission',
+    404: 'This lesson is no longer available.',
+    422: 'The resource was not accepted.',
+  }.entries) {
+    testWidgets('explains ${entry.key} without losing the draft', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LessonTextEditor(
+              lessonId: '9',
+              submit: (_, _) async =>
+                  throw ApiException('Private server detail', entry.key),
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'Synthetic title',
+      );
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'Synthetic notes',
+      );
+      await tester.ensureVisible(find.byType(SwitchListTile));
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Save resource'));
+      await tester.tap(find.text('Save resource'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining(entry.value), findsOneWidget);
+      expect(find.text('Private server detail'), findsNothing);
+      expect(find.text('Synthetic title'), findsOneWidget);
+      expect(find.text('Synthetic notes'), findsOneWidget);
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isTrue,
+      );
+    });
+  }
   testWidgets('preview follows edits and can close with empty fields', (
     tester,
   ) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'api_client.dart';
 
 class LessonTextEditor extends StatefulWidget {
   const LessonTextEditor({
@@ -81,12 +82,22 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
         },
       );
       if (mounted) finish(result);
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
         setState(() {
           saving = false;
-          error =
-              'Could not confirm saving. Your text is still here. Check the resource list before retrying if the connection was interrupted.';
+          error = switch (failure) {
+            ApiException(statusCode: 401) =>
+              'Your session has expired. Keep a copy of your text before signing in again.',
+            ApiException(statusCode: 403) =>
+              'You no longer have permission to add resources to this lesson. Your text is still here.',
+            ApiException(statusCode: 404) =>
+              'This lesson is no longer available. Your text is still here; keep a copy before leaving.',
+            ApiException(statusCode: 422) =>
+              'The resource was not accepted. Check the title and lesson text before saving again. Your text is still here.',
+            _ =>
+              'Could not confirm saving. Your text is still here. Check the resource list before retrying if the connection was interrupted.',
+          };
         });
       }
     }
