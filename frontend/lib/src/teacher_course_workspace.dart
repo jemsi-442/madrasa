@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'browser_state.dart';
 import 'dashboard_components.dart';
 import 'course_section_heading.dart';
 import 'lesson_upload.dart';
@@ -71,6 +72,7 @@ class TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   Map<String, dynamic>? course, module, lesson;
   bool loading = true, saving = false, dirty = false;
   bool confirmingExit = false, allowExit = false;
+  late final void Function() removeBrowserExitGuard;
   String? error;
   int courseSelectionRevision = 0;
   static const navy = Color(0xff092b49), gold = Color(0xffac7b16);
@@ -78,11 +80,13 @@ class TeacherCourseWorkspaceState extends State<TeacherCourseWorkspace> {
   @override
   void initState() {
     super.initState();
+    removeBrowserExitGuard = guardBrowserExit(() => dirty || saving);
     initialize();
   }
 
   @override
   void dispose() {
+    removeBrowserExitGuard();
     title.dispose();
     notes.dispose();
     outlineSearch.dispose();

@@ -7,6 +7,17 @@ import 'package:web/web.dart' as web;
 
 http.Client createClient() => BrowserClient()..withCredentials = true;
 
+void Function() guardBrowserExit(bool Function() hasUnsavedWork) {
+  final listener = ((web.Event event) {
+    if (!hasUnsavedWork()) return;
+    event.preventDefault();
+    // Legacy browsers also require returnValue to request a confirmation.
+    (event as web.BeforeUnloadEvent).returnValue = '';
+  }).toJS;
+  web.window.addEventListener('beforeunload', listener);
+  return () => web.window.removeEventListener('beforeunload', listener);
+}
+
 Future<T> withAuthLock<T>(String name, Future<T> Function() action) async {
   if (!web.window.isSecureContext ||
       !web.window.navigator.hasProperty('locks'.toJS).toDart) {
