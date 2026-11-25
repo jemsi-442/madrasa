@@ -10,6 +10,37 @@ import 'package:mif_app/src/lesson_upload.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  for (final actualSize in [0, 2]) {
+    testWidgets('changed file size $actualSize is not uploaded', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LessonUploadEditor(
+            lessonId: 'synthetic',
+            pickFile: () async => _ChangedFile(actualSize),
+            upload: (_, _, _, _, _) async =>
+                fail('Changed file must not upload'),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Choose file'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'My resource');
+      await tester.ensureVisible(find.text('Upload resource'));
+      await tester.tap(find.text('Upload resource'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('This file has changed'), findsOneWidget);
+      expect(find.text('My resource'), findsOneWidget);
+      expect(find.text('Guide.pdf'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(
+        find.textContaining('Upload could not be confirmed'),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
   for (final invalidSize in [0, lessonUploadLimit + 1]) {
     testWidgets(
       'invalid replacement of size $invalidSize keeps valid selection',
@@ -443,4 +474,15 @@ class _SizedFile extends XFile {
 
   @override
   Future<int> length() async => size;
+}
+
+class _ChangedFile extends XFile {
+  _ChangedFile(this.actualSize) : super('Guide.pdf');
+  final int actualSize;
+
+  @override
+  Future<int> length() async => 1;
+
+  @override
+  Future<Uint8List> readAsBytes() async => Uint8List(actualSize);
 }

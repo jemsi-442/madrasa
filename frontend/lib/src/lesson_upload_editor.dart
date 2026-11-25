@@ -146,6 +146,13 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
     try {
       final bytes = await file!.readAsBytes();
       if (!mounted) return;
+      if (bytes.length != size) {
+        setState(() {
+          error =
+              'This file has changed since you selected it. Choose it again before uploading. Your title and access setting are kept.';
+        });
+        return;
+      }
       setState(() => readingFile = false);
       if (bytes.isEmpty || bytes.length > lessonUploadLimitFor(format)) {
         throw ApiException(
