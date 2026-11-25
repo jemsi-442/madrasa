@@ -3,6 +3,48 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/teacher_lesson_access.dart';
 
 void main() {
+  testWidgets('Failed publication keeps selected access for retry', (
+    tester,
+  ) async {
+    final writes = <Map<String, dynamic>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TeacherLessonAccess(
+            lesson: {
+              'id': '42',
+              'publicationStatus': 'DRAFT',
+              'visibility': 'LOCKED',
+            },
+            update: (_, body) async {
+              writes.add(body);
+              if (writes.length == 1) throw Exception('offline');
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Publish lesson'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Available to course learners').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Publish lesson').last);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.textContaining('Your selection is kept'), findsOneWidget);
+    expect(find.text('Draft lesson'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Publish lesson').last);
+    await tester.pumpAndSettle();
+    expect(writes, hasLength(2));
+    expect(writes.last, writes.first);
+    expect(writes.last['visibility'], 'FREE');
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Lesson published'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Hide keeps resources and publishes only after confirmation', (
     tester,
   ) async {

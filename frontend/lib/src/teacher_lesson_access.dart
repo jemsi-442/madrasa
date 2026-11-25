@@ -36,75 +36,132 @@ class _TeacherLessonAccessState extends State<TeacherLessonAccess> {
   }
 
   Future<void> changeAccess(bool publish) async {
+    if (saving || widget.update == null) return;
     var visibility = '${lesson['visibility'] ?? 'LOCKED'}';
-    final confirmed = await showDialog<bool>(
+    var submitting = false;
+    String? dialogError;
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(publish ? 'Publish lesson' : 'Hide lesson from learners'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              publish
-                  ? 'Only learners with access to the published course and matching programme can see this lesson. Resource restrictions remain unchanged.'
-                  : 'This lesson returns to draft. Uploaded files and recorded learner progress are kept.',
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => PopScope(
+          canPop: !submitting,
+          child: AlertDialog(
+            title: Text(
+              publish ? 'Publish lesson' : 'Hide lesson from learners',
             ),
-            if (publish) ...[
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                initialValue: visibility,
-                decoration: const InputDecoration(labelText: 'Lesson access'),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'FREE',
-                    child: Text('Available to course learners'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    publish
+                        ? 'Only learners with access to the published course and matching programme can see this lesson. Resource restrictions remain unchanged.'
+                        : 'This lesson returns to draft. Uploaded files and recorded learner progress are kept.',
                   ),
-                  DropdownMenuItem(value: 'PAID', child: Text('Paid access')),
-                  DropdownMenuItem(value: 'PREVIEW', child: Text('Preview')),
-                  DropdownMenuItem(value: 'LOCKED', child: Text('Locked')),
-                  DropdownMenuItem(value: 'UNLISTED', child: Text('Unlisted')),
+                  if (publish) ...[
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      initialValue: visibility,
+                      decoration: const InputDecoration(
+                        labelText: 'Lesson access',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'FREE',
+                          child: Text('Available to course learners'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'PAID',
+                          child: Text('Paid access'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'PREVIEW',
+                          child: Text('Preview'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'LOCKED',
+                          child: Text('Locked'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'UNLISTED',
+                          child: Text('Unlisted'),
+                        ),
+                      ],
+                      onChanged: submitting
+                          ? null
+                          : (value) => visibility = value!,
+                    ),
+                  ],
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      dialogError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
                 ],
-                onChanged: (value) => visibility = value!,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: submitting
+                    ? null
+                    : () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: submitting
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          submitting = true;
+                          dialogError = null;
+                        });
+                        setState(() {
+                          saving = true;
+                          error = null;
+                        });
+                        final changes = <String, dynamic>{
+                          'publicationStatus': publish ? 'PUBLISHED' : 'DRAFT',
+                          if (publish) 'visibility': visibility,
+                        };
+                        try {
+                          await widget.update!(
+                            '/api/courses/lessons/${Uri.encodeComponent('${lesson['id']}')}',
+                            changes,
+                          );
+                          if (mounted)
+                            setState(() => lesson = {...lesson, ...changes});
+                          if (dialogContext.mounted)
+                            Navigator.pop(dialogContext);
+                        } catch (_) {
+                          if (dialogContext.mounted)
+                            setDialogState(() {
+                              dialogError =
+                                  'Could not save lesson access. Your selection is kept. Try again.';
+                            });
+                        } finally {
+                          if (mounted) setState(() => saving = false);
+                          if (dialogContext.mounted)
+                            setDialogState(() => submitting = false);
+                        }
+                      },
+                child: Text(
+                  submitting
+                      ? 'Saving...'
+                      : publish
+                      ? 'Publish lesson'
+                      : 'Hide lesson',
+                ),
               ),
             ],
-          ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(publish ? 'Publish lesson' : 'Hide lesson'),
-          ),
-        ],
       ),
     );
-    if (confirmed != true || !mounted) return;
-    setState(() {
-      saving = true;
-      error = null;
-    });
-    final changes = <String, dynamic>{
-      'publicationStatus': publish ? 'PUBLISHED' : 'DRAFT',
-      if (publish) 'visibility': visibility,
-    };
-    try {
-      await widget.update!(
-        '/api/courses/lessons/${Uri.encodeComponent('${lesson['id']}')}',
-        changes,
-      );
-      if (mounted) setState(() => lesson = {...lesson, ...changes});
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => error = 'Could not save lesson access. Please try again.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => saving = false);
-    }
   }
 
   @override
