@@ -536,16 +536,30 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
           if (!widget.isAdmin) ...[
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: AfaqDesign.panelDecoration(),
+              decoration: AfaqDesign.panelDecoration().copyWith(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFEAF3FF), Color(0xFFFDF9EF)],
+                ),
+                border: Border.all(color: const Color(0xFFCDDCF0)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
-                      const Icon(
-                        Icons.groups_outlined,
-                        color: AfaqDesign.blue,
-                        size: 28,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD7E8FF),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.groups_outlined,
+                          color: AfaqDesign.blue,
+                          size: 30,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -565,6 +579,8 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                     borderRadius: BorderRadius.circular(16),
                     decoration: const InputDecoration(
                       labelText: 'Teaching class',
+                      filled: true,
+                      fillColor: Colors.white,
                       prefixIcon: Icon(Icons.groups_outlined),
                     ),
                     items: [
