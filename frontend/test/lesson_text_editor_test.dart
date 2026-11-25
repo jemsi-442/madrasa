@@ -4,6 +4,46 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_text_editor.dart';
 
 void main() {
+  testWidgets('preview follows edits and can close with empty fields', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LessonTextEditor(
+            lessonId: '9',
+            submit: (_, _) async => throw StateError('Must not save'),
+          ),
+        ),
+      ),
+    );
+    await tester.enterText(find.byType(TextFormField).at(0), 'First title');
+    await tester.enterText(find.byType(TextFormField).at(1), 'First notes');
+    await tester.ensureVisible(find.text('Preview'));
+    await tester.tap(find.text('Preview'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Updated title');
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'Updated notes\nSecond paragraph',
+    );
+    await tester.pump();
+    expect(find.text('Updated title'), findsNWidgets(2));
+    expect(
+      tester.widget<SelectableText>(find.byType(SelectableText)).data,
+      'Updated notes\nSecond paragraph',
+    );
+    await tester.enterText(find.byType(TextFormField).at(0), '');
+    await tester.enterText(find.byType(TextFormField).at(1), '');
+    await tester.pump();
+    await tester.ensureVisible(find.text('Hide preview'));
+    await tester.tap(find.text('Hide preview'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SelectableText), findsNothing);
+    expect(find.text('Enter a title.'), findsNothing);
+    expect(find.text('Write the lesson text.'), findsNothing);
+  });
+
   for (final useBack in [false, true]) {
     testWidgets('protects text draft when closing with back=$useBack', (
       tester,

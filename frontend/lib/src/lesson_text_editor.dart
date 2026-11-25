@@ -137,6 +137,9 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: title,
+                  onChanged: (_) {
+                    if (preview) setState(() {});
+                  },
                   enabled: !saving,
                   maxLength: 150,
                   decoration: const InputDecoration(
@@ -150,6 +153,9 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: text,
+                  onChanged: (_) {
+                    if (preview) setState(() {});
+                  },
                   enabled: !saving,
                   minLines: 8,
                   maxLines: 16,
@@ -226,7 +232,7 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
                       onPressed: saving
                           ? null
                           : () {
-                              if (form.currentState!.validate()) {
+                              if (preview || form.currentState!.validate()) {
                                 setState(() => preview = !preview);
                               }
                             },
