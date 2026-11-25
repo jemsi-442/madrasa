@@ -49,6 +49,57 @@ Map<String, dynamic> assignment(
 };
 
 void main() {
+  testWidgets(
+    'class selection and parent echo preserve an applicable open plan',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      String? selected;
+      var loads = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, update) => Scaffold(
+              body: SchoolCurriculumPage(
+                isAdmin: false,
+                initialClassId: selected,
+                onClassChanged: (value) =>
+                    update(() => selected = value.isEmpty ? null : value),
+                load: (_) async {
+                  loads++;
+                  return {
+                    'classes': [
+                      {'id': '1', 'name': 'Class 1'},
+                    ],
+                    'subjects': [],
+                    'assignments': [assignment('1', 'Arabic', '2026')],
+                  };
+                },
+                submit: (_, _) async => {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('View lessons'));
+      await tester.tap(find.text('View lessons'));
+      await tester.pumpAndSettle();
+      final picker = find.byType(DropdownButtonFormField<String>);
+      await tester.ensureVisible(picker.first);
+      await tester.tap(picker.first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Class 1').last);
+      await tester.pumpAndSettle();
+      expect(find.text('My assigned curriculum'), findsOneWidget);
+      expect(find.text('Arabic practice'), findsOneWidget);
+      expect(loads, 1);
+      expect(selected, '1');
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final width in [390.0, 1440.0]) {
     testWidgets('teacher library filters and opens real plans at $width', (
       tester,

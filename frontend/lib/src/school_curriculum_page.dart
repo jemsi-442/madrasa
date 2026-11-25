@@ -326,7 +326,8 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
   @override
   void didUpdateWidget(covariant SchoolCurriculumPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialClassId != widget.initialClassId) {
+    if (oldWidget.initialClassId != widget.initialClassId &&
+        classId != widget.initialClassId) {
       classId = widget.initialClassId;
       selectedAssignment = null;
       openLessons = false;
@@ -533,41 +534,98 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
         padding: widget.embedded ? EdgeInsets.zero : const EdgeInsets.all(24),
         children: [
           if (!widget.isAdmin) ...[
-            DropdownButtonFormField<String>(
-              key: ValueKey('curriculum-class-$classId'),
-              initialValue: classId ?? '',
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Teaching class',
-                prefixIcon: Icon(Icons.groups_outlined),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: AfaqDesign.panelDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.groups_outlined,
+                        color: AfaqDesign.blue,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Choose your teaching class',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('curriculum-class-$classId'),
+                    initialValue: classId ?? '',
+                    isExpanded: true,
+                    menuMaxHeight: 320,
+                    borderRadius: BorderRadius.circular(16),
+                    decoration: const InputDecoration(
+                      labelText: 'Teaching class',
+                      prefixIcon: Icon(Icons.groups_outlined),
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text('All assigned classes'),
+                      ),
+                      for (final item in (data['classes'] as List))
+                        DropdownMenuItem(
+                          value: '${item['id']}',
+                          child: Text(
+                            '${item['name']}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      if (classId != null &&
+                          !(data['classes'] as List).any(
+                            (item) => '${item['id']}' == classId,
+                          ))
+                        DropdownMenuItem(
+                          value: classId,
+                          child: const Text('Selected class unavailable'),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      final next = value == null || value.isEmpty
+                          ? null
+                          : value;
+                      if (classId == next) return;
+                      final keepDetails = (data['assignments'] as List).any(
+                        (item) =>
+                            '${item['id']}' == selectedAssignment &&
+                            (next == null ||
+                                (item['adoptions'] as List).any(
+                                  (adoption) =>
+                                      '${adoption['class']['id']}' == next,
+                                )),
+                      );
+                      setState(() {
+                        classId = next;
+                        if (!keepDetails) {
+                          selectedAssignment = null;
+                          openLessons = false;
+                        }
+                      });
+                      widget.onClassChanged?.call(classId ?? '');
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    '${assignments.length} curriculum ${assignments.length == 1 ? 'framework' : 'frameworks'} available'
+                    '${classId == null ? ' across your assigned classes' : ' for this class'}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.4,
+                      color: AfaqDesign.muted,
+                    ),
+                  ),
+                ],
               ),
-              items: [
-                const DropdownMenuItem(
-                  value: '',
-                  child: Text('All assigned classes'),
-                ),
-                for (final item in (data['classes'] as List))
-                  DropdownMenuItem(
-                    value: '${item['id']}',
-                    child: Text('${item['name']}'),
-                  ),
-                if (classId != null &&
-                    !(data['classes'] as List).any(
-                      (item) => '${item['id']}' == classId,
-                    ))
-                  DropdownMenuItem(
-                    value: classId,
-                    child: const Text('Selected class unavailable'),
-                  ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  classId = value == null || value.isEmpty ? null : value;
-                  selectedAssignment = null;
-                  openLessons = false;
-                });
-                widget.onClassChanged?.call(classId ?? '');
-              },
             ),
             const SizedBox(height: 20),
           ],
