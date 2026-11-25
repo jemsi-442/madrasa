@@ -10,6 +10,45 @@ import 'package:mif_app/src/lesson_upload.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  for (final invalidSize in [0, lessonUploadLimit + 1]) {
+    testWidgets(
+      'invalid replacement of size $invalidSize keeps valid selection',
+      (tester) async {
+        var picks = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LessonUploadEditor(
+              lessonId: 'synthetic',
+              pickFile: () async => picks++ == 0
+                  ? XFile.fromData(
+                      Uint8List.fromList([1]),
+                      path: 'Original.pdf',
+                    )
+                  : _SizedFile(invalidSize),
+              upload: (_, _, _, _, _) async => fail('Must not upload'),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Choose file'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextFormField), 'My resource');
+        await tester.ensureVisible(find.text('Change file'));
+        await tester.tap(find.text('Change file'));
+        await tester.pumpAndSettle();
+        expect(find.text('Original.pdf'), findsOneWidget);
+        expect(find.text('My resource'), findsOneWidget);
+        expect(
+          find.textContaining(
+            invalidSize == 0 ? 'This file is empty' : 'exceeds the 50 MB limit',
+          ),
+          findsOneWidget,
+        );
+        expect(find.byIcon(Icons.error_outline), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('unreadable file keeps details and never starts upload', (
     tester,
   ) async {
@@ -396,4 +435,12 @@ class _UnreadableFile extends XFile {
 
   @override
   Future<Uint8List> readAsBytes() async => throw StateError('File unavailable');
+}
+
+class _SizedFile extends XFile {
+  _SizedFile(this.size) : super('Replacement.pdf');
+  final int size;
+
+  @override
+  Future<int> length() async => size;
 }

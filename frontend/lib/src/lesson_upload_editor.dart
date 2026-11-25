@@ -100,16 +100,17 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
               ));
       if (chosen == null || !mounted) return;
       final kind = lessonFileFormat(chosen.name);
-      final length = await chosen.length();
-      if (!mounted) return;
       if (kind == null) {
         setState(() => error = 'Choose a PDF, JPG, PNG, MP4, MP3 or WAV file.');
         return;
       }
+      final length = await chosen.length();
+      if (!mounted) return;
       if (length == 0 || length > lessonUploadLimitFor(kind)) {
         setState(
-          () => error =
-              'Choose a non-empty file up to ${lessonUploadLimitFor(kind) ~/ (1024 * 1024)} MB.',
+          () => error = length == 0
+              ? 'This file is empty. Choose a file with content.'
+              : 'This ${kind.toUpperCase()} file exceeds the ${lessonUploadLimitFor(kind) ~/ (1024 * 1024)} MB limit. Choose a smaller file.',
         );
         return;
       }
@@ -320,10 +321,36 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
                 if (error != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                error!,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
