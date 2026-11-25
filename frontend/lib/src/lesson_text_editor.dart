@@ -18,7 +18,45 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
   final text = TextEditingController();
   final form = GlobalKey<FormState>();
   bool saving = false, preview = false, available = false;
+  bool confirmingClose = false, closing = false;
   String? error;
+
+  void finish([dynamic result]) {
+    setState(() => closing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.pop(context, result);
+    });
+  }
+
+  Future<void> requestClose() async {
+    if (saving || confirmingClose || closing) return;
+    if (title.text.isEmpty && text.text.isEmpty && !available) {
+      finish();
+      return;
+    }
+    confirmingClose = true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard this text resource?'),
+        content: const Text(
+          'Your title, lesson text and access selection have not been saved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Discard changes'),
+          ),
+        ],
+      ),
+    );
+    confirmingClose = false;
+    if (mounted && discard == true) finish();
+  }
 
   @override
   void dispose() {
@@ -42,7 +80,7 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
           'visibility': available ? 'FREE' : 'LOCKED',
         },
       );
-      if (mounted) Navigator.of(context).pop(result);
+      if (mounted) finish(result);
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -56,7 +94,10 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !saving,
+    canPop: closing,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) requestClose();
+    },
     child: Dialog(
       insetPadding: const EdgeInsets.all(16),
       child: ConstrainedBox(
@@ -88,7 +129,7 @@ class _LessonTextEditorState extends State<LessonTextEditor> {
                     ),
                     IconButton(
                       tooltip: 'Close editor',
-                      onPressed: saving ? null : () => Navigator.pop(context),
+                      onPressed: saving ? null : requestClose,
                       icon: const Icon(Icons.close),
                     ),
                   ],

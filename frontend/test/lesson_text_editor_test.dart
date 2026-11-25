@@ -4,6 +4,61 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mif_app/src/lesson_text_editor.dart';
 
 void main() {
+  for (final useBack in [false, true]) {
+    testWidgets('protects text draft when closing with back=$useBack', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => showDialog<dynamic>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => LessonTextEditor(
+                    lessonId: '9',
+                    submit: (_, _) async => throw StateError('Must not save'),
+                  ),
+                ),
+                child: const Text('Open editor'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open editor'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'Synthetic title',
+      );
+      await tester.enterText(find.byType(TextFormField).at(1), 'Unsaved notes');
+      if (useBack) {
+        await tester.binding.handlePopRoute();
+      } else {
+        await tester.tap(find.byTooltip('Close editor'));
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('Discard this text resource?'), findsOneWidget);
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextFormField>(find.byType(TextFormField).at(1))
+            .controller!
+            .text,
+        'Unsaved notes',
+      );
+      await tester.tap(find.byTooltip('Close editor'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Discard changes'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LessonTextEditor), findsNothing);
+      expect(find.text('Open editor'), findsOneWidget);
+    });
+  }
+
   testWidgets(
     'validates, previews and saves locked text without losing the draft on failure',
     (tester) async {
