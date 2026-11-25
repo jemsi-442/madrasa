@@ -133,20 +133,24 @@ class _TeacherLessonAccessState extends State<TeacherLessonAccess> {
                             '/api/courses/lessons/${Uri.encodeComponent('${lesson['id']}')}',
                             changes,
                           );
-                          if (mounted)
+                          if (mounted) {
                             setState(() => lesson = {...lesson, ...changes});
-                          if (dialogContext.mounted)
+                          }
+                          if (dialogContext.mounted) {
                             Navigator.pop(dialogContext);
+                          }
                         } catch (_) {
-                          if (dialogContext.mounted)
+                          if (dialogContext.mounted) {
                             setDialogState(() {
                               dialogError =
                                   'Could not save lesson access. Your selection is kept. Try again.';
                             });
+                          }
                         } finally {
                           if (mounted) setState(() => saving = false);
-                          if (dialogContext.mounted)
+                          if (dialogContext.mounted) {
                             setDialogState(() => submitting = false);
+                          }
                         }
                       },
                 child: Text(
