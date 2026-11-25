@@ -49,6 +49,52 @@ Map<String, dynamic> assignment(
 };
 
 void main() {
+  testWidgets('changing class clears the previous class search', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SchoolCurriculumPage(
+            isAdmin: false,
+            initialClassId: '1',
+            load: (_) async => {
+              'classes': [
+                {'id': '1', 'name': 'Class 1'},
+                {'id': '2', 'name': 'Class 2'},
+              ],
+              'subjects': [],
+              'assignments': [
+                assignment('1', 'Arabic', '2026'),
+                assignment('2', 'Fiqh', '2027'),
+              ],
+            },
+            submit: (_, _) async => {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Arabic');
+    await tester.pumpAndSettle();
+    final picker = find.byType(DropdownButtonFormField<String>).first;
+    await tester.ensureVisible(picker);
+    await tester.tap(picker);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Class 2').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Fiqh'), findsWidgets);
+    expect(find.text('Arabic'), findsNothing);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      isEmpty,
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'class selection and parent echo preserve an applicable open plan',
     (tester) async {

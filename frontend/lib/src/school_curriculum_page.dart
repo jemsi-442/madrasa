@@ -628,6 +628,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                         }
                       });
                       widget.onClassChanged?.call(classId ?? '');
+                      scrollToTop();
                     },
                   ),
                   const SizedBox(height: 14),
@@ -649,6 +650,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
             Offstage(
               offstage: showDetails,
               child: TeacherCurriculumLibrary(
+                key: ValueKey('curriculum-library-${classId ?? 'all'}'),
                 assignments: assignments.cast<Map>(),
                 onOpen: openAssignment,
               ),
@@ -728,6 +730,7 @@ class _SchoolCurriculumPageState extends State<SchoolCurriculumPage> {
                 (showDetails && '${item['id']}' == selectedAssignment),
           )) ...[
             SchoolCurriculumDetail(
+              key: ValueKey('curriculum-detail-${item['id']}-$classId'),
               assignment: item,
               isAdmin: widget.isAdmin,
               openLessons: openLessons,
