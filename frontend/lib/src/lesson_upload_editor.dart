@@ -145,13 +145,13 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
     try {
       final bytes = await file!.readAsBytes();
       if (!mounted) return;
+      setState(() => readingFile = false);
       if (bytes.isEmpty || bytes.length > lessonUploadLimitFor(format)) {
         throw ApiException(
           'The file must be non-empty and no larger than ${lessonUploadLimitFor(format) ~/ (1024 * 1024)} MB.',
           422,
         );
       }
-      setState(() => readingFile = false);
       final result = await widget.upload(
         widget.lessonId,
         title.text.trim(),
@@ -163,7 +163,9 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
     } catch (exception) {
       if (mounted) {
         setState(() {
-          error = exception is ApiException && exception.statusCode == 401
+          error = readingFile
+              ? 'Could not read the selected file. Choose it again. Your resource title and access setting are kept.'
+              : exception is ApiException && exception.statusCode == 401
               ? 'Please sign in again before uploading.'
               : exception is ApiException && exception.statusCode == 403
               ? 'You no longer have permission to add resources to this lesson.'

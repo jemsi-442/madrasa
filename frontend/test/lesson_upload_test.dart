@@ -10,6 +10,41 @@ import 'package:mif_app/src/lesson_upload.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  testWidgets('unreadable file keeps details and never starts upload', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LessonUploadEditor(
+          lessonId: 'synthetic',
+          pickFile: () async => _UnreadableFile(),
+          upload: (_, _, _, _, _) async =>
+              fail('Must not upload unreadable file'),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Choose file'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Practice resource');
+    await tester.ensureVisible(find.byType(SwitchListTile));
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.ensureVisible(find.text('Upload resource'));
+    await tester.tap(find.text('Upload resource'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Could not read the selected file'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Upload could not be confirmed'), findsNothing);
+    expect(find.text('Practice resource'), findsOneWidget);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
+    expect(find.text('Guide.pdf'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('remove selected video preserves custom title and access', (
     tester,
   ) async {
@@ -351,4 +386,14 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+}
+
+class _UnreadableFile extends XFile {
+  _UnreadableFile() : super('Guide.pdf');
+
+  @override
+  Future<int> length() async => 4;
+
+  @override
+  Future<Uint8List> readAsBytes() async => throw StateError('File unavailable');
 }
