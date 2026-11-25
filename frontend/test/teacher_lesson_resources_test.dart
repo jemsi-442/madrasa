@@ -74,7 +74,7 @@ void main() {
                   writes++;
                   expect(path, '/api/courses/assets/42');
                   expect(body, {'visibility': 'LOCKED'});
-                  if (fails) throw Exception('Unavailable');
+                  if (fails && writes == 1) throw Exception('Unavailable');
                   return {'id': '42', 'visibility': 'LOCKED'};
                 },
               ),
@@ -98,7 +98,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(writes, 1);
       expect(reads, 1);
-      expect(find.text('Synthetic guide'), findsOneWidget);
+      expect(find.text('Synthetic guide'), findsWidgets);
       expect(
         find.text('Locked for learners. Teacher preview only.'),
         fails ? findsNothing : findsOneWidget,
@@ -106,12 +106,24 @@ void main() {
       expect(
         find.text(
           fails
-              ? 'Could not save resource access. Please try again.'
+              ? 'Could not save resource access. Your selection is kept. Try again.'
               : 'Resource access saved.',
         ),
         findsOneWidget,
       );
       expect(find.byType(LessonMediaViewer), findsNothing);
+      if (fails) {
+        expect(find.byType(AlertDialog), findsOneWidget);
+        await tester.tap(find.text('Save access'));
+        await tester.pumpAndSettle();
+        expect(writes, 2);
+        expect(reads, 1);
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(
+          find.text('Locked for learners. Teacher preview only.'),
+          findsOneWidget,
+        );
+      }
       expect(tester.takeException(), isNull);
     });
   }

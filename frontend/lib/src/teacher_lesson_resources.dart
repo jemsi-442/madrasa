@@ -39,90 +39,144 @@ class _TeacherLessonResourcesState extends State<TeacherLessonResources> {
 
   Future<void> changeAccess(Map<String, dynamic> resource) async {
     final id = '${resource['id']}';
+    if (widget.update == null || savingAccess.contains(id)) return;
     final lesson = widget.lessonId;
     var visibility = '${resource['visibility'] ?? 'LOCKED'}';
-    final confirmed = await showDialog<bool>(
+    var submitting = false;
+    String? saveError;
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Resource access'),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(recordText(resource['title'])),
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                initialValue: visibility,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Learner access'),
-                items: const [
-                  DropdownMenuItem(value: 'LOCKED', child: Text('Locked')),
-                  DropdownMenuItem(
-                    value: 'FREE',
-                    child: Text('Course learners'),
-                  ),
-                  DropdownMenuItem(value: 'PAID', child: Text('Paid access')),
-                  DropdownMenuItem(value: 'PREVIEW', child: Text('Preview')),
-                  DropdownMenuItem(value: 'UNLISTED', child: Text('Unlisted')),
-                ],
-                onChanged: (value) => visibility = value ?? visibility,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => PopScope(
+          canPop: !submitting,
+          child: AlertDialog(
+            title: const Text('Resource access'),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(recordText(resource['title'])),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      initialValue: visibility,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Learner access',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'LOCKED',
+                          child: Text('Locked'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'FREE',
+                          child: Text('Course learners'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'PAID',
+                          child: Text('Paid access'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'PREVIEW',
+                          child: Text('Preview'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'UNLISTED',
+                          child: Text('Unlisted'),
+                        ),
+                      ],
+                      onChanged: submitting
+                          ? null
+                          : (value) => visibility = value ?? visibility,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Course and lesson publication, programme and access permissions still apply. Locking keeps the file and existing progress.',
+                    ),
+                    if (saveError != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        saveError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Course and lesson publication, programme and access permissions still apply. Locking keeps the file and existing progress.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: submitting
+                    ? null
+                    : () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: submitting
+                    ? null
+                    : () async {
+                        if (!mounted || lesson != widget.lessonId) return;
+                        setDialogState(() {
+                          submitting = true;
+                          saveError = null;
+                        });
+                        setState(() => savingAccess.add(id));
+                        try {
+                          final result = await widget.update!(
+                            '/api/courses/assets/${Uri.encodeComponent(id)}',
+                            {'visibility': visibility},
+                          );
+                          if (!mounted || lesson != widget.lessonId) return;
+                          setState(() {
+                            currentRows = [
+                              for (final row in currentRows)
+                                if ('${row['id']}' == id)
+                                  {
+                                    ...row,
+                                    'visibility': visibility,
+                                    if (result is Map)
+                                      ...Map<String, dynamic>.from(result),
+                                  }
+                                else
+                                  row,
+                            ];
+                            future = SynchronousFuture<dynamic>(currentRows);
+                          });
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Resource access saved.'),
+                            ),
+                          );
+                        } catch (_) {
+                          if (dialogContext.mounted) {
+                            setDialogState(
+                              () => saveError =
+                                  'Could not save resource access. Your selection is kept. Try again.',
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => savingAccess.remove(id));
+                          if (dialogContext.mounted) {
+                            setDialogState(() => submitting = false);
+                          }
+                        }
+                      },
+                child: Text(submitting ? 'Saving...' : 'Save access'),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save access'),
-          ),
-        ],
       ),
     );
-    if (confirmed != true || !mounted || lesson != widget.lessonId) return;
-    setState(() => savingAccess.add(id));
-    try {
-      final result = await widget.update!(
-        '/api/courses/assets/${Uri.encodeComponent(id)}',
-        {'visibility': visibility},
-      );
-      if (!mounted || lesson != widget.lessonId) return;
-      setState(() {
-        currentRows = [
-          for (final row in currentRows)
-            if ('${row['id']}' == id)
-              {
-                ...row,
-                'visibility': visibility,
-                if (result is Map) ...Map<String, dynamic>.from(result),
-              }
-            else
-              row,
-        ];
-        future = SynchronousFuture<dynamic>(currentRows);
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Resource access saved.')));
-    } catch (_) {
-      if (!mounted || lesson != widget.lessonId) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not save resource access. Please try again.'),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => savingAccess.remove(id));
-    }
   }
 
   void resourceAdded(dynamic result) {
