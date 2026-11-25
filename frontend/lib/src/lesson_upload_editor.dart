@@ -224,6 +224,18 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Icon(
+                        switch (format) {
+                          'mp4' => Icons.video_library_outlined,
+                          'mp3' || 'wav' => Icons.headphones_outlined,
+                          'png' || 'jpg' => Icons.image_outlined,
+                          'pdf' => Icons.picture_as_pdf_outlined,
+                          _ => Icons.upload_file_outlined,
+                        },
+                        size: 36,
+                        color: const Color(0xff173b59),
+                      ),
+                      const SizedBox(height: 12),
                       Text(
                         file?.name ?? 'Choose your teaching material',
                         style: const TextStyle(
@@ -250,6 +262,24 @@ class _LessonUploadEditorState extends State<LessonUploadEditor> {
                               : 'Change file',
                         ),
                       ),
+                      if (file != null)
+                        TextButton.icon(
+                          onPressed: busy || choosing
+                              ? null
+                              : () => setState(() {
+                                  // Clear only the generated title, not the teacher's edits.
+                                  if (title.text == suggestedTitle) {
+                                    title.clear();
+                                  }
+                                  file = null;
+                                  format = null;
+                                  size = 0;
+                                  suggestedTitle = null;
+                                  error = null;
+                                }),
+                          icon: const Icon(Icons.close),
+                          label: const Text('Remove file'),
+                        ),
                     ],
                   ),
                 ),

@@ -10,6 +10,69 @@ import 'package:mif_app/src/lesson_upload.dart';
 import 'package:mif_app/src/lesson_upload_editor.dart';
 
 void main() {
+  testWidgets('remove selected video preserves custom title and access', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LessonUploadEditor(
+          lessonId: 'synthetic',
+          pickFile: () async => XFile.fromData(
+            Uint8List.fromList([1, 2, 3]),
+            path: 'Practice.mp4',
+          ),
+          upload: (_, _, _, _, _) async => fail('Must not upload'),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Choose file'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.video_library_outlined), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField), 'My practice');
+    await tester.ensureVisible(find.byType(SwitchListTile));
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Remove file'));
+    await tester.tap(find.text('Remove file'));
+    await tester.pumpAndSettle();
+    expect(find.text('Practice.mp4'), findsNothing);
+    expect(find.text('My practice'), findsOneWidget);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byWidgetPredicate((w) => w is FilledButton),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('removing a file clears its generated title', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LessonUploadEditor(
+          lessonId: 'synthetic',
+          pickFile: () async =>
+              XFile.fromData(Uint8List.fromList([1]), path: 'Guide.pdf'),
+          upload: (_, _, _, _, _) async => fail('Must not upload'),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Choose file'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove file'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
+      isEmpty,
+    );
+  });
+
   test('video has a larger bounded limit than documents', () {
     expect(lessonUploadLimitFor('mp4'), 250 * 1024 * 1024);
     for (final format in ['pdf', 'mp3', 'wav', 'png', 'jpg']) {
